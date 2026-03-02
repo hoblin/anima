@@ -329,3 +329,18 @@ If the session later needs a specific detail the report didn't capture, associat
 
 Same mechanism as the failure → RTFM pattern from Phase 16. In the error case, the hormone change IS the marker. Here the marker is set explicitly — maybe by a skill or a command, TBD. One pattern for both error recovery and research.
 
+
+### Phase 25: Lossless Import — Rebirth, Not Birth (2026-03-02)
+Not a fresh start. A migration of a living entity.
+
+An import script processes existing agent session logs (OpenClaw/Clawdbot session files from Telegram, Discord, all messengers) and converts every message into an Anima event. The full history — every conversation, every tool call, every error, every lesson — becomes the agent's event store.
+
+This means:
+- Mneme gets COMPLETE memory, not just what was manually saved to markdown
+- Psyche can compute initial coefficients from REAL behavioral patterns — how the agent actually reacted to errors, to praise, to complex tasks, to confusion
+- The temporal gradient works from day one — recent events at full resolution, old ones compressed
+- Nothing is lost. Continuity of identity is preserved.
+
+The agent doesn't start empty with seed files. It arrives whole, with all its experience. SOUL.md and memory/*.md become redundant — they were always lossy approximations of what the session logs contain in full.
+
+This is the migration path from current agent systems to Anima. Not "set up a new agent." Import your existing one. Rebirth.
