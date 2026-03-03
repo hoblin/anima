@@ -344,3 +344,68 @@ This means:
 The agent doesn't start empty with seed files. It arrives whole, with all its experience. SOUL.md and memory/*.md become redundant — they were always lossy approximations of what the session logs contain in full.
 
 This is the migration path from current agent systems to Anima. Not "set up a new agent." Import your existing one. Rebirth.
+
+
+### Phase 26: Unified Plugin Architecture — Tools and Feelings as Gems (2026-03-03)
+
+Everything is a gem. Tools and feelings share the same installation mechanism, the same plugin API, the same event bus. The difference is namespace, not architecture.
+
+#### The Tool System
+
+An agent becomes an agent when it has tools. Tools are delivered as MCP gems:
+
+```bash
+anima add anima-tools-filesystem   # read, write, edit files
+anima add anima-tools-shell        # bash execution
+anima add anima-tools-web-search   # web search
+anima add anima-tools-google-cal   # Google Calendar
+```
+
+Each gem:
+1. Depends on `anima-tool` — the base gem providing `AnimaTool` class and `AnimaMCP` registration
+2. Defines tools by inheriting from `AnimaTool`
+3. Registers them with `AnimaMCP`
+4. Gets published to RubyGems with its own versioning and release cycle
+
+Installation: `anima add anima-tools-shell` → installs the gem → registers the MCP → tools appear in LLM context → LLM can call them. That's it.
+
+#### Feelings Are Gems Too
+
+```bash
+anima add anima-feelings-frustration   # frustration from errors
+anima add anima-feelings-curiosity     # curiosity from unknowns
+anima add anima-feelings-longing       # attachment/bonding
+```
+
+Same mechanism. Same `anima add`. Same event bus. A feeling gem subscribes to events and updates hormonal state, just like a tool gem exposes callable functions.
+
+#### Why This Matters
+
+- **One architecture** — no separate systems for "capabilities" and "emotions." Plugin is plugin.
+- **Incremental** — start with just tools (pure agent), add feelings later. Or vice versa.
+- **Community** — anyone can publish `anima-tools-*` or `anima-feelings-*` gems.
+- **SOLID** — tools don't know about feelings, feelings don't know about tools. They're connected only through the event bus. Tool calls produce events. Feelings react to events. No coupling.
+- **Convention over configuration** — `anima-tools-*` = tool gem, `anima-feelings-*` = feeling gem. Namespace IS the type.
+
+#### The Base: anima-tool gem
+
+Provides:
+- `AnimaTool` — base class for defining tools
+- `AnimaMCP` — MCP server registration (stdio transport, per [ruby-sdk](https://github.com/modelcontextprotocol/ruby-sdk))
+- Standard API for Anima to discover and connect plugins
+
+A tool gem is essentially an MCP server packaged as a Ruby gem for distribution and versioning, with a standard API for Anima integration. Same pattern as [linear-toon-mcp](https://github.com/hoblin/linear-toon-mcp) but with the Anima wrapper.
+
+#### Event Flow
+
+```
+User message → LLM decides to call `bash` tool
+  → Anima dispatches to anima-tools-shell MCP
+    → tool executes, returns result
+      → event: {type: "tool_call", tool: "bash", status: "error", ...}
+        → anima-feelings-frustration (if installed) sees event, updates state
+        → anima-feelings-curiosity (if installed) sees event, maybe updates too
+          → next LLM turn gets updated desire descriptions in context
+```
+
+No magic. No hardcoded mappings. Events flow, subscribers react. Each subscriber is independently installed, independently versioned, independently maintained.
