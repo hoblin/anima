@@ -442,3 +442,16 @@ Key capabilities that map directly to Anima's architecture:
 - **Separation of emission from consumption** — the event reporter doesn't care what subscribers do with events. One subscriber writes to SQLite, another updates hormone state, a third generates embeddings. Same event, different reactions
 
 This replaces the need for wisper, dry-events, or custom pub/sub. Rails.event IS the event bus. Combined with Solid Queue for heavy async work (event compression, LLM calls, reindexing), this gives Anima a complete event infrastructure using only Rails standard tools.
+
+### Phase 30: Gem as Distribution, Home Directory as State (2026-03-06)
+Anima is distributed as a Ruby gem containing a full Rails application. The gem is the runtime — immutable, versioned, updated via `gem update anima`. User data lives entirely outside the gem in `~/.anima/`.
+
+The workflow: `gem install anima` pulls the gem with all dependencies (rails, sqlite3, solid_queue, draper, etc.). `anima install` creates the user directory structure with databases, config, and environment-specific credentials. `anima start` launches the Rails server from the gem code but pointing at the user's data directory. `anima install` also creates a systemd service for autostart, just like any well-behaved Linux daemon.
+
+The user directory holds everything mutable: SQLite databases per environment (production, development, test), environment-specific Rails credentials (encrypted files + keys), user configuration, logs, and any storage. The gem itself contains all the code — models, controllers, migrations, jobs, the event system, everything.
+
+Updates are simple: `gem update anima` gets new code, next `anima start` runs any pending migrations against the user's databases. Rollback: `gem install anima -v 0.1.0` downgrades the code, data untouched.
+
+Rails makes this possible because paths are fully configurable — `database.yml` points to `~/.anima/db/`, credentials read from `~/.anima/config/credentials/`, logs write to `~/.anima/log/`. The gem's `config/application.rb` redirects everything to the user directory. For developers working on Anima itself, the standard Rails development workflow applies — clone the repo, `bin/rails server`, everything works locally as a normal Rails app.
+
+This follows the Unix philosophy: program separate from data. Familiar to any Linux user. No Docker required, no repo cloning, no deployment complexity. Three commands and it runs.
