@@ -409,3 +409,36 @@ User message → LLM decides to call `bash` tool
 ```
 
 No magic. No hardcoded mappings. Events flow, subscribers react. Each subscriber is independently installed, independently versioned, independently maintained.
+
+### Phase 27: Rage → Rails (2026-03-06)
+Rage is out. After reading the docs, it's clear Rage is a stripped-down Rails reinventing the wheel:
+- Uses ActiveRecord but none of the Rails ecosystem (credentials, ActionMailer, etc.)
+- All background work runs in-process via fibers — more scheduled tasks = more RAM consumed with no bounds
+- No native support for Draper or other Rails gems
+- The ONLY advantage was the built-in event bus, but that's not enough to justify losing the entire Rails ecosystem
+
+Decision: **Full Rails, SQLite, standard gems.**
+
+For event bus: Rails has Action Cable (WebSockets), Turbo Streams, and the broader pub/sub ecosystem. In-process options like `wisper` or `dry-events` can provide lightweight pub/sub. If we need something heavier, ActiveSupport::Notifications is built-in.
+
+### Phase 28: Draper as Universal Event Representation (2026-03-06)
+Draper (decorator pattern gem) is not just for web views — it's the natural implementation of Phase 17's resolution levels.
+
+Every event type gets a decorator that knows how to represent itself in different contexts: as LLM context (at full, medium, short, and one-liner resolution levels), as a Discord message, as a Telegram message, as a web interface element, as a log line. One class, one place — all representations of one event.
+
+The temporal gradient from Phase 17 becomes a resolution parameter on the decorator. When Nous assembles context, recent events are asked for their full representation while distant events give their one-liner. Channel-specific formatting is just another method on the same decorator. No separate serializers, no format negotiation — the decorator IS the representation layer.
+
+This also solves the "how does the event look in my LLM context" problem elegantly — each event type defines its own context representation at each resolution level. A tool call event knows how to describe itself to the LLM differently than a user message event or a file read event.
+
+### Phase 29: Rails Structured Event Reporter as Native Event Bus (2026-03-06)
+Rails 8.1 ships with the Structured Event Reporter (developed at Shopify, merged August 2025). This is not ActiveSupport::Notifications — it's a separate, complementary system specifically designed for telemetry and analytic events.
+
+Key capabilities that map directly to Anima's architecture:
+- **Global event emission** — any part of the system can report a named structured event with typed payload
+- **Subscriber pattern with filters** — subscribers can listen to all events or filter by name/pattern. Thymos listens to tool events, Mneme indexes everything, Psyche watches hormone changes
+- **Tags** — block-scoped context that automatically attaches to all events within that block. When an agent is working on a task, all events inherit the task context without explicit passing
+- **Context store** — request/job-level metadata that grows over time and attaches to every event. This is the "wide event" pattern — dump as much context as possible because it may be useful later
+- **Schematized events** — events can be plain hashes (implicit schema) or typed objects (explicit schema). Anima event types would be explicit — formally defined, validated at emission time
+- **Separation of emission from consumption** — the event reporter doesn't care what subscribers do with events. One subscriber writes to SQLite, another updates hormone state, a third generates embeddings. Same event, different reactions
+
+This replaces the need for wisper, dry-events, or custom pub/sub. Rails.event IS the event bus. Combined with Solid Queue for heavy async work (event compression, LLM calls, reindexing), this gives Anima a complete event infrastructure using only Rails standard tools.
