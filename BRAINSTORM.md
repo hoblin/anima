@@ -455,3 +455,12 @@ Updates are simple: `gem update anima` gets new code, next `anima start` runs an
 Rails makes this possible because paths are fully configurable — `database.yml` points to `~/.anima/db/`, credentials read from `~/.anima/config/credentials/`, logs write to `~/.anima/log/`. The gem's `config/application.rb` redirects everything to the user directory. For developers working on Anima itself, the standard Rails development workflow applies — clone the repo, `bin/rails server`, everything works locally as a normal Rails app.
 
 This follows the Unix philosophy: program separate from data. Familiar to any Linux user. No Docker required, no repo cloning, no deployment complexity. Three commands and it runs.
+
+### Phase 31: Headless Rails + TUI-First Interface (2026-03-06)
+Rails starts without any web views. No HTML, no CSS, no JavaScript, no asset pipeline. Pure backend — models, events, Solid Queue jobs, API integration with LLM providers. The framework serves as the brain, not the face.
+
+The primary user interface is a terminal TUI built with RatatuiRuby (Ruby bindings to Rust's Ratatui). `anima tui` opens a terminal application with chat interface for direct conversation with the agent, plus settings/configuration screens with navigable menus. No browser needed, no web design decisions to make.
+
+Priority order for MVP: get a working agent first — connect to Anthropic, send messages, receive responses through the Anima event system. Then gradually build out subsystems (Thymos, Mneme, Psyche), import existing session history (Phase 25 lossless import), and prove the concept works without any web interface at all.
+
+Web UI comes much later, if ever needed. The TUI and the API are the primary interfaces. This keeps focus on the architecture that matters — the event system, the hormonal layer, the fluid context — rather than getting bogged down in frontend design.
