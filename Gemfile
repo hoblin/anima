@@ -2,7 +2,7 @@
 
 source "https://rubygems.org"
 
-# Specify your gem's dependencies in anima.gemspec
+# Specify your gem's dependencies in anima-core.gemspec
 gemspec
 
 gem "irb"

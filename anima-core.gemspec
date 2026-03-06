@@ -3,7 +3,7 @@
 require_relative "lib/anima/version"
 
 Gem::Specification.new do |spec|
-  spec.name = "anima"
+  spec.name = "anima-core"
   spec.version = Anima::VERSION
   spec.authors = ["Yevhenii Hurin"]
   spec.email = ["evgeny.gurin@gmail.com"]
