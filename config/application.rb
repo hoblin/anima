@@ -1,0 +1,28 @@
+# frozen_string_literal: true
+
+require_relative "boot"
+
+require "rails"
+require "active_model/railtie"
+require "active_record/railtie"
+require "active_job/railtie"
+require "rails/test_unit/railtie"
+
+Bundler.require(*Rails.groups) if ENV.key?("BUNDLE_GEMFILE")
+
+module Anima
+  class Application < Rails::Application
+    config.load_defaults 8.1
+    config.api_only = true
+
+    config.autoload_lib(ignore: %w[anima])
+
+    anima_home = Pathname.new(File.expand_path("~/.anima"))
+
+    config.paths["log"] = [anima_home.join("log", "#{Rails.env}.log").to_s]
+    config.paths["tmp"] = [anima_home.join("tmp").to_s]
+
+    config.credentials.content_path = anima_home.join("config/credentials/#{Rails.env}.yml.enc")
+    config.credentials.key_path = anima_home.join("config/credentials/#{Rails.env}.key")
+  end
+end

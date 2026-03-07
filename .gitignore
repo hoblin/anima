@@ -6,10 +6,18 @@
 /pkg/
 /spec/reports/
 /tmp/
+/log/
 /thoughts/
 *.gem
 Gemfile.lock
 .mcp.json
+
+# Rails
+db/*.sqlite3
+db/*.sqlite3-*
+db/schema.rb
+config/master.key
+config/credentials/*.key
 
 # rspec failure tracking
 .rspec_status
