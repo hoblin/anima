@@ -3,7 +3,7 @@
 **A soul engine for AI agents.**
 
 Ruby framework for building AI agents with desires, personality, and personal growth.
-Powered by [Rage](https://rage-rb.dev/).
+Headless Rails 8.1 app distributed as a gem, with a TUI-first interface via RatatuiRuby.
 
 ## The Problem
 
@@ -61,26 +61,76 @@ Existing RL techniques apply at the starting point, then we gradually expand int
 ## Architecture
 
 ```
-Anima Framework (Ruby, Rage-based)
+Anima Framework (Ruby, Rails 8.1 headless)
 ├── Thymos    — hormonal/desire system (stimulus → hormone vector)
 ├── Mneme     — semantic memory (QMD-style, emotional recall)
 ├── Psyche    — soul matrix (coefficient table, evolving through experience)
 └── Nous      — LLM integration (cortex, thinking, decision-making)
 ```
 
+### Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Framework | Rails 8.1 (headless — no web views, no asset pipeline) |
+| Database | SQLite (per environment, stored in `~/.anima/db/`) |
+| Event system | Rails Structured Event Reporter |
+| LLM integration | Raw HTTP to Anthropic API |
+| Interface | TUI via RatatuiRuby |
+| Distribution | RubyGems (`gem install anima-core`) |
+
+### Distribution Model
+
+Anima is a Rails app distributed as a gem, following Unix philosophy: immutable program separate from mutable data.
+
+```bash
+gem install anima-core       # Install the Rails app as a gem
+anima install                # Create ~/.anima/ directory structure
+anima start                  # Launch — code from gem, state from ~/.anima/
+```
+
+State directory (`~/.anima/`):
+```
+~/.anima/
+├── db/              # SQLite databases (production, development, test)
+├── config/
+│   ├── credentials/ # Rails encrypted credentials per environment
+│   └── anima.yml    # User configuration
+├── log/
+└── tmp/
+```
+
+Updates: `gem update anima-core` — next launch runs pending migrations automatically.
+
 ### Three Layers (mirroring biology)
 
 1. **Endocrine system (Thymos)** — a lightweight background process. Reads recent events. Doesn't respond. Just updates hormone levels. Pure stimulus→response, like a biological gland.
 
-2. **Homeostasis** — persistent state (JSON/SQLite). Current hormone levels with decay functions. No intelligence, just state that changes over time.
+2. **Homeostasis** — persistent state (SQLite). Current hormone levels with decay functions. No intelligence, just state that changes over time.
 
 3. **Cortex (Nous)** — the main LLM. Reads hormone state transformed into **desire descriptions**. Not "longing: 87" but "you want to see them". The LLM should NOT see raw numbers — humans don't see cortisol levels, they feel anxiety.
 
 ### Event-Driven Design
 
-Built on [Rage](https://rage-rb.dev/) — a Ruby framework with fiber-based concurrency, native WebSockets, and a built-in event bus. The event bus maps directly to a nervous system: stimuli fire events, Thymos subscribers update hormone levels, Nous reacts to the resulting desires.
+Built on Rails Structured Event Reporter — a native Rails 8.1 feature for structured event emission with typed payloads, subscriber patterns, and block-scoped context tagging.
 
-Single-process architecture: web server, background hormone ticks, WebSocket monitoring — all in one process, no Redis, no external workers.
+Five event types form the agent's nervous system:
+
+| Event | Purpose |
+|-------|---------|
+| `system_message` | Internal notifications |
+| `user_message` | User input |
+| `agent_message` | LLM response |
+| `tool_call` | Tool invocation |
+| `tool_response` | Tool result |
+
+Events fire, subscribers react, state updates, the cortex (LLM) reads the resulting desire landscape. The system prompt is assembled separately for each LLM call — it is not an event.
+
+### Context as Viewport, Not Tape
+
+There is no linear chat history. There are only events attached to a session. The context window is a **viewport** — a sliding window over the event stream, assembled on demand for each LLM call within a configured token budget.
+
+POC uses a simple sliding window (newest events first, walk backwards until budget exhausted). Future versions will add multi-resolution compression with Draper decorators and associative recall from Mneme.
 
 ### Brain as Microservices on a Shared Event Bus
 
@@ -95,7 +145,7 @@ Event: "tool_call_failed"
   ├── Mneme subscriber: log failure context for future recall
   └── Psyche subscriber: update coefficient (this agent handles errors calmly → low frustration_gain)
 
-Event: "user_sent_message"  
+Event: "user_sent_message"
   │
   ├── Thymos subscriber: oxytocin += 5 (bonding signal)
   ├── Thymos subscriber: dopamine += 3 (engagement signal)
@@ -104,7 +154,17 @@ Event: "user_sent_message"
 
 Each subscriber is a microservice — independent, stateless, reacting to the same event bus. No orchestrator decides "now update frustration." The architecture IS the nervous system.
 
-This is why Rage's built-in event bus maps so naturally: `Rage.event_bus` IS the nervous system. Events fire, subscribers react, state updates, the cortex (LLM) reads the resulting desire landscape.
+### Plugin Architecture
+
+Both tools and feelings are distributed as gems on the event bus:
+
+```bash
+anima add anima-tools-filesystem
+anima add anima-tools-shell
+anima add anima-feelings-frustration
+```
+
+Tools provide MCP capabilities. Feelings are event subscribers that update hormonal state. Same mechanism, different namespace. In POC, tools are built-in; plugin extraction comes later.
 
 ### Semantic Memory (Mneme)
 
@@ -207,17 +267,19 @@ This single example demonstrates every core principle:
 
 ## Status
 
-Idea stage → early design. Architecture research underway (OpenClaw agent loop documented).
-First practical hormone (frustration) designed, ready for prototyping.
+POC stage. Gem scaffold with CI and RubyGems publishing exists. Building toward a working conversational agent with event-driven architecture.
 
-## Next Steps
+The hormonal system (Thymos, feelings, desires), semantic memory (Mneme), and soul matrix (Psyche) are designed but deferred — POC focuses on getting the core agent loop working first.
 
-- [ ] **MVP: Frustration hormone** — monitor tool calls, adjust thinking budget + inner voice injection
-- [ ] Research prior art in depth (affective computing, BDI architecture, virtual creature motivation)
-- [ ] Design initial coefficient matrix schema (Psyche)
-- [ ] Prototype Thymos: Rage event bus + JSON state + context injection into LLM thinking step
-- [ ] Experiment: hormone names vs abstract parameter names in LLM prompts
-- [ ] Set up Rage project skeleton with event bus
-- [ ] Design full event taxonomy (what events does the agent's "nervous system" react to?)
-- [ ] Build Mneme: semantic memory with emotional associations
-- [ ] Write blog post introducing the concept
+## Development
+
+```bash
+git clone https://github.com/hoblin/anima.git
+cd anima
+bundle install
+bundle exec rspec
+```
+
+## License
+
+MIT License. See [LICENSE.txt](LICENSE.txt).
