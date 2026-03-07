@@ -19,8 +19,8 @@ module Anima
 
     attr_reader :anima_home
 
-    def initialize
-      @anima_home = ANIMA_HOME
+    def initialize(anima_home: ANIMA_HOME)
+      @anima_home = anima_home
     end
 
     def run
@@ -75,6 +75,7 @@ module Anima
         )
 
         config.write("secret_key_base: #{SecureRandom.hex(64)}\n")
+        File.chmod(0o600, content_path.to_s)
         say "  created credentials for #{env}"
       end
     end
@@ -105,7 +106,7 @@ module Anima
       UNIT
 
       say "  created #{service_path}"
-      system("systemctl --user daemon-reload 2>/dev/null")
+      system("systemctl", "--user", "daemon-reload", err: File::NULL, out: File::NULL)
     end
 
     private

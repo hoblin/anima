@@ -3,9 +3,9 @@
 require "thor"
 
 module Anima
-  GEM_ROOT = Pathname.new(File.expand_path("../..", __dir__))
-
   class CLI < Thor
+    VALID_ENVIRONMENTS = %w[development test production].freeze
+
     def self.exit_on_failure?
       true
     end
@@ -19,15 +19,21 @@ module Anima
     desc "start", "Boot Anima (runs pending migrations, then exits)"
     option :environment, aliases: "-e", default: "development", desc: "Rails environment"
     def start
-      ENV["RAILS_ENV"] = options[:environment]
+      env = options[:environment]
+      unless VALID_ENVIRONMENTS.include?(env)
+        say "Invalid environment: #{env}. Must be one of: #{VALID_ENVIRONMENTS.join(", ")}", :red
+        exit 1
+      end
+
+      ENV["RAILS_ENV"] = env
 
       unless File.directory?(File.expand_path("~/.anima"))
         say "Anima is not installed. Run 'anima install' first.", :red
         exit 1
       end
 
-      system("#{GEM_ROOT}/bin/rails", "db:prepare") || abort("db:prepare failed")
-      say "Anima booted successfully (#{options[:environment]}).", :green
+      system(Anima.gem_root.join("bin/rails").to_s, "db:prepare") || abort("db:prepare failed")
+      say "Anima booted successfully (#{env}).", :green
     end
 
     desc "version", "Show version"
