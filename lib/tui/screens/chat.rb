@@ -63,6 +63,10 @@ module TUI
         @loading = false
       end
 
+      def finalize
+        Events::Bus.unsubscribe(@message_collector)
+      end
+
       def loading?
         @loading
       end

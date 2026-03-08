@@ -31,6 +31,13 @@ RSpec.describe Events::Base do
     end
   end
 
+  describe "#event_name" do
+    it "uses Bus::NAMESPACE as prefix" do
+      concrete = Events::UserMessage.new(content: "test")
+      expect(concrete.event_name).to start_with("#{Events::Bus::NAMESPACE}.")
+    end
+  end
+
   describe "#to_h" do
     it "raises NotImplementedError because type is abstract" do
       expect { event.to_h }.to raise_error(NotImplementedError)

@@ -55,6 +55,46 @@ RSpec.describe Events::Subscribers::MessageCollector do
         {role: "user", content: "third"}
       ])
     end
+
+    it "ignores events with nil content" do
+      Events::Bus.subscribe(collector)
+
+      event = {payload: {type: "user_message", content: nil}}
+      collector.emit(event)
+
+      expect(collector.messages).to be_empty
+    end
+
+    it "collects events after clear" do
+      Events::Bus.subscribe(collector)
+      Events::Bus.emit(Events::UserMessage.new(content: "before"))
+
+      collector.clear
+      Events::Bus.emit(Events::UserMessage.new(content: "after"))
+
+      expect(collector.messages).to eq([{role: "user", content: "after"}])
+    end
+  end
+
+  describe "DISPLAYABLE_TYPES and ROLE_MAP consistency" do
+    it "has a ROLE_MAP entry for every DISPLAYABLE_TYPE" do
+      described_class::DISPLAYABLE_TYPES.each do |type|
+        expect(described_class::ROLE_MAP).to have_key(type),
+          "ROLE_MAP missing key for displayable type '#{type}'"
+      end
+    end
+  end
+
+  describe "#messages" do
+    it "returns a copy that does not affect internal state" do
+      Events::Bus.subscribe(collector)
+      Events::Bus.emit(Events::UserMessage.new(content: "hello"))
+
+      returned = collector.messages
+      returned.clear
+
+      expect(collector.messages.length).to eq(1)
+    end
   end
 
   describe "#clear" do

@@ -293,4 +293,12 @@ RSpec.describe TUI::Screens::Chat do
       expect(screen.loading?).to be false
     end
   end
+
+  describe "#finalize" do
+    it "unsubscribes the message collector from the event bus" do
+      screen.finalize
+      Events::Bus.emit(Events::UserMessage.new(content: "after finalize"))
+      expect(screen.messages).to be_empty
+    end
+  end
 end
