@@ -6,6 +6,11 @@ require "ratatui_ruby"
 RSpec.describe TUI::App do
   subject(:app) { described_class.new }
 
+  after do
+    chat = app.instance_variable_get(:@screens)[:chat]
+    chat.finalize
+  end
+
   describe "#initialize" do
     it "starts on the chat screen" do
       expect(app.current_screen).to eq(:chat)

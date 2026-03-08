@@ -11,15 +11,20 @@ module TUI
       ROLE_ASSISTANT = "assistant"
       ROLE_LABELS = {ROLE_USER => "You", ROLE_ASSISTANT => "Claude"}.freeze
 
-      attr_reader :input, :message_collector
+      attr_reader :input, :message_collector, :session
 
-      def initialize(message_collector: nil)
+      def initialize(message_collector: nil, persister: nil, session: nil)
         @message_collector = message_collector || Events::Subscribers::MessageCollector.new
         @input = ""
         @loading = false
         @client = nil
 
+        @session = session || Session.order(id: :desc).first || Session.create!
+        load_session_messages
+        @persister = persister || Events::Subscribers::Persister.new(@session)
+
         Events::Bus.subscribe(@message_collector)
+        Events::Bus.subscribe(@persister)
       end
 
       def messages
@@ -58,6 +63,8 @@ module TUI
       end
 
       def new_session
+        @session = Session.create!
+        @persister.session = @session
         @message_collector.clear
         @input = ""
         @loading = false
@@ -65,6 +72,7 @@ module TUI
 
       def finalize
         Events::Bus.unsubscribe(@message_collector)
+        Events::Bus.unsubscribe(@persister)
       end
 
       def loading?
@@ -147,18 +155,24 @@ module TUI
         text = @input.strip
         return if text.empty?
 
-        Events::Bus.emit(Events::UserMessage.new(content: text))
+        Events::Bus.emit(Events::UserMessage.new(content: text, session_id: @session.id))
         @input = ""
         @loading = true
 
         Thread.new do
           @client ||= LLM::Client.new
           response = @client.chat(messages)
-          Events::Bus.emit(Events::AgentMessage.new(content: response))
+          Events::Bus.emit(Events::AgentMessage.new(content: response, session_id: @session.id))
         rescue => e
-          Events::Bus.emit(Events::AgentMessage.new(content: "Error: #{e.message}"))
+          Events::Bus.emit(Events::AgentMessage.new(content: "Error: #{e.message}", session_id: @session.id))
         ensure
           @loading = false
+        end
+      end
+
+      def load_session_messages
+        @session.messages_for_llm.each do |msg|
+          @message_collector.messages_push(msg)
         end
       end
 

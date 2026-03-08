@@ -1,5 +1,7 @@
 Follow user instructions precisely.
 
+Use YARD to document business logic and external API. Keep documentation up to date when changing code.
+
 ## Testing TUI in tmux
 
 RatatuiRuby requires a real PTY. Background processes (`&`) and `script` don't work reliably. Use tmux to smoke-test the TUI:

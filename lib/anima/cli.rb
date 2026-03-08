@@ -41,6 +41,7 @@ module Anima
       require "ratatui_ruby"
       ENV["RAILS_ENV"] ||= "development"
       require_relative "../../config/environment"
+      ActiveRecord::Tasks::DatabaseTasks.prepare_all
       TUI::App.new.run
     end
 

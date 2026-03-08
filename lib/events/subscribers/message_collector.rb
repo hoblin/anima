@@ -50,6 +50,12 @@ module Events
         end
       end
 
+      # Directly push a pre-built message hash (used for loading persisted events).
+      # @param message [Hash] with :role and :content keys
+      def messages_push(message)
+        @mutex.synchronize { @messages << message }
+      end
+
       def clear
         @mutex.synchronize { @messages = [] }
       end

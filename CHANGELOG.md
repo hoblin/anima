@@ -1,6 +1,12 @@
 ## [Unreleased]
 
 ### Added
+- Session and event persistence to SQLite — conversations survive TUI restart
+- `Session` model — owns an ordered event stream
+- `Event` model — polymorphic type, JSON payload, auto-incrementing position
+- `Events::Subscribers::Persister` — writes all events to SQLite as they flow through the bus
+- TUI resumes last session on startup, `Ctrl+a > n` creates a new session
+- `anima tui` now runs pending migrations automatically on launch
 - Event system using Rails Structured Event Reporter (`Rails.event`)
 - Five event types: `system_message`, `user_message`, `agent_message`, `tool_call`, `tool_response`
 - `Events::Bus` — thin wrapper around `Rails.event` for emitting and subscribing to Anima events
