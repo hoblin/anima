@@ -87,6 +87,13 @@ RSpec.describe Tools::Bash do
       it "truncates stdout exceeding MAX_OUTPUT_BYTES" do
         result = tool.execute("command" => "head -c #{Tools::Bash::MAX_OUTPUT_BYTES + 1000} /dev/zero | tr '\\0' 'x'")
         expect(result).to include("[Truncated:")
+        expect(result.bytesize).to be < Tools::Bash::MAX_OUTPUT_BYTES + 200
+      end
+
+      it "truncates stderr exceeding MAX_OUTPUT_BYTES" do
+        result = tool.execute("command" => "head -c #{Tools::Bash::MAX_OUTPUT_BYTES + 1000} /dev/zero | tr '\\0' 'x' >&2")
+        expect(result).to include("[Truncated:")
+        expect(result.bytesize).to be < Tools::Bash::MAX_OUTPUT_BYTES + 200
       end
     end
 

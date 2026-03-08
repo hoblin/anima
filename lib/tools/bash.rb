@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "open3"
+require "timeout"
 
 module Tools
   # Executes a bash command in a fresh shell and returns stdout, stderr,
@@ -41,6 +42,7 @@ module Tools
 
     def run_command(command)
       Timeout.timeout(COMMAND_TIMEOUT) do
+        # Close stdin immediately so interactive commands don't hang
         stdout, stderr, status = Open3.capture3("bash", "-c", command, stdin_data: "")
         format_result(truncate(stdout), truncate(stderr), status.exitstatus)
       end
@@ -61,7 +63,9 @@ module Tools
     def truncate(output)
       return output if output.bytesize <= MAX_OUTPUT_BYTES
 
-      output.byteslice(0, MAX_OUTPUT_BYTES) +
+      output.byteslice(0, MAX_OUTPUT_BYTES)
+        .force_encoding("UTF-8")
+        .scrub +
         "\n\n[Truncated: output exceeded #{MAX_OUTPUT_BYTES} bytes]"
     end
   end
