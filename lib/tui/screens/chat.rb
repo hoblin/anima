@@ -183,8 +183,11 @@ module TUI
       end
 
       def load_session_messages
-        @session.messages_for_llm.each do |msg|
-          @message_collector.messages_push(msg)
+        @session.events.where(event_type: Events::Subscribers::MessageCollector::DISPLAYABLE_TYPES).each do |event|
+          @message_collector.messages_push({
+            role: Events::Subscribers::MessageCollector::ROLE_MAP.fetch(event.event_type),
+            content: event.payload["content"].to_s
+          })
         end
       end
 

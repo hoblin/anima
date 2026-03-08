@@ -57,6 +57,22 @@ RSpec.describe TUI::Screens::Chat do
       resumed_screen.finalize
     end
 
+    it "skips tool events when resuming a session" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "fetch example.com"}, timestamp: 1)
+      session.events.create!(event_type: "tool_call", payload: {"content" => "Calling web_get", "tool_name" => "web_get", "tool_use_id" => "toolu_1"}, timestamp: 2)
+      session.events.create!(event_type: "tool_response", payload: {"content" => "<html>...</html>", "tool_name" => "web_get", "tool_use_id" => "toolu_1", "success" => true}, timestamp: 3)
+      session.events.create!(event_type: "agent_message", payload: {"content" => "Here is the content"}, timestamp: 4)
+
+      resumed_screen = described_class.new(session: session, persister: persister)
+
+      expect(resumed_screen.messages).to eq([
+        {role: "user", content: "fetch example.com"},
+        {role: "assistant", content: "Here is the content"}
+      ])
+
+      resumed_screen.finalize
+    end
+
     it "creates a session if none exists" do
       Session.destroy_all
       new_screen = described_class.new(persister: persister)

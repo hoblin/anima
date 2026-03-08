@@ -32,6 +32,7 @@ module Events
           @session.events.create!(
             event_type: event_type,
             payload: payload,
+            tool_use_id: payload[:tool_use_id],
             timestamp: payload[:timestamp] || Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
           )
         end

@@ -25,12 +25,11 @@ module Tools
       }
     end
 
-    # @param input [Hash] with "url" key
+    # @param input [Hash<String, Object>] string-keyed hash from the Anthropic API
     # @return [String] response body (possibly truncated)
     # @return [Hash] with :error key on failure
     def execute(input)
-      url = input["url"] || input[:url]
-      validate_and_fetch(url.to_s)
+      validate_and_fetch(input["url"].to_s)
     end
 
     private
@@ -42,7 +41,7 @@ module Tools
         return {error: "Only http and https URLs are supported, got: #{scheme.inspect}"}
       end
 
-      truncate_body(HTTParty.get(url, timeout: REQUEST_TIMEOUT, follow_redirects: true).body.to_s)
+      truncate_body(HTTParty.get(url, timeout: REQUEST_TIMEOUT, follow_redirects: false).body.to_s)
     rescue URI::InvalidURIError => error
       {error: "Invalid URL: #{error.message}"}
     rescue Net::OpenTimeout, Net::ReadTimeout

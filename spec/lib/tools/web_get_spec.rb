@@ -48,18 +48,6 @@ RSpec.describe Tools::WebGet do
       end
     end
 
-    context "with symbol keys" do
-      before do
-        stub_request(:get, "https://example.com")
-          .to_return(status: 200, body: "OK")
-      end
-
-      it "accepts symbol keys in input" do
-        result = tool.execute(url: "https://example.com")
-        expect(result).to eq("OK")
-      end
-    end
-
     context "with a large response" do
       before do
         large_body = "x" * (Tools::WebGet::MAX_RESPONSE_BYTES + 1000)

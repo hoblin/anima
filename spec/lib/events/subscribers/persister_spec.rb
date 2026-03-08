@@ -37,24 +37,32 @@ RSpec.describe Events::Subscribers::Persister do
       expect(event.event_type).to eq("system_message")
     end
 
-    it "persists tool_call events with tool metadata" do
+    it "persists tool_call events with tool metadata and tool_use_id" do
       Events::Bus.subscribe(persister)
-      Events::Bus.emit(Events::ToolCall.new(content: "running", tool_name: "bash", tool_input: {cmd: "ls"}, session_id: session.id))
+      Events::Bus.emit(Events::ToolCall.new(
+        content: "running", tool_name: "bash", tool_input: {cmd: "ls"},
+        tool_use_id: "toolu_abc123", session_id: session.id
+      ))
 
       event = session.events.first
       expect(event.event_type).to eq("tool_call")
       expect(event.payload["tool_name"]).to eq("bash")
       expect(event.payload["tool_input"]).to eq({"cmd" => "ls"})
+      expect(event.tool_use_id).to eq("toolu_abc123")
     end
 
-    it "persists tool_response events" do
+    it "persists tool_response events with tool_use_id" do
       Events::Bus.subscribe(persister)
-      Events::Bus.emit(Events::ToolResponse.new(content: "output", tool_name: "bash", success: true, session_id: session.id))
+      Events::Bus.emit(Events::ToolResponse.new(
+        content: "output", tool_name: "bash", success: true,
+        tool_use_id: "toolu_abc123", session_id: session.id
+      ))
 
       event = session.events.first
       expect(event.event_type).to eq("tool_response")
       expect(event.payload["tool_name"]).to eq("bash")
       expect(event.payload["success"]).to be true
+      expect(event.tool_use_id).to eq("toolu_abc123")
     end
 
     it "preserves event creation order" do
