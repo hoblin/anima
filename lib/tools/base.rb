@@ -43,6 +43,11 @@ module Tools
       end
     end
 
+    # Accepts and discards context keywords so that the Registry can pass
+    # shared dependencies (e.g. shell_session) to any tool uniformly.
+    # Subclasses that need specific context should override with named kwargs.
+    def initialize(**) = nil
+
     # Execute the tool with the given input.
     # @param input [Hash] parsed input matching {.input_schema}
     # @return [String, Hash] result content; Hash with :error key signals failure

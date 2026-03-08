@@ -5,18 +5,21 @@ module Tools
 
   # Manages tool registration, schema export, and dispatch.
   # Tools are registered by class and looked up by name at execution time.
+  # An optional context hash is passed to each tool's constructor, allowing
+  # shared dependencies (e.g. a {ShellSession}) to reach tools that need them.
   #
   # @example
-  #   registry = Tools::Registry.new
-  #   registry.register(Tools::WebGet)
-  #   registry.schemas      # => [{name: "web_get", description: "...", input_schema: {...}}]
-  #   registry.execute("web_get", {"url" => "https://example.com"})
+  #   registry = Tools::Registry.new(context: {shell_session: my_shell})
+  #   registry.register(Tools::Bash)
+  #   registry.execute("bash", {"command" => "ls"})
   class Registry
     # @return [Hash{String => Class}] registered tool classes keyed by name
     attr_reader :tools
 
-    def initialize
+    # @param context [Hash] keyword arguments forwarded to every tool constructor
+    def initialize(context: {})
       @tools = {}
+      @context = context
     end
 
     # Register a tool class. The class must respond to .tool_name.
@@ -31,14 +34,16 @@ module Tools
       @tools.values.map(&:schema)
     end
 
-    # Instantiate and execute a tool by name.
+    # Instantiate and execute a tool by name. The registry's context is
+    # forwarded to the tool constructor as keyword arguments.
+    #
     # @param name [String] registered tool name
     # @param input [Hash] tool input parameters
     # @return [String, Hash] tool execution result
     # @raise [UnknownToolError] if no tool is registered with the given name
     def execute(name, input)
       tool_class = @tools.fetch(name) { raise UnknownToolError, "Unknown tool: #{name}" }
-      tool_class.new.execute(input)
+      tool_class.new(**@context).execute(input)
     end
 
     # @param name [String] tool name to check

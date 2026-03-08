@@ -13,15 +13,17 @@ module TUI
 
       attr_reader :input, :message_collector, :session
 
-      def initialize(message_collector: nil, persister: nil, session: nil)
+      def initialize(message_collector: nil, persister: nil, session: nil, shell_session: nil)
         @message_collector = message_collector || Events::Subscribers::MessageCollector.new
         @input = ""
         @loading = false
         @client = nil
+        @submit_thread = nil
 
         @session = session || Session.order(id: :desc).first || Session.create!
         load_session_messages
         @persister = persister || Events::Subscribers::Persister.new(@session)
+        @shell_session = shell_session || ShellSession.new(session_id: @session.id)
 
         Events::Bus.subscribe(@message_collector)
         Events::Bus.subscribe(@persister)
@@ -63,14 +65,20 @@ module TUI
       end
 
       def new_session
+        @submit_thread&.join
+        @shell_session&.finalize
         @session = Session.create!
         @persister.session = @session
         @message_collector.clear
         @input = ""
         @loading = false
+        @shell_session = ShellSession.new(session_id: @session.id)
+        @registry = nil
       end
 
       def finalize
+        @submit_thread&.join
+        @shell_session&.finalize
         Events::Bus.unsubscribe(@message_collector)
         Events::Bus.unsubscribe(@persister)
       end
@@ -159,7 +167,7 @@ module TUI
         @input = ""
         @loading = true
 
-        Thread.new do
+        @submit_thread = Thread.new do
           @client ||= LLM::Client.new
           @registry ||= build_tool_registry
           viewport_messages = @session.messages_for_llm
@@ -177,7 +185,7 @@ module TUI
       end
 
       def build_tool_registry
-        registry = Tools::Registry.new
+        registry = Tools::Registry.new(context: {shell_session: @shell_session})
         registry.register(Tools::WebGet)
         registry.register(Tools::Bash)
         registry
