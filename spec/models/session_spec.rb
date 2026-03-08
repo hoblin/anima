@@ -35,12 +35,111 @@ RSpec.describe Session do
       expect(session.messages_for_llm).to eq([{role: "assistant", content: "hi there"}])
     end
 
-    it "excludes system_message, tool_call, and tool_response events" do
+    it "excludes system_message events" do
       session.events.create!(event_type: "system_message", payload: {"content" => "boot"}, timestamp: 1)
-      session.events.create!(event_type: "tool_call", payload: {"content" => "run"}, timestamp: 2)
-      session.events.create!(event_type: "tool_response", payload: {"content" => "ok"}, timestamp: 3)
 
       expect(session.messages_for_llm).to be_empty
+    end
+
+    context "with tool events" do
+      it "assembles tool_call events as assistant messages with tool_use blocks" do
+        session.events.create!(
+          event_type: "tool_call",
+          payload: {"content" => "Calling web_get", "tool_name" => "web_get",
+                    "tool_input" => {"url" => "https://example.com"}, "tool_use_id" => "toolu_123"},
+          timestamp: 1
+        )
+
+        result = session.messages_for_llm
+        expect(result).to eq([
+          {role: "assistant", content: [
+            {type: "tool_use", id: "toolu_123", name: "web_get", input: {"url" => "https://example.com"}}
+          ]}
+        ])
+      end
+
+      it "assembles tool_response events as user messages with tool_result blocks" do
+        session.events.create!(
+          event_type: "tool_response",
+          payload: {"content" => "<html>hello</html>", "tool_name" => "web_get",
+                    "tool_use_id" => "toolu_123", "success" => true},
+          timestamp: 1
+        )
+
+        result = session.messages_for_llm
+        expect(result).to eq([
+          {role: "user", content: [
+            {type: "tool_result", tool_use_id: "toolu_123", content: "<html>hello</html>"}
+          ]}
+        ])
+      end
+
+      it "groups consecutive tool_call events into one assistant message" do
+        session.events.create!(
+          event_type: "tool_call",
+          payload: {"content" => "Calling web_get", "tool_name" => "web_get",
+                    "tool_input" => {"url" => "https://a.com"}, "tool_use_id" => "toolu_1"},
+          timestamp: 1
+        )
+        session.events.create!(
+          event_type: "tool_call",
+          payload: {"content" => "Calling web_get", "tool_name" => "web_get",
+                    "tool_input" => {"url" => "https://b.com"}, "tool_use_id" => "toolu_2"},
+          timestamp: 2
+        )
+
+        result = session.messages_for_llm
+        expect(result.length).to eq(1)
+        expect(result.first[:role]).to eq("assistant")
+        expect(result.first[:content].length).to eq(2)
+      end
+
+      it "groups consecutive tool_response events into one user message" do
+        session.events.create!(
+          event_type: "tool_response",
+          payload: {"content" => "page A", "tool_name" => "web_get", "tool_use_id" => "toolu_1"},
+          timestamp: 1
+        )
+        session.events.create!(
+          event_type: "tool_response",
+          payload: {"content" => "page B", "tool_name" => "web_get", "tool_use_id" => "toolu_2"},
+          timestamp: 2
+        )
+
+        result = session.messages_for_llm
+        expect(result.length).to eq(1)
+        expect(result.first[:role]).to eq("user")
+        expect(result.first[:content].length).to eq(2)
+      end
+
+      it "assembles a full tool conversation correctly" do
+        session.events.create!(event_type: "user_message", payload: {"content" => "what is on example.com?"}, timestamp: 1)
+        session.events.create!(
+          event_type: "tool_call",
+          payload: {"content" => "Calling web_get", "tool_name" => "web_get",
+                    "tool_input" => {"url" => "https://example.com"}, "tool_use_id" => "toolu_abc"},
+          timestamp: 2
+        )
+        session.events.create!(
+          event_type: "tool_response",
+          payload: {"content" => "<html>Example Domain</html>", "tool_name" => "web_get",
+                    "tool_use_id" => "toolu_abc", "success" => true},
+          timestamp: 3
+        )
+        session.events.create!(event_type: "agent_message", payload: {"content" => "The page says Example Domain."}, timestamp: 4)
+
+        result = session.messages_for_llm
+        expect(result).to eq([
+          {role: "user", content: "what is on example.com?"},
+          {role: "assistant", content: [
+            {type: "tool_use", id: "toolu_abc", name: "web_get", input: {"url" => "https://example.com"}}
+          ]},
+          {role: "user", content: [
+            {type: "tool_result", tool_use_id: "toolu_abc", content: "<html>Example Domain</html>"}
+          ]},
+          {role: "assistant", content: "The page says Example Domain."}
+        ])
+      end
     end
 
     it "preserves event order" do

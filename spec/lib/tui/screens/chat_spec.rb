@@ -57,6 +57,22 @@ RSpec.describe TUI::Screens::Chat do
       resumed_screen.finalize
     end
 
+    it "skips tool events when resuming a session" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "fetch example.com"}, timestamp: 1)
+      session.events.create!(event_type: "tool_call", payload: {"content" => "Calling web_get", "tool_name" => "web_get", "tool_use_id" => "toolu_1"}, timestamp: 2)
+      session.events.create!(event_type: "tool_response", payload: {"content" => "<html>...</html>", "tool_name" => "web_get", "tool_use_id" => "toolu_1", "success" => true}, timestamp: 3)
+      session.events.create!(event_type: "agent_message", payload: {"content" => "Here is the content"}, timestamp: 4)
+
+      resumed_screen = described_class.new(session: session, persister: persister)
+
+      expect(resumed_screen.messages).to eq([
+        {role: "user", content: "fetch example.com"},
+        {role: "assistant", content: "Here is the content"}
+      ])
+
+      resumed_screen.finalize
+    end
+
     it "creates a session if none exists" do
       Session.destroy_all
       new_screen = described_class.new(persister: persister)
@@ -132,7 +148,7 @@ RSpec.describe TUI::Screens::Chat do
 
       before do
         screen.instance_variable_set(:@client, client)
-        allow(client).to receive(:chat).and_return("Hello back!")
+        allow(client).to receive(:chat_with_tools).and_return("Hello back!")
       end
 
       it "emits user_message event and collects it" do
@@ -163,7 +179,7 @@ RSpec.describe TUI::Screens::Chat do
       end
 
       it "sets loading to true during LLM call" do
-        allow(client).to receive(:chat) do
+        allow(client).to receive(:chat_with_tools) do
           sleep 0.2
           "response"
         end
@@ -191,7 +207,7 @@ RSpec.describe TUI::Screens::Chat do
         sleep 0.1
 
         expect(screen.messages).to be_empty
-        expect(client).not_to have_received(:chat)
+        expect(client).not_to have_received(:chat_with_tools)
       end
 
       it "does not submit whitespace-only input" do
@@ -215,7 +231,7 @@ RSpec.describe TUI::Screens::Chat do
 
       before do
         screen.instance_variable_set(:@client, client)
-        allow(client).to receive(:chat).and_raise(StandardError, "Connection failed")
+        allow(client).to receive(:chat_with_tools).and_raise(StandardError, "Connection failed")
       end
 
       it "emits error as agent_message event" do
@@ -269,12 +285,12 @@ RSpec.describe TUI::Screens::Chat do
 
       it "passes viewport messages from session to LLM client" do
         received_messages = nil
-        allow(client).to receive(:chat).and_return("First response")
+        allow(client).to receive(:chat_with_tools).and_return("First response")
         screen_with_persister.handle_event(key_event(code: "a"))
         screen_with_persister.handle_event(key_event(code: "enter"))
         sleep 0.1
 
-        allow(client).to receive(:chat) { |msgs|
+        allow(client).to receive(:chat_with_tools) { |msgs, **_opts|
           received_messages = msgs.dup
           "Second response"
         }
@@ -303,7 +319,7 @@ RSpec.describe TUI::Screens::Chat do
 
     before do
       screen.instance_variable_set(:@client, client)
-      allow(client).to receive(:chat).and_return("response")
+      allow(client).to receive(:chat_with_tools).and_return("response")
 
       screen.handle_event(key_event(code: "h"))
       screen.handle_event(key_event(code: "i"))

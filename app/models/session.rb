@@ -13,20 +13,21 @@ class Session < ApplicationRecord
   has_many :events, -> { order(:id) }, dependent: :destroy
 
   # Builds the message array expected by the Anthropic Messages API.
+  # Includes user/agent messages and tool call/response events in
+  # Anthropic's wire format. Consecutive tool_call events are grouped
+  # into a single assistant message; consecutive tool_response events
+  # are grouped into a single user message with tool_result blocks.
+  #
   # Walks events newest-first and includes them until the token budget
   # is exhausted. Events are full-size or excluded entirely.
   #
-  # Events whose token_count is still 0 (not yet counted by the
-  # background job) use a {BYTES_PER_TOKEN}-bytes-per-token heuristic
-  # to avoid dropping uncounted messages.
-  #
   # @param token_budget [Integer] maximum tokens to include (positive)
-  # @return [Array<Hash{Symbol => String}>] e.g. [{role: "user", content: "hi"}]
+  # @return [Array<Hash>] Anthropic Messages API format
   def messages_for_llm(token_budget: DEFAULT_TOKEN_BUDGET)
     selected = []
     remaining = token_budget
 
-    events.llm_messages.reorder(id: :desc).each do |event|
+    events.context_events.reorder(id: :desc).each do |event|
       cost = (event.token_count > 0) ? event.token_count : estimate_tokens(event)
       break if cost > remaining && selected.any?
 
@@ -34,20 +35,71 @@ class Session < ApplicationRecord
       remaining -= cost
     end
 
-    selected.reverse.map do |event|
-      {role: event.api_role, content: event.payload["content"].to_s}
-    end
+    assemble_messages(selected.reverse)
   end
 
   private
 
+  # Converts a chronological list of events into Anthropic wire-format messages.
+  # Groups consecutive tool_call events into one assistant message and
+  # consecutive tool_response events into one user message.
+  #
+  # @param events [Array<Event>]
+  # @return [Array<Hash>]
+  def assemble_messages(events)
+    events.each_with_object([]) do |event, messages|
+      case event.event_type
+      when "user_message"
+        messages << {role: "user", content: event.payload["content"].to_s}
+      when "agent_message"
+        messages << {role: "assistant", content: event.payload["content"].to_s}
+      when "tool_call"
+        append_grouped_block(messages, "assistant", tool_use_block(event.payload))
+      when "tool_response"
+        append_grouped_block(messages, "user", tool_result_block(event.payload))
+      end
+    end
+  end
+
+  # Groups consecutive tool blocks into a single message of the given role.
+  def append_grouped_block(messages, role, block)
+    prev = messages.last
+    if prev&.dig(:role) == role && prev[:content].is_a?(Array)
+      prev[:content] << block
+    else
+      messages << {role: role, content: [block]}
+    end
+  end
+
+  def tool_use_block(payload)
+    {
+      type: "tool_use",
+      id: payload["tool_use_id"],
+      name: payload["tool_name"],
+      input: payload["tool_input"] || {}
+    }
+  end
+
+  def tool_result_block(payload)
+    {
+      type: "tool_result",
+      tool_use_id: payload["tool_use_id"],
+      content: payload["content"].to_s
+    }
+  end
+
   # Rough estimate for events not yet counted by the background job.
-  # Uses the {BYTES_PER_TOKEN}-bytes-per-token heuristic.
+  # For tool events, estimates from the full payload since tool_input
+  # and tool metadata contribute to token count.
   #
   # @param event [Event]
   # @return [Integer] at least 1
   def estimate_tokens(event)
-    content = event.payload["content"].to_s
-    [(content.bytesize / BYTES_PER_TOKEN.to_f).ceil, 1].max
+    text = if event.event_type.in?(%w[tool_call tool_response])
+      event.payload.to_json
+    else
+      event.payload["content"].to_s
+    end
+    [(text.bytesize / BYTES_PER_TOKEN.to_f).ceil, 1].max
   end
 end

@@ -86,6 +86,26 @@ RSpec.describe Event do
     end
   end
 
+  describe ".context_events" do
+    it "returns user, agent, tool_call, and tool_response events" do
+      session.events.create!(event_type: "user_message", payload: {content: "hi"}, timestamp: 1)
+      session.events.create!(event_type: "agent_message", payload: {content: "hello"}, timestamp: 2)
+      session.events.create!(event_type: "system_message", payload: {content: "boot"}, timestamp: 3)
+      session.events.create!(event_type: "tool_call", payload: {content: "run", tool_name: "web_get"}, timestamp: 4)
+      session.events.create!(event_type: "tool_response", payload: {content: "ok", tool_name: "web_get"}, timestamp: 5)
+
+      expect(Event.context_events.pluck(:event_type)).to match_array(
+        %w[user_message agent_message tool_call tool_response]
+      )
+    end
+
+    it "excludes system_message events" do
+      session.events.create!(event_type: "system_message", payload: {content: "boot"}, timestamp: 1)
+
+      expect(Event.context_events).to be_empty
+    end
+  end
+
   describe "#llm_message?" do
     it "returns true for user_message" do
       event = Event.new(event_type: "user_message")
@@ -100,6 +120,24 @@ RSpec.describe Event do
     it "returns false for system_message" do
       event = Event.new(event_type: "system_message")
       expect(event).not_to be_llm_message
+    end
+  end
+
+  describe "#context_event?" do
+    it "returns true for user_message" do
+      expect(Event.new(event_type: "user_message")).to be_context_event
+    end
+
+    it "returns true for tool_call" do
+      expect(Event.new(event_type: "tool_call")).to be_context_event
+    end
+
+    it "returns true for tool_response" do
+      expect(Event.new(event_type: "tool_response")).to be_context_event
+    end
+
+    it "returns false for system_message" do
+      expect(Event.new(event_type: "system_message")).not_to be_context_event
     end
   end
 
