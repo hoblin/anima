@@ -161,14 +161,25 @@ module TUI
 
         Thread.new do
           @client ||= LLM::Client.new
+          @registry ||= build_tool_registry
           viewport_messages = @session.messages_for_llm
-          response = @client.chat(viewport_messages)
+          response = @client.chat_with_tools(
+            viewport_messages,
+            registry: @registry,
+            session_id: @session.id
+          )
           Events::Bus.emit(Events::AgentMessage.new(content: response, session_id: @session.id))
         rescue => e
           Events::Bus.emit(Events::AgentMessage.new(content: "Error: #{e.message}", session_id: @session.id))
         ensure
           @loading = false
         end
+      end
+
+      def build_tool_registry
+        registry = Tools::Registry.new
+        registry.register(Tools::WebGet)
+        registry
       end
 
       def load_session_messages
