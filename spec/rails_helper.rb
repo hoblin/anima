@@ -4,6 +4,7 @@ ENV["RAILS_ENV"] ||= "test"
 
 require_relative "../config/environment"
 require "rspec/rails"
+require "webmock/rspec"
 
 RSpec.configure do |config|
   config.use_transactional_fixtures = true

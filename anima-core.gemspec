@@ -30,6 +30,7 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
+  spec.add_dependency "httparty", "~> 0.22"
   spec.add_dependency "rails", "~> 8.1"
   spec.add_dependency "sqlite3", "~> 2.0"
 end

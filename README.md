@@ -102,6 +102,40 @@ State directory (`~/.anima/`):
 
 Updates: `gem update anima-core` — next launch runs pending migrations automatically.
 
+### Authentication Setup
+
+Anima uses your Claude Pro/Max subscription for API access. You need a setup-token from Claude Code CLI.
+
+**1. Get a setup-token:**
+
+```bash
+claude setup-token
+```
+
+This requires [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and a Claude Pro or Max subscription.
+
+**2. Store the token in Anima credentials:**
+
+```bash
+cd $(gem contents anima-core | head -1 | xargs dirname | xargs dirname)
+EDITOR=vim bin/rails credentials:edit
+```
+
+Add your token:
+
+```yaml
+anthropic:
+  subscription_token: sk-ant-oat01-YOUR_TOKEN_HERE
+```
+
+**3. Verify the token works:**
+
+```bash
+bin/rails runner "Anima::Providers::Anthropic.validate!"
+```
+
+If the token expires or is revoked, repeat steps 1-2 with a new token.
+
 ### Three Layers (mirroring biology)
 
 1. **Endocrine system (Thymos)** — a lightweight background process. Reads recent events. Doesn't respond. Just updates hormone levels. Pure stimulus→response, like a biological gland.
