@@ -132,7 +132,7 @@ RSpec.describe TUI::Screens::Chat do
 
       before do
         screen.instance_variable_set(:@client, client)
-        allow(client).to receive(:chat).and_return("Hello back!")
+        allow(client).to receive(:chat_with_tools).and_return("Hello back!")
       end
 
       it "emits user_message event and collects it" do
@@ -163,7 +163,7 @@ RSpec.describe TUI::Screens::Chat do
       end
 
       it "sets loading to true during LLM call" do
-        allow(client).to receive(:chat) do
+        allow(client).to receive(:chat_with_tools) do
           sleep 0.2
           "response"
         end
@@ -191,7 +191,7 @@ RSpec.describe TUI::Screens::Chat do
         sleep 0.1
 
         expect(screen.messages).to be_empty
-        expect(client).not_to have_received(:chat)
+        expect(client).not_to have_received(:chat_with_tools)
       end
 
       it "does not submit whitespace-only input" do
@@ -215,7 +215,7 @@ RSpec.describe TUI::Screens::Chat do
 
       before do
         screen.instance_variable_set(:@client, client)
-        allow(client).to receive(:chat).and_raise(StandardError, "Connection failed")
+        allow(client).to receive(:chat_with_tools).and_raise(StandardError, "Connection failed")
       end
 
       it "emits error as agent_message event" do
@@ -269,12 +269,12 @@ RSpec.describe TUI::Screens::Chat do
 
       it "passes viewport messages from session to LLM client" do
         received_messages = nil
-        allow(client).to receive(:chat).and_return("First response")
+        allow(client).to receive(:chat_with_tools).and_return("First response")
         screen_with_persister.handle_event(key_event(code: "a"))
         screen_with_persister.handle_event(key_event(code: "enter"))
         sleep 0.1
 
-        allow(client).to receive(:chat) { |msgs|
+        allow(client).to receive(:chat_with_tools) { |msgs, **_opts|
           received_messages = msgs.dup
           "Second response"
         }
@@ -303,7 +303,7 @@ RSpec.describe TUI::Screens::Chat do
 
     before do
       screen.instance_variable_set(:@client, client)
-      allow(client).to receive(:chat).and_return("response")
+      allow(client).to receive(:chat_with_tools).and_return("response")
 
       screen.handle_event(key_event(code: "h"))
       screen.handle_event(key_event(code: "i"))

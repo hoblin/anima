@@ -8,6 +8,7 @@ RSpec.describe Events::ToolCall do
       content: "Running bash command",
       tool_name: "bash",
       tool_input: {command: "ls -la"},
+      tool_use_id: "toolu_abc123",
       session_id: "sess-1"
     )
   end
@@ -24,9 +25,18 @@ RSpec.describe Events::ToolCall do
     expect(event.tool_input).to eq({command: "ls -la"})
   end
 
+  it "stores tool_use_id" do
+    expect(event.tool_use_id).to eq("toolu_abc123")
+  end
+
   it "defaults tool_input to empty hash" do
     event = described_class.new(content: "test", tool_name: "bash")
     expect(event.tool_input).to eq({})
+  end
+
+  it "defaults tool_use_id to nil" do
+    event = described_class.new(content: "test", tool_name: "bash")
+    expect(event.tool_use_id).to be_nil
   end
 
   describe "#to_h" do
@@ -36,7 +46,8 @@ RSpec.describe Events::ToolCall do
         type: "tool_call",
         content: "Running bash command",
         tool_name: "bash",
-        tool_input: {command: "ls -la"}
+        tool_input: {command: "ls -la"},
+        tool_use_id: "toolu_abc123"
       )
     end
   end
