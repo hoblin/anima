@@ -147,7 +147,7 @@ module TUI
       end
 
       def printable_char?(event)
-        return false if event.modifiers&.any?
+        return false if event.modifiers&.include?("ctrl")
 
         event.code.length == 1 && event.code.match?(/[[:print:]]/)
       end

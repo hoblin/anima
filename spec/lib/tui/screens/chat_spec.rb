@@ -49,6 +49,12 @@ RSpec.describe TUI::Screens::Chat do
         expect(screen.input).to eq("h i")
       end
 
+      it "accepts uppercase characters (shift modifier)" do
+        event = key_event(code: "H", modifiers: ["shift"])
+        screen.handle_event(event)
+        expect(screen.input).to eq("H")
+      end
+
       it "ignores keys with ctrl modifier" do
         event = key_event(code: "a", modifiers: ["ctrl"])
         expect(screen.handle_event(event)).to be false
