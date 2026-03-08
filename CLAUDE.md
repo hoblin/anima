@@ -6,6 +6,8 @@ Research spikes should describe what we need, not where to look. Prescribing sol
 
 Always fix flaky tests. Never skip, mark pending, or work around them — fix the root cause.
 
+The development environment is fully configured (LLM API keys, credentials, dependencies). Don't ask — just run things.
+
 ## Testing TUI in tmux
 
 RatatuiRuby requires a real PTY. Background processes (`&`) and `script` don't work reliably. Use tmux to smoke-test the TUI:
