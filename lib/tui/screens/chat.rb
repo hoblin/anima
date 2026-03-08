@@ -9,7 +9,7 @@ module TUI
 
       ROLE_USER = "user"
       ROLE_ASSISTANT = "assistant"
-      ROLE_LABELS = {ROLE_USER => "You", ROLE_ASSISTANT => "Claude"}.freeze
+      ROLE_LABELS = {ROLE_USER => "You", ROLE_ASSISTANT => "Anima"}.freeze
 
       attr_reader :input, :message_collector, :session
 
