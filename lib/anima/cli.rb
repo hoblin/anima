@@ -36,6 +36,13 @@ module Anima
       say "Anima booted successfully (#{env}).", :green
     end
 
+    desc "tui", "Launch the Anima terminal interface"
+    def tui
+      require "ratatui_ruby"
+      require_relative "../../lib/tui/app"
+      TUI::App.new.run
+    end
+
     desc "version", "Show version"
     map %w[-v --version] => :version
     def version

@@ -3,6 +3,7 @@
 # Zeitwerk inflections for acronym directories (e.g. lib/llm/ → LLM::)
 Rails.autoloaders.each do |autoloader|
   autoloader.inflector.inflect(
-    "llm" => "LLM"
+    "llm" => "LLM",
+    "tui" => "TUI"
   )
 end
