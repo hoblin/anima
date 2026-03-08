@@ -1,6 +1,11 @@
 ## [Unreleased]
 
 ### Added
+- Event system using Rails Structured Event Reporter (`Rails.event`)
+- Five event types: `system_message`, `user_message`, `agent_message`, `tool_call`, `tool_response`
+- `Events::Bus` — thin wrapper around `Rails.event` for emitting and subscribing to Anima events
+- `Events::Subscribers::MessageCollector` — in-memory subscriber that collects displayable messages
+- Chat screen refactored from raw array to event-driven architecture
 - TUI chat screen with LLM integration — in-memory message array, threaded API calls
 - Chat input with character validation, backspace, Enter to submit
 - Loading indicator — "Thinking" status bar mode, grayed-out input during LLM calls

@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-require "spec_helper"
+require "rails_helper"
 require "ratatui_ruby"
-require "tui/app"
 
 RSpec.describe TUI::App do
   subject(:app) { described_class.new }
