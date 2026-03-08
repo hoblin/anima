@@ -11,13 +11,19 @@ module TUI
       ROLE_ASSISTANT = "assistant"
       ROLE_LABELS = {ROLE_USER => "You", ROLE_ASSISTANT => "Claude"}.freeze
 
-      attr_reader :messages, :input
+      attr_reader :input, :message_collector
 
-      def initialize
-        @messages = []
+      def initialize(message_collector: nil)
+        @message_collector = message_collector || Events::Subscribers::MessageCollector.new
         @input = ""
         @loading = false
         @client = nil
+
+        Events::Bus.subscribe(@message_collector)
+      end
+
+      def messages
+        @message_collector.messages
       end
 
       def render(frame, area, tui)
@@ -52,9 +58,13 @@ module TUI
       end
 
       def new_session
-        @messages = []
+        @message_collector.clear
         @input = ""
         @loading = false
+      end
+
+      def finalize
+        Events::Bus.unsubscribe(@message_collector)
       end
 
       def loading?
@@ -92,7 +102,7 @@ module TUI
       end
 
       def build_message_lines(tui)
-        @messages.flat_map do |msg|
+        messages.flat_map do |msg|
           role_style = if msg[:role] == ROLE_USER
             tui.style(fg: "green", modifiers: [:bold])
           else
@@ -137,16 +147,16 @@ module TUI
         text = @input.strip
         return if text.empty?
 
-        @messages << {role: ROLE_USER, content: text}
+        Events::Bus.emit(Events::UserMessage.new(content: text))
         @input = ""
         @loading = true
 
         Thread.new do
           @client ||= LLM::Client.new
-          response = @client.chat(@messages)
-          @messages << {role: ROLE_ASSISTANT, content: response}
+          response = @client.chat(messages)
+          Events::Bus.emit(Events::AgentMessage.new(content: response))
         rescue => e
-          @messages << {role: ROLE_ASSISTANT, content: "Error: #{e.message}"}
+          Events::Bus.emit(Events::AgentMessage.new(content: "Error: #{e.message}"))
         ensure
           @loading = false
         end

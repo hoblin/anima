@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-require "spec_helper"
+require "rails_helper"
 require "ratatui_ruby"
-require "tui/screens/chat"
 
 RSpec.describe TUI::Screens::Chat do
   subject(:screen) { described_class.new }
@@ -20,6 +19,8 @@ RSpec.describe TUI::Screens::Chat do
     double("Event", **defaults, code: code, modifiers: modifiers, **overrides)
   end
 
+  after { Events::Bus.unsubscribe(screen.message_collector) }
+
   describe "#initialize" do
     it "starts with empty messages" do
       expect(screen.messages).to eq([])
@@ -31,6 +32,12 @@ RSpec.describe TUI::Screens::Chat do
 
     it "starts not loading" do
       expect(screen.loading?).to be false
+    end
+
+    it "subscribes the message collector to the event bus" do
+      screen # force lazy subject to initialize and subscribe
+      Events::Bus.emit(Events::UserMessage.new(content: "test"))
+      expect(screen.messages).to eq([{role: "user", content: "test"}])
     end
   end
 
@@ -97,12 +104,11 @@ RSpec.describe TUI::Screens::Chat do
         allow(client).to receive(:chat).and_return("Hello back!")
       end
 
-      it "appends user message to messages array" do
+      it "emits user_message event and collects it" do
         screen.handle_event(key_event(code: "h"))
         screen.handle_event(key_event(code: "i"))
         screen.handle_event(key_event(code: "enter"))
 
-        # Wait for thread to complete
         sleep 0.1
 
         expect(screen.messages.first).to eq({role: "user", content: "hi"})
@@ -115,7 +121,7 @@ RSpec.describe TUI::Screens::Chat do
         expect(screen.input).to eq("")
       end
 
-      it "appends assistant response to messages" do
+      it "emits agent_message event and collects response" do
         screen.handle_event(key_event(code: "h"))
         screen.handle_event(key_event(code: "i"))
         screen.handle_event(key_event(code: "enter"))
@@ -181,7 +187,7 @@ RSpec.describe TUI::Screens::Chat do
         allow(client).to receive(:chat).and_raise(StandardError, "Connection failed")
       end
 
-      it "appends error as assistant message" do
+      it "emits error as agent_message event" do
         screen.handle_event(key_event(code: "h"))
         screen.handle_event(key_event(code: "i"))
         screen.handle_event(key_event(code: "enter"))
@@ -285,6 +291,14 @@ RSpec.describe TUI::Screens::Chat do
       screen.instance_variable_set(:@loading, true)
       screen.new_session
       expect(screen.loading?).to be false
+    end
+  end
+
+  describe "#finalize" do
+    it "unsubscribes the message collector from the event bus" do
+      screen.finalize
+      Events::Bus.emit(Events::UserMessage.new(content: "after finalize"))
+      expect(screen.messages).to be_empty
     end
   end
 end
