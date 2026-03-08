@@ -2,11 +2,11 @@
 
 # Counts tokens in an event's payload via the Anthropic API and
 # caches the result on the event record. Enqueued automatically
-# after each event is created.
+# after each LLM event is created.
 class CountEventTokensJob < ApplicationJob
   queue_as :default
 
-  retry_on Providers::Anthropic::Error, wait: 5.seconds, attempts: 3
+  retry_on Providers::Anthropic::Error, wait: :exponentially_longer, attempts: 3
   discard_on ActiveRecord::RecordNotFound
 
   # @param event_id [Integer] the Event record to count tokens for
@@ -15,14 +15,14 @@ class CountEventTokensJob < ApplicationJob
     return if event.token_count > 0
 
     provider = Providers::Anthropic.new
-    role = (event.event_type == "user_message") ? "user" : "assistant"
-    messages = [{role: role, content: event.payload["content"].to_s}]
+    messages = [{role: event.api_role, content: event.payload["content"].to_s}]
 
     token_count = provider.count_tokens(
       model: LLM::Client::DEFAULT_MODEL,
       messages: messages
     )
 
-    event.update_column(:token_count, token_count)
+    # Atomic update: only write if still uncounted (avoids race with parallel jobs).
+    Event.where(id: event.id, token_count: 0).update_all(token_count: token_count)
   end
 end

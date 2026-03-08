@@ -69,11 +69,51 @@ RSpec.describe Event do
     end
   end
 
+  describe "#api_role" do
+    it "maps user_message to user" do
+      event = session.events.create!(event_type: "user_message", payload: {content: "hi"}, timestamp: 1)
+      expect(event.api_role).to eq("user")
+    end
+
+    it "maps agent_message to assistant" do
+      event = session.events.create!(event_type: "agent_message", payload: {content: "hi"}, timestamp: 1)
+      expect(event.api_role).to eq("assistant")
+    end
+
+    it "raises KeyError for non-LLM event types" do
+      event = session.events.create!(event_type: "tool_call", payload: {content: "run"}, timestamp: 1)
+      expect { event.api_role }.to raise_error(KeyError)
+    end
+  end
+
+  describe "#llm_message?" do
+    it "returns true for user_message" do
+      event = Event.new(event_type: "user_message")
+      expect(event).to be_llm_message
+    end
+
+    it "returns true for agent_message" do
+      event = Event.new(event_type: "agent_message")
+      expect(event).to be_llm_message
+    end
+
+    it "returns false for system_message" do
+      event = Event.new(event_type: "system_message")
+      expect(event).not_to be_llm_message
+    end
+  end
+
   describe "after_create callback" do
-    it "enqueues CountEventTokensJob" do
+    it "enqueues CountEventTokensJob for LLM events" do
       expect {
         session.events.create!(event_type: "user_message", payload: {content: "hi"}, timestamp: 1)
       }.to have_enqueued_job(CountEventTokensJob)
+    end
+
+    it "does not enqueue CountEventTokensJob for non-LLM events" do
+      expect {
+        session.events.create!(event_type: "system_message", payload: {content: "boot"}, timestamp: 1)
+      }.not_to have_enqueued_job(CountEventTokensJob)
     end
   end
 end

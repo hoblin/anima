@@ -17,18 +17,31 @@ class Event < ApplicationRecord
   TYPES = %w[system_message user_message agent_message tool_call tool_response].freeze
   LLM_TYPES = %w[user_message agent_message].freeze
 
+  ROLE_MAP = {"user_message" => "user", "agent_message" => "assistant"}.freeze
+
   belongs_to :session
 
   validates :event_type, presence: true, inclusion: {in: TYPES}
   validates :payload, presence: true
   validates :timestamp, presence: true
 
-  after_create :schedule_token_count
+  after_create :schedule_token_count, if: :llm_message?
 
   # @!method self.llm_messages
   #   Events that represent conversation turns sent to the LLM API.
   #   @return [ActiveRecord::Relation]
   scope :llm_messages, -> { where(event_type: LLM_TYPES) }
+
+  # Maps event_type to the Anthropic Messages API role.
+  # @return [String] "user" or "assistant"
+  def api_role
+    ROLE_MAP.fetch(event_type)
+  end
+
+  # @return [Boolean] true if this event represents an LLM conversation turn
+  def llm_message?
+    event_type.in?(LLM_TYPES)
+  end
 
   private
 
