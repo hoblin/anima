@@ -179,6 +179,7 @@ module TUI
       def build_tool_registry
         registry = Tools::Registry.new
         registry.register(Tools::WebGet)
+        registry.register(Tools::Bash)
         registry
       end
 
