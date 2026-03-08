@@ -128,7 +128,7 @@ RSpec.describe LLM::Client do
         )
 
       result = client.chat(multi_turn)
-      expect(result).to be_a(String)
+      expect(result).to eq("Hello! How can I help you today?")
     end
 
     it "uses the configured model" do
