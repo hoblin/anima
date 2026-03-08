@@ -39,6 +39,7 @@ module Anima
     desc "tui", "Launch the Anima terminal interface"
     def tui
       require "ratatui_ruby"
+      require_relative "version"
       require_relative "../../lib/tui/app"
       TUI::App.new.run
     end

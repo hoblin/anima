@@ -65,33 +65,38 @@ module TUI
     end
 
     def render_sidebar(frame, area, tui)
-      menu_area, info_area = tui.split(
-        area,
-        direction: :vertical,
-        constraints: [
-          tui.constraint_fill(1),
-          tui.constraint_length(5)
-        ]
-      )
+      if @command_mode
+        render_menu(frame, area, tui)
+      else
+        render_info(frame, area, tui)
+      end
+    end
 
-      menu_items = SCREENS.map { |s| screen_label(s) }
+    def render_menu(frame, area, tui)
+      menu_items = COMMAND_KEYS.map { |key, action| "[#{key}] #{action.capitalize}" }
       menu = tui.list(
         items: menu_items,
-        highlight_style: {fg: "cyan", bold: true},
-        highlight_symbol: "▸ ",
-        selected_index: SCREENS.index(@current_screen),
         block: tui.block(
-          title: "Menu",
+          title: "Command",
           borders: [:all],
           border_type: :rounded,
-          border_style: {fg: "white"}
+          border_style: {fg: "yellow"}
         )
       )
-      frame.render_widget(menu, menu_area)
+      frame.render_widget(menu, area)
+    end
+
+    def render_info(frame, area, tui)
+      info_text = tui.line(spans: [
+        tui.span(content: "Anima v#{Anima::VERSION}", style: tui.style(fg: "white"))
+      ])
+      hint_text = tui.line(spans: [
+        tui.span(content: "Ctrl+a", style: tui.style(fg: "cyan", modifiers: [:bold])),
+        tui.span(content: " command mode", style: tui.style(fg: "dark_gray"))
+      ])
 
       info = tui.paragraph(
-        text: "Anima v#{Anima::VERSION}",
-        alignment: :center,
+        text: [info_text, hint_text],
         block: tui.block(
           title: "Info",
           borders: [:all],
@@ -99,24 +104,17 @@ module TUI
           border_style: {fg: "white"}
         )
       )
-      frame.render_widget(info, info_area)
+      frame.render_widget(info, area)
     end
 
     def render_status_bar(frame, area, tui)
-      status_text = if @command_mode
-        command_hints = COMMAND_KEYS.map { |key, action| "#{key}:#{action}" }.join("  ")
-        tui.line(spans: [
-          tui.span(content: " COMMAND ", style: tui.style(fg: "black", bg: "yellow", modifiers: [:bold])),
-          tui.span(content: "  #{command_hints}", style: tui.style(fg: "yellow"))
-        ])
+      mode_span = if @command_mode
+        tui.span(content: " COMMAND ", style: tui.style(fg: "black", bg: "yellow", modifiers: [:bold]))
       else
-        tui.line(spans: [
-          tui.span(content: " NORMAL ", style: tui.style(fg: "black", bg: "cyan", modifiers: [:bold])),
-          tui.span(content: "  Ctrl+a: command mode", style: tui.style(fg: "white"))
-        ])
+        tui.span(content: " NORMAL ", style: tui.style(fg: "black", bg: "cyan", modifiers: [:bold]))
       end
 
-      widget = tui.paragraph(text: status_text)
+      widget = tui.paragraph(text: tui.line(spans: [mode_span]))
       frame.render_widget(widget, area)
     end
 
