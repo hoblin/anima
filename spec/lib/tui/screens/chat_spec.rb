@@ -257,25 +257,29 @@ RSpec.describe TUI::Screens::Chat do
     end
 
     context "multi-turn conversation" do
+      let(:real_persister) { Events::Subscribers::Persister.new(session) }
+      let(:screen_with_persister) { described_class.new(session: session, persister: real_persister) }
       let(:client) { double("LLM::Client") }
 
+      after { screen_with_persister.finalize }
+
       before do
-        screen.instance_variable_set(:@client, client)
+        screen_with_persister.instance_variable_set(:@client, client)
       end
 
-      it "passes full message history to LLM client" do
+      it "passes viewport messages from session to LLM client" do
         received_messages = nil
         allow(client).to receive(:chat).and_return("First response")
-        screen.handle_event(key_event(code: "a"))
-        screen.handle_event(key_event(code: "enter"))
+        screen_with_persister.handle_event(key_event(code: "a"))
+        screen_with_persister.handle_event(key_event(code: "enter"))
         sleep 0.1
 
         allow(client).to receive(:chat) { |msgs|
           received_messages = msgs.dup
           "Second response"
         }
-        screen.handle_event(key_event(code: "b"))
-        screen.handle_event(key_event(code: "enter"))
+        screen_with_persister.handle_event(key_event(code: "b"))
+        screen_with_persister.handle_event(key_event(code: "enter"))
         sleep 0.1
 
         expect(received_messages).to eq([

@@ -6,13 +6,28 @@ default: &default
   timeout: 5000
 
 development:
-  <<: *default
-  database: <%= File.join(anima_home, "db", "development.sqlite3") %>
+  primary:
+    <<: *default
+    database: <%= File.join(anima_home, "db", "development.sqlite3") %>
+  queue:
+    <<: *default
+    database: <%= File.join(anima_home, "db", "development_queue.sqlite3") %>
+    migrations_paths: db/queue_migrate
 
 test:
-  <<: *default
-  database: <%= File.join(anima_home, "db", "test.sqlite3") %>
+  primary:
+    <<: *default
+    database: <%= File.join(anima_home, "db", "test.sqlite3") %>
+  queue:
+    <<: *default
+    database: <%= File.join(anima_home, "db", "test_queue.sqlite3") %>
+    migrations_paths: db/queue_migrate
 
 production:
-  <<: *default
-  database: <%= File.join(anima_home, "db", "production.sqlite3") %>
+  primary:
+    <<: *default
+    database: <%= File.join(anima_home, "db", "production.sqlite3") %>
+  queue:
+    <<: *default
+    database: <%= File.join(anima_home, "db", "production_queue.sqlite3") %>
+    migrations_paths: db/queue_migrate

@@ -161,7 +161,8 @@ module TUI
 
         Thread.new do
           @client ||= LLM::Client.new
-          response = @client.chat(messages)
+          viewport_messages = @session.messages_for_llm
+          response = @client.chat(viewport_messages)
           Events::Bus.emit(Events::AgentMessage.new(content: response, session_id: @session.id))
         rescue => e
           Events::Bus.emit(Events::AgentMessage.new(content: "Error: #{e.message}", session_id: @session.id))

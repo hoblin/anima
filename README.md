@@ -314,6 +314,25 @@ bundle install
 bundle exec rspec
 ```
 
+### Running the TUI
+
+The TUI requires a background job worker for async token counting (used by the sliding viewport). Start both in separate terminals:
+
+```bash
+# Terminal 1: Start Solid Queue worker
+RAILS_ENV=development bundle exec rake solid_queue:start
+
+# Terminal 2: Launch the TUI
+bundle exec anima tui
+```
+
+On first run, initialize the databases:
+
+```bash
+RAILS_ENV=development bundle exec rails db:migrate
+RAILS_ENV=development bundle exec rails db:schema:load:queue
+```
+
 ## License
 
 MIT License. See [LICENSE.txt](LICENSE.txt).
