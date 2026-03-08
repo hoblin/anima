@@ -142,8 +142,6 @@ module TUI
       when :settings, :anthropic
         @current_screen = action
         nil
-      else
-        nil
       end
     end
 
