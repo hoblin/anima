@@ -9,6 +9,7 @@ module TUI
     SCREENS = %i[chat settings anthropic].freeze
 
     COMMAND_KEYS = {
+      "n" => :new_session,
       "s" => :settings,
       "a" => :anthropic,
       "q" => :quit
@@ -111,12 +112,18 @@ module TUI
     def render_status_bar(frame, area, tui)
       mode_span = if @command_mode
         tui.span(content: " COMMAND ", style: tui.style(fg: "black", bg: "yellow", modifiers: [:bold]))
+      elsif chat_loading?
+        tui.span(content: " THINKING ", style: tui.style(fg: "black", bg: "magenta", modifiers: [:bold]))
       else
         tui.span(content: " NORMAL ", style: tui.style(fg: "black", bg: "cyan", modifiers: [:bold]))
       end
 
       widget = tui.paragraph(text: tui.line(spans: [mode_span]))
       frame.render_widget(widget, area)
+    end
+
+    def chat_loading?
+      @screens[:chat].loading?
     end
 
     def handle_event(event)
@@ -139,6 +146,10 @@ module TUI
       case action
       when :quit
         :quit
+      when :new_session
+        @screens[:chat].new_session
+        @current_screen = :chat
+        nil
       when :settings, :anthropic
         @current_screen = action
         nil
