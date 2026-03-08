@@ -118,7 +118,7 @@ This requires [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) 
 
 ```bash
 cd $(gem contents anima-core | head -1 | xargs dirname | xargs dirname)
-EDITOR=vim bin/rails credentials:edit
+bin/rails credentials:edit
 ```
 
 Add your token:

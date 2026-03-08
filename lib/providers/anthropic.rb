@@ -7,6 +7,7 @@ module Providers
     include HTTParty
 
     base_uri "https://api.anthropic.com"
+    default_timeout 30
 
     TOKEN_PREFIX = "sk-ant-oat01-"
     TOKEN_MIN_LENGTH = 80
@@ -30,7 +31,7 @@ module Providers
         token = Rails.application.credentials.dig(:anthropic, :subscription_token)
         raise AuthenticationError, <<~MSG.strip if token.blank?
           No Anthropic subscription token found in credentials.
-          Run: EDITOR=vim bin/rails credentials:edit
+          Run: bin/rails credentials:edit
           Add:
             anthropic:
               subscription_token: sk-ant-oat01-YOUR_TOKEN_HERE

@@ -47,6 +47,12 @@ RSpec.describe Providers::Anthropic do
         /at least 80 characters/
       )
     end
+
+    it "accepts a token of exactly minimum length" do
+      boundary_token = "sk-ant-oat01-#{"a" * 67}"
+      expect(boundary_token.length).to eq(80)
+      expect(described_class.validate_token_format!(boundary_token)).to be true
+    end
   end
 
   describe ".fetch_token" do
@@ -240,6 +246,40 @@ RSpec.describe Providers::Anthropic do
       }.to raise_error(Providers::Anthropic::Error, /Rate limit/)
     end
 
+    it "raises AuthenticationError on 401 response" do
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return(
+          status: 401,
+          body: {error: {message: "invalid api key"}}.to_json,
+          headers: {"content-type" => "application/json"}
+        )
+
+      expect {
+        provider.create_message(
+          model: "claude-sonnet-4-20250514",
+          messages: [{role: "user", content: "Hi"}],
+          max_tokens: 100
+        )
+      }.to raise_error(Providers::Anthropic::AuthenticationError, /Authentication failed/)
+    end
+
+    it "raises AuthenticationError on 403 response" do
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return(
+          status: 403,
+          body: {error: {message: "forbidden"}}.to_json,
+          headers: {"content-type" => "application/json"}
+        )
+
+      expect {
+        provider.create_message(
+          model: "claude-sonnet-4-20250514",
+          messages: [{role: "user", content: "Hi"}],
+          max_tokens: 100
+        )
+      }.to raise_error(Providers::Anthropic::AuthenticationError, /Forbidden/)
+    end
+
     it "raises Error on 500 server error" do
       stub_request(:post, "https://api.anthropic.com/v1/messages")
         .to_return(status: 500, body: "Internal Server Error")
@@ -251,6 +291,19 @@ RSpec.describe Providers::Anthropic do
           max_tokens: 100
         )
       }.to raise_error(Providers::Anthropic::Error, /server error/)
+    end
+
+    it "raises Error on unexpected status code" do
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return(status: 418, body: "I'm a teapot")
+
+      expect {
+        provider.create_message(
+          model: "claude-sonnet-4-20250514",
+          messages: [{role: "user", content: "Hi"}],
+          max_tokens: 100
+        )
+      }.to raise_error(Providers::Anthropic::Error, /Unexpected response/)
     end
   end
 
