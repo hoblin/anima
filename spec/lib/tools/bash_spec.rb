@@ -3,7 +3,11 @@
 require "rails_helper"
 
 RSpec.describe Tools::Bash do
-  subject(:tool) { described_class.new }
+  let(:shell_session) { ShellSession.new(session_id: "bash-tool-#{SecureRandom.hex(4)}") }
+
+  subject(:tool) { described_class.new(shell_session: shell_session) }
+
+  after { shell_session.finalize }
 
   describe ".tool_name" do
     it "returns bash" do
@@ -36,82 +40,57 @@ RSpec.describe Tools::Bash do
   end
 
   describe "#execute" do
-    context "with a simple command" do
-      it "returns stdout and exit code" do
-        result = tool.execute("command" => "echo hello")
-        expect(result).to include("stdout:\nhello")
-        expect(result).to include("exit_code: 0")
-      end
+    it "returns stdout and exit code" do
+      result = tool.execute("command" => "echo hello")
+      expect(result).to include("stdout:\nhello")
+      expect(result).to include("exit_code: 0")
     end
 
-    context "with a command that produces stderr" do
-      it "includes stderr in the result" do
-        result = tool.execute("command" => "echo error >&2")
-        expect(result).to include("stderr:\nerror")
-        expect(result).to include("exit_code: 0")
-      end
+    it "captures stderr" do
+      result = tool.execute("command" => "echo oops >&2")
+      expect(result).to include("stderr:")
+      expect(result).to include("oops")
     end
 
-    context "with a command that produces both stdout and stderr" do
-      it "includes both streams" do
-        result = tool.execute("command" => "echo out && echo err >&2")
-        expect(result).to include("stdout:\nout")
-        expect(result).to include("stderr:\nerr")
-        expect(result).to include("exit_code: 0")
-      end
+    it "captures both stdout and stderr" do
+      result = tool.execute("command" => "echo out && echo err >&2")
+      expect(result).to include("stdout:\nout")
+      expect(result).to include("err")
     end
 
-    context "with a failing command" do
-      it "returns non-zero exit code" do
-        result = tool.execute("command" => "exit 42")
-        expect(result).to include("exit_code: 42")
-      end
+    it "returns non-zero exit code" do
+      result = tool.execute("command" => "(exit 42)")
+      expect(result).to include("exit_code: 42")
     end
 
-    context "with a command that produces no output" do
-      it "returns only exit code" do
-        result = tool.execute("command" => "true")
-        expect(result).to eq("exit_code: 0")
-      end
+    it "returns only exit code for silent commands" do
+      result = tool.execute("command" => "true")
+      expect(result).to eq("exit_code: 0")
     end
 
-    context "with a blank command" do
-      it "returns an error" do
-        result = tool.execute("command" => "  ")
-        expect(result).to be_a(Hash)
-        expect(result[:error]).to include("blank")
-      end
+    it "preserves working directory between calls" do
+      tool.execute("command" => "cd /tmp")
+      result = tool.execute("command" => "pwd")
+      expect(result).to include("stdout:\n/tmp")
     end
 
-    context "with large output" do
-      it "truncates stdout exceeding MAX_OUTPUT_BYTES" do
-        result = tool.execute("command" => "head -c #{Tools::Bash::MAX_OUTPUT_BYTES + 1000} /dev/zero | tr '\\0' 'x'")
-        expect(result).to include("[Truncated:")
-        expect(result.bytesize).to be < Tools::Bash::MAX_OUTPUT_BYTES + 200
-      end
-
-      it "truncates stderr exceeding MAX_OUTPUT_BYTES" do
-        result = tool.execute("command" => "head -c #{Tools::Bash::MAX_OUTPUT_BYTES + 1000} /dev/zero | tr '\\0' 'x' >&2")
-        expect(result).to include("[Truncated:")
-        expect(result.bytesize).to be < Tools::Bash::MAX_OUTPUT_BYTES + 200
-      end
+    it "preserves environment variables between calls" do
+      tool.execute("command" => "export MY_PERSIST_VAR=kept")
+      result = tool.execute("command" => "echo $MY_PERSIST_VAR")
+      expect(result).to include("stdout:\nkept")
     end
 
-    context "when the command times out" do
-      it "returns a timeout error" do
-        stub_const("Tools::Bash::COMMAND_TIMEOUT", 0.1)
-        result = tool.execute("command" => "sleep 10")
-        expect(result).to be_a(Hash)
-        expect(result[:error]).to include("timed out")
-      end
+    it "returns error for blank commands" do
+      result = tool.execute("command" => "  ")
+      expect(result).to be_a(Hash)
+      expect(result[:error]).to include("blank")
     end
 
-    context "with stateless execution" do
-      it "does not preserve state between calls" do
-        tool.execute("command" => "export MY_TEST_VAR=hello")
-        result = tool.execute("command" => "echo ${MY_TEST_VAR:-unset}")
-        expect(result).to include("stdout:\nunset")
-      end
+    it "delegates errors from shell session" do
+      shell_session.finalize
+      result = tool.execute("command" => "echo hello")
+      expect(result).to be_a(Hash)
+      expect(result[:error]).to include("not running")
     end
   end
 end

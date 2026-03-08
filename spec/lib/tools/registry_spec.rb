@@ -58,6 +58,38 @@ RSpec.describe Tools::Registry do
         registry.execute("unknown", {})
       }.to raise_error(Tools::UnknownToolError, "Unknown tool: unknown")
     end
+
+    context "with context" do
+      let(:context_tool_class) do
+        Class.new(Tools::Base) do
+          def self.tool_name = "ctx"
+          def self.description = "Context test"
+          def self.input_schema = {type: "object", properties: {}, required: []}
+
+          def initialize(test_value: nil, **)
+            @test_value = test_value
+          end
+
+          def execute(_input)
+            @test_value.to_s
+          end
+        end
+      end
+
+      it "passes context to tool constructor" do
+        registry_with_ctx = described_class.new(context: {test_value: "injected"})
+        registry_with_ctx.register(context_tool_class)
+
+        result = registry_with_ctx.execute("ctx", {})
+        expect(result).to eq("injected")
+      end
+
+      it "works without context for tools that don't need it" do
+        registry.register(context_tool_class)
+        result = registry.execute("ctx", {})
+        expect(result).to eq("")
+      end
+    end
   end
 
   describe "#registered?" do
