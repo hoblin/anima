@@ -105,14 +105,14 @@ module TUI
     def render_status_bar(frame, area, tui)
       status_text = if @command_mode
         command_hints = COMMAND_KEYS.map { |key, action| "#{key}:#{action}" }.join("  ")
-        tui.line([
-          tui.span(" COMMAND ", style: {fg: "black", bg: "yellow", bold: true}),
-          tui.span("  #{command_hints}", style: {fg: "yellow"})
+        tui.line(spans: [
+          tui.span(content: " COMMAND ", style: tui.style(fg: "black", bg: "yellow", modifiers: [:bold])),
+          tui.span(content: "  #{command_hints}", style: tui.style(fg: "yellow"))
         ])
       else
-        tui.line([
-          tui.span(" NORMAL ", style: {fg: "black", bg: "cyan", bold: true}),
-          tui.span("  Ctrl+a: command mode", style: {fg: "white"})
+        tui.line(spans: [
+          tui.span(content: " NORMAL ", style: tui.style(fg: "black", bg: "cyan", modifiers: [:bold])),
+          tui.span(content: "  Ctrl+a: command mode", style: tui.style(fg: "white"))
         ])
       end
 
