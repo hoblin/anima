@@ -14,6 +14,8 @@ module TUI
       "q" => :quit
     }.freeze
 
+    MENU_LABELS = COMMAND_KEYS.map { |key, action| "[#{key}] #{action.capitalize}" }.freeze
+
     SIDEBAR_WIDTH = 28
 
     attr_reader :current_screen, :command_mode
@@ -73,9 +75,8 @@ module TUI
     end
 
     def render_menu(frame, area, tui)
-      menu_items = COMMAND_KEYS.map { |key, action| "[#{key}] #{action.capitalize}" }
       menu = tui.list(
-        items: menu_items,
+        items: MENU_LABELS,
         block: tui.block(
           title: "Command",
           borders: [:all],
@@ -141,13 +142,15 @@ module TUI
       when :settings, :anthropic
         @current_screen = action
         nil
+      else
+        nil
       end
     end
 
     def handle_normal_mode(event)
       return nil unless event.key?
 
-      if event.code == "a" && event.modifiers&.include?("ctrl")
+      if ctrl_a?(event)
         @command_mode = true
         return nil
       end
@@ -162,12 +165,8 @@ module TUI
       nil
     end
 
-    def screen_label(screen)
-      case screen
-      when :chat then "Chat"
-      when :settings then "Settings"
-      when :anthropic then "Anthropic"
-      end
+    def ctrl_a?(event)
+      event.code == "a" && event.modifiers&.include?("ctrl")
     end
   end
 end

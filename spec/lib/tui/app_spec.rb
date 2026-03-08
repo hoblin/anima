@@ -70,20 +70,44 @@ RSpec.describe TUI::App do
         app.send(:handle_event, event)
         expect(app.command_mode).to be false
       end
+
+      it "exits command mode on non-key events" do
+        event = double("Event", none?: false, ctrl_c?: false, key?: false)
+        app.send(:handle_event, event)
+        expect(app.command_mode).to be false
+      end
     end
 
     describe "Esc returns to chat from other screens" do
       it "returns to chat from settings" do
         app.instance_variable_set(:@current_screen, :settings)
-        event = key_event(code: "esc", esc?: true)
+        event = key_event(code: "esc")
         app.send(:handle_event, event)
         expect(app.current_screen).to eq(:chat)
       end
 
       it "stays on chat when already there" do
-        event = key_event(code: "esc", esc?: true)
+        event = key_event(code: "esc")
         app.send(:handle_event, event)
         expect(app.current_screen).to eq(:chat)
+      end
+    end
+
+    describe "screen event delegation" do
+      it "delegates key events to the current screen's handle_event" do
+        app.instance_variable_set(:@current_screen, :settings)
+        event = key_event(code: "j")
+        settings = app.instance_variable_get(:@screens)[:settings]
+        allow(settings).to receive(:handle_event)
+
+        app.send(:handle_event, event)
+
+        expect(settings).to have_received(:handle_event).with(event)
+      end
+
+      it "does not delegate to screens without handle_event" do
+        event = key_event(code: "j")
+        expect { app.send(:handle_event, event) }.not_to raise_error
       end
     end
 

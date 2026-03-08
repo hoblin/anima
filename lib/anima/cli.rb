@@ -40,7 +40,7 @@ module Anima
     def tui
       require "ratatui_ruby"
       require_relative "version"
-      require_relative "../../lib/tui/app"
+      require_relative "../tui/app"
       TUI::App.new.run
     end
 

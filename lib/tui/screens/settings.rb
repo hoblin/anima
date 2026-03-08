@@ -10,6 +10,7 @@ module TUI
       ].freeze
 
       def initialize
+        # Initialized on first render — requires tui context from RatatuiRuby.run block
         @list_state = nil
       end
 
