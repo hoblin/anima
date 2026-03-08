@@ -19,7 +19,7 @@ module TUI
         @loading = false
         @client = nil
 
-        @session = session || Session.order(:id).last || Session.create!
+        @session = session || Session.order(id: :desc).first || Session.create!
         load_session_messages
         @persister = persister || Events::Subscribers::Persister.new(@session)
 
