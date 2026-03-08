@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
 require "rails_helper"
-require "anima/providers/anthropic"
 
-RSpec.describe Anima::Providers::Anthropic do
+RSpec.describe Providers::Anthropic do
   let(:valid_token) { "sk-ant-oat01-#{"a" * 68}" }
   let(:provider) { described_class.new(valid_token) }
 
@@ -34,7 +33,7 @@ RSpec.describe Anima::Providers::Anthropic do
       expect {
         described_class.validate_token_format!("sk-ant-api03-#{"a" * 68}")
       }.to raise_error(
-        Anima::Providers::Anthropic::TokenFormatError,
+        Providers::Anthropic::TokenFormatError,
         /must start with 'sk-ant-oat01-'/
       )
     end
@@ -44,7 +43,7 @@ RSpec.describe Anima::Providers::Anthropic do
       expect {
         described_class.validate_token_format!(short_token)
       }.to raise_error(
-        Anima::Providers::Anthropic::TokenFormatError,
+        Providers::Anthropic::TokenFormatError,
         /at least 80 characters/
       )
     end
@@ -74,7 +73,7 @@ RSpec.describe Anima::Providers::Anthropic do
         expect {
           described_class.fetch_token
         }.to raise_error(
-          Anima::Providers::Anthropic::AuthenticationError,
+          Providers::Anthropic::AuthenticationError,
           /No Anthropic subscription token found/
         )
       end
@@ -113,7 +112,7 @@ RSpec.describe Anima::Providers::Anthropic do
       expect {
         described_class.validate!
       }.to raise_error(
-        Anima::Providers::Anthropic::AuthenticationError,
+        Providers::Anthropic::AuthenticationError,
         /Token rejected by Anthropic API/
       )
     end
@@ -129,7 +128,7 @@ RSpec.describe Anima::Providers::Anthropic do
       expect {
         described_class.validate!
       }.to raise_error(
-        Anima::Providers::Anthropic::AuthenticationError,
+        Providers::Anthropic::AuthenticationError,
         /not authorized for API access/
       )
     end
@@ -221,7 +220,7 @@ RSpec.describe Anima::Providers::Anthropic do
           messages: [{role: "user", content: "Hi"}],
           max_tokens: 100
         )
-      }.to raise_error(Anima::Providers::Anthropic::Error, /Bad request/)
+      }.to raise_error(Providers::Anthropic::Error, /Bad request/)
     end
 
     it "raises Error on 429 rate limit" do
@@ -238,7 +237,7 @@ RSpec.describe Anima::Providers::Anthropic do
           messages: [{role: "user", content: "Hi"}],
           max_tokens: 100
         )
-      }.to raise_error(Anima::Providers::Anthropic::Error, /Rate limit/)
+      }.to raise_error(Providers::Anthropic::Error, /Rate limit/)
     end
 
     it "raises Error on 500 server error" do
@@ -251,21 +250,17 @@ RSpec.describe Anima::Providers::Anthropic do
           messages: [{role: "user", content: "Hi"}],
           max_tokens: 100
         )
-      }.to raise_error(Anima::Providers::Anthropic::Error, /server error/)
+      }.to raise_error(Providers::Anthropic::Error, /server error/)
     end
   end
 
   describe "error class hierarchy" do
-    it "Error inherits from Anima::Error" do
-      expect(Anima::Providers::Anthropic::Error).to be < Anima::Error
-    end
-
     it "AuthenticationError inherits from Error" do
-      expect(Anima::Providers::Anthropic::AuthenticationError).to be < Anima::Providers::Anthropic::Error
+      expect(Providers::Anthropic::AuthenticationError).to be < Providers::Anthropic::Error
     end
 
     it "TokenFormatError inherits from Error" do
-      expect(Anima::Providers::Anthropic::TokenFormatError).to be < Anima::Providers::Anthropic::Error
+      expect(Providers::Anthropic::TokenFormatError).to be < Providers::Anthropic::Error
     end
   end
 end

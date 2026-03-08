@@ -131,7 +131,7 @@ anthropic:
 **3. Verify the token works:**
 
 ```bash
-bin/rails runner "Anima::Providers::Anthropic.validate!"
+bin/rails runner "Providers::Anthropic.validate!"
 ```
 
 If the token expires or is revoked, repeat steps 1-2 with a new token.
