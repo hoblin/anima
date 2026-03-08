@@ -64,6 +64,11 @@ RSpec.describe ShellSession do
       expect(result[:stdout]).to include("[Truncated:")
     end
 
+    it "truncates stderr exceeding MAX_OUTPUT_BYTES" do
+      result = shell.run("seq 1 100000 >&2")
+      expect(result[:stderr]).to include("[Truncated:")
+    end
+
     it "returns error when shell is not running" do
       shell.finalize
       result = shell.run("echo hello")
@@ -128,7 +133,7 @@ RSpec.describe ShellSession do
 
   describe ".cleanup_orphans" do
     it "removes FIFO files for dead processes" do
-      stale_path = File.join(Dir.tmpdir, "anima-stderr-99999999-12345")
+      stale_path = File.join(Dir.tmpdir, "anima-stderr-99999999-deadbeef01234567")
       system("mkfifo", stale_path)
       expect(File.exist?(stale_path)).to be true
 
@@ -138,7 +143,7 @@ RSpec.describe ShellSession do
     end
 
     it "leaves FIFO files for live processes" do
-      live_path = File.join(Dir.tmpdir, "anima-stderr-#{Process.pid}-99999")
+      live_path = File.join(Dir.tmpdir, "anima-stderr-#{Process.pid}-deadbeef01234567")
       system("mkfifo", live_path)
 
       described_class.cleanup_orphans

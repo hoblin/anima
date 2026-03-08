@@ -26,9 +26,10 @@ class ShellSession
   def initialize(session_id:)
     @session_id = session_id
     @mutex = Mutex.new
-    @fifo_path = File.join(Dir.tmpdir, "anima-stderr-#{Process.pid}-#{object_id}")
+    @fifo_path = File.join(Dir.tmpdir, "anima-stderr-#{Process.pid}-#{SecureRandom.hex(8)}")
     @alive = false
     @pwd = nil
+    self.class.cleanup_orphans
     start
     self.class.register(self)
   end
@@ -81,10 +82,14 @@ class ShellSession
     end
 
     # Remove stale FIFO files left by crashed processes.
+    # FIFO naming format: anima-stderr-{pid}-{hex}
     def cleanup_orphans
       Dir.glob(File.join(Dir.tmpdir, "anima-stderr-*")).each do |path|
-        pid = File.basename(path).split("-")[2].to_i
-        next if pid == 0
+        match = File.basename(path).match(/\Aanima-stderr-(\d+)-/)
+        next unless match
+
+        pid = match[1].to_i
+        next if pid <= 0
 
         begin
           Process.kill(0, pid)
@@ -115,7 +120,9 @@ class ShellSession
   end
 
   def create_fifo
-    File.mkfifo(@fifo_path) unless File.exist?(@fifo_path)
+    File.mkfifo(@fifo_path)
+  rescue Errno::EEXIST
+    # FIFO already exists — reuse it
   end
 
   def spawn_shell
@@ -131,10 +138,20 @@ class ShellSession
   def start_stderr_reader
     @stderr_mutex = Mutex.new
     @stderr_buffer = []
+    @stderr_bytes = 0
+    @stderr_truncated = false
     @stderr_thread = Thread.new do
       File.open(@fifo_path, "r") do |fifo|
         while (line = fifo.gets)
-          @stderr_mutex.synchronize { @stderr_buffer << line.chomp.delete("\r") }
+          cleaned = line.chomp.delete("\r")
+          @stderr_mutex.synchronize do
+            if @stderr_bytes < MAX_OUTPUT_BYTES
+              @stderr_buffer << cleaned
+              @stderr_bytes += cleaned.bytesize
+            else
+              @stderr_truncated = true
+            end
+          end
         end
       end
     rescue Errno::ENOENT, IOError
@@ -221,27 +238,39 @@ class ShellSession
     marker = "__ANIMA_RECOVER_#{SecureRandom.hex(8)}__"
     @pty_stdin.puts "echo '#{marker}'"
     Timeout.timeout(3) { consume_until(marker) }
-  rescue
+  rescue Timeout::Error, Errno::EIO, IOError
     @alive = false
   end
 
   def clear_stderr
-    @stderr_mutex.synchronize { @stderr_buffer.clear }
-  end
-
-  def drain_stderr
-    sleep 0.01
     @stderr_mutex.synchronize do
-      result = @stderr_buffer.join("\n")
       @stderr_buffer.clear
-      result
+      @stderr_bytes = 0
+      @stderr_truncated = false
     end
   end
 
+  def drain_stderr
+    # Allow FIFO reader thread time to flush kernel buffers into @stderr_buffer.
+    # Without this, stderr arriving just before the marker may be missed.
+    sleep 0.01
+    @stderr_mutex.synchronize do
+      result = @stderr_buffer.join("\n")
+      truncated = @stderr_truncated
+      @stderr_buffer.clear
+      @stderr_bytes = 0
+      @stderr_truncated = false
+      truncated ? result + "\n\n[Truncated: output exceeded #{MAX_OUTPUT_BYTES} bytes]" : result
+    end
+  end
+
+  # Reads the shell's current working directory via the /proc filesystem.
+  # @note Linux-only. Falls back silently on other platforms or if the
+  #   process has exited.
   def update_pwd
     @pwd = File.readlink("/proc/#{@pid}/cwd")
   rescue Errno::ENOENT, Errno::EACCES
-    # Process exited or no access
+    # Process exited or no access — @pwd retains its previous value
   end
 
   def truncate(output)
@@ -278,14 +307,25 @@ class ShellSession
 
     begin
       @stderr_thread&.kill
-    rescue
+    rescue ThreadError
       # Thread already dead
     end
 
     File.delete(@fifo_path) if File.exist?(@fifo_path)
 
     begin
-      Process.wait(@pid)
+      # Non-blocking reap with SIGKILL fallback if process doesn't exit in time
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 2
+      loop do
+        _, status = Process.wait2(@pid, Process::WNOHANG)
+        break if status
+        if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+          Process.kill("KILL", @pid)
+          Process.wait(@pid)
+          break
+        end
+        sleep 0.05
+      end
     rescue Errno::ECHILD, Errno::ESRCH
       # Already reaped
     end
