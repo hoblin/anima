@@ -4,6 +4,8 @@ Use YARD to document business logic and external API. Keep documentation up to d
 
 Research spikes should describe what we need, not where to look. Prescribing solutions defeats the purpose of a research spike.
 
+Always fix flaky tests. Never skip, mark pending, or work around them — fix the root cause.
+
 ## Testing TUI in tmux
 
 RatatuiRuby requires a real PTY. Background processes (`&`) and `script` don't work reliably. Use tmux to smoke-test the TUI:

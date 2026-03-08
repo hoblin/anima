@@ -18,6 +18,7 @@ module TUI
         @input = ""
         @loading = false
         @client = nil
+        @submit_thread = nil
 
         @session = session || Session.order(id: :desc).first || Session.create!
         load_session_messages
@@ -64,6 +65,7 @@ module TUI
       end
 
       def new_session
+        @submit_thread&.join
         @shell_session&.finalize
         @session = Session.create!
         @persister.session = @session
@@ -75,6 +77,7 @@ module TUI
       end
 
       def finalize
+        @submit_thread&.join
         @shell_session&.finalize
         Events::Bus.unsubscribe(@message_collector)
         Events::Bus.unsubscribe(@persister)
@@ -164,7 +167,7 @@ module TUI
         @input = ""
         @loading = true
 
-        Thread.new do
+        @submit_thread = Thread.new do
           @client ||= LLM::Client.new
           @registry ||= build_tool_registry
           viewport_messages = @session.messages_for_llm
