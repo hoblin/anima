@@ -21,8 +21,13 @@ RSpec.describe TUI::App do
     # RatatuiRuby::Event uses method_missing for dynamic predicates,
     # so we use plain doubles instead of instance_double
     def key_event(code:, modifiers: nil, **overrides)
-      defaults = {none?: false, ctrl_c?: false, key?: true, esc?: false}
+      defaults = {
+        none?: false, ctrl_c?: false, key?: true, esc?: false,
+        enter?: false, backspace?: false
+      }
       defaults[:esc?] = true if code == "esc"
+      defaults[:enter?] = true if code == "enter"
+      defaults[:backspace?] = true if code == "backspace"
       double("Event", **defaults, code: code, modifiers: modifiers, **overrides)
     end
 
@@ -57,6 +62,29 @@ RSpec.describe TUI::App do
         app.send(:handle_event, event)
         expect(app.current_screen).to eq(:anthropic)
         expect(app.command_mode).to be false
+      end
+
+      it "starts new session on 'n'" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        allow(chat).to receive(:new_session)
+
+        event = key_event(code: "n")
+        app.send(:handle_event, event)
+
+        expect(chat).to have_received(:new_session)
+        expect(app.current_screen).to eq(:chat)
+        expect(app.command_mode).to be false
+      end
+
+      it "returns to chat screen on 'n' from other screens" do
+        app.instance_variable_set(:@current_screen, :settings)
+        chat = app.instance_variable_get(:@screens)[:chat]
+        allow(chat).to receive(:new_session)
+
+        event = key_event(code: "n")
+        app.send(:handle_event, event)
+
+        expect(app.current_screen).to eq(:chat)
       end
 
       it "quits on 'q'" do
@@ -105,7 +133,18 @@ RSpec.describe TUI::App do
         expect(settings).to have_received(:handle_event).with(event)
       end
 
+      it "delegates key events to chat screen's handle_event" do
+        event = key_event(code: "a")
+        chat = app.instance_variable_get(:@screens)[:chat]
+        allow(chat).to receive(:handle_event)
+
+        app.send(:handle_event, event)
+
+        expect(chat).to have_received(:handle_event).with(event)
+      end
+
       it "does not delegate to screens without handle_event" do
+        app.instance_variable_set(:@current_screen, :anthropic)
         event = key_event(code: "j")
         expect { app.send(:handle_event, event) }.not_to raise_error
       end
