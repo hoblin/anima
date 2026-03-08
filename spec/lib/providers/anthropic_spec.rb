@@ -307,6 +307,70 @@ RSpec.describe Providers::Anthropic do
     end
   end
 
+  describe "#count_tokens" do
+    it "sends a request to the token counting endpoint" do
+      stub_request(:post, "https://api.anthropic.com/v1/messages/count_tokens")
+        .with(
+          body: {
+            model: "claude-sonnet-4-20250514",
+            messages: [{role: "user", content: "Hello"}]
+          }.to_json,
+          headers: {
+            "Authorization" => "Bearer #{valid_token}",
+            "anthropic-version" => "2023-06-01",
+            "anthropic-beta" => "oauth-2025-04-20",
+            "content-type" => "application/json"
+          }
+        )
+        .to_return(
+          status: 200,
+          body: {input_tokens: 14}.to_json,
+          headers: {"content-type" => "application/json"}
+        )
+
+      result = provider.count_tokens(
+        model: "claude-sonnet-4-20250514",
+        messages: [{role: "user", content: "Hello"}]
+      )
+
+      expect(result).to eq(14)
+    end
+
+    it "passes additional options through to the API" do
+      stub_request(:post, "https://api.anthropic.com/v1/messages/count_tokens")
+        .with(body: hash_including("system" => "You are helpful"))
+        .to_return(
+          status: 200,
+          body: {input_tokens: 22}.to_json,
+          headers: {"content-type" => "application/json"}
+        )
+
+      result = provider.count_tokens(
+        model: "claude-sonnet-4-20250514",
+        messages: [{role: "user", content: "Hi"}],
+        system: "You are helpful"
+      )
+
+      expect(result).to eq(22)
+    end
+
+    it "raises Error on API failure" do
+      stub_request(:post, "https://api.anthropic.com/v1/messages/count_tokens")
+        .to_return(
+          status: 400,
+          body: {error: {message: "invalid model"}}.to_json,
+          headers: {"content-type" => "application/json"}
+        )
+
+      expect {
+        provider.count_tokens(
+          model: "bad-model",
+          messages: [{role: "user", content: "Hi"}]
+        )
+      }.to raise_error(Providers::Anthropic::Error, /Bad request/)
+    end
+  end
+
   describe "error class hierarchy" do
     it "AuthenticationError inherits from Error" do
       expect(Providers::Anthropic::AuthenticationError).to be < Providers::Anthropic::Error

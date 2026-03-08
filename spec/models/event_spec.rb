@@ -61,4 +61,19 @@ RSpec.describe Event do
       expect(event.session).to eq(session)
     end
   end
+
+  describe "token_count" do
+    it "defaults to 0" do
+      event = session.events.create!(event_type: "user_message", payload: {content: "hi"}, timestamp: 1)
+      expect(event.token_count).to eq(0)
+    end
+  end
+
+  describe "after_create callback" do
+    it "enqueues CountEventTokensJob" do
+      expect {
+        session.events.create!(event_type: "user_message", payload: {content: "hi"}, timestamp: 1)
+      }.to have_enqueued_job(CountEventTokensJob)
+    end
+  end
 end

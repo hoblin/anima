@@ -77,6 +77,27 @@ module Providers
       handle_response(response)
     end
 
+    # Count tokens in a message payload without creating a message.
+    # Uses the free Anthropic token counting endpoint.
+    #
+    # @param model [String] Anthropic model identifier
+    # @param messages [Array<Hash>] conversation messages
+    # @param options [Hash] additional parameters (e.g. +system:+, +tools:+)
+    # @return [Integer] estimated input token count
+    # @raise [Error] on API errors
+    def count_tokens(model:, messages:, **options)
+      body = {model: model, messages: messages}.merge(options)
+
+      response = self.class.post(
+        "/v1/messages/count_tokens",
+        body: body.to_json,
+        headers: request_headers
+      )
+
+      result = handle_response(response)
+      result["input_tokens"]
+    end
+
     def validate_credentials!
       response = self.class.post(
         "/v1/messages",
