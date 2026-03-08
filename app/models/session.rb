@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Session < ApplicationRecord
-  has_many :events, -> { order(:position) }, dependent: :destroy
+  has_many :events, -> { order(:id) }, dependent: :destroy
 
   # Returns conversation messages suitable for LLM API calls.
   # Excludes system/tool events — only user and agent messages are included.

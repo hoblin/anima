@@ -7,67 +7,40 @@ RSpec.describe Event do
 
   describe "validations" do
     it "requires event_type" do
-      event = Event.new(session: session, payload: {content: "hi"}, position: 0, timestamp: 1)
+      event = Event.new(session: session, payload: {content: "hi"}, timestamp: 1)
       event.event_type = nil
       expect(event).not_to be_valid
       expect(event.errors[:event_type]).to include("can't be blank")
     end
 
     it "rejects invalid event_type" do
-      event = Event.new(session: session, event_type: "invalid", payload: {content: "hi"}, position: 0, timestamp: 1)
+      event = Event.new(session: session, event_type: "invalid", payload: {content: "hi"}, timestamp: 1)
       expect(event).not_to be_valid
       expect(event.errors[:event_type]).to include("is not included in the list")
     end
 
     it "requires payload" do
-      event = Event.new(session: session, event_type: "user_message", position: 0, timestamp: 1)
+      event = Event.new(session: session, event_type: "user_message", timestamp: 1)
       event.payload = nil
       expect(event).not_to be_valid
       expect(event.errors[:payload]).to include("can't be blank")
     end
 
     it "requires timestamp" do
-      event = Event.new(session: session, event_type: "user_message", payload: {content: "hi"}, position: 0)
+      event = Event.new(session: session, event_type: "user_message", payload: {content: "hi"})
       event.timestamp = nil
       expect(event).not_to be_valid
       expect(event.errors[:timestamp]).to include("can't be blank")
     end
 
     it "requires session" do
-      event = Event.new(event_type: "user_message", payload: {content: "hi"}, position: 0, timestamp: 1)
+      event = Event.new(event_type: "user_message", payload: {content: "hi"}, timestamp: 1)
       expect(event).not_to be_valid
     end
 
     it "is valid with all required attributes" do
-      event = Event.new(session: session, event_type: "user_message", payload: {content: "hi"}, position: 0, timestamp: 1)
+      event = Event.new(session: session, event_type: "user_message", payload: {content: "hi"}, timestamp: 1)
       expect(event).to be_valid
-    end
-  end
-
-  describe "auto-position assignment" do
-    it "assigns position 0 to the first event in a session" do
-      event = session.events.create!(event_type: "user_message", payload: {content: "first"}, timestamp: 1)
-      expect(event.position).to eq(0)
-    end
-
-    it "auto-increments position for subsequent events" do
-      session.events.create!(event_type: "user_message", payload: {content: "first"}, timestamp: 1)
-      event = session.events.create!(event_type: "agent_message", payload: {content: "second"}, timestamp: 2)
-      expect(event.position).to eq(1)
-    end
-
-    it "does not override an explicitly set position" do
-      event = session.events.create!(event_type: "user_message", payload: {content: "first"}, position: 42, timestamp: 1)
-      expect(event.position).to eq(42)
-    end
-
-    it "assigns positions independently per session" do
-      other_session = Session.create!
-      session.events.create!(event_type: "user_message", payload: {content: "a"}, timestamp: 1)
-      session.events.create!(event_type: "user_message", payload: {content: "b"}, timestamp: 2)
-
-      event = other_session.events.create!(event_type: "user_message", payload: {content: "c"}, timestamp: 3)
-      expect(event.position).to eq(0)
     end
   end
 

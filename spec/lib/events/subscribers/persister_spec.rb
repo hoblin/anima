@@ -57,14 +57,14 @@ RSpec.describe Events::Subscribers::Persister do
       expect(event.payload["success"]).to be true
     end
 
-    it "auto-increments position across events" do
+    it "preserves event creation order" do
       Events::Bus.subscribe(persister)
       Events::Bus.emit(Events::UserMessage.new(content: "first", session_id: session.id))
       Events::Bus.emit(Events::AgentMessage.new(content: "second", session_id: session.id))
       Events::Bus.emit(Events::UserMessage.new(content: "third", session_id: session.id))
 
-      positions = session.events.reload.pluck(:position)
-      expect(positions).to eq([0, 1, 2])
+      contents = session.events.reload.pluck(:payload).map { |p| p["content"] }
+      expect(contents).to eq(%w[first second third])
     end
 
     it "preserves nanosecond timestamps" do
