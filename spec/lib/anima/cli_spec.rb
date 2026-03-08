@@ -37,4 +37,15 @@ RSpec.describe Anima::CLI do
       expect(installer).to have_received(:run)
     end
   end
+
+  describe "tui" do
+    it "delegates to TUI::App" do
+      tui_app = instance_double(TUI::App, run: nil)
+      allow(TUI::App).to receive(:new).and_return(tui_app)
+
+      described_class.start(["tui"])
+
+      expect(tui_app).to have_received(:run)
+    end
+  end
 end

@@ -12,3 +12,7 @@ detectors:
   # Private helpers don't need instance state to be valid
   UtilityFunction:
     public_methods_only: true
+
+# TUI render methods receive (frame, tui) by design — RatatuiRuby convention
+exclude_paths:
+  - lib/tui
