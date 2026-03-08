@@ -12,3 +12,5 @@ gem "rspec", "~> 3.0"
 gem "rspec-rails", "~> 7.0"
 
 gem "standard", "~> 1.3"
+
+gem "webmock", "~> 3.23"
