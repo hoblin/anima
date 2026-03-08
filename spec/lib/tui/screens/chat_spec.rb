@@ -60,6 +60,12 @@ RSpec.describe TUI::Screens::Chat do
         expect(screen.handle_event(event)).to be false
       end
 
+      it "stops accepting input at MAX_INPUT_LENGTH" do
+        screen.instance_variable_set(:@input, "a" * described_class::MAX_INPUT_LENGTH)
+        expect(screen.handle_event(key_event(code: "x"))).to be false
+        expect(screen.input.length).to eq(described_class::MAX_INPUT_LENGTH)
+      end
+
       it "returns true for handled character events" do
         expect(screen.handle_event(key_event(code: "a"))).to be true
       end

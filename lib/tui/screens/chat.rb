@@ -4,8 +4,14 @@ module TUI
   module Screens
     class Chat
       INPUT_HEIGHT = 3
+      MAX_INPUT_LENGTH = 10_000
+      PRINTABLE_CHAR = /\A[[:print:]]\z/
 
-      attr_reader :messages, :input, :loading
+      ROLE_USER = "user"
+      ROLE_ASSISTANT = "assistant"
+      ROLE_LABELS = {ROLE_USER => "You", ROLE_ASSISTANT => "Claude"}.freeze
+
+      attr_reader :messages, :input
 
       def initialize
         @messages = []
@@ -37,7 +43,7 @@ module TUI
         elsif event.backspace?
           @input = @input.chop
           true
-        elsif printable_char?(event)
+        elsif printable_char?(event) && @input.length < MAX_INPUT_LENGTH
           @input += event.code
           true
         else
@@ -87,13 +93,13 @@ module TUI
 
       def build_message_lines(tui)
         @messages.flat_map do |msg|
-          role_style = if msg[:role] == "user"
+          role_style = if msg[:role] == ROLE_USER
             tui.style(fg: "green", modifiers: [:bold])
           else
             tui.style(fg: "cyan", modifiers: [:bold])
           end
 
-          label = (msg[:role] == "user") ? "You" : "Claude"
+          label = ROLE_LABELS.fetch(msg[:role], msg[:role])
 
           [
             tui.line(spans: [
@@ -131,16 +137,16 @@ module TUI
         text = @input.strip
         return if text.empty?
 
-        @messages << {role: "user", content: text}
+        @messages << {role: ROLE_USER, content: text}
         @input = ""
         @loading = true
 
         Thread.new do
           @client ||= LLM::Client.new
           response = @client.chat(@messages)
-          @messages << {role: "assistant", content: response}
+          @messages << {role: ROLE_ASSISTANT, content: response}
         rescue => e
-          @messages << {role: "assistant", content: "Error: #{e.message}"}
+          @messages << {role: ROLE_ASSISTANT, content: "Error: #{e.message}"}
         ensure
           @loading = false
         end
@@ -149,7 +155,7 @@ module TUI
       def printable_char?(event)
         return false if event.modifiers&.include?("ctrl")
 
-        event.code.length == 1 && event.code.match?(/[[:print:]]/)
+        event.code.length == 1 && event.code.match?(PRINTABLE_CHAR)
       end
     end
   end
