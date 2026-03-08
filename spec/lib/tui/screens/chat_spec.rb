@@ -4,7 +4,10 @@ require "rails_helper"
 require "ratatui_ruby"
 
 RSpec.describe TUI::Screens::Chat do
-  subject(:screen) { described_class.new }
+  let(:session) { Session.create! }
+  let(:persister) { double("Persister", emit: nil, session: session, "session=": nil) }
+
+  subject(:screen) { described_class.new(session: session, persister: persister) }
 
   # RatatuiRuby::Event uses method_missing for dynamic predicates,
   # so we use plain doubles instead of instance_double
@@ -19,10 +22,10 @@ RSpec.describe TUI::Screens::Chat do
     double("Event", **defaults, code: code, modifiers: modifiers, **overrides)
   end
 
-  after { Events::Bus.unsubscribe(screen.message_collector) }
+  after { screen.finalize }
 
   describe "#initialize" do
-    it "starts with empty messages" do
+    it "starts with empty messages for a fresh session" do
       expect(screen.messages).to eq([])
     end
 
@@ -38,6 +41,34 @@ RSpec.describe TUI::Screens::Chat do
       screen # force lazy subject to initialize and subscribe
       Events::Bus.emit(Events::UserMessage.new(content: "test"))
       expect(screen.messages).to eq([{role: "user", content: "test"}])
+    end
+
+    it "resumes messages from an existing session" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "old message"}, timestamp: 1)
+      session.events.create!(event_type: "agent_message", payload: {"content" => "old reply"}, timestamp: 2)
+
+      resumed_screen = described_class.new(session: session, persister: persister)
+
+      expect(resumed_screen.messages).to eq([
+        {role: "user", content: "old message"},
+        {role: "assistant", content: "old reply"}
+      ])
+
+      resumed_screen.finalize
+    end
+
+    it "creates a session if none exists" do
+      Session.destroy_all
+      new_screen = described_class.new(persister: persister)
+      expect(new_screen.session).to be_a(Session)
+      expect(new_screen.session).to be_persisted
+      new_screen.finalize
+    end
+
+    it "resumes the last session if one exists" do
+      resumed_screen = described_class.new(persister: persister)
+      expect(resumed_screen.session).to eq(session)
+      resumed_screen.finalize
     end
   end
 
@@ -281,6 +312,15 @@ RSpec.describe TUI::Screens::Chat do
       expect(screen.messages).to eq([])
     end
 
+    it "creates a new session record" do
+      expect { screen.new_session }.to change(Session, :count).by(1)
+    end
+
+    it "switches the persister to the new session" do
+      screen.new_session
+      expect(persister).to have_received(:session=)
+    end
+
     it "clears input" do
       screen.instance_variable_set(:@input, "partial")
       screen.new_session
@@ -299,6 +339,10 @@ RSpec.describe TUI::Screens::Chat do
       screen.finalize
       Events::Bus.emit(Events::UserMessage.new(content: "after finalize"))
       expect(screen.messages).to be_empty
+    end
+
+    it "unsubscribes the persister from the event bus" do
+      expect { screen.finalize }.not_to raise_error
     end
   end
 end
