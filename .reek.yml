@@ -1,0 +1,14 @@
+---
+detectors:
+  # YARD docs cover module/class documentation; no need for reek to duplicate
+  IrresponsibleModule:
+    enabled: false
+  # Constructor injection (provider: nil) triggers false positives
+  ControlParameter:
+    enabled: false
+  # Bang methods don't need safe counterparts in this codebase
+  MissingSafeMethod:
+    enabled: false
+  # Private helpers don't need instance state to be valid
+  UtilityFunction:
+    public_methods_only: true

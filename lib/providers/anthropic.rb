@@ -136,7 +136,7 @@ module Providers
 
     def error_message(response)
       response.parsed_response&.dig("error", "message") || response.message
-    rescue
+    rescue JSON::ParserError, NoMethodError
       response.message
     end
   end
