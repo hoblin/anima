@@ -114,8 +114,10 @@ module TUI
           ])
         end
 
+        inner_width = [area.width - 2, 1].max
         @visible_height = [area.height - 2, 0].max
-        @max_scroll = [lines.length - @visible_height, 0].max
+        content_height = estimate_wrapped_height(inner_width)
+        @max_scroll = [content_height - @visible_height, 0].max
         @scroll_offset = @max_scroll if @auto_scroll
         @scroll_offset = @scroll_offset.clamp(0, @max_scroll)
 
@@ -248,6 +250,20 @@ module TUI
         else
           false
         end
+      end
+
+      # Approximate visual line count after word-wrap to set accurate scroll bounds.
+      # Paragraph widget wraps at inner_width, turning one logical line into
+      # ceil(text_length / inner_width) visual lines.
+      def estimate_wrapped_height(inner_width)
+        total = messages.sum do |msg|
+          label = ROLE_LABELS.fetch(msg[:role], msg[:role])
+          text_length = label.length + 2 + msg[:content].length
+          visual_lines = [(text_length.to_f / inner_width).ceil, 1].max
+          visual_lines + 1
+        end
+        total += 1 if @loading
+        [total, 1].max
       end
 
       def scroll_up(lines)
