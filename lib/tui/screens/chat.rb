@@ -54,6 +54,7 @@ module TUI
         render_input(frame, input_area, tui)
       end
 
+      # Scrolling bypasses the loading guard so users can read chat history during LLM calls
       def handle_event(event)
         return handle_mouse_event(event) if event.mouse?
         return handle_scroll_key(event) if scroll_key?(event)
@@ -161,14 +162,14 @@ module TUI
           end
 
           label = ROLE_LABELS.fetch(msg[:role], msg[:role])
-          content_lines = msg[:content].split("\n", -1)
+          content_lines = msg[:content].to_s.split("\n", -1)
 
           lines = [tui.line(spans: [
             tui.span(content: "#{label}: ", style: role_style),
             tui.span(content: content_lines.first.to_s)
           ])]
-          content_lines.drop(1).each { |text| lines << text }
-          lines << ""
+          content_lines.drop(1).each { |text| lines << tui.line(spans: [tui.span(content: text)]) }
+          lines << tui.line(spans: [tui.span(content: "")])
         end
       end
 
@@ -235,10 +236,13 @@ module TUI
         end
       end
 
+      # @return [Boolean] whether the event is an arrow or page key used for scrolling
       def scroll_key?(event)
         event.up? || event.down? || event.page_up? || event.page_down?
       end
 
+      # Dispatches scroll key events to {#scroll_up} or {#scroll_down}
+      # @return [true] always redraws after scrolling
       def handle_scroll_key(event)
         if event.up?
           scroll_up(SCROLL_STEP)
@@ -252,6 +256,8 @@ module TUI
         true
       end
 
+      # Handles mouse wheel scroll events; ignores other mouse events
+      # @return [Boolean] true if the event was a scroll wheel event
       def handle_mouse_event(event)
         if event.scroll_up?
           scroll_up(MOUSE_SCROLL_STEP)
@@ -264,11 +270,17 @@ module TUI
         end
       end
 
+      # Scrolls the viewport up, clamping at the top.
+      # Disables auto-scroll when the user moves away from the bottom.
+      # @param lines [Integer] number of lines to scroll
       def scroll_up(lines)
         @scroll_offset = [@scroll_offset - lines, 0].max
         @auto_scroll = @scroll_offset >= @max_scroll
       end
 
+      # Scrolls the viewport down, clamping at max_scroll.
+      # Re-enables auto-scroll when the user reaches the bottom.
+      # @param lines [Integer] number of lines to scroll
       def scroll_down(lines)
         @scroll_offset = [@scroll_offset + lines, @max_scroll].min
         @auto_scroll = @scroll_offset >= @max_scroll

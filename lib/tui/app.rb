@@ -178,6 +178,7 @@ module TUI
       nil
     end
 
+    # Forwards an event to the active screen for handling
     def delegate_to_screen(event)
       screen = @screens[@current_screen]
       screen.handle_event(event) if screen.respond_to?(:handle_event)
