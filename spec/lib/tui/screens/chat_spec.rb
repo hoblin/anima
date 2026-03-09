@@ -163,9 +163,11 @@ RSpec.describe TUI::Screens::Chat do
 
     context "enter submits message" do
       let(:client) { double("LLM::Client") }
+      let(:agent_loop) { AgentLoop.new(session: session, client: client) }
+
+      subject(:screen) { described_class.new(session: session, persister: persister, agent_loop: agent_loop) }
 
       before do
-        screen.instance_variable_set(:@client, client)
         allow(client).to receive(:chat_with_tools).and_return("Hello back!")
       end
 
@@ -246,9 +248,11 @@ RSpec.describe TUI::Screens::Chat do
 
     context "error handling" do
       let(:client) { double("LLM::Client") }
+      let(:agent_loop) { AgentLoop.new(session: session, client: client) }
+
+      subject(:screen) { described_class.new(session: session, persister: persister, agent_loop: agent_loop) }
 
       before do
-        screen.instance_variable_set(:@client, client)
         allow(client).to receive(:chat_with_tools).and_raise(StandardError, "Connection failed")
       end
 
@@ -292,14 +296,11 @@ RSpec.describe TUI::Screens::Chat do
 
     context "multi-turn conversation" do
       let(:real_persister) { Events::Subscribers::Persister.new(session) }
-      let(:screen_with_persister) { described_class.new(session: session, persister: real_persister) }
       let(:client) { double("LLM::Client") }
+      let(:agent_loop) { AgentLoop.new(session: session, client: client) }
+      let(:screen_with_persister) { described_class.new(session: session, persister: real_persister, agent_loop: agent_loop) }
 
       after { screen_with_persister.finalize }
-
-      before do
-        screen_with_persister.instance_variable_set(:@client, client)
-      end
 
       it "passes viewport messages from session to LLM client" do
         received_messages = nil
@@ -436,9 +437,11 @@ RSpec.describe TUI::Screens::Chat do
 
   describe "#new_session" do
     let(:client) { double("LLM::Client") }
+    let(:agent_loop) { AgentLoop.new(session: session, client: client) }
+
+    subject(:screen) { described_class.new(session: session, persister: persister, agent_loop: agent_loop) }
 
     before do
-      screen.instance_variable_set(:@client, client)
       allow(client).to receive(:chat_with_tools).and_return("response")
 
       screen.handle_event(key_event(code: "h"))
