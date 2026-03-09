@@ -6,7 +6,7 @@
 class CountEventTokensJob < ApplicationJob
   queue_as :default
 
-  retry_on Providers::Anthropic::Error, wait: :exponentially_longer, attempts: 3
+  retry_on Providers::Anthropic::Error, wait: :polynomially_longer, attempts: 3
   discard_on ActiveRecord::RecordNotFound
 
   # @param event_id [Integer] the Event record to count tokens for

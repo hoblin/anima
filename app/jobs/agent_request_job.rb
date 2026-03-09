@@ -4,9 +4,9 @@
 # for transient failures (network errors, rate limits, server errors).
 #
 # Emits events via {Events::Bus} as it progresses, making results visible
-# to any subscriber (TUI, WebSocket clients). Emits retry notifications
-# as {Events::SystemMessage} so the user sees "retrying..." instead of
-# raw error messages.
+# to any subscriber (TUI, WebSocket clients). All retry and failure
+# notifications are emitted as {Events::SystemMessage} to avoid polluting
+# the LLM context window.
 #
 # @example Inline execution (TUI)
 #   AgentRequestJob.perform_now(session.id)
@@ -18,15 +18,16 @@ class AgentRequestJob < ApplicationJob
 
   retry_on Providers::Anthropic::TransientError,
     wait: :polynomially_longer, attempts: 5 do |job, error|
-    Events::Bus.emit(Events::AgentMessage.new(
+    Events::Bus.emit(Events::SystemMessage.new(
       content: "Failed after multiple retries: #{error.message}",
       session_id: job.arguments.first
     ))
   end
 
+  discard_on ActiveRecord::RecordNotFound
   discard_on Providers::Anthropic::AuthenticationError do |job, error|
-    Events::Bus.emit(Events::AgentMessage.new(
-      content: "#{error.class}: #{error.message}",
+    Events::Bus.emit(Events::SystemMessage.new(
+      content: "Authentication failed: #{error.message}",
       session_id: job.arguments.first
     ))
   end

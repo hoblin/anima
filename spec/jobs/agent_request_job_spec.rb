@@ -24,6 +24,12 @@ RSpec.describe AgentRequestJob do
         satisfy { |handler| handler[0] == "Providers::Anthropic::AuthenticationError" }
       )
     end
+
+    it "discards on RecordNotFound" do
+      expect(described_class.rescue_handlers).to include(
+        satisfy { |handler| handler[0] == "ActiveRecord::RecordNotFound" }
+      )
+    end
   end
 
   describe "#perform" do
@@ -121,14 +127,16 @@ RSpec.describe AgentRequestJob do
         stub_request(:post, "https://api.anthropic.com/v1/messages")
           .to_raise(Errno::ECONNRESET.new("Connection reset by peer"))
 
-        collector = Events::Subscribers::MessageCollector.new
-        Events::Bus.subscribe(collector)
+        emitted_events = []
+        allow(Events::Bus).to receive(:emit).and_wrap_original do |method, event|
+          emitted_events << event
+          method.call(event)
+        end
 
         perform_enqueued_jobs { described_class.perform_later(session.id) }
 
-        assistant_messages = collector.messages.select { |m| m[:role] == "assistant" }
-        expect(assistant_messages.last[:content]).to include("Failed after multiple retries")
-        Events::Bus.unsubscribe(collector)
+        system_messages = emitted_events.select { |e| e.is_a?(Events::SystemMessage) }
+        expect(system_messages.last.to_h[:content]).to include("Failed after multiple retries")
       end
     end
 
@@ -299,14 +307,24 @@ RSpec.describe AgentRequestJob do
             headers: {"content-type" => "application/json"}
           )
 
-        collector = Events::Subscribers::MessageCollector.new
-        Events::Bus.subscribe(collector)
+        emitted_events = []
+        allow(Events::Bus).to receive(:emit).and_wrap_original do |method, event|
+          emitted_events << event
+          method.call(event)
+        end
 
         described_class.perform_now(session.id)
 
-        assistant_messages = collector.messages.select { |m| m[:role] == "assistant" }
-        expect(assistant_messages.last[:content]).to include("AuthenticationError")
-        Events::Bus.unsubscribe(collector)
+        system_messages = emitted_events.select { |e| e.is_a?(Events::SystemMessage) }
+        expect(system_messages.last.to_h[:content]).to include("Authentication failed")
+      end
+    end
+
+    context "deleted session" do
+      it "discards without retrying when session does not exist" do
+        expect {
+          described_class.perform_now(-1)
+        }.not_to raise_error
       end
     end
 
