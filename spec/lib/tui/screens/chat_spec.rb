@@ -263,7 +263,7 @@ RSpec.describe TUI::Screens::Chat do
 
         sleep 0.1
 
-        expect(screen.messages.last).to eq({role: "assistant", content: "Error: Connection failed"})
+        expect(screen.messages.last).to eq({role: "assistant", content: "StandardError: Connection failed"})
       end
 
       it "resets loading after error" do
@@ -440,6 +440,8 @@ RSpec.describe TUI::Screens::Chat do
     let(:agent_loop) { AgentLoop.new(session: session, client: client) }
 
     subject(:screen) { described_class.new(session: session, persister: persister, agent_loop: agent_loop) }
+
+    after { screen.finalize }
 
     before do
       allow(client).to receive(:chat_with_tools).and_return("response")

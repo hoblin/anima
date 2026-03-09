@@ -129,12 +129,12 @@ RSpec.describe AgentLoop do
 
         agent_loop.process("hi")
 
-        expect(collector.messages.last).to eq({role: "assistant", content: "Error: Connection failed"})
+        expect(collector.messages.last).to eq({role: "assistant", content: "StandardError: Connection failed"})
         Events::Bus.unsubscribe(collector)
       end
 
       it "returns the error message" do
-        expect(agent_loop.process("hi")).to eq("Error: Connection failed")
+        expect(agent_loop.process("hi")).to eq("StandardError: Connection failed")
       end
 
       it "still emits user_message before the error" do
@@ -183,6 +183,32 @@ RSpec.describe AgentLoop do
       loop.finalize
 
       expect(mock_shell).to have_received(:finalize)
+    end
+
+    it "is safe to call multiple times" do
+      mock_shell = instance_double(ShellSession)
+      allow(mock_shell).to receive(:finalize)
+
+      loop = described_class.new(session: session, shell_session: mock_shell, client: client)
+      loop.finalize
+      expect { loop.finalize }.not_to raise_error
+    end
+  end
+
+  describe "registry injection" do
+    it "accepts a custom registry" do
+      registry = Tools::Registry.new(context: {shell_session: shell_session})
+      registry.register(Tools::WebGet)
+
+      loop = described_class.new(session: session, shell_session: shell_session, client: client, registry: registry)
+      allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
+        expect(registry.registered?("web_get")).to be true
+        expect(registry.registered?("bash")).to be false
+        "ok"
+      end
+
+      loop.process("test")
+      loop.finalize
     end
   end
 end

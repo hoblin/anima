@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Added
+- `AgentLoop` service — decouples LLM orchestration from TUI; callable from background jobs, Action Cable channels, or TUI directly
 - Session and event persistence to SQLite — conversations survive TUI restart
 - `Session` model — owns an ordered event stream
 - `Event` model — polymorphic type, JSON payload, auto-incrementing position
