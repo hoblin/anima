@@ -20,7 +20,8 @@
 - Anthropic API subscription token authentication
 - LLM client (raw HTTP to Anthropic API)
 - TUI scaffold with RatatuiRuby — tmux-style `Ctrl+a` command mode, sidebar, status bar
-- Headless Rails 8.1 app (API-only, no views/assets/Action Cable)
+- Action Cable infrastructure with Solid Cable adapter for Brain/TUI WebSocket communication
+- Headless Rails 8.1 app (API-only, no views/assets)
 - `anima install` command — creates ~/.anima/ tree, per-environment credentials, systemd user service
 - `anima start` command — runs db:prepare and boots Rails
 - SQLite databases, logs, tmp, and credentials stored in ~/.anima/
