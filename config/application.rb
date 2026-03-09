@@ -6,7 +6,9 @@ require "rails"
 require "active_model/railtie"
 require "active_record/railtie"
 require "active_job/railtie"
+require "action_cable/engine"
 require "rails/test_unit/railtie"
+require "solid_cable"
 require "solid_queue"
 
 Bundler.require(*Rails.groups) if ENV.key?("BUNDLE_GEMFILE")
@@ -19,6 +21,8 @@ module Anima
     config.autoload_lib(ignore: %w[anima])
     config.active_job.queue_adapter = :solid_queue
     config.solid_queue.connects_to = {database: {writing: :queue}}
+
+    config.action_cable.disable_request_forgery_protection = true
 
     anima_home = Pathname.new(File.expand_path("~/.anima"))
 

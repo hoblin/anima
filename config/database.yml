@@ -13,6 +13,10 @@ development:
     <<: *default
     database: <%= File.join(anima_home, "db", "development_queue.sqlite3") %>
     migrations_paths: db/queue_migrate
+  cable:
+    <<: *default
+    database: <%= File.join(anima_home, "db", "development_cable.sqlite3") %>
+    migrations_paths: db/cable_migrate
 
 test:
   primary:
@@ -22,6 +26,10 @@ test:
     <<: *default
     database: <%= File.join(anima_home, "db", "test_queue.sqlite3") %>
     migrations_paths: db/queue_migrate
+  cable:
+    <<: *default
+    database: <%= File.join(anima_home, "db", "test_cable.sqlite3") %>
+    migrations_paths: db/cable_migrate
 
 production:
   primary:
@@ -31,3 +39,7 @@ production:
     <<: *default
     database: <%= File.join(anima_home, "db", "production_queue.sqlite3") %>
     migrations_paths: db/queue_migrate
+  cable:
+    <<: *default
+    database: <%= File.join(anima_home, "db", "production_cable.sqlite3") %>
+    migrations_paths: db/cable_migrate
