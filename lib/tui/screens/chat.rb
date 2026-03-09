@@ -117,30 +117,38 @@ module TUI
         inner_width = [area.width - 2, 1].max
         @visible_height = [area.height - 2, 0].max
 
-        content_widget = tui.paragraph(text: lines, wrap: true)
+        content_widget = tui.paragraph(text: lines, wrap: true, style: tui.style(fg: "white"))
         content_height = content_widget.line_count(inner_width)
 
         @max_scroll = [content_height - @visible_height, 0].max
         @scroll_offset = @max_scroll if @auto_scroll
         @scroll_offset = @scroll_offset.clamp(0, @max_scroll)
 
-        titles = []
-        titles << {content: " \u25B2 more ", position: :top, alignment: :right} if @scroll_offset > 0
-        titles << {content: " \u25BC more ", position: :bottom, alignment: :right} if @scroll_offset < @max_scroll
-
         widget = tui.paragraph(
           text: lines,
           wrap: true,
+          style: tui.style(fg: "white"),
           scroll: [@scroll_offset, 0],
           block: tui.block(
             title: "Chat",
-            titles: titles,
             borders: [:all],
             border_type: :rounded,
             border_style: {fg: "cyan"}
           )
         )
         frame.render_widget(widget, area)
+
+        if @max_scroll > 0
+          scrollbar = tui.scrollbar(
+            content_length: content_height,
+            position: @scroll_offset,
+            orientation: :vertical_right,
+            thumb_style: {fg: "cyan"},
+            track_symbol: "│",
+            track_style: {fg: "dark_gray"}
+          )
+          frame.render_widget(scrollbar, area)
+        end
       end
 
       def build_message_lines(tui)
@@ -152,14 +160,14 @@ module TUI
           end
 
           label = ROLE_LABELS.fetch(msg[:role], msg[:role])
+          content_lines = msg[:content].split("\n", -1)
 
-          [
-            tui.line(spans: [
-              tui.span(content: "#{label}: ", style: role_style),
-              tui.span(content: msg[:content], style: tui.style(fg: "white"))
-            ]),
-            tui.line(spans: [tui.span(content: "", style: tui.style(fg: "white"))])
-          ]
+          lines = [tui.line(spans: [
+            tui.span(content: "#{label}: ", style: role_style),
+            tui.span(content: content_lines.first.to_s)
+          ])]
+          content_lines.drop(1).each { |text| lines << text }
+          lines << ""
         end
       end
 
