@@ -16,11 +16,15 @@ module TUI
 
       attr_reader :input, :message_collector, :session, :scroll_offset
 
-      def initialize(message_collector: nil, persister: nil, session: nil, shell_session: nil)
+      # @param message_collector [Events::Subscribers::MessageCollector, nil]
+      # @param persister [Events::Subscribers::Persister, nil]
+      # @param session [Session, nil] conversation session to resume
+      # @param shell_session [ShellSession, nil] passed through to {AgentLoop}
+      # @param agent_loop [AgentLoop, nil] injectable for testing
+      def initialize(message_collector: nil, persister: nil, session: nil, shell_session: nil, agent_loop: nil)
         @message_collector = message_collector || Events::Subscribers::MessageCollector.new
         @input = ""
         @loading = false
-        @client = nil
         @submit_thread = nil
         @scroll_offset = 0
         @auto_scroll = true
@@ -30,7 +34,7 @@ module TUI
         @session = session || Session.order(id: :desc).first || Session.create!
         load_session_messages
         @persister = persister || Events::Subscribers::Persister.new(@session)
-        @shell_session = shell_session || ShellSession.new(session_id: @session.id)
+        @agent_loop = agent_loop || AgentLoop.new(session: @session, shell_session: shell_session)
 
         Events::Bus.subscribe(@message_collector)
         Events::Bus.subscribe(@persister)
@@ -76,7 +80,7 @@ module TUI
 
       def new_session
         @submit_thread&.join
-        @shell_session&.finalize
+        @agent_loop.finalize
         @session = Session.create!
         @persister.session = @session
         @message_collector.clear
@@ -84,13 +88,12 @@ module TUI
         @loading = false
         @scroll_offset = 0
         @auto_scroll = true
-        @shell_session = ShellSession.new(session_id: @session.id)
-        @registry = nil
+        @agent_loop = AgentLoop.new(session: @session)
       end
 
       def finalize
         @submit_thread&.join
-        @shell_session&.finalize
+        @agent_loop.finalize
         Events::Bus.unsubscribe(@message_collector)
         Events::Bus.unsubscribe(@persister)
       end
@@ -199,32 +202,14 @@ module TUI
         text = @input.strip
         return if text.empty?
 
-        Events::Bus.emit(Events::UserMessage.new(content: text, session_id: @session.id))
         @input = ""
         @loading = true
 
         @submit_thread = Thread.new do
-          @client ||= LLM::Client.new
-          @registry ||= build_tool_registry
-          viewport_messages = @session.messages_for_llm
-          response = @client.chat_with_tools(
-            viewport_messages,
-            registry: @registry,
-            session_id: @session.id
-          )
-          Events::Bus.emit(Events::AgentMessage.new(content: response, session_id: @session.id))
-        rescue => e
-          Events::Bus.emit(Events::AgentMessage.new(content: "Error: #{e.message}", session_id: @session.id))
+          @agent_loop.process(text)
         ensure
           @loading = false
         end
-      end
-
-      def build_tool_registry
-        registry = Tools::Registry.new(context: {shell_session: @shell_session})
-        registry.register(Tools::WebGet)
-        registry.register(Tools::Bash)
-        registry
       end
 
       def load_session_messages
