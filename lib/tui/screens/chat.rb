@@ -11,7 +11,9 @@ module TUI
       ROLE_ASSISTANT = "assistant"
       ROLE_LABELS = {ROLE_USER => "You", ROLE_ASSISTANT => "Anima"}.freeze
 
-      attr_reader :input, :message_collector, :session
+      SCROLL_STEP = 1
+
+      attr_reader :input, :message_collector, :session, :scroll_offset
 
       def initialize(message_collector: nil, persister: nil, session: nil, shell_session: nil)
         @message_collector = message_collector || Events::Subscribers::MessageCollector.new
@@ -19,6 +21,10 @@ module TUI
         @loading = false
         @client = nil
         @submit_thread = nil
+        @scroll_offset = 0
+        @auto_scroll = true
+        @visible_height = 0
+        @max_scroll = 0
 
         @session = session || Session.order(id: :desc).first || Session.create!
         load_session_messages
@@ -48,6 +54,8 @@ module TUI
       end
 
       def handle_event(event)
+        return handle_mouse_event(event) if event.mouse?
+        return handle_scroll_key(event) if scroll_key?(event)
         return false if @loading
 
         if event.enter?
@@ -72,6 +80,8 @@ module TUI
         @message_collector.clear
         @input = ""
         @loading = false
+        @scroll_offset = 0
+        @auto_scroll = true
         @shell_session = ShellSession.new(session_id: @session.id)
         @registry = nil
       end
@@ -104,11 +114,22 @@ module TUI
           ])
         end
 
+        @visible_height = [area.height - 2, 0].max
+        @max_scroll = [lines.length - @visible_height, 0].max
+        @scroll_offset = @max_scroll if @auto_scroll
+        @scroll_offset = @scroll_offset.clamp(0, @max_scroll)
+
+        titles = []
+        titles << {content: " \u25B2 more ", position: :top, alignment: :right} if @scroll_offset > 0
+        titles << {content: " \u25BC more ", position: :bottom, alignment: :right} if @scroll_offset < @max_scroll
+
         widget = tui.paragraph(
           text: lines,
           wrap: true,
+          scroll: [@scroll_offset, 0],
           block: tui.block(
             title: "Chat",
+            titles: titles,
             borders: [:all],
             border_type: :rounded,
             border_style: {fg: "cyan"}
@@ -198,6 +219,45 @@ module TUI
             content: event.payload["content"].to_s
           })
         end
+      end
+
+      def scroll_key?(event)
+        event.up? || event.down? || event.page_up? || event.page_down?
+      end
+
+      def handle_scroll_key(event)
+        if event.up?
+          scroll_up(SCROLL_STEP)
+        elsif event.down?
+          scroll_down(SCROLL_STEP)
+        elsif event.page_up?
+          scroll_up(@visible_height)
+        elsif event.page_down?
+          scroll_down(@visible_height)
+        end
+        true
+      end
+
+      def handle_mouse_event(event)
+        if event.scroll_up?
+          scroll_up(SCROLL_STEP)
+          true
+        elsif event.scroll_down?
+          scroll_down(SCROLL_STEP)
+          true
+        else
+          false
+        end
+      end
+
+      def scroll_up(lines)
+        @scroll_offset = [@scroll_offset - lines, 0].max
+        @auto_scroll = @scroll_offset >= @max_scroll
+      end
+
+      def scroll_down(lines)
+        @scroll_offset = [@scroll_offset + lines, @max_scroll].min
+        @auto_scroll = @scroll_offset >= @max_scroll
       end
 
       def printable_char?(event)
