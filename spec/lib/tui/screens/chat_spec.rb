@@ -402,12 +402,12 @@ RSpec.describe TUI::Screens::Chat do
 
       it "scrolls up on mouse wheel up" do
         screen.handle_event(mouse_event(kind: "scroll_up"))
-        expect(screen.scroll_offset).to eq(9)
+        expect(screen.scroll_offset).to eq(10 - TUI::Screens::Chat::MOUSE_SCROLL_STEP)
       end
 
       it "scrolls down on mouse wheel down" do
         screen.handle_event(mouse_event(kind: "scroll_down"))
-        expect(screen.scroll_offset).to eq(11)
+        expect(screen.scroll_offset).to eq(10 + TUI::Screens::Chat::MOUSE_SCROLL_STEP)
       end
 
       it "returns true for scroll wheel events" do
@@ -422,7 +422,7 @@ RSpec.describe TUI::Screens::Chat do
       it "works during loading" do
         screen.instance_variable_set(:@loading, true)
         screen.handle_event(mouse_event(kind: "scroll_up"))
-        expect(screen.scroll_offset).to eq(9)
+        expect(screen.scroll_offset).to eq(10 - TUI::Screens::Chat::MOUSE_SCROLL_STEP)
       end
     end
 

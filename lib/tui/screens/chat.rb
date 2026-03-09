@@ -12,6 +12,7 @@ module TUI
       ROLE_LABELS = {ROLE_USER => "You", ROLE_ASSISTANT => "Anima"}.freeze
 
       SCROLL_STEP = 1
+      MOUSE_SCROLL_STEP = 2
 
       attr_reader :input, :message_collector, :session, :scroll_offset
 
@@ -140,7 +141,7 @@ module TUI
 
         if @max_scroll > 0
           scrollbar = tui.scrollbar(
-            content_length: content_height,
+            content_length: @max_scroll,
             position: @scroll_offset,
             orientation: :vertical_right,
             thumb_style: {fg: "cyan"},
@@ -253,10 +254,10 @@ module TUI
 
       def handle_mouse_event(event)
         if event.scroll_up?
-          scroll_up(SCROLL_STEP)
+          scroll_up(MOUSE_SCROLL_STEP)
           true
         elsif event.scroll_down?
-          scroll_down(SCROLL_STEP)
+          scroll_down(MOUSE_SCROLL_STEP)
           true
         else
           false
