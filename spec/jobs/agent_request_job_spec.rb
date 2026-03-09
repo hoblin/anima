@@ -1,0 +1,328 @@
+# frozen_string_literal: true
+
+require "rails_helper"
+
+RSpec.describe AgentRequestJob do
+  let(:session) { Session.create! }
+  let(:valid_token) { "sk-ant-oat01-#{"a" * 68}" }
+
+  before do
+    allow(Rails.application.credentials).to receive(:dig)
+      .with(:anthropic, :subscription_token)
+      .and_return(valid_token)
+  end
+
+  describe "retry configuration" do
+    it "retries on TransientError" do
+      expect(described_class.rescue_handlers).to include(
+        satisfy { |handler| handler[0] == "Providers::Anthropic::TransientError" }
+      )
+    end
+
+    it "discards on AuthenticationError" do
+      expect(described_class.rescue_handlers).to include(
+        satisfy { |handler| handler[0] == "Providers::Anthropic::AuthenticationError" }
+      )
+    end
+  end
+
+  describe "#perform" do
+    it "runs the agent loop for the given session" do
+      session.events.create!(
+        event_type: "user_message",
+        payload: {"content" => "Hello"},
+        timestamp: 1
+      )
+
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return(
+          status: 200,
+          body: {
+            content: [{type: "text", text: "Hi there!"}],
+            stop_reason: "end_turn"
+          }.to_json,
+          headers: {"content-type" => "application/json"}
+        )
+
+      collector = Events::Subscribers::MessageCollector.new
+      Events::Bus.subscribe(collector)
+
+      described_class.perform_now(session.id)
+
+      expect(collector.messages.last).to eq({role: "assistant", content: "Hi there!"})
+      Events::Bus.unsubscribe(collector)
+    end
+
+    it "finalizes the agent loop after completion" do
+      session.events.create!(
+        event_type: "user_message",
+        payload: {"content" => "Hello"},
+        timestamp: 1
+      )
+
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return(
+          status: 200,
+          body: {
+            content: [{type: "text", text: "done"}],
+            stop_reason: "end_turn"
+          }.to_json,
+          headers: {"content-type" => "application/json"}
+        )
+
+      # Should not raise — finalize cleans up ShellSession
+      expect { described_class.perform_now(session.id) }.not_to raise_error
+    end
+
+    it "finalizes the agent loop even on error" do
+      session.events.create!(
+        event_type: "user_message",
+        payload: {"content" => "Hello"},
+        timestamp: 1
+      )
+
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return(status: 401, body: {error: {message: "unauthorized"}}.to_json,
+          headers: {"content-type" => "application/json"})
+
+      # discard_on prevents the error from propagating
+      expect { described_class.perform_now(session.id) }.not_to raise_error
+    end
+  end
+
+  describe "transient error handling" do
+    before do
+      session.events.create!(
+        event_type: "user_message",
+        payload: {"content" => "Hello"},
+        timestamp: 1
+      )
+    end
+
+    context "connection reset (network failure)" do
+      it "emits a system message with retry notification" do
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_raise(Errno::ECONNRESET.new("Connection reset by peer"))
+
+        emitted_events = []
+        allow(Events::Bus).to receive(:emit).and_wrap_original do |method, event|
+          emitted_events << event
+          method.call(event)
+        end
+
+        perform_enqueued_jobs { described_class.perform_later(session.id) }
+
+        system_messages = emitted_events.select { |e| e.is_a?(Events::SystemMessage) }
+        expect(system_messages).not_to be_empty
+        expect(system_messages.first.to_h[:content]).to include("retrying")
+      end
+
+      it "emits failure message after all retries are exhausted" do
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_raise(Errno::ECONNRESET.new("Connection reset by peer"))
+
+        collector = Events::Subscribers::MessageCollector.new
+        Events::Bus.subscribe(collector)
+
+        perform_enqueued_jobs { described_class.perform_later(session.id) }
+
+        assistant_messages = collector.messages.select { |m| m[:role] == "assistant" }
+        expect(assistant_messages.last[:content]).to include("Failed after multiple retries")
+        Events::Bus.unsubscribe(collector)
+      end
+    end
+
+    context "rate limit (HTTP 429)" do
+      it "retries with exponential backoff" do
+        call_count = 0
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return do
+            call_count += 1
+            if call_count < 3
+              {status: 429, body: {error: {message: "rate limited"}}.to_json,
+               headers: {"content-type" => "application/json"}}
+            else
+              {status: 200,
+               body: {content: [{type: "text", text: "Success!"}], stop_reason: "end_turn"}.to_json,
+               headers: {"content-type" => "application/json"}}
+            end
+          end
+
+        collector = Events::Subscribers::MessageCollector.new
+        Events::Bus.subscribe(collector)
+
+        perform_enqueued_jobs { described_class.perform_later(session.id) }
+
+        expect(collector.messages.last).to eq({role: "assistant", content: "Success!"})
+        expect(call_count).to eq(3)
+        Events::Bus.unsubscribe(collector)
+      end
+    end
+
+    context "server error (HTTP 5xx)" do
+      it "retries on 500 server error" do
+        call_count = 0
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return do
+            call_count += 1
+            if call_count < 2
+              {status: 500, body: "Internal Server Error"}
+            else
+              {status: 200,
+               body: {content: [{type: "text", text: "Recovered!"}], stop_reason: "end_turn"}.to_json,
+               headers: {"content-type" => "application/json"}}
+            end
+          end
+
+        collector = Events::Subscribers::MessageCollector.new
+        Events::Bus.subscribe(collector)
+
+        perform_enqueued_jobs { described_class.perform_later(session.id) }
+
+        expect(collector.messages.last).to eq({role: "assistant", content: "Recovered!"})
+        Events::Bus.unsubscribe(collector)
+      end
+
+      it "retries on 502 bad gateway" do
+        call_count = 0
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return do
+            call_count += 1
+            if call_count < 2
+              {status: 502, body: "Bad Gateway"}
+            else
+              {status: 200,
+               body: {content: [{type: "text", text: "OK"}], stop_reason: "end_turn"}.to_json,
+               headers: {"content-type" => "application/json"}}
+            end
+          end
+
+        collector = Events::Subscribers::MessageCollector.new
+        Events::Bus.subscribe(collector)
+
+        perform_enqueued_jobs { described_class.perform_later(session.id) }
+
+        expect(collector.messages.last).to eq({role: "assistant", content: "OK"})
+        Events::Bus.unsubscribe(collector)
+      end
+
+      it "retries on 503 service unavailable" do
+        call_count = 0
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return do
+            call_count += 1
+            if call_count < 2
+              {status: 503, body: "Service Unavailable"}
+            else
+              {status: 200,
+               body: {content: [{type: "text", text: "Back!"}], stop_reason: "end_turn"}.to_json,
+               headers: {"content-type" => "application/json"}}
+            end
+          end
+
+        collector = Events::Subscribers::MessageCollector.new
+        Events::Bus.subscribe(collector)
+
+        perform_enqueued_jobs { described_class.perform_later(session.id) }
+
+        expect(collector.messages.last).to eq({role: "assistant", content: "Back!"})
+        Events::Bus.unsubscribe(collector)
+      end
+    end
+
+    context "timeout" do
+      it "retries on Net::ReadTimeout" do
+        call_count = 0
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return do
+            call_count += 1
+            if call_count < 2
+              raise Net::ReadTimeout, "Net::ReadTimeout"
+            else
+              {status: 200,
+               body: {content: [{type: "text", text: "Done!"}], stop_reason: "end_turn"}.to_json,
+               headers: {"content-type" => "application/json"}}
+            end
+          end
+
+        collector = Events::Subscribers::MessageCollector.new
+        Events::Bus.subscribe(collector)
+
+        perform_enqueued_jobs { described_class.perform_later(session.id) }
+
+        expect(collector.messages.last).to eq({role: "assistant", content: "Done!"})
+        Events::Bus.unsubscribe(collector)
+      end
+    end
+
+    context "DNS failure" do
+      it "retries on SocketError" do
+        call_count = 0
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return do
+            call_count += 1
+            if call_count < 2
+              raise SocketError, "getaddrinfo: Name or service not known"
+            else
+              {status: 200,
+               body: {content: [{type: "text", text: "Resolved!"}], stop_reason: "end_turn"}.to_json,
+               headers: {"content-type" => "application/json"}}
+            end
+          end
+
+        collector = Events::Subscribers::MessageCollector.new
+        Events::Bus.subscribe(collector)
+
+        perform_enqueued_jobs { described_class.perform_later(session.id) }
+
+        expect(collector.messages.last).to eq({role: "assistant", content: "Resolved!"})
+        Events::Bus.unsubscribe(collector)
+      end
+    end
+  end
+
+  describe "non-transient error handling" do
+    before do
+      session.events.create!(
+        event_type: "user_message",
+        payload: {"content" => "Hello"},
+        timestamp: 1
+      )
+    end
+
+    context "authentication failure (HTTP 401)" do
+      it "fails immediately without retrying" do
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return(
+            status: 401,
+            body: {error: {message: "invalid api key"}}.to_json,
+            headers: {"content-type" => "application/json"}
+          )
+
+        collector = Events::Subscribers::MessageCollector.new
+        Events::Bus.subscribe(collector)
+
+        described_class.perform_now(session.id)
+
+        assistant_messages = collector.messages.select { |m| m[:role] == "assistant" }
+        expect(assistant_messages.last[:content]).to include("AuthenticationError")
+        Events::Bus.unsubscribe(collector)
+      end
+    end
+
+    context "bad request (HTTP 400)" do
+      it "does not retry and raises the error" do
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return(
+            status: 400,
+            body: {error: {message: "invalid model"}}.to_json,
+            headers: {"content-type" => "application/json"}
+          )
+
+        expect {
+          described_class.perform_now(session.id)
+        }.to raise_error(Providers::Anthropic::Error, /Bad request/)
+      end
+    end
+  end
+end

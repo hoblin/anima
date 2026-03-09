@@ -19,6 +19,11 @@ module Providers
     class AuthenticationError < Error; end
     class TokenFormatError < Error; end
 
+    # Transient errors that may succeed on retry (network issues, rate limits, server errors).
+    class TransientError < Error; end
+    class RateLimitError < TransientError; end
+    class ServerError < TransientError; end
+
     class << self
       def validate!
         token = fetch_token
@@ -75,6 +80,8 @@ module Providers
       )
 
       handle_response(response)
+    rescue Errno::ECONNRESET, Net::ReadTimeout, Net::OpenTimeout, SocketError, EOFError => e
+      raise TransientError, "#{e.class}: #{e.message}"
     end
 
     # Count tokens in a message payload without creating a message.
@@ -96,6 +103,8 @@ module Providers
 
       result = handle_response(response)
       result["input_tokens"]
+    rescue Errno::ECONNRESET, Net::ReadTimeout, Net::OpenTimeout, SocketError, EOFError => e
+      raise TransientError, "#{e.class}: #{e.message}"
     end
 
     def validate_credentials!
@@ -147,9 +156,9 @@ module Providers
         raise AuthenticationError,
           "Forbidden (403): #{error_message(response)}"
       when 429
-        raise Error, "Rate limit exceeded: #{error_message(response)}"
+        raise RateLimitError, "Rate limit exceeded: #{error_message(response)}"
       when 500..599
-        raise Error, "Anthropic server error (#{response.code}): #{response.message}"
+        raise ServerError, "Anthropic server error (#{response.code}): #{response.message}"
       else
         raise Error, "Unexpected response (#{response.code}): #{response.message}"
       end

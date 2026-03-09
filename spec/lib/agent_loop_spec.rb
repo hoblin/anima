@@ -52,44 +52,6 @@ RSpec.describe AgentLoop do
       expect(agent_loop.process("hi")).to eq("Hello back!")
     end
 
-    it "passes session messages to the LLM client" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "previous"}, timestamp: 1)
-      session.events.create!(event_type: "agent_message", payload: {"content" => "old reply"}, timestamp: 2)
-
-      received_messages = nil
-      allow(client).to receive(:chat_with_tools) { |msgs, **_|
-        received_messages = msgs.dup
-        "response"
-      }
-
-      agent_loop.process("new question")
-
-      expect(received_messages).to include(
-        {role: "user", content: "previous"},
-        {role: "assistant", content: "old reply"}
-      )
-    end
-
-    it "passes the tool registry to the LLM client" do
-      allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
-        expect(registry).to be_a(Tools::Registry)
-        expect(registry.registered?("bash")).to be true
-        expect(registry.registered?("web_get")).to be true
-        "ok"
-      end
-
-      agent_loop.process("test")
-    end
-
-    it "passes the session_id to the LLM client" do
-      allow(client).to receive(:chat_with_tools) do |_msgs, session_id:, **_|
-        expect(session_id).to eq(session.id)
-        "ok"
-      end
-
-      agent_loop.process("test")
-    end
-
     it "returns nil for empty input" do
       expect(agent_loop.process("")).to be_nil
     end
@@ -174,6 +136,102 @@ RSpec.describe AgentLoop do
     end
   end
 
+  describe "#run" do
+    before do
+      session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      allow(client).to receive(:chat_with_tools).and_return("Hello back!")
+    end
+
+    it "runs the LLM tool-use loop on persisted session messages" do
+      received_messages = nil
+      allow(client).to receive(:chat_with_tools) { |msgs, **_|
+        received_messages = msgs.dup
+        "response"
+      }
+
+      agent_loop.run
+
+      expect(received_messages).to include({role: "user", content: "hi"})
+    end
+
+    it "emits an agent_message event with the response" do
+      collector = Events::Subscribers::MessageCollector.new
+      Events::Bus.subscribe(collector)
+
+      agent_loop.run
+
+      expect(collector.messages.last).to eq({role: "assistant", content: "Hello back!"})
+      Events::Bus.unsubscribe(collector)
+    end
+
+    it "returns the response text" do
+      expect(agent_loop.run).to eq("Hello back!")
+    end
+
+    it "does not emit a user_message event" do
+      collector = Events::Subscribers::MessageCollector.new
+      Events::Bus.subscribe(collector)
+
+      agent_loop.run
+
+      user_messages = collector.messages.select { |m| m[:role] == "user" }
+      expect(user_messages).to be_empty
+      Events::Bus.unsubscribe(collector)
+    end
+
+    context "transient errors propagate for retry logic" do
+      it "raises TransientError" do
+        allow(client).to receive(:chat_with_tools)
+          .and_raise(Providers::Anthropic::TransientError, "Connection reset by peer")
+
+        expect { agent_loop.run }.to raise_error(Providers::Anthropic::TransientError)
+      end
+
+      it "raises RateLimitError" do
+        allow(client).to receive(:chat_with_tools)
+          .and_raise(Providers::Anthropic::RateLimitError, "Rate limit exceeded")
+
+        expect { agent_loop.run }.to raise_error(Providers::Anthropic::RateLimitError)
+      end
+
+      it "raises ServerError" do
+        allow(client).to receive(:chat_with_tools)
+          .and_raise(Providers::Anthropic::ServerError, "Anthropic server error")
+
+        expect { agent_loop.run }.to raise_error(Providers::Anthropic::ServerError)
+      end
+    end
+
+    context "authentication errors propagate" do
+      it "raises AuthenticationError" do
+        allow(client).to receive(:chat_with_tools)
+          .and_raise(Providers::Anthropic::AuthenticationError, "Invalid API key")
+
+        expect { agent_loop.run }.to raise_error(Providers::Anthropic::AuthenticationError)
+      end
+    end
+
+    it "passes the tool registry to the LLM client" do
+      allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
+        expect(registry).to be_a(Tools::Registry)
+        expect(registry.registered?("bash")).to be true
+        expect(registry.registered?("web_get")).to be true
+        "ok"
+      end
+
+      agent_loop.run
+    end
+
+    it "passes the session_id to the LLM client" do
+      allow(client).to receive(:chat_with_tools) do |_msgs, session_id:, **_|
+        expect(session_id).to eq(session.id)
+        "ok"
+      end
+
+      agent_loop.run
+    end
+  end
+
   describe "#finalize" do
     it "finalizes the shell session" do
       mock_shell = instance_double(ShellSession)
@@ -200,6 +258,7 @@ RSpec.describe AgentLoop do
       registry = Tools::Registry.new(context: {shell_session: shell_session})
       registry.register(Tools::WebGet)
 
+      session.events.create!(event_type: "user_message", payload: {"content" => "test"}, timestamp: 1)
       loop = described_class.new(session: session, shell_session: shell_session, client: client, registry: registry)
       allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
         expect(registry.registered?("web_get")).to be true
@@ -207,7 +266,7 @@ RSpec.describe AgentLoop do
         "ok"
       end
 
-      loop.process("test")
+      loop.run
       loop.finalize
     end
   end

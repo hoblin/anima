@@ -229,7 +229,7 @@ RSpec.describe Providers::Anthropic do
       }.to raise_error(Providers::Anthropic::Error, /Bad request/)
     end
 
-    it "raises Error on 429 rate limit" do
+    it "raises RateLimitError on 429 rate limit" do
       stub_request(:post, "https://api.anthropic.com/v1/messages")
         .to_return(
           status: 429,
@@ -243,7 +243,7 @@ RSpec.describe Providers::Anthropic do
           messages: [{role: "user", content: "Hi"}],
           max_tokens: 100
         )
-      }.to raise_error(Providers::Anthropic::Error, /Rate limit/)
+      }.to raise_error(Providers::Anthropic::RateLimitError, /Rate limit/)
     end
 
     it "raises AuthenticationError on 401 response" do
@@ -280,7 +280,7 @@ RSpec.describe Providers::Anthropic do
       }.to raise_error(Providers::Anthropic::AuthenticationError, /Forbidden/)
     end
 
-    it "raises Error on 500 server error" do
+    it "raises ServerError on 500 server error" do
       stub_request(:post, "https://api.anthropic.com/v1/messages")
         .to_return(status: 500, body: "Internal Server Error")
 
@@ -290,7 +290,7 @@ RSpec.describe Providers::Anthropic do
           messages: [{role: "user", content: "Hi"}],
           max_tokens: 100
         )
-      }.to raise_error(Providers::Anthropic::Error, /server error/)
+      }.to raise_error(Providers::Anthropic::ServerError, /server error/)
     end
 
     it "raises Error on unexpected status code" do
@@ -304,6 +304,60 @@ RSpec.describe Providers::Anthropic do
           max_tokens: 100
         )
       }.to raise_error(Providers::Anthropic::Error, /Unexpected response/)
+    end
+
+    context "network errors are wrapped as TransientError" do
+      it "wraps Errno::ECONNRESET" do
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_raise(Errno::ECONNRESET.new("Connection reset by peer"))
+
+        expect {
+          provider.create_message(
+            model: "claude-sonnet-4-20250514",
+            messages: [{role: "user", content: "Hi"}],
+            max_tokens: 100
+          )
+        }.to raise_error(Providers::Anthropic::TransientError, /ECONNRESET/)
+      end
+
+      it "wraps Net::ReadTimeout" do
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_raise(Net::ReadTimeout.new("Net::ReadTimeout"))
+
+        expect {
+          provider.create_message(
+            model: "claude-sonnet-4-20250514",
+            messages: [{role: "user", content: "Hi"}],
+            max_tokens: 100
+          )
+        }.to raise_error(Providers::Anthropic::TransientError, /ReadTimeout/)
+      end
+
+      it "wraps SocketError" do
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_raise(SocketError.new("getaddrinfo: Name or service not known"))
+
+        expect {
+          provider.create_message(
+            model: "claude-sonnet-4-20250514",
+            messages: [{role: "user", content: "Hi"}],
+            max_tokens: 100
+          )
+        }.to raise_error(Providers::Anthropic::TransientError, /SocketError/)
+      end
+
+      it "wraps EOFError" do
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_raise(EOFError.new("end of file reached"))
+
+        expect {
+          provider.create_message(
+            model: "claude-sonnet-4-20250514",
+            messages: [{role: "user", content: "Hi"}],
+            max_tokens: 100
+          )
+        }.to raise_error(Providers::Anthropic::TransientError, /EOFError/)
+      end
     end
   end
 
@@ -369,6 +423,18 @@ RSpec.describe Providers::Anthropic do
         )
       }.to raise_error(Providers::Anthropic::Error, /Bad request/)
     end
+
+    it "wraps network errors as TransientError" do
+      stub_request(:post, "https://api.anthropic.com/v1/messages/count_tokens")
+        .to_raise(Errno::ECONNRESET.new("Connection reset by peer"))
+
+      expect {
+        provider.count_tokens(
+          model: "claude-sonnet-4-20250514",
+          messages: [{role: "user", content: "Hi"}]
+        )
+      }.to raise_error(Providers::Anthropic::TransientError, /ECONNRESET/)
+    end
   end
 
   describe "error class hierarchy" do
@@ -378,6 +444,18 @@ RSpec.describe Providers::Anthropic do
 
     it "TokenFormatError inherits from Error" do
       expect(Providers::Anthropic::TokenFormatError).to be < Providers::Anthropic::Error
+    end
+
+    it "TransientError inherits from Error" do
+      expect(Providers::Anthropic::TransientError).to be < Providers::Anthropic::Error
+    end
+
+    it "RateLimitError inherits from TransientError" do
+      expect(Providers::Anthropic::RateLimitError).to be < Providers::Anthropic::TransientError
+    end
+
+    it "ServerError inherits from TransientError" do
+      expect(Providers::Anthropic::ServerError).to be < Providers::Anthropic::TransientError
     end
   end
 end

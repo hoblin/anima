@@ -1,0 +1,58 @@
+# frozen_string_literal: true
+
+# Executes an LLM agent loop as a background job with retry logic
+# for transient failures (network errors, rate limits, server errors).
+#
+# Emits events via {Events::Bus} as it progresses, making results visible
+# to any subscriber (TUI, WebSocket clients). Emits retry notifications
+# as {Events::SystemMessage} so the user sees "retrying..." instead of
+# raw error messages.
+#
+# @example Inline execution (TUI)
+#   AgentRequestJob.perform_now(session.id)
+#
+# @example Background execution (future Brain/TUI separation)
+#   AgentRequestJob.perform_later(session.id)
+class AgentRequestJob < ApplicationJob
+  queue_as :default
+
+  retry_on Providers::Anthropic::TransientError,
+    wait: :polynomially_longer, attempts: 5 do |job, error|
+    Events::Bus.emit(Events::AgentMessage.new(
+      content: "Failed after multiple retries: #{error.message}",
+      session_id: job.arguments.first
+    ))
+  end
+
+  discard_on Providers::Anthropic::AuthenticationError do |job, error|
+    Events::Bus.emit(Events::AgentMessage.new(
+      content: "#{error.class}: #{error.message}",
+      session_id: job.arguments.first
+    ))
+  end
+
+  # @param session_id [Integer] ID of the session to process
+  def perform(session_id)
+    session = Session.find(session_id)
+    agent_loop = AgentLoop.new(session: session)
+    agent_loop.run
+  ensure
+    agent_loop&.finalize
+  end
+
+  private
+
+  # Emits a system message before each retry so the user sees
+  # "retrying..." instead of nothing.
+  def retry_job(options = {})
+    error = options[:error]
+    wait = options[:wait]
+
+    Events::Bus.emit(Events::SystemMessage.new(
+      content: "#{error.message} — retrying in #{wait.to_i}s...",
+      session_id: arguments.first
+    ))
+
+    super
+  end
+end
