@@ -11,7 +11,10 @@ module TUI
       ROLE_ASSISTANT = "assistant"
       ROLE_LABELS = {ROLE_USER => "You", ROLE_ASSISTANT => "Anima"}.freeze
 
-      attr_reader :input, :message_collector, :session
+      SCROLL_STEP = 1
+      MOUSE_SCROLL_STEP = 2
+
+      attr_reader :input, :message_collector, :session, :scroll_offset
 
       def initialize(message_collector: nil, persister: nil, session: nil, shell_session: nil)
         @message_collector = message_collector || Events::Subscribers::MessageCollector.new
@@ -19,6 +22,10 @@ module TUI
         @loading = false
         @client = nil
         @submit_thread = nil
+        @scroll_offset = 0
+        @auto_scroll = true
+        @visible_height = 0
+        @max_scroll = 0
 
         @session = session || Session.order(id: :desc).first || Session.create!
         load_session_messages
@@ -47,7 +54,10 @@ module TUI
         render_input(frame, input_area, tui)
       end
 
+      # Scrolling bypasses the loading guard so users can read chat history during LLM calls
       def handle_event(event)
+        return handle_mouse_event(event) if event.mouse?
+        return handle_scroll_key(event) if scroll_key?(event)
         return false if @loading
 
         if event.enter?
@@ -72,6 +82,8 @@ module TUI
         @message_collector.clear
         @input = ""
         @loading = false
+        @scroll_offset = 0
+        @auto_scroll = true
         @shell_session = ShellSession.new(session_id: @session.id)
         @registry = nil
       end
@@ -104,9 +116,21 @@ module TUI
           ])
         end
 
+        inner_width = [area.width - 2, 1].max
+        @visible_height = [area.height - 2, 0].max
+
+        content_widget = tui.paragraph(text: lines, wrap: true, style: tui.style(fg: "white"))
+        content_height = content_widget.line_count(inner_width)
+
+        @max_scroll = [content_height - @visible_height, 0].max
+        @scroll_offset = @max_scroll if @auto_scroll
+        @scroll_offset = @scroll_offset.clamp(0, @max_scroll)
+
         widget = tui.paragraph(
           text: lines,
           wrap: true,
+          style: tui.style(fg: "white"),
+          scroll: [@scroll_offset, 0],
           block: tui.block(
             title: "Chat",
             borders: [:all],
@@ -115,6 +139,18 @@ module TUI
           )
         )
         frame.render_widget(widget, area)
+
+        if @max_scroll > 0
+          scrollbar = tui.scrollbar(
+            content_length: @max_scroll,
+            position: @scroll_offset,
+            orientation: :vertical_right,
+            thumb_style: {fg: "cyan"},
+            track_symbol: "│",
+            track_style: {fg: "dark_gray"}
+          )
+          frame.render_widget(scrollbar, area)
+        end
       end
 
       def build_message_lines(tui)
@@ -126,14 +162,14 @@ module TUI
           end
 
           label = ROLE_LABELS.fetch(msg[:role], msg[:role])
+          content_lines = msg[:content].to_s.split("\n", -1)
 
-          [
-            tui.line(spans: [
-              tui.span(content: "#{label}: ", style: role_style),
-              tui.span(content: msg[:content], style: tui.style(fg: "white"))
-            ]),
-            tui.line(spans: [tui.span(content: "", style: tui.style(fg: "white"))])
-          ]
+          lines = [tui.line(spans: [
+            tui.span(content: "#{label}: ", style: role_style),
+            tui.span(content: content_lines.first.to_s)
+          ])]
+          content_lines.drop(1).each { |text| lines << tui.line(spans: [tui.span(content: text)]) }
+          lines << tui.line(spans: [tui.span(content: "")])
         end
       end
 
@@ -198,6 +234,56 @@ module TUI
             content: event.payload["content"].to_s
           })
         end
+      end
+
+      # @return [Boolean] whether the event is an arrow or page key used for scrolling
+      def scroll_key?(event)
+        event.up? || event.down? || event.page_up? || event.page_down?
+      end
+
+      # Dispatches scroll key events to {#scroll_up} or {#scroll_down}
+      # @return [true] always redraws after scrolling
+      def handle_scroll_key(event)
+        if event.up?
+          scroll_up(SCROLL_STEP)
+        elsif event.down?
+          scroll_down(SCROLL_STEP)
+        elsif event.page_up?
+          scroll_up(@visible_height)
+        elsif event.page_down?
+          scroll_down(@visible_height)
+        end
+        true
+      end
+
+      # Handles mouse wheel scroll events; ignores other mouse events
+      # @return [Boolean] true if the event was a scroll wheel event
+      def handle_mouse_event(event)
+        if event.scroll_up?
+          scroll_up(MOUSE_SCROLL_STEP)
+          true
+        elsif event.scroll_down?
+          scroll_down(MOUSE_SCROLL_STEP)
+          true
+        else
+          false
+        end
+      end
+
+      # Scrolls the viewport up, clamping at the top.
+      # Disables auto-scroll when the user moves away from the bottom.
+      # @param lines [Integer] number of lines to scroll
+      def scroll_up(lines)
+        @scroll_offset = [@scroll_offset - lines, 0].max
+        @auto_scroll = @scroll_offset >= @max_scroll
+      end
+
+      # Scrolls the viewport down, clamping at max_scroll.
+      # Re-enables auto-scroll when the user reaches the bottom.
+      # @param lines [Integer] number of lines to scroll
+      def scroll_down(lines)
+        @scroll_offset = [@scroll_offset + lines, @max_scroll].min
+        @auto_scroll = @scroll_offset >= @max_scroll
       end
 
       def printable_char?(event)

@@ -13,13 +13,31 @@ RSpec.describe TUI::Screens::Chat do
   # so we use plain doubles instead of instance_double
   def key_event(code:, modifiers: nil, **overrides)
     defaults = {
-      key?: true, enter?: false, backspace?: false, esc?: false,
-      none?: false, ctrl_c?: false
+      key?: true, mouse?: false, enter?: false, backspace?: false, esc?: false,
+      none?: false, ctrl_c?: false, up?: false, down?: false,
+      page_up?: false, page_down?: false
     }
     defaults[:enter?] = true if code == "enter"
     defaults[:backspace?] = true if code == "backspace"
     defaults[:esc?] = true if code == "esc"
+    defaults[:up?] = true if code == "up"
+    defaults[:down?] = true if code == "down"
+    defaults[:page_up?] = true if code == "page_up"
+    defaults[:page_down?] = true if code == "page_down"
     double("Event", **defaults, code: code, modifiers: modifiers, **overrides)
+  end
+
+  def mouse_event(kind:, **overrides)
+    defaults = {
+      key?: false, mouse?: true, enter?: false, backspace?: false, esc?: false,
+      none?: false, ctrl_c?: false, up?: false, down?: false,
+      page_up?: false, page_down?: false,
+      scroll_up?: false, scroll_down?: false, scroll?: false
+    }
+    defaults[:scroll_up?] = true if kind == "scroll_up"
+    defaults[:scroll_down?] = true if kind == "scroll_down"
+    defaults[:scroll?] = true if kind.start_with?("scroll")
+    double("MouseEvent", **defaults, kind: kind, **overrides)
   end
 
   after { screen.finalize }
@@ -306,9 +324,111 @@ RSpec.describe TUI::Screens::Chat do
       end
     end
 
+    context "scrolling with keyboard" do
+      before do
+        screen.instance_variable_set(:@visible_height, 10)
+        screen.instance_variable_set(:@max_scroll, 20)
+        screen.instance_variable_set(:@scroll_offset, 10)
+        screen.instance_variable_set(:@auto_scroll, false)
+      end
+
+      it "scrolls up one line on arrow up" do
+        screen.handle_event(key_event(code: "up"))
+        expect(screen.scroll_offset).to eq(9)
+      end
+
+      it "scrolls down one line on arrow down" do
+        screen.handle_event(key_event(code: "down"))
+        expect(screen.scroll_offset).to eq(11)
+      end
+
+      it "scrolls up by visible height on page up" do
+        screen.handle_event(key_event(code: "page_up"))
+        expect(screen.scroll_offset).to eq(0)
+      end
+
+      it "scrolls down by visible height on page down" do
+        screen.handle_event(key_event(code: "page_down"))
+        expect(screen.scroll_offset).to eq(20)
+      end
+
+      it "clamps scroll offset to zero" do
+        screen.instance_variable_set(:@scroll_offset, 0)
+        screen.handle_event(key_event(code: "up"))
+        expect(screen.scroll_offset).to eq(0)
+      end
+
+      it "clamps scroll offset to max_scroll" do
+        screen.instance_variable_set(:@scroll_offset, 20)
+        screen.handle_event(key_event(code: "down"))
+        expect(screen.scroll_offset).to eq(20)
+      end
+
+      it "returns true for scroll key events" do
+        expect(screen.handle_event(key_event(code: "up"))).to be true
+        expect(screen.handle_event(key_event(code: "down"))).to be true
+        expect(screen.handle_event(key_event(code: "page_up"))).to be true
+        expect(screen.handle_event(key_event(code: "page_down"))).to be true
+      end
+
+      it "works during loading" do
+        screen.instance_variable_set(:@loading, true)
+        screen.handle_event(key_event(code: "up"))
+        expect(screen.scroll_offset).to eq(9)
+      end
+
+      it "disables auto-scroll when scrolling up from bottom" do
+        screen.instance_variable_set(:@scroll_offset, 20)
+        screen.instance_variable_set(:@auto_scroll, true)
+        screen.handle_event(key_event(code: "up"))
+        expect(screen.instance_variable_get(:@auto_scroll)).to be false
+      end
+
+      it "re-enables auto-scroll when scrolling down to bottom" do
+        screen.instance_variable_set(:@scroll_offset, 19)
+        screen.handle_event(key_event(code: "down"))
+        expect(screen.scroll_offset).to eq(20)
+        expect(screen.instance_variable_get(:@auto_scroll)).to be true
+      end
+    end
+
+    context "scrolling with mouse wheel" do
+      before do
+        screen.instance_variable_set(:@visible_height, 10)
+        screen.instance_variable_set(:@max_scroll, 20)
+        screen.instance_variable_set(:@scroll_offset, 10)
+        screen.instance_variable_set(:@auto_scroll, false)
+      end
+
+      it "scrolls up on mouse wheel up" do
+        screen.handle_event(mouse_event(kind: "scroll_up"))
+        expect(screen.scroll_offset).to eq(10 - TUI::Screens::Chat::MOUSE_SCROLL_STEP)
+      end
+
+      it "scrolls down on mouse wheel down" do
+        screen.handle_event(mouse_event(kind: "scroll_down"))
+        expect(screen.scroll_offset).to eq(10 + TUI::Screens::Chat::MOUSE_SCROLL_STEP)
+      end
+
+      it "returns true for scroll wheel events" do
+        expect(screen.handle_event(mouse_event(kind: "scroll_up"))).to be true
+        expect(screen.handle_event(mouse_event(kind: "scroll_down"))).to be true
+      end
+
+      it "returns false for non-scroll mouse events" do
+        expect(screen.handle_event(mouse_event(kind: "down"))).to be false
+      end
+
+      it "works during loading" do
+        screen.instance_variable_set(:@loading, true)
+        screen.handle_event(mouse_event(kind: "scroll_up"))
+        expect(screen.scroll_offset).to eq(10 - TUI::Screens::Chat::MOUSE_SCROLL_STEP)
+      end
+    end
+
     context "unrecognized keys" do
-      it "returns false for arrow keys" do
-        event = key_event(code: "up", up?: true)
+      it "returns false for unknown keys" do
+        event = key_event(code: "f5")
         expect(screen.handle_event(event)).to be false
       end
     end
@@ -351,6 +471,14 @@ RSpec.describe TUI::Screens::Chat do
       screen.instance_variable_set(:@loading, true)
       screen.new_session
       expect(screen.loading?).to be false
+    end
+
+    it "resets scroll state" do
+      screen.instance_variable_set(:@scroll_offset, 15)
+      screen.instance_variable_set(:@auto_scroll, false)
+      screen.new_session
+      expect(screen.scroll_offset).to eq(0)
+      expect(screen.instance_variable_get(:@auto_scroll)).to be true
     end
   end
 

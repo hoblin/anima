@@ -157,6 +157,11 @@ module TUI
     end
 
     def handle_normal_mode(event)
+      if event.mouse?
+        delegate_to_screen(event)
+        return nil
+      end
+
       return nil unless event.key?
 
       if ctrl_a?(event)
@@ -169,9 +174,14 @@ module TUI
         return nil
       end
 
+      delegate_to_screen(event)
+      nil
+    end
+
+    # Forwards an event to the active screen for handling
+    def delegate_to_screen(event)
       screen = @screens[@current_screen]
       screen.handle_event(event) if screen.respond_to?(:handle_event)
-      nil
     end
 
     def ctrl_a?(event)

@@ -26,8 +26,9 @@ RSpec.describe TUI::App do
     # so we use plain doubles instead of instance_double
     def key_event(code:, modifiers: nil, **overrides)
       defaults = {
-        none?: false, ctrl_c?: false, key?: true, esc?: false,
-        enter?: false, backspace?: false
+        none?: false, ctrl_c?: false, key?: true, mouse?: false, esc?: false,
+        enter?: false, backspace?: false, up?: false, down?: false,
+        page_up?: false, page_down?: false
       }
       defaults[:esc?] = true if code == "esc"
       defaults[:enter?] = true if code == "enter"
@@ -150,6 +151,22 @@ RSpec.describe TUI::App do
       it "does not delegate to screens without handle_event" do
         app.instance_variable_set(:@current_screen, :anthropic)
         event = key_event(code: "j")
+        expect { app.send(:handle_event, event) }.not_to raise_error
+      end
+
+      it "delegates mouse events to the current screen" do
+        event = double("MouseEvent", none?: false, ctrl_c?: false, key?: false, mouse?: true)
+        chat = app.instance_variable_get(:@screens)[:chat]
+        allow(chat).to receive(:handle_event)
+
+        app.send(:handle_event, event)
+
+        expect(chat).to have_received(:handle_event).with(event)
+      end
+
+      it "does not delegate mouse events to screens without handle_event" do
+        app.instance_variable_set(:@current_screen, :anthropic)
+        event = double("MouseEvent", none?: false, ctrl_c?: false, key?: false, mouse?: true)
         expect { app.send(:handle_event, event) }.not_to raise_error
       end
     end
