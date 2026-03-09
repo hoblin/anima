@@ -35,3 +35,20 @@ tmux kill-session -t anima-test
 If the TUI crashes on startup, append `; sleep 30` to the command to keep the session alive for error inspection.
 
 Always clean up tmux sessions when done. Use `anima-test` as the session name for consistency.
+
+## GitHub sub-issues
+
+Use the REST API to manage sub-issues on epics:
+
+```bash
+# Add sub-issue (requires global issue ID, not issue number)
+ISSUE_ID=$(gh api repos/hoblin/anima/issues/42 --jq '.id')
+gh api repos/hoblin/anima/issues/36/sub_issues -X POST -F sub_issue_id=$ISSUE_ID
+
+# List sub-issues
+gh api repos/hoblin/anima/issues/36/sub_issues
+
+# Reorder (move sub-issue after another; use global IDs)
+gh api repos/hoblin/anima/issues/36/sub_issues/priority -X PATCH \
+  -F sub_issue_id=$ISSUE_ID -F after_id=$AFTER_ID
+```
