@@ -348,14 +348,14 @@ bin/setup
 Start the brain server and TUI client in separate terminals:
 
 ```bash
-# Terminal 1: Start brain (web server + background worker)
+# Terminal 1: Start brain (web server + background worker) on port 42135
 bin/dev
 
-# Terminal 2: Connect the TUI
-bundle exec anima tui
+# Terminal 2: Connect the TUI to the dev brain
+bundle exec anima tui --host localhost:42135
 ```
 
-On first run, `bin/dev` runs `db:prepare` automatically.
+Development uses port **42135** so it doesn't conflict with the production brain (port 42134) running via systemd. On first run, `bin/dev` runs `db:prepare` automatically.
 
 ### Running Tests
 
