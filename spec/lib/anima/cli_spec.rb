@@ -73,7 +73,7 @@ RSpec.describe Anima::CLI do
 
       expect {
         described_class.start(["tui", "--host", "localhost:19999"])
-      }.to output(/Cannot connect to brain after #{described_class::MAX_SESSION_FETCH_ATTEMPTS} attempts/)
+      }.to output(/Cannot connect to brain after #{described_class::MAX_SESSION_FETCH_ATTEMPTS} attempts/o)
         .to_stdout.and raise_error(SystemExit)
     end
 
@@ -99,7 +99,7 @@ RSpec.describe Anima::CLI do
 
       expect {
         described_class.start(["tui", "--host", "localhost:19999"])
-      }.to output(/Retrying 1\/#{described_class::MAX_SESSION_FETCH_ATTEMPTS}/).to_stdout
+      }.to output(/Retrying 1\/#{described_class::MAX_SESSION_FETCH_ATTEMPTS}/o).to_stdout
 
       expect(call_count).to eq(3)
     end
