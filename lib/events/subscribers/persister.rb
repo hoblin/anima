@@ -5,16 +5,23 @@ module Events
     # Persists all events to SQLite as they flow through the event bus.
     # Each event is written as an Event record belonging to the active session.
     #
-    # @example
-    #   session = Session.create!
+    # When initialized with a specific session, all events are saved to that
+    # session. When initialized without one (global mode), the session is
+    # looked up from the event's session_id payload field.
+    #
+    # @example Session-scoped
     #   persister = Events::Subscribers::Persister.new(session)
+    #   Events::Bus.subscribe(persister)
+    #
+    # @example Global (persists events for any session)
+    #   persister = Events::Subscribers::Persister.new
     #   Events::Bus.subscribe(persister)
     class Persister
       include Events::Subscriber
 
       attr_reader :session
 
-      def initialize(session)
+      def initialize(session = nil)
         @session = session
         @mutex = Mutex.new
       end
@@ -28,8 +35,11 @@ module Events
         event_type = payload[:type]
         return if event_type.nil?
 
+        target_session = @session || Session.find_by(id: payload[:session_id])
+        return unless target_session
+
         @mutex.synchronize do
-          @session.events.create!(
+          target_session.events.create!(
             event_type: event_type,
             payload: payload,
             tool_use_id: payload[:tool_use_id],

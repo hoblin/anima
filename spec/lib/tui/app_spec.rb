@@ -1,14 +1,20 @@
 # frozen_string_literal: true
 
-require "rails_helper"
+require "spec_helper"
 require "ratatui_ruby"
+require "tui/app"
 
 RSpec.describe TUI::App do
-  subject(:app) { described_class.new }
+  let(:cable_client) do
+    instance_double(TUI::CableClient, host: "localhost:42134", session_id: 42, status: :subscribed, disconnect: nil)
+  end
 
-  after do
-    chat = app.instance_variable_get(:@screens)[:chat]
-    chat.finalize
+  subject(:app) { described_class.new(cable_client: cable_client) }
+
+  before do
+    allow(cable_client).to receive(:drain_messages).and_return([])
+    allow(cable_client).to receive(:speak)
+    allow(cable_client).to receive(:resubscribe)
   end
 
   describe "#initialize" do
@@ -177,6 +183,15 @@ RSpec.describe TUI::App do
         result = app.send(:handle_event, event)
         expect(result).to be_nil
       end
+    end
+  end
+
+  describe "connection status" do
+    it "exposes cable_client status for the status bar" do
+      allow(cable_client).to receive(:status).and_return(:subscribed)
+      # The status bar rendering uses @cable_client.status
+      # Verify the status styles are defined for all states
+      expect(TUI::App::STATUS_STYLES).to include(:disconnected, :connecting, :connected, :subscribed)
     end
   end
 end

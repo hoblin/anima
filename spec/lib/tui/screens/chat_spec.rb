@@ -1,13 +1,23 @@
 # frozen_string_literal: true
 
-require "rails_helper"
+require "spec_helper"
+require "webmock/rspec"
 require "ratatui_ruby"
+require "tui/app"
 
 RSpec.describe TUI::Screens::Chat do
-  let(:session) { Session.create! }
-  let(:persister) { double("Persister", emit: nil, session: session, "session=": nil) }
+  let(:cable_client) do
+    instance_double(TUI::CableClient, host: "localhost:42134", session_id: 42, status: :subscribed)
+  end
+  let(:message_store) { TUI::MessageStore.new }
 
-  subject(:screen) { described_class.new(session: session, persister: persister) }
+  subject(:screen) { described_class.new(cable_client: cable_client, message_store: message_store) }
+
+  before do
+    allow(cable_client).to receive(:drain_messages).and_return([])
+    allow(cable_client).to receive(:speak)
+    allow(cable_client).to receive(:resubscribe)
+  end
 
   # RatatuiRuby::Event uses method_missing for dynamic predicates,
   # so we use plain doubles instead of instance_double
@@ -40,10 +50,8 @@ RSpec.describe TUI::Screens::Chat do
     double("MouseEvent", **defaults, kind: kind, **overrides)
   end
 
-  after { screen.finalize }
-
   describe "#initialize" do
-    it "starts with empty messages for a fresh session" do
+    it "starts with empty messages" do
       expect(screen.messages).to eq([])
     end
 
@@ -53,56 +61,6 @@ RSpec.describe TUI::Screens::Chat do
 
     it "starts not loading" do
       expect(screen.loading?).to be false
-    end
-
-    it "subscribes the message collector to the event bus" do
-      screen # force lazy subject to initialize and subscribe
-      Events::Bus.emit(Events::UserMessage.new(content: "test"))
-      expect(screen.messages).to eq([{role: "user", content: "test"}])
-    end
-
-    it "resumes messages from an existing session" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "old message"}, timestamp: 1)
-      session.events.create!(event_type: "agent_message", payload: {"content" => "old reply"}, timestamp: 2)
-
-      resumed_screen = described_class.new(session: session, persister: persister)
-
-      expect(resumed_screen.messages).to eq([
-        {role: "user", content: "old message"},
-        {role: "assistant", content: "old reply"}
-      ])
-
-      resumed_screen.finalize
-    end
-
-    it "skips tool events when resuming a session" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "fetch example.com"}, timestamp: 1)
-      session.events.create!(event_type: "tool_call", payload: {"content" => "Calling web_get", "tool_name" => "web_get", "tool_use_id" => "toolu_1"}, timestamp: 2)
-      session.events.create!(event_type: "tool_response", payload: {"content" => "<html>...</html>", "tool_name" => "web_get", "tool_use_id" => "toolu_1", "success" => true}, timestamp: 3)
-      session.events.create!(event_type: "agent_message", payload: {"content" => "Here is the content"}, timestamp: 4)
-
-      resumed_screen = described_class.new(session: session, persister: persister)
-
-      expect(resumed_screen.messages).to eq([
-        {role: "user", content: "fetch example.com"},
-        {role: "assistant", content: "Here is the content"}
-      ])
-
-      resumed_screen.finalize
-    end
-
-    it "creates a session if none exists" do
-      Session.destroy_all
-      new_screen = described_class.new(persister: persister)
-      expect(new_screen.session).to be_a(Session)
-      expect(new_screen.session).to be_persisted
-      new_screen.finalize
-    end
-
-    it "resumes the last session if one exists" do
-      resumed_screen = described_class.new(persister: persister)
-      expect(resumed_screen.session).to eq(session)
-      resumed_screen.finalize
     end
   end
 
@@ -161,24 +119,13 @@ RSpec.describe TUI::Screens::Chat do
       end
     end
 
-    context "enter submits message" do
-      let(:client) { double("LLM::Client") }
-      let(:agent_loop) { AgentLoop.new(session: session, client: client) }
-
-      subject(:screen) { described_class.new(session: session, persister: persister, agent_loop: agent_loop) }
-
-      before do
-        allow(client).to receive(:chat_with_tools).and_return("Hello back!")
-      end
-
-      it "emits user_message event and collects it" do
+    context "enter submits message via WebSocket" do
+      it "sends the message via cable_client.speak" do
         screen.handle_event(key_event(code: "h"))
         screen.handle_event(key_event(code: "i"))
         screen.handle_event(key_event(code: "enter"))
 
-        sleep 0.1
-
-        expect(screen.messages.first).to eq({role: "user", content: "hi"})
+        expect(cable_client).to have_received(:speak).with("hi")
       end
 
       it "clears input after submit" do
@@ -188,46 +135,10 @@ RSpec.describe TUI::Screens::Chat do
         expect(screen.input).to eq("")
       end
 
-      it "emits agent_message event and collects response" do
-        screen.handle_event(key_event(code: "h"))
-        screen.handle_event(key_event(code: "i"))
-        screen.handle_event(key_event(code: "enter"))
-
-        sleep 0.1
-
-        expect(screen.messages.last).to eq({role: "assistant", content: "Hello back!"})
-      end
-
-      it "sets loading to true during LLM call" do
-        allow(client).to receive(:chat_with_tools) do
-          sleep 0.2
-          "response"
-        end
-
-        screen.handle_event(key_event(code: "h"))
-        screen.handle_event(key_event(code: "i"))
-        screen.handle_event(key_event(code: "enter"))
-
-        expect(screen.loading?).to be true
-      end
-
-      it "sets loading to false after LLM call completes" do
-        screen.handle_event(key_event(code: "h"))
-        screen.handle_event(key_event(code: "i"))
-        screen.handle_event(key_event(code: "enter"))
-
-        sleep 0.1
-
-        expect(screen.loading?).to be false
-      end
-
       it "does not submit empty input" do
         screen.handle_event(key_event(code: "enter"))
 
-        sleep 0.1
-
-        expect(screen.messages).to be_empty
-        expect(client).not_to have_received(:chat_with_tools)
+        expect(cable_client).not_to have_received(:speak)
       end
 
       it "does not submit whitespace-only input" do
@@ -235,9 +146,7 @@ RSpec.describe TUI::Screens::Chat do
         screen.handle_event(key_event(code: " "))
         screen.handle_event(key_event(code: "enter"))
 
-        sleep 0.1
-
-        expect(screen.messages).to be_empty
+        expect(cable_client).not_to have_received(:speak)
       end
 
       it "returns true" do
@@ -246,34 +155,50 @@ RSpec.describe TUI::Screens::Chat do
       end
     end
 
-    context "error handling" do
-      let(:client) { double("LLM::Client") }
-      let(:agent_loop) { AgentLoop.new(session: session, client: client) }
+    context "processing incoming WebSocket messages" do
+      it "sets loading to true when user_message received from server" do
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "user_message", "content" => "hi"}
+        ])
 
-      subject(:screen) { described_class.new(session: session, persister: persister, agent_loop: agent_loop) }
+        screen.send(:process_incoming_messages)
 
-      before do
-        allow(client).to receive(:chat_with_tools).and_raise(StandardError, "Connection failed")
+        expect(screen.loading?).to be true
       end
 
-      it "emits error as agent_message event" do
-        screen.handle_event(key_event(code: "h"))
-        screen.handle_event(key_event(code: "i"))
-        screen.handle_event(key_event(code: "enter"))
+      it "sets loading to false when agent_message received" do
+        screen.instance_variable_set(:@loading, true)
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "agent_message", "content" => "response"}
+        ])
 
-        sleep 0.1
-
-        expect(screen.messages.last).to eq({role: "assistant", content: "StandardError: Connection failed"})
-      end
-
-      it "resets loading after error" do
-        screen.handle_event(key_event(code: "h"))
-        screen.handle_event(key_event(code: "i"))
-        screen.handle_event(key_event(code: "enter"))
-
-        sleep 0.1
+        screen.send(:process_incoming_messages)
 
         expect(screen.loading?).to be false
+      end
+
+      it "adds messages to the message store" do
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "user_message", "content" => "hello"},
+          {"type" => "agent_message", "content" => "hi there"}
+        ])
+
+        screen.send(:process_incoming_messages)
+
+        expect(screen.messages).to eq([
+          {role: "user", content: "hello"},
+          {role: "assistant", content: "hi there"}
+        ])
+      end
+
+      it "ignores connection status messages" do
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "connection", "status" => "subscribed"}
+        ])
+
+        screen.send(:process_incoming_messages)
+
+        expect(screen.messages).to be_empty
       end
     end
 
@@ -291,37 +216,6 @@ RSpec.describe TUI::Screens::Chat do
 
       it "ignores backspace" do
         expect(screen.handle_event(key_event(code: "backspace"))).to be false
-      end
-    end
-
-    context "multi-turn conversation" do
-      let(:real_persister) { Events::Subscribers::Persister.new(session) }
-      let(:client) { double("LLM::Client") }
-      let(:agent_loop) { AgentLoop.new(session: session, client: client) }
-      let(:screen_with_persister) { described_class.new(session: session, persister: real_persister, agent_loop: agent_loop) }
-
-      after { screen_with_persister.finalize }
-
-      it "passes viewport messages from session to LLM client" do
-        received_messages = nil
-        allow(client).to receive(:chat_with_tools).and_return("First response")
-        screen_with_persister.handle_event(key_event(code: "a"))
-        screen_with_persister.handle_event(key_event(code: "enter"))
-        sleep 0.1
-
-        allow(client).to receive(:chat_with_tools) { |msgs, **_opts|
-          received_messages = msgs.dup
-          "Second response"
-        }
-        screen_with_persister.handle_event(key_event(code: "b"))
-        screen_with_persister.handle_event(key_event(code: "enter"))
-        sleep 0.1
-
-        expect(received_messages).to eq([
-          {role: "user", content: "a"},
-          {role: "assistant", content: "First response"},
-          {role: "user", content: "b"}
-        ])
       end
     end
 
@@ -436,20 +330,27 @@ RSpec.describe TUI::Screens::Chat do
   end
 
   describe "#new_session" do
-    let(:client) { double("LLM::Client") }
-    let(:agent_loop) { AgentLoop.new(session: session, client: client) }
-
-    subject(:screen) { described_class.new(session: session, persister: persister, agent_loop: agent_loop) }
-
-    after { screen.finalize }
-
     before do
-      allow(client).to receive(:chat_with_tools).and_return("response")
+      stub_request(:post, "http://localhost:42134/api/sessions")
+        .to_return(status: 201, body: '{"id": 99}', headers: {"Content-Type" => "application/json"})
 
-      screen.handle_event(key_event(code: "h"))
-      screen.handle_event(key_event(code: "i"))
-      screen.handle_event(key_event(code: "enter"))
-      sleep 0.1
+      message_store.process_event({"type" => "user_message", "content" => "old message"})
+      screen.instance_variable_set(:@input, "partial")
+      screen.instance_variable_set(:@loading, true)
+      screen.instance_variable_set(:@scroll_offset, 15)
+      screen.instance_variable_set(:@auto_scroll, false)
+    end
+
+    it "creates a new session via HTTP" do
+      screen.new_session
+
+      expect(WebMock).to have_requested(:post, "http://localhost:42134/api/sessions")
+    end
+
+    it "resubscribes cable_client to the new session" do
+      screen.new_session
+
+      expect(cable_client).to have_received(:resubscribe).with(99)
     end
 
     it "clears messages" do
@@ -457,30 +358,17 @@ RSpec.describe TUI::Screens::Chat do
       expect(screen.messages).to eq([])
     end
 
-    it "creates a new session record" do
-      expect { screen.new_session }.to change(Session, :count).by(1)
-    end
-
-    it "switches the persister to the new session" do
-      screen.new_session
-      expect(persister).to have_received(:session=)
-    end
-
     it "clears input" do
-      screen.instance_variable_set(:@input, "partial")
       screen.new_session
       expect(screen.input).to eq("")
     end
 
     it "resets loading state" do
-      screen.instance_variable_set(:@loading, true)
       screen.new_session
       expect(screen.loading?).to be false
     end
 
     it "resets scroll state" do
-      screen.instance_variable_set(:@scroll_offset, 15)
-      screen.instance_variable_set(:@auto_scroll, false)
       screen.new_session
       expect(screen.scroll_offset).to eq(0)
       expect(screen.instance_variable_get(:@auto_scroll)).to be true
@@ -488,13 +376,7 @@ RSpec.describe TUI::Screens::Chat do
   end
 
   describe "#finalize" do
-    it "unsubscribes the message collector from the event bus" do
-      screen.finalize
-      Events::Bus.emit(Events::UserMessage.new(content: "after finalize"))
-      expect(screen.messages).to be_empty
-    end
-
-    it "unsubscribes the persister from the event bus" do
+    it "does not raise" do
       expect { screen.finalize }.not_to raise_error
     end
   end

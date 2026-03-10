@@ -14,37 +14,28 @@ module TUI
       SCROLL_STEP = 1
       MOUSE_SCROLL_STEP = 2
 
-      attr_reader :input, :message_collector, :session, :scroll_offset
+      attr_reader :input, :message_store, :scroll_offset
 
-      # @param message_collector [Events::Subscribers::MessageCollector, nil]
-      # @param persister [Events::Subscribers::Persister, nil]
-      # @param session [Session, nil] conversation session to resume
-      # @param shell_session [ShellSession, nil] passed through to {AgentLoop}
-      # @param agent_loop [AgentLoop, nil] injectable for testing
-      def initialize(message_collector: nil, persister: nil, session: nil, shell_session: nil, agent_loop: nil)
-        @message_collector = message_collector || Events::Subscribers::MessageCollector.new
+      # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
+      # @param message_store [TUI::MessageStore, nil] injectable for testing
+      def initialize(cable_client:, message_store: nil)
+        @cable_client = cable_client
+        @message_store = message_store || MessageStore.new
         @input = ""
         @loading = false
-        @submit_thread = nil
         @scroll_offset = 0
         @auto_scroll = true
         @visible_height = 0
         @max_scroll = 0
-
-        @session = session || Session.order(id: :desc).first || Session.create!
-        load_session_messages
-        @persister = persister || Events::Subscribers::Persister.new(@session)
-        @agent_loop = agent_loop || AgentLoop.new(session: @session, shell_session: shell_session)
-
-        Events::Bus.subscribe(@message_collector)
-        Events::Bus.subscribe(@persister)
       end
 
       def messages
-        @message_collector.messages
+        @message_store.messages
       end
 
       def render(frame, area, tui)
+        process_incoming_messages
+
         chat_area, input_area = tui.split(
           area,
           direction: :vertical,
@@ -78,24 +69,25 @@ module TUI
         end
       end
 
+      # Creates a new session via HTTP and resubscribes the WebSocket channel.
+      # @raise [RuntimeError] if the brain returns an error response
       def new_session
-        @submit_thread&.join
-        @agent_loop.finalize
-        @session = Session.create!
-        @persister.session = @session
-        @message_collector.clear
+        uri = URI("http://#{@cable_client.host}/api/sessions")
+        response = Net::HTTP.post(uri, "", {"Content-Type" => "application/json"})
+        unless response.is_a?(Net::HTTPSuccess)
+          raise "Failed to create session: #{response.code}"
+        end
+        new_session_data = JSON.parse(response.body)
+
+        @cable_client.resubscribe(new_session_data["id"])
+        @message_store.clear
         @input = ""
         @loading = false
         @scroll_offset = 0
         @auto_scroll = true
-        @agent_loop = AgentLoop.new(session: @session)
       end
 
       def finalize
-        @submit_thread&.join
-        @agent_loop.finalize
-        Events::Bus.unsubscribe(@message_collector)
-        Events::Bus.unsubscribe(@persister)
       end
 
       def loading?
@@ -103,6 +95,25 @@ module TUI
       end
 
       private
+
+      # Drains the WebSocket message queue and feeds events to the message store
+      def process_incoming_messages
+        @cable_client.drain_messages.each do |msg|
+          type = msg["type"]
+          case type
+          when "connection"
+            # Connection status changes handled by App via cable_client.status
+          when "user_message"
+            @message_store.process_event(msg)
+            @loading = true
+          when "agent_message"
+            @message_store.process_event(msg)
+            @loading = false
+          else
+            @message_store.process_event(msg)
+          end
+        end
+      end
 
       def render_messages(frame, area, tui)
         lines = build_message_lines(tui)
@@ -203,22 +214,7 @@ module TUI
         return if text.empty?
 
         @input = ""
-        @loading = true
-
-        @submit_thread = Thread.new do
-          @agent_loop.process(text)
-        ensure
-          @loading = false
-        end
-      end
-
-      def load_session_messages
-        @session.events.where(event_type: Events::Subscribers::MessageCollector::DISPLAYABLE_TYPES).each do |event|
-          @message_collector.messages_push({
-            role: Events::Subscribers::MessageCollector::ROLE_MAP.fetch(event.event_type),
-            content: event.payload["content"].to_s
-          })
-        end
+        @cable_client.speak(text)
       end
 
       # @return [Boolean] whether the event is an arrow or page key used for scrolling

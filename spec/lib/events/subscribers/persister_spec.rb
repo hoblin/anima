@@ -107,4 +107,32 @@ RSpec.describe Events::Subscribers::Persister do
       expect(session.events.count).to eq(0)
     end
   end
+
+  describe "global mode (no session)" do
+    subject(:global_persister) { described_class.new }
+
+    after { Events::Bus.unsubscribe(global_persister) }
+
+    it "persists events by looking up session from payload" do
+      Events::Bus.subscribe(global_persister)
+      Events::Bus.emit(Events::UserMessage.new(content: "global hello", session_id: session.id))
+
+      expect(session.events.count).to eq(1)
+      expect(session.events.first.payload["content"]).to eq("global hello")
+    end
+
+    it "ignores events with unknown session_id" do
+      Events::Bus.subscribe(global_persister)
+      Events::Bus.emit(Events::UserMessage.new(content: "orphan", session_id: 999_999))
+
+      expect(Event.count).to eq(0)
+    end
+
+    it "ignores events without session_id" do
+      Events::Bus.subscribe(global_persister)
+      Events::Bus.emit(Events::UserMessage.new(content: "no session"))
+
+      expect(Event.count).to eq(0)
+    end
+  end
 end

@@ -12,18 +12,13 @@ class Session < ApplicationRecord
 
   has_many :events, -> { order(:id) }, dependent: :destroy
 
-  # Builds the message array expected by the Anthropic Messages API.
-  # Includes user/agent messages and tool call/response events in
-  # Anthropic's wire format. Consecutive tool_call events are grouped
-  # into a single assistant message; consecutive tool_response events
-  # are grouped into a single user message with tool_result blocks.
-  #
+  # Returns the events currently visible in the LLM context window.
   # Walks events newest-first and includes them until the token budget
   # is exhausted. Events are full-size or excluded entirely.
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
-  # @return [Array<Hash>] Anthropic Messages API format
-  def messages_for_llm(token_budget: DEFAULT_TOKEN_BUDGET)
+  # @return [Array<Event>] chronologically ordered
+  def viewport_events(token_budget: DEFAULT_TOKEN_BUDGET)
     selected = []
     remaining = token_budget
 
@@ -35,7 +30,19 @@ class Session < ApplicationRecord
       remaining -= cost
     end
 
-    assemble_messages(selected.reverse)
+    selected.reverse
+  end
+
+  # Builds the message array expected by the Anthropic Messages API.
+  # Includes user/agent messages and tool call/response events in
+  # Anthropic's wire format. Consecutive tool_call events are grouped
+  # into a single assistant message; consecutive tool_response events
+  # are grouped into a single user message with tool_result blocks.
+  #
+  # @param token_budget [Integer] maximum tokens to include (positive)
+  # @return [Array<Hash>] Anthropic Messages API format
+  def messages_for_llm(token_budget: DEFAULT_TOKEN_BUDGET)
+    assemble_messages(viewport_events(token_budget: token_budget))
   end
 
   private

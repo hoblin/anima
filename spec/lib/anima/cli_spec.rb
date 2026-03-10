@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "spec_helper"
+require "webmock/rspec"
 require "anima/cli"
 require "anima/installer"
 
@@ -59,6 +60,17 @@ RSpec.describe Anima::CLI do
           described_class.start(["start"])
         }.to raise_error(SystemExit)
       end
+    end
+  end
+
+  describe "tui" do
+    it "exits with error when brain is not running" do
+      stub_request(:get, "http://localhost:19999/api/sessions/current")
+        .to_raise(Errno::ECONNREFUSED)
+
+      expect {
+        described_class.start(["tui", "--host", "localhost:19999"])
+      }.to output(/Cannot connect to brain/).to_stdout.and raise_error(SystemExit)
     end
   end
 

@@ -5,6 +5,7 @@ require "thor"
 module Anima
   class CLI < Thor
     VALID_ENVIRONMENTS = %w[development test production].freeze
+    DEFAULT_HOST = "localhost:42134"
 
     def self.exit_on_failure?
       true
@@ -41,12 +42,26 @@ module Anima
     end
 
     desc "tui", "Launch the Anima terminal interface"
+    option :host, desc: "Brain server address (default: #{DEFAULT_HOST})"
     def tui
       require "ratatui_ruby"
-      ENV["RAILS_ENV"] ||= "development"
-      require_relative "../../config/environment"
-      ActiveRecord::Tasks::DatabaseTasks.prepare_all
-      TUI::App.new.run
+      require "net/http"
+      require "json"
+      require_relative "../tui/app"
+
+      host = options[:host] || DEFAULT_HOST
+
+      say "Connecting to brain at #{host}...", :cyan
+      session_id = fetch_current_session(host)
+      say "Session ##{session_id} — starting TUI", :cyan
+
+      cable_client = TUI::CableClient.new(host: host, session_id: session_id)
+      cable_client.connect
+
+      TUI::App.new(cable_client: cable_client).run
+    rescue Errno::ECONNREFUSED
+      say "Cannot connect to brain at #{host}. Is it running? Start it with: anima start", :red
+      exit 1
     end
 
     desc "version", "Show version"
@@ -54,6 +69,18 @@ module Anima
     def version
       require_relative "version"
       say "anima #{Anima::VERSION}"
+    end
+
+    private
+
+    # Fetches the current session ID from the brain's REST API.
+    # @param host [String] brain server address
+    # @return [Integer] session ID
+    # @raise [RuntimeError] if the brain returns an error response
+    def fetch_current_session(host)
+      uri = URI("http://#{host}/api/sessions/current")
+      body = Net::HTTP.get(uri)
+      JSON.parse(body)["id"]
     end
   end
 end
