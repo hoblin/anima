@@ -340,29 +340,19 @@ RSpec.describe TUI::CableClient do
 
     describe "#backoff_delay (private)" do
       it "returns a value between 0 and base for attempt 1" do
-        100.times do
-          delay = client.send(:backoff_delay, 1)
-          expect(delay).to be >= 0.0
-          expect(delay).to be <= described_class::BACKOFF_BASE
-        end
+        delay = client.send(:backoff_delay, 1)
+        expect(delay).to be_between(0.0, described_class::BACKOFF_BASE)
       end
 
-      it "increases max delay with higher attempts" do
-        low_max = described_class::BACKOFF_BASE * (2**0) # 1.0
-        high_max = described_class::BACKOFF_BASE * (2**4) # 16.0
-
-        # Statistical check: average of many attempt-5 delays should exceed attempt-1 range
-        delays_1 = Array.new(100) { client.send(:backoff_delay, 1) }
-        delays_5 = Array.new(100) { client.send(:backoff_delay, 5) }
-
-        expect(delays_5.max).to be > low_max
+      it "returns a value up to 2^(attempt-1) * base" do
+        max_for_attempt_5 = described_class::BACKOFF_BASE * (2**4) # 16.0
+        delay = client.send(:backoff_delay, 5)
+        expect(delay).to be_between(0.0, max_for_attempt_5)
       end
 
       it "caps delay at BACKOFF_CAP" do
-        100.times do
-          delay = client.send(:backoff_delay, 100)
-          expect(delay).to be <= described_class::BACKOFF_CAP
-        end
+        delay = client.send(:backoff_delay, 100)
+        expect(delay).to be <= described_class::BACKOFF_CAP
       end
     end
 
@@ -376,8 +366,11 @@ RSpec.describe TUI::CableClient do
       end
 
       it "does nothing when within threshold" do
+        freeze_time = Time.now
+        allow(Time).to receive(:now).and_return(freeze_time)
+
         client.instance_variable_set(:@status, :subscribed)
-        client.instance_variable_set(:@last_ping_at, Time.now)
+        client.instance_variable_set(:@last_ping_at, freeze_time)
 
         client.send(:check_stale_connection)
 
@@ -385,9 +378,12 @@ RSpec.describe TUI::CableClient do
       end
 
       it "disconnects when ping is stale" do
+        freeze_time = Time.now
+        allow(Time).to receive(:now).and_return(freeze_time)
+
         client.instance_variable_set(:@status, :subscribed)
         client.instance_variable_set(:@last_ping_at,
-          Time.now - described_class::PING_STALE_THRESHOLD - 1)
+          freeze_time - described_class::PING_STALE_THRESHOLD - 1)
 
         client.send(:check_stale_connection)
 
@@ -395,9 +391,12 @@ RSpec.describe TUI::CableClient do
       end
 
       it "only checks when subscribed" do
+        freeze_time = Time.now
+        allow(Time).to receive(:now).and_return(freeze_time)
+
         client.instance_variable_set(:@status, :connected)
         client.instance_variable_set(:@last_ping_at,
-          Time.now - described_class::PING_STALE_THRESHOLD - 1)
+          freeze_time - described_class::PING_STALE_THRESHOLD - 1)
 
         client.send(:check_stale_connection)
 

@@ -70,18 +70,29 @@ module Anima
 
     private
 
+    MAX_SESSION_FETCH_ATTEMPTS = 10
+    SESSION_FETCH_DELAY = 2 # seconds between retries
+
     # Fetches the current session ID from the brain's REST API.
-    # Retries with exponential backoff if the brain is not running.
+    # Retries up to {MAX_SESSION_FETCH_ATTEMPTS} times if the brain is not running.
     #
     # @param host [String] brain server address
     # @return [Integer] session ID
     def fetch_current_session_with_retry(host)
-      fetch_current_session(host)
-    rescue Errno::ECONNREFUSED, Net::ReadTimeout, Net::OpenTimeout, SocketError => error
-      say "Brain not available (#{error.class.name.split("::").last}). " \
-          "Waiting... (Ctrl+C to cancel)", :yellow
-      sleep 2
-      retry
+      attempts = 0
+      begin
+        fetch_current_session(host)
+      rescue Errno::ECONNREFUSED, Net::ReadTimeout, Net::OpenTimeout, SocketError => error
+        attempts += 1
+        if attempts >= MAX_SESSION_FETCH_ATTEMPTS
+          say "Cannot connect to brain after #{MAX_SESSION_FETCH_ATTEMPTS} attempts", :red
+          exit 1
+        end
+        say "Brain not available (#{error.class.name.split("::").last}). " \
+            "Retrying #{attempts}/#{MAX_SESSION_FETCH_ATTEMPTS}... (Ctrl+C to cancel)", :yellow
+        sleep SESSION_FETCH_DELAY
+        retry
+      end
     end
 
     # Fetches the current session ID from the brain's REST API.

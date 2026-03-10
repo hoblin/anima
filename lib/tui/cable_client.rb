@@ -25,7 +25,7 @@ module TUI
   class CableClient
     DISCONNECT_TIMEOUT = 2 # seconds to wait for WebSocket thread to finish
     POLL_INTERVAL = 0.1 # seconds between connection status checks
-    CONNECTION_TIMEOUT = 10 # seconds to wait for welcome before retrying
+    CONNECTION_TIMEOUT = 10 # seconds to wait for the connecting state to advance
     MAX_RECONNECT_ATTEMPTS = 10
     BACKOFF_BASE = 1.0 # initial backoff delay in seconds
     BACKOFF_CAP = 30.0 # maximum backoff delay
@@ -168,7 +168,7 @@ module TUI
     def open_websocket
       begin
         @ws&.close
-      rescue
+      rescue IOError, Errno::ECONNRESET
         nil
       end
 
@@ -231,12 +231,15 @@ module TUI
     end
 
     # Detects stale connections by monitoring ping heartbeat interval.
-    # Action Cable sends pings every 3 seconds; a 6-second gap means 2 missed pings.
+    # Action Cable sends pings approximately every 3 seconds;
+    # a 6-second gap indicates 2 missed pings.
     def check_stale_connection
-      return unless @last_ping_at && @status == :subscribed
-      return if (Time.now - @last_ping_at) < PING_STALE_THRESHOLD
+      stale = @mutex.synchronize do
+        next false unless @last_ping_at && @status == :subscribed
+        (Time.now - @last_ping_at) >= PING_STALE_THRESHOLD
+      end
 
-      on_disconnected
+      on_disconnected if stale
     end
 
     # Waits with exponential backoff before next reconnection attempt.
@@ -282,6 +285,12 @@ module TUI
       rand(0.0..max_delay)
     end
 
+    # Checks if a captured connection generation is outdated.
+    # WebSocket event handlers capture the generation at connection time;
+    # if a new connection starts, older handlers must ignore their events
+    # to prevent stale callbacks from corrupting current state.
+    #
+    # @param generation [Integer] the generation captured by an event handler
     # @return [Boolean] true if the given generation is no longer current
     def stale_generation?(generation)
       @mutex.synchronize { generation != @connection_generation }
