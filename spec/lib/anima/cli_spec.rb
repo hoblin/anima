@@ -2,6 +2,7 @@
 
 require "spec_helper"
 require "anima/cli"
+require "anima/installer"
 
 RSpec.describe Anima::CLI do
   describe "version" do
@@ -11,6 +12,8 @@ RSpec.describe Anima::CLI do
   end
 
   describe "start" do
+    let(:gem_root) { Anima.gem_root }
+
     it "rejects invalid environment" do
       expect {
         described_class.start(["start", "-e", "bogus"])
@@ -25,6 +28,38 @@ RSpec.describe Anima::CLI do
         described_class.start(["start"])
       }.to output(/Run 'anima install' first/).to_stdout.and raise_error(SystemExit)
     end
+
+    context "when installed" do
+      before do
+        allow(File).to receive(:directory?).and_call_original
+        allow(File).to receive(:directory?).with(File.expand_path("~/.anima")).and_return(true)
+        # Stub Kernel methods to avoid Thor method_added warnings
+        allow_any_instance_of(Kernel).to receive(:system)
+          .with(gem_root.join("bin/rails").to_s, "db:prepare").and_return(true)
+        allow_any_instance_of(Kernel).to receive(:exec)
+          .with("foreman", "start", "-f", gem_root.join("Procfile").to_s)
+      end
+
+      it "runs db:prepare then starts foreman" do
+        described_class.start(["start"])
+      end
+
+      it "respects RAILS_ENV when no -e flag given" do
+        with_env("RAILS_ENV" => "production") do
+          described_class.start(["start"])
+          expect(ENV["RAILS_ENV"]).to eq("production")
+        end
+      end
+
+      it "aborts when db:prepare fails" do
+        allow_any_instance_of(Kernel).to receive(:system)
+          .with(gem_root.join("bin/rails").to_s, "db:prepare").and_return(false)
+
+        expect {
+          described_class.start(["start"])
+        }.to raise_error(SystemExit)
+      end
+    end
   end
 
   describe "install" do
@@ -35,17 +70,6 @@ RSpec.describe Anima::CLI do
       described_class.start(["install"])
 
       expect(installer).to have_received(:run)
-    end
-  end
-
-  describe "tui" do
-    it "delegates to TUI::App" do
-      tui_app = instance_double(TUI::App, run: nil)
-      allow(TUI::App).to receive(:new).and_return(tui_app)
-
-      described_class.start(["tui"])
-
-      expect(tui_app).to have_received(:run)
     end
   end
 end

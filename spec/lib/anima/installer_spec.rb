@@ -82,4 +82,53 @@ RSpec.describe Anima::Installer do
       expect(tmp_home.join("config", "credentials", "production.key").read).to eq(original_key)
     end
   end
+
+  describe "#create_systemd_service" do
+    let(:tmp_home) { Pathname.new(Dir.mktmpdir("anima-test-")) }
+    let(:installer) { described_class.new(anima_home: tmp_home) }
+    let(:service_dir) { Pathname.new(Dir.mktmpdir("systemd-test-")) }
+    let(:service_path) { service_dir.join("anima.service") }
+
+    after do
+      FileUtils.rm_rf(tmp_home)
+      FileUtils.rm_rf(service_dir)
+    end
+
+    before do
+      allow(Pathname).to receive(:new).and_call_original
+      allow(Pathname).to receive(:new)
+        .with(File.expand_path("~/.config/systemd/user"))
+        .and_return(service_dir)
+      allow(installer).to receive(:system)
+    end
+
+    it "passes -e production to anima start" do
+      installer.create_systemd_service
+
+      content = service_path.read
+      expect(content).to include("anima start -e production")
+    end
+
+    it "does not set RAILS_ENV via Environment directive" do
+      installer.create_systemd_service
+
+      content = service_path.read
+      expect(content).not_to include("Environment=RAILS_ENV")
+    end
+
+    it "uses Type=simple for process management" do
+      installer.create_systemd_service
+
+      content = service_path.read
+      expect(content).to include("Type=simple")
+    end
+
+    it "skips creation when service already exists" do
+      service_path.write("existing")
+
+      installer.create_systemd_service
+
+      expect(service_path.read).to eq("existing")
+    end
+  end
 end

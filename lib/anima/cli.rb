@@ -16,10 +16,13 @@ module Anima
       Installer.new.run
     end
 
-    desc "start", "Boot Anima (runs pending migrations, then exits)"
-    option :environment, aliases: "-e", default: "development", desc: "Rails environment"
+    # Start the Anima brain server (Puma + Solid Queue) via Foreman.
+    # Environment precedence: -e flag > RAILS_ENV env var > "development".
+    # Requires prior installation (~/.anima must exist).
+    desc "start", "Start Anima (web + workers)"
+    option :environment, aliases: "-e", desc: "Rails environment (default: $RAILS_ENV or development)"
     def start
-      env = options[:environment]
+      env = options[:environment] || ENV.fetch("RAILS_ENV", "development")
       unless VALID_ENVIRONMENTS.include?(env)
         say "Invalid environment: #{env}. Must be one of: #{VALID_ENVIRONMENTS.join(", ")}", :red
         exit 1
@@ -32,8 +35,9 @@ module Anima
         exit 1
       end
 
-      system(Anima.gem_root.join("bin/rails").to_s, "db:prepare") || abort("db:prepare failed")
-      say "Anima booted successfully (#{env}).", :green
+      gem_root = Anima.gem_root
+      system(gem_root.join("bin/rails").to_s, "db:prepare") || abort("db:prepare failed")
+      exec("foreman", "start", "-f", gem_root.join("Procfile").to_s)
     end
 
     desc "tui", "Launch the Anima terminal interface"

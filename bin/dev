@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+export PORT="${PORT:-42134}"
+
+exec foreman start -f Procfile.dev --env /dev/null "$@"
