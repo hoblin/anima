@@ -30,6 +30,7 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
+  spec.add_dependency "foreman", "~> 0.88"
   spec.add_dependency "httparty", "~> 0.24"
   spec.add_dependency "puma", "~> 6.0"
   spec.add_dependency "rails", "~> 8.1"

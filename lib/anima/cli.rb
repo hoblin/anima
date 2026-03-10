@@ -16,7 +16,7 @@ module Anima
       Installer.new.run
     end
 
-    desc "start", "Start the Anima brain server (web + workers)"
+    desc "start", "Start Anima (web + workers)"
     option :environment, aliases: "-e", desc: "Rails environment (default: $RAILS_ENV or development)"
     def start
       env = options[:environment] || ENV.fetch("RAILS_ENV", "development")
@@ -32,8 +32,9 @@ module Anima
         exit 1
       end
 
-      require_relative "brain_server"
-      BrainServer.new(environment: env).run
+      gem_root = Anima.gem_root
+      system(gem_root.join("bin/rails").to_s, "db:prepare") || abort("db:prepare failed")
+      exec("foreman", "start", "-f", gem_root.join("Procfile").to_s)
     end
 
     desc "tui", "Launch the Anima terminal interface"
