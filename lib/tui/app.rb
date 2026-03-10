@@ -48,7 +48,7 @@ module TUI
         loop do
           tui.draw { |frame| render(frame, tui) }
 
-          event = tui.poll_event(100)
+          event = tui.poll_event(timeout: 0.1)
           next if event.nil? || event.none?
           break if handle_event(event) == :quit
         end
