@@ -17,6 +17,11 @@
 # @example With dependency injection (testing)
 #   loop = AgentLoop.new(session: session, client: mock_client, registry: mock_registry)
 #   loop.process("hello")
+#
+# @example Background job usage (retry-safe)
+#   loop = AgentLoop.new(session: session)
+#   loop.run  # processes persisted session messages without emitting UserMessage
+#   loop.finalize
 class AgentLoop
   # @return [Session] the conversation session this loop operates on
   attr_reader :session
@@ -37,11 +42,7 @@ class AgentLoop
 
   # Runs the agent loop for a single user input.
   #
-  # Lazily initializes {LLM::Client} and {Tools::Registry} on first call;
-  # both are cached and reused for subsequent calls within the same instance.
-  #
-  # Emits {Events::UserMessage} immediately, then enters the LLM tool-use
-  # loop. On completion emits {Events::AgentMessage} with the final response.
+  # Emits {Events::UserMessage} immediately, then delegates to {#run}.
   # On error emits {Events::AgentMessage} with the error text.
   #
   # @param input [String] raw user input
@@ -51,7 +52,23 @@ class AgentLoop
     return if text.empty?
 
     Events::Bus.emit(Events::UserMessage.new(content: text, session_id: @session.id))
+    run
+  rescue => error
+    error_message = "#{error.class}: #{error.message}"
+    Events::Bus.emit(Events::AgentMessage.new(content: error_message, session_id: @session.id))
+    error_message
+  end
 
+  # Runs the LLM tool-use loop on persisted session messages.
+  #
+  # Unlike {#process}, does not emit {Events::UserMessage} and lets errors
+  # propagate — designed for callers like {AgentRequestJob} that handle
+  # retries and need errors to bubble up.
+  #
+  # @return [String] the agent's response text
+  # @raise [Providers::Anthropic::TransientError] on retryable network/server errors
+  # @raise [Providers::Anthropic::AuthenticationError] on auth failures
+  def run
     @client ||= LLM::Client.new
     @registry ||= build_tool_registry
 
@@ -59,10 +76,6 @@ class AgentLoop
     response = @client.chat_with_tools(messages, registry: @registry, session_id: @session.id)
     Events::Bus.emit(Events::AgentMessage.new(content: response, session_id: @session.id))
     response
-  rescue => error
-    error_message = "#{error.class}: #{error.message}"
-    Events::Bus.emit(Events::AgentMessage.new(content: error_message, session_id: @session.id))
-    error_message
   end
 
   # Clean up the underlying {ShellSession} PTY and resources.

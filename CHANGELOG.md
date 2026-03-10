@@ -1,6 +1,9 @@
 ## [Unreleased]
 
 ### Added
+- `AgentRequestJob` — background job for LLM agent loops with retry logic for transient failures (network errors, rate limits, server errors)
+- Provider error hierarchy — `TransientError`, `RateLimitError`, `ServerError` for retry classification; `AuthenticationError` for immediate discard
+- `AgentLoop#run` — retry-safe entry point for job callers; lets errors propagate for external retry handling
 - `AgentLoop` service — decouples LLM orchestration from TUI; callable from background jobs, Action Cable channels, or TUI directly
 - Session and event persistence to SQLite — conversations survive TUI restart
 - `Session` model — owns an ordered event stream
