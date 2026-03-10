@@ -96,6 +96,30 @@ RSpec.describe SessionChannel, type: :channel do
       expect { perform(:speak, {"content" => "process this"}) }
         .to have_enqueued_job(AgentRequestJob).with(session_id)
     end
+
+    it "ignores empty content" do
+      expect { perform(:speak, {"content" => "  "}) }
+        .not_to have_enqueued_job(AgentRequestJob)
+    end
+
+    it "ignores nil content" do
+      expect { perform(:speak, {"content" => nil}) }
+        .not_to have_enqueued_job(AgentRequestJob)
+    end
+
+    it "strips whitespace from content" do
+      emitted = []
+      subscriber = double("subscriber")
+      allow(subscriber).to receive(:emit) { |event| emitted << event }
+      Events::Bus.subscribe(subscriber)
+
+      perform(:speak, {"content" => "  hello  "})
+
+      user_event = emitted.find { |e| e.dig(:payload, :type) == "user_message" }
+      expect(user_event.dig(:payload, :content)).to eq("hello")
+
+      Events::Bus.unsubscribe(subscriber)
+    end
   end
 
   describe "stream isolation" do

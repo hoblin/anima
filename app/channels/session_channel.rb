@@ -36,9 +36,12 @@ class SessionChannel < ApplicationCable::Channel
   #
   # @param data [Hash] must include "content" with the user's message text
   def speak(data)
-    session = Session.find(params[:session_id])
-    Events::Bus.emit(Events::UserMessage.new(content: data["content"], session_id: session.id))
-    AgentRequestJob.perform_later(session.id)
+    content = data["content"].to_s.strip
+    session_id = params[:session_id].to_i
+    return if content.empty? || !Session.exists?(session_id)
+
+    Events::Bus.emit(Events::UserMessage.new(content: content, session_id: session_id))
+    AgentRequestJob.perform_later(session_id)
   end
 
   private
@@ -47,14 +50,16 @@ class SessionChannel < ApplicationCable::Channel
     "session_#{params[:session_id]}"
   end
 
-  # Sends displayable events (user/agent messages) from the session history
-  # directly to the subscribing client.
+  # Sends recent displayable events (user/agent messages) from the session
+  # history directly to the subscribing client.
   def transmit_history
     session = Session.find_by(id: params[:session_id])
     return unless session
 
-    session.events.where(event_type: %w[user_message agent_message]).each do |event|
-      transmit(event.payload)
-    end
+    session.events
+      .where(event_type: %w[user_message agent_message])
+      .order(:id)
+      .last(200)
+      .each { |event| transmit(event.payload) }
   end
 end

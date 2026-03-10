@@ -76,10 +76,11 @@ module Anima
     # Fetches the current session ID from the brain's REST API.
     # @param host [String] brain server address
     # @return [Integer] session ID
+    # @raise [RuntimeError] if the brain returns an error response
     def fetch_current_session(host)
       uri = URI("http://#{host}/api/sessions/current")
-      response = Net::HTTP.get_response(uri)
-      JSON.parse(response.body)["id"]
+      body = Net::HTTP.get(uri)
+      JSON.parse(body)["id"]
     end
   end
 end

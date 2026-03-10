@@ -9,7 +9,7 @@ module Api
     # GET /api/sessions/current
     # @return [JSON] { id: Integer }
     def current
-      session = Session.order(id: :desc).first || Session.create!
+      session = Session.last || Session.create!
       render json: {id: session.id}
     end
 

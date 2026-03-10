@@ -19,6 +19,9 @@ module TUI
   #   messages = client.drain_messages
   #   client.disconnect
   class CableClient
+    DISCONNECT_TIMEOUT = 2 # seconds to wait for WebSocket thread to finish
+    POLL_INTERVAL = 0.1 # seconds between connection status checks
+
     # @return [String] brain server host:port
     attr_reader :host
 
@@ -83,7 +86,7 @@ module TUI
     def disconnect
       @mutex.synchronize { @status = :disconnected }
       @ws&.close
-      @ws_thread&.join(2)
+      @ws_thread&.join(DISCONNECT_TIMEOUT)
     end
 
     private
@@ -116,7 +119,7 @@ module TUI
       end
 
       # Keep thread alive while connected
-      sleep 0.1 while @status != :disconnected
+      sleep POLL_INTERVAL while @status != :disconnected
     rescue => _e
       on_disconnected
     end

@@ -69,10 +69,14 @@ module TUI
         end
       end
 
-      # Creates a new session via HTTP and resubscribes the WebSocket channel
+      # Creates a new session via HTTP and resubscribes the WebSocket channel.
+      # @raise [RuntimeError] if the brain returns an error response
       def new_session
         uri = URI("http://#{@cable_client.host}/api/sessions")
         response = Net::HTTP.post(uri, "", {"Content-Type" => "application/json"})
+        unless response.is_a?(Net::HTTPSuccess)
+          raise "Failed to create session: #{response.code}"
+        end
         new_session_data = JSON.parse(response.body)
 
         @cable_client.resubscribe(new_session_data["id"])
@@ -84,7 +88,6 @@ module TUI
       end
 
       def finalize
-        # No local resources to clean up — the CableClient is owned by App
       end
 
       def loading?
