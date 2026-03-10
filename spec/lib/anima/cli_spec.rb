@@ -37,12 +37,14 @@ RSpec.describe Anima::CLI do
         # Stub Kernel methods to avoid Thor method_added warnings
         allow_any_instance_of(Kernel).to receive(:system)
           .with(gem_root.join("bin/rails").to_s, "db:prepare", chdir: gem_root.to_s).and_return(true)
-        allow(Dir).to receive(:chdir).with(gem_root)
         allow_any_instance_of(Kernel).to receive(:exec)
-          .with("foreman", "start", "-f", gem_root.join("Procfile").to_s, "-p", "42134")
+          .with("foreman", "start", "-f", gem_root.join("Procfile").to_s, "-p", described_class::DEFAULT_PORT.to_s, chdir: gem_root.to_s)
       end
 
-      it "runs db:prepare then starts foreman" do
+      it "runs db:prepare then starts foreman with correct port" do
+        expect_any_instance_of(Kernel).to receive(:exec)
+          .with("foreman", "start", "-f", gem_root.join("Procfile").to_s, "-p", described_class::DEFAULT_PORT.to_s, chdir: gem_root.to_s)
+
         described_class.start(["start"])
       end
 

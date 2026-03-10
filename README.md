@@ -81,7 +81,7 @@ Brain Server (Rails + Puma)              TUI Client (RatatuiRuby)
 └── SQLite databases                ◄── WebSocket (port 42134) ──► TUI
 ```
 
-The **Brain** is the persistent service — it handles LLM calls, tool execution, event processing, and state. The **TUI** is a stateless client — it connects via WebSocket, renders events, and captures input. If TUI disconnects, the brain keeps running. TUI reconnects and resumes seamlessly.
+The **Brain** is the persistent service — it handles LLM calls, tool execution, event processing, and state. The **TUI** is a stateless client — it connects via WebSocket, renders events, and captures input. If TUI disconnects, the brain keeps running. TUI reconnects automatically with exponential backoff and resumes the session with chat history preserved.
 
 ### Tech Stack
 
