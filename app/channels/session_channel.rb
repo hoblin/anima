@@ -44,10 +44,63 @@ class SessionChannel < ApplicationCable::Channel
     AgentRequestJob.perform_later(session_id)
   end
 
+  # Returns recent sessions with metadata for session picker UI.
+  #
+  # @param data [Hash] optional "limit" (default 10, max 50)
+  def list_sessions(data)
+    limit = (data["limit"] || 10).to_i.clamp(1, 50)
+    sessions = Session.order(updated_at: :desc).limit(limit).map do |session|
+      {
+        id: session.id,
+        created_at: session.created_at.iso8601,
+        updated_at: session.updated_at.iso8601,
+        message_count: session.events.llm_messages.count
+      }
+    end
+    transmit({"action" => "sessions_list", "sessions" => sessions})
+  end
+
+  # Creates a new session and switches the channel stream to it.
+  # The client receives a session_changed signal followed by (empty) history.
+  def create_session(_data)
+    session = Session.create!
+    switch_to_session(session.id)
+  end
+
+  # Switches the channel stream to an existing session.
+  # The client receives a session_changed signal followed by chat history.
+  #
+  # @param data [Hash] must include "session_id" (positive integer)
+  def switch_session(data)
+    target_id = data["session_id"].to_i
+    unless target_id > 0 && Session.exists?(target_id)
+      transmit({"action" => "error", "message" => "Session not found"})
+      return
+    end
+
+    switch_to_session(target_id)
+  end
+
   private
 
   def stream_name
     "session_#{params[:session_id]}"
+  end
+
+  # Switches the channel to a different session: stops current stream,
+  # updates the session reference, starts the new stream, and sends
+  # a session_changed signal followed by chat history.
+  def switch_to_session(new_id)
+    stop_all_streams
+    params[:session_id] = new_id
+    stream_from stream_name
+    session = Session.find(new_id)
+    transmit({
+      "action" => "session_changed",
+      "session_id" => new_id,
+      "message_count" => session.events.llm_messages.count
+    })
+    transmit_history
   end
 
   # Sends displayable events from the LLM's viewport to the subscribing

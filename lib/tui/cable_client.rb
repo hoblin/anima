@@ -58,6 +58,35 @@ module TUI
       send_action("speak", {"content" => content})
     end
 
+    # Requests the brain to create a new session and switch to it.
+    # The server responds with a session_changed message followed by history.
+    def create_session
+      send_action("create_session", {})
+    end
+
+    # Requests the brain to switch to an existing session.
+    # The server responds with a session_changed message followed by history.
+    #
+    # @param session_id [Integer] target session to resume
+    def switch_session(session_id)
+      send_action("switch_session", {"session_id" => session_id})
+    end
+
+    # Requests a list of recent sessions from the brain.
+    # The server responds with a sessions_list message.
+    #
+    # @param limit [Integer] max sessions to return (default 10)
+    def list_sessions(limit: 10)
+      send_action("list_sessions", {"limit" => limit})
+    end
+
+    # Updates the local session ID reference after a server-side session switch.
+    #
+    # @param new_id [Integer] the new session ID
+    def update_session_id(new_id)
+      @mutex.synchronize { @session_id = new_id }
+    end
+
     # Drains all pending messages from the queue (non-blocking).
     # Call this from the TUI render loop to process incoming events.
     #

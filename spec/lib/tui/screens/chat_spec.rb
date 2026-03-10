@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "spec_helper"
-require "webmock/rspec"
 require "ratatui_ruby"
 require "tui/app"
 
@@ -16,7 +15,10 @@ RSpec.describe TUI::Screens::Chat do
   before do
     allow(cable_client).to receive(:drain_messages).and_return([])
     allow(cable_client).to receive(:speak)
-    allow(cable_client).to receive(:resubscribe)
+    allow(cable_client).to receive(:create_session)
+    allow(cable_client).to receive(:switch_session)
+    allow(cable_client).to receive(:list_sessions)
+    allow(cable_client).to receive(:update_session_id)
   end
 
   # RatatuiRuby::Event uses method_missing for dynamic predicates,
@@ -330,10 +332,14 @@ RSpec.describe TUI::Screens::Chat do
   end
 
   describe "#new_session" do
-    before do
-      stub_request(:post, "http://localhost:42134/api/sessions")
-        .to_return(status: 201, body: '{"id": 99}', headers: {"Content-Type" => "application/json"})
+    it "sends create_session via WebSocket protocol" do
+      screen.new_session
+      expect(cable_client).to have_received(:create_session)
+    end
+  end
 
+  describe "session_changed protocol message" do
+    before do
       message_store.process_event({"type" => "user_message", "content" => "old message"})
       screen.instance_variable_set(:@input, "partial")
       screen.instance_variable_set(:@loading, true)
@@ -341,37 +347,83 @@ RSpec.describe TUI::Screens::Chat do
       screen.instance_variable_set(:@auto_scroll, false)
     end
 
-    it "creates a new session via HTTP" do
-      screen.new_session
-
-      expect(WebMock).to have_requested(:post, "http://localhost:42134/api/sessions")
+    let(:session_changed_msg) do
+      {"action" => "session_changed", "session_id" => 99, "message_count" => 5}
     end
 
-    it "resubscribes cable_client to the new session" do
-      screen.new_session
+    it "updates cable_client session ID" do
+      allow(cable_client).to receive(:drain_messages).and_return([session_changed_msg])
+      screen.send(:process_incoming_messages)
 
-      expect(cable_client).to have_received(:resubscribe).with(99)
+      expect(cable_client).to have_received(:update_session_id).with(99)
     end
 
     it "clears messages" do
-      screen.new_session
+      allow(cable_client).to receive(:drain_messages).and_return([session_changed_msg])
+      screen.send(:process_incoming_messages)
       expect(screen.messages).to eq([])
     end
 
+    it "updates session info" do
+      allow(cable_client).to receive(:drain_messages).and_return([session_changed_msg])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_info).to eq({id: 99, message_count: 5})
+    end
+
     it "clears input" do
-      screen.new_session
+      allow(cable_client).to receive(:drain_messages).and_return([session_changed_msg])
+      screen.send(:process_incoming_messages)
       expect(screen.input).to eq("")
     end
 
     it "resets loading state" do
-      screen.new_session
+      allow(cable_client).to receive(:drain_messages).and_return([session_changed_msg])
+      screen.send(:process_incoming_messages)
       expect(screen.loading?).to be false
     end
 
     it "resets scroll state" do
-      screen.new_session
+      allow(cable_client).to receive(:drain_messages).and_return([session_changed_msg])
+      screen.send(:process_incoming_messages)
       expect(screen.scroll_offset).to eq(0)
       expect(screen.instance_variable_get(:@auto_scroll)).to be true
+    end
+  end
+
+  describe "sessions_list protocol message" do
+    it "stores the sessions list" do
+      sessions = [{"id" => 1, "message_count" => 3}, {"id" => 2, "message_count" => 0}]
+      allow(cable_client).to receive(:drain_messages).and_return([
+        {"action" => "sessions_list", "sessions" => sessions}
+      ])
+      screen.send(:process_incoming_messages)
+      expect(screen.instance_variable_get(:@sessions_list)).to eq(sessions)
+    end
+  end
+
+  describe "session_info tracking" do
+    it "starts with cable_client session_id" do
+      expect(screen.session_info[:id]).to eq(42)
+    end
+
+    it "starts with zero message count" do
+      expect(screen.session_info[:message_count]).to eq(0)
+    end
+
+    it "increments message count on user_message" do
+      allow(cable_client).to receive(:drain_messages).and_return([
+        {"type" => "user_message", "content" => "hi"}
+      ])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_info[:message_count]).to eq(1)
+    end
+
+    it "increments message count on agent_message" do
+      allow(cable_client).to receive(:drain_messages).and_return([
+        {"type" => "agent_message", "content" => "hello"}
+      ])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_info[:message_count]).to eq(1)
     end
   end
 

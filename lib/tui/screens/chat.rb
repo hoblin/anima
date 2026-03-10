@@ -14,7 +14,7 @@ module TUI
       SCROLL_STEP = 1
       MOUSE_SCROLL_STEP = 2
 
-      attr_reader :input, :message_store, :scroll_offset
+      attr_reader :input, :message_store, :scroll_offset, :session_info
 
       # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
       # @param message_store [TUI::MessageStore, nil] injectable for testing
@@ -27,6 +27,7 @@ module TUI
         @auto_scroll = true
         @visible_height = 0
         @max_scroll = 0
+        @session_info = {id: cable_client.session_id, message_count: 0}
       end
 
       def messages
@@ -69,22 +70,12 @@ module TUI
         end
       end
 
-      # Creates a new session via HTTP and resubscribes the WebSocket channel.
-      # @raise [RuntimeError] if the brain returns an error response
+      # Creates a new session through the WebSocket protocol.
+      # The brain creates the session, switches the channel stream, and sends
+      # a session_changed signal followed by (empty) history. The client-side
+      # state reset happens when session_changed is received.
       def new_session
-        uri = URI("http://#{@cable_client.host}/api/sessions")
-        response = Net::HTTP.post(uri, "", {"Content-Type" => "application/json"})
-        unless response.is_a?(Net::HTTPSuccess)
-          raise "Failed to create session: #{response.code}"
-        end
-        new_session_data = JSON.parse(response.body)
-
-        @cable_client.resubscribe(new_session_data["id"])
-        @message_store.clear
-        @input = ""
-        @loading = false
-        @scroll_offset = 0
-        @auto_scroll = true
+        @cable_client.create_session
       end
 
       def finalize
@@ -99,20 +90,44 @@ module TUI
       # Drains the WebSocket message queue and feeds events to the message store
       def process_incoming_messages
         @cable_client.drain_messages.each do |msg|
+          action = msg["action"]
           type = msg["type"]
-          case type
-          when "connection"
-            # Connection status changes handled by App via cable_client.status
-          when "user_message"
-            @message_store.process_event(msg)
-            @loading = true
-          when "agent_message"
-            @message_store.process_event(msg)
-            @loading = false
+
+          case action
+          when "session_changed"
+            handle_session_changed(msg)
+          when "sessions_list"
+            @sessions_list = msg["sessions"]
+          when "error"
+            # Protocol errors logged for debugging
           else
-            @message_store.process_event(msg)
+            case type
+            when "connection"
+              # Connection status changes handled by App via cable_client.status
+            when "user_message"
+              @message_store.process_event(msg)
+              @session_info[:message_count] += 1
+              @loading = true
+            when "agent_message"
+              @message_store.process_event(msg)
+              @session_info[:message_count] += 1
+              @loading = false
+            else
+              @message_store.process_event(msg)
+            end
           end
         end
+      end
+
+      def handle_session_changed(msg)
+        new_id = msg["session_id"]
+        @cable_client.update_session_id(new_id)
+        @message_store.clear
+        @session_info = {id: new_id, message_count: msg["message_count"] || 0}
+        @input = ""
+        @loading = false
+        @scroll_offset = 0
+        @auto_scroll = true
       end
 
       def render_messages(frame, area, tui)
