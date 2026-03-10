@@ -1,9 +1,8 @@
-# Anima Framework
+# Anima
 
-**A soul engine for AI agents.**
+**A personal AI agent that actually wants things.**
 
-Ruby framework for building AI agents with desires, personality, and personal growth.
-Headless Rails 8.1 app distributed as a gem, with a TUI-first interface via RatatuiRuby.
+Your agent. Your machine. Your rules. Anima is an AI agent with desires, personality, and personal growth — running locally as a headless Rails 8.1 app with a client-server architecture and TUI interface.
 
 ## The Problem
 
@@ -61,22 +60,41 @@ Existing RL techniques apply at the starting point, then we gradually expand int
 ## Architecture
 
 ```
-Anima Framework (Ruby, Rails 8.1 headless)
+Anima (Ruby, Rails 8.1 headless)
 ├── Thymos    — hormonal/desire system (stimulus → hormone vector)
 ├── Mneme     — semantic memory (QMD-style, emotional recall)
 ├── Psyche    — soul matrix (coefficient table, evolving through experience)
 └── Nous      — LLM integration (cortex, thinking, decision-making)
 ```
 
+### Runtime Architecture
+
+Anima runs as a client-server system:
+
+```
+Brain Server (Rails + Puma)              TUI Client (RatatuiRuby)
+├── LLM integration (Anthropic)          ├── WebSocket client
+├── Agent loop + tool execution          ├── Terminal rendering
+├── Event bus + persistence              └── User input capture
+├── Solid Queue (background jobs)
+├── Action Cable (WebSocket server)
+└── SQLite databases                ◄── WebSocket (port 42134) ──► TUI
+```
+
+The **Brain** is the persistent service — it handles LLM calls, tool execution, event processing, and state. The **TUI** is a stateless client — it connects via WebSocket, renders events, and captures input. If TUI disconnects, the brain keeps running. TUI reconnects and resumes seamlessly.
+
 ### Tech Stack
 
 | Component | Technology |
 |-----------|-----------|
 | Framework | Rails 8.1 (headless — no web views, no asset pipeline) |
-| Database | SQLite (per environment, stored in `~/.anima/db/`) |
-| Event system | Rails Structured Event Reporter |
-| LLM integration | Raw HTTP to Anthropic API |
-| Interface | TUI via RatatuiRuby |
+| Database | SQLite (3 databases per environment: primary, queue, cable) |
+| Event system | Rails Structured Event Reporter + Action Cable bridge |
+| LLM integration | Anthropic API (Claude Sonnet 4) |
+| Transport | Action Cable WebSocket (Solid Cable adapter) |
+| Background jobs | Solid Queue |
+| Interface | TUI via RatatuiRuby (WebSocket client) |
+| Process management | Foreman |
 | Distribution | RubyGems (`gem install anima-core`) |
 
 ### Distribution Model
@@ -85,8 +103,16 @@ Anima is a Rails app distributed as a gem, following Unix philosophy: immutable 
 
 ```bash
 gem install anima-core       # Install the Rails app as a gem
-anima install                # Create ~/.anima/ directory structure
-anima start                  # Launch — code from gem, state from ~/.anima/
+anima install                # Create ~/.anima/, set up databases, start brain as systemd service
+anima tui                    # Connect the terminal interface
+```
+
+The installer creates a systemd user service that starts the brain automatically on login. Manage it with:
+
+```bash
+systemctl --user status anima    # Check brain status
+systemctl --user restart anima   # Restart brain
+journalctl --user -u anima       # View logs
 ```
 
 State directory (`~/.anima/`):
@@ -158,13 +184,17 @@ Five event types form the agent's nervous system:
 | `tool_call` | Tool invocation |
 | `tool_response` | Tool result |
 
+Events flow through two channels:
+1. **In-process** — Rails Structured Event Reporter (local subscribers like Persister)
+2. **Over the wire** — Action Cable WebSocket (the ActionCableBridge subscriber forwards events to connected TUI clients)
+
 Events fire, subscribers react, state updates, the cortex (LLM) reads the resulting desire landscape. The system prompt is assembled separately for each LLM call — it is not an event.
 
 ### Context as Viewport, Not Tape
 
 There is no linear chat history. There are only events attached to a session. The context window is a **viewport** — a sliding window over the event stream, assembled on demand for each LLM call within a configured token budget.
 
-POC uses a simple sliding window (newest events first, walk backwards until budget exhausted). Future versions will add multi-resolution compression with Draper decorators and associative recall from Mneme.
+Currently uses a simple sliding window (newest events first, walk backwards until budget exhausted). Future versions will add multi-resolution compression with Draper decorators and associative recall from Mneme.
 
 ### Brain as Microservices on a Shared Event Bus
 
@@ -198,7 +228,7 @@ anima add anima-tools-shell
 anima add anima-feelings-frustration
 ```
 
-Tools provide MCP capabilities. Feelings are event subscribers that update hormonal state. Same mechanism, different namespace. In POC, tools are built-in; plugin extraction comes later.
+Tools provide MCP capabilities. Feelings are event subscribers that update hormonal state. Same mechanism, different namespace. Currently tools are built-in; plugin extraction comes later.
 
 ### Semantic Memory (Mneme)
 
@@ -301,36 +331,36 @@ This single example demonstrates every core principle:
 
 ## Status
 
-POC stage. Gem scaffold with CI and RubyGems publishing exists. Building toward a working conversational agent with event-driven architecture.
+**Core agent complete.** The conversational agent works end-to-end: event-driven architecture, LLM integration with tool calling (bash, web), sliding viewport context assembly, persistent sessions, and client-server architecture with WebSocket transport and graceful reconnection.
 
-The hormonal system (Thymos, feelings, desires), semantic memory (Mneme), and soul matrix (Psyche) are designed but deferred — POC focuses on getting the core agent loop working first.
+The hormonal system (Thymos, feelings, desires), semantic memory (Mneme), and soul matrix (Psyche) are designed but not yet implemented — they're the next layer on top of the working agent.
 
 ## Development
 
 ```bash
 git clone https://github.com/hoblin/anima.git
 cd anima
-bundle install
-bundle exec rspec
+bin/setup
 ```
 
-### Running the TUI
+### Running Anima
 
-The TUI requires a background job worker for async token counting (used by the sliding viewport). Start both in separate terminals:
+Start the brain server and TUI client in separate terminals:
 
 ```bash
-# Terminal 1: Start Solid Queue worker
-RAILS_ENV=development bundle exec rake solid_queue:start
+# Terminal 1: Start brain (web server + background worker)
+bin/dev
 
-# Terminal 2: Launch the TUI
+# Terminal 2: Connect the TUI
 bundle exec anima tui
 ```
 
-On first run, initialize the databases:
+On first run, `bin/dev` runs `db:prepare` automatically.
+
+### Running Tests
 
 ```bash
-RAILS_ENV=development bundle exec rails db:migrate
-RAILS_ENV=development bundle exec rails db:schema:load:queue
+bundle exec rspec
 ```
 
 ## License

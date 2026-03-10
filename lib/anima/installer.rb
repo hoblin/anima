@@ -29,7 +29,7 @@ module Anima
       create_config_file
       generate_credentials
       create_systemd_service
-      say "Installation complete. Run 'anima start' to begin."
+      say "Installation complete. Brain is running. Connect with 'anima tui'."
     end
 
     def create_directories
@@ -106,6 +106,8 @@ module Anima
 
       say "  created #{service_path}"
       system("systemctl", "--user", "daemon-reload", err: File::NULL, out: File::NULL)
+      system("systemctl", "--user", "enable", "--now", "anima.service", err: File::NULL, out: File::NULL)
+      say "  enabled and started anima.service"
     end
 
     private
