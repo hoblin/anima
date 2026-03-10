@@ -105,16 +105,29 @@ module TUI
     end
 
     def render_info(frame, area, tui)
-      info_text = tui.line(spans: [
-        tui.span(content: "Anima v#{Anima::VERSION}", style: tui.style(fg: "white"))
-      ])
-      hint_text = tui.line(spans: [
-        tui.span(content: "Ctrl+a", style: tui.style(fg: "cyan", modifiers: [:bold])),
-        tui.span(content: " command mode", style: tui.style(fg: "dark_gray"))
-      ])
+      session = @screens[:chat].session_info
+      lines = [
+        tui.line(spans: [
+          tui.span(content: "Anima v#{Anima::VERSION}", style: tui.style(fg: "white"))
+        ]),
+        tui.line(spans: [tui.span(content: "")]),
+        tui.line(spans: [
+          tui.span(content: "Session ", style: tui.style(fg: "dark_gray")),
+          tui.span(content: "##{session[:id]}", style: tui.style(fg: "cyan", modifiers: [:bold]))
+        ]),
+        tui.line(spans: [
+          tui.span(content: "Messages ", style: tui.style(fg: "dark_gray")),
+          tui.span(content: session[:message_count].to_s, style: tui.style(fg: "cyan"))
+        ]),
+        tui.line(spans: [tui.span(content: "")]),
+        tui.line(spans: [
+          tui.span(content: "Ctrl+a", style: tui.style(fg: "cyan", modifiers: [:bold])),
+          tui.span(content: " command mode", style: tui.style(fg: "dark_gray"))
+        ])
+      ]
 
       info = tui.paragraph(
-        text: [info_text, hint_text],
+        text: lines,
         block: tui.block(
           title: "Info",
           borders: [:all],

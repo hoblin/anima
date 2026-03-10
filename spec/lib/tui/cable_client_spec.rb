@@ -146,4 +146,72 @@ RSpec.describe TUI::CableClient do
       expect(data["content"]).to eq("hello brain")
     end
   end
+
+  describe "#create_session" do
+    let(:ws) { double("WebSocket") }
+
+    before { client.instance_variable_set(:@ws, ws) }
+
+    it "sends a create_session action" do
+      sent = nil
+      allow(ws).to receive(:send) { |msg| sent = JSON.parse(msg) }
+
+      client.create_session
+
+      expect(sent["command"]).to eq("message")
+      data = JSON.parse(sent["data"])
+      expect(data["action"]).to eq("create_session")
+    end
+  end
+
+  describe "#switch_session" do
+    let(:ws) { double("WebSocket") }
+
+    before { client.instance_variable_set(:@ws, ws) }
+
+    it "sends a switch_session action with session_id" do
+      sent = nil
+      allow(ws).to receive(:send) { |msg| sent = JSON.parse(msg) }
+
+      client.switch_session(99)
+
+      data = JSON.parse(sent["data"])
+      expect(data["action"]).to eq("switch_session")
+      expect(data["session_id"]).to eq(99)
+    end
+  end
+
+  describe "#list_sessions" do
+    let(:ws) { double("WebSocket") }
+
+    before { client.instance_variable_set(:@ws, ws) }
+
+    it "sends a list_sessions action with limit" do
+      sent = nil
+      allow(ws).to receive(:send) { |msg| sent = JSON.parse(msg) }
+
+      client.list_sessions(limit: 5)
+
+      data = JSON.parse(sent["data"])
+      expect(data["action"]).to eq("list_sessions")
+      expect(data["limit"]).to eq(5)
+    end
+
+    it "defaults to limit of 10" do
+      sent = nil
+      allow(ws).to receive(:send) { |msg| sent = JSON.parse(msg) }
+
+      client.list_sessions
+
+      data = JSON.parse(sent["data"])
+      expect(data["limit"]).to eq(10)
+    end
+  end
+
+  describe "#update_session_id" do
+    it "updates the session_id" do
+      client.update_session_id(99)
+      expect(client.session_id).to eq(99)
+    end
+  end
 end
