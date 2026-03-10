@@ -31,6 +31,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "httparty", "~> 0.24"
+  spec.add_dependency "puma", "~> 6.0"
   spec.add_dependency "rails", "~> 8.1"
   spec.add_dependency "ratatui_ruby", "~> 1.4"
   spec.add_dependency "solid_cable", "~> 3.0"

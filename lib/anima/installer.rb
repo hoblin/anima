@@ -96,10 +96,9 @@ module Anima
 
         [Service]
         Type=simple
-        ExecStart=#{anima_bin} start
+        ExecStart=#{anima_bin} start -e production
         Restart=on-failure
         RestartSec=5
-        Environment=RAILS_ENV=production
 
         [Install]
         WantedBy=default.target

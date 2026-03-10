@@ -25,6 +25,38 @@ RSpec.describe Anima::CLI do
         described_class.start(["start"])
       }.to output(/Run 'anima install' first/).to_stdout.and raise_error(SystemExit)
     end
+
+    it "delegates to BrainServer" do
+      brain = instance_double(Anima::BrainServer, run: nil)
+      allow(Anima::BrainServer).to receive(:new).and_return(brain)
+
+      described_class.start(["start"])
+
+      expect(Anima::BrainServer).to have_received(:new).with(environment: "development")
+      expect(brain).to have_received(:run)
+    end
+
+    it "respects RAILS_ENV when no flag is given" do
+      brain = instance_double(Anima::BrainServer, run: nil)
+      allow(Anima::BrainServer).to receive(:new).and_return(brain)
+
+      with_env("RAILS_ENV" => "production") do
+        described_class.start(["start"])
+      end
+
+      expect(Anima::BrainServer).to have_received(:new).with(environment: "production")
+    end
+
+    it "prefers -e flag over RAILS_ENV" do
+      brain = instance_double(Anima::BrainServer, run: nil)
+      allow(Anima::BrainServer).to receive(:new).and_return(brain)
+
+      with_env("RAILS_ENV" => "production") do
+        described_class.start(["start", "-e", "test"])
+      end
+
+      expect(Anima::BrainServer).to have_received(:new).with(environment: "test")
+    end
   end
 
   describe "install" do
