@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
   spec.authors = ["Yevhenii Hurin"]
   spec.email = ["evgeny.gurin@gmail.com"]
 
-  spec.summary = "Ruby framework for building AI agents with desires, personality, and personal growth"
+  spec.summary = "A personal AI agent with desires, personality, and personal growth"
   spec.homepage = "https://github.com/hoblin/anima"
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.2.0"
@@ -19,11 +19,9 @@ Gem::Specification.new do |spec|
 
   # Specify which files should be added to the gem when it is released.
   # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
-  gemspec = File.basename(__FILE__)
   spec.files = IO.popen(%w[git ls-files -z], chdir: __dir__, err: IO::NULL) do |ls|
     ls.readlines("\x0", chomp: true).reject do |f|
-      (f == gemspec) ||
-        f.start_with?(*%w[bin/ Gemfile .gitignore .rspec spec/ .github/ .standard.yml thoughts/ CLAUDE.md])
+      f.start_with?(*%w[bin/console bin/dev bin/setup .gitignore .rspec spec/ .github/ .standard.yml thoughts/ CLAUDE.md])
     end
   end
   spec.bindir = "exe"

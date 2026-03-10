@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
 require "thor"
+require_relative "../anima"
 
 module Anima
   class CLI < Thor
     VALID_ENVIRONMENTS = %w[development test production].freeze
-    DEFAULT_HOST = "localhost:42134"
+    DEFAULT_PORT = 42134
+    DEFAULT_HOST = "localhost:#{DEFAULT_PORT}"
 
     def self.exit_on_failure?
       true
@@ -37,8 +39,8 @@ module Anima
       end
 
       gem_root = Anima.gem_root
-      system(gem_root.join("bin/rails").to_s, "db:prepare") || abort("db:prepare failed")
-      exec("foreman", "start", "-f", gem_root.join("Procfile").to_s)
+      system(gem_root.join("bin/rails").to_s, "db:prepare", chdir: gem_root.to_s) || abort("db:prepare failed")
+      exec("foreman", "start", "-f", gem_root.join("Procfile").to_s, "-p", DEFAULT_PORT.to_s, chdir: gem_root.to_s)
     end
 
     desc "tui", "Launch the Anima terminal interface"

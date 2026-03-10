@@ -123,6 +123,15 @@ RSpec.describe Anima::Installer do
       expect(content).to include("Type=simple")
     end
 
+    it "reloads systemd then enables and starts the service" do
+      installer.create_systemd_service
+
+      expect(installer).to have_received(:system)
+        .with("systemctl", "--user", "daemon-reload", err: File::NULL, out: File::NULL).ordered
+      expect(installer).to have_received(:system)
+        .with("systemctl", "--user", "enable", "--now", "anima.service", err: File::NULL, out: File::NULL).ordered
+    end
+
     it "skips creation when service already exists" do
       service_path.write("existing")
 
