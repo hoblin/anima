@@ -50,16 +50,14 @@ class SessionChannel < ApplicationCable::Channel
     "session_#{params[:session_id]}"
   end
 
-  # Sends recent displayable events (user/agent messages) from the session
-  # history directly to the subscribing client.
+  # Sends displayable events (user/agent messages) from the session history
+  # directly to the subscribing client.
   def transmit_history
     session = Session.find_by(id: params[:session_id])
     return unless session
 
-    session.events
-      .where(event_type: %w[user_message agent_message])
-      .order(:id)
-      .last(200)
-      .each { |event| transmit(event.payload) }
+    session.events.where(event_type: %w[user_message agent_message]).each do |event|
+      transmit(event.payload)
+    end
   end
 end
