@@ -1,2 +1,2 @@
-web: bin/rails server -p ${PORT:-42134}
+web: bin/rails server
 worker: bin/jobs

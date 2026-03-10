@@ -2,5 +2,5 @@
 
 Rails.application.routes.draw do
   mount ActionCable.server => "/cable"
-  mount HealthCheck, at: "/health"
+  get "up", to: "rails/health#show", as: :rails_health_check
 end

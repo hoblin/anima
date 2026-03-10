@@ -16,6 +16,9 @@ module Anima
       Installer.new.run
     end
 
+    # Start the Anima brain server (Puma + Solid Queue) via Foreman.
+    # Environment precedence: -e flag > RAILS_ENV env var > "development".
+    # Requires prior installation (~/.anima must exist).
     desc "start", "Start Anima (web + workers)"
     option :environment, aliases: "-e", desc: "Rails environment (default: $RAILS_ENV or development)"
     def start
