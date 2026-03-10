@@ -21,6 +21,10 @@ RSpec.describe TUI::CableClient do
     it "stores the session_id" do
       expect(client.session_id).to eq(session_id)
     end
+
+    it "starts with zero reconnect attempts" do
+      expect(client.reconnect_attempt).to eq(0)
+    end
   end
 
   describe "#drain_messages" do
@@ -63,6 +67,14 @@ RSpec.describe TUI::CableClient do
       expect(messages.last).to eq({"type" => "connection", "status" => "subscribed"})
     end
 
+    it "resets reconnect_attempt on confirm_subscription" do
+      client.instance_variable_set(:@reconnect_attempt, 5)
+
+      client.send(:handle_protocol_message, {"type" => "confirm_subscription"})
+
+      expect(client.reconnect_attempt).to eq(0)
+    end
+
     it "transitions to disconnected on reject_subscription" do
       client.send(:handle_protocol_message, {"type" => "reject_subscription"})
 
@@ -77,10 +89,32 @@ RSpec.describe TUI::CableClient do
       expect(client.status).to eq(:disconnected)
     end
 
-    it "ignores ping messages" do
+    context "when server sends disconnect with reconnect: false" do
+      it "sets intentional disconnect to prevent reconnection" do
+        client.send(:handle_protocol_message, {"type" => "disconnect", "reconnect" => false})
+
+        expect(client.status).to eq(:disconnected)
+        expect(client.send(:intentional_disconnect?)).to be true
+      end
+    end
+
+    it "updates last_ping_at on ping messages" do
+      freeze_time = Time.now
+      allow(Time).to receive(:now).and_return(freeze_time)
+
       client.send(:handle_protocol_message, {"type" => "ping", "message" => 1234567890})
 
+      expect(client.instance_variable_get(:@last_ping_at)).to eq(freeze_time)
       expect(client.drain_messages).to be_empty
+    end
+
+    it "updates last_ping_at on welcome" do
+      freeze_time = Time.now
+      allow(Time).to receive(:now).and_return(freeze_time)
+
+      client.send(:handle_protocol_message, {"type" => "welcome"})
+
+      expect(client.instance_variable_get(:@last_ping_at)).to eq(freeze_time)
     end
 
     it "queues regular channel messages" do
@@ -212,6 +246,178 @@ RSpec.describe TUI::CableClient do
     it "updates the session_id" do
       client.update_session_id(99)
       expect(client.session_id).to eq(99)
+    end
+  end
+
+  describe "#disconnect" do
+    it "sets intentional disconnect flag" do
+      client.disconnect
+      expect(client.send(:intentional_disconnect?)).to be true
+    end
+
+    it "transitions to disconnected" do
+      client.disconnect
+      expect(client.status).to eq(:disconnected)
+    end
+  end
+
+  describe "reconnection" do
+    describe "#on_disconnected (private)" do
+      it "transitions to disconnected and queues message" do
+        client.instance_variable_set(:@status, :subscribed)
+
+        client.send(:on_disconnected)
+
+        expect(client.status).to eq(:disconnected)
+        messages = client.drain_messages
+        expect(messages.last).to eq({"type" => "connection", "status" => "disconnected"})
+      end
+
+      it "does not transition if already disconnected" do
+        client.instance_variable_set(:@status, :disconnected)
+
+        client.send(:on_disconnected)
+
+        expect(client.drain_messages).to be_empty
+      end
+
+      it "does not transition if already reconnecting" do
+        client.instance_variable_set(:@status, :reconnecting)
+
+        client.send(:on_disconnected)
+
+        expect(client.status).to eq(:reconnecting)
+        expect(client.drain_messages).to be_empty
+      end
+    end
+
+    describe "#schedule_reconnect (private)" do
+      before do
+        # Stub sleep to avoid actual delays
+        allow(client).to receive(:sleep)
+      end
+
+      it "increments reconnect_attempt" do
+        client.send(:schedule_reconnect)
+
+        expect(client.reconnect_attempt).to eq(1)
+      end
+
+      it "transitions to reconnecting" do
+        client.send(:schedule_reconnect)
+
+        messages = client.drain_messages
+        reconnecting = messages.find { |m| m["status"] == "reconnecting" }
+        expect(reconnecting).to include("attempt" => 1, "max_attempts" => 10)
+      end
+
+      it "returns true to continue reconnection loop" do
+        result = client.send(:schedule_reconnect)
+
+        expect(result).to be true
+      end
+
+      it "returns false after max attempts" do
+        client.instance_variable_set(:@reconnect_attempt, described_class::MAX_RECONNECT_ATTEMPTS)
+
+        result = client.send(:schedule_reconnect)
+
+        expect(result).to be false
+        messages = client.drain_messages
+        expect(messages.last["status"]).to eq("failed")
+      end
+
+      it "returns false when intentional disconnect during backoff" do
+        allow(client).to receive(:sleep) do
+          client.instance_variable_set(:@intentional_disconnect, true)
+        end
+
+        result = client.send(:schedule_reconnect)
+
+        expect(result).to be false
+      end
+    end
+
+    describe "#backoff_delay (private)" do
+      it "returns a value between 0 and base for attempt 1" do
+        100.times do
+          delay = client.send(:backoff_delay, 1)
+          expect(delay).to be >= 0.0
+          expect(delay).to be <= described_class::BACKOFF_BASE
+        end
+      end
+
+      it "increases max delay with higher attempts" do
+        low_max = described_class::BACKOFF_BASE * (2**0) # 1.0
+        high_max = described_class::BACKOFF_BASE * (2**4) # 16.0
+
+        # Statistical check: average of many attempt-5 delays should exceed attempt-1 range
+        delays_1 = Array.new(100) { client.send(:backoff_delay, 1) }
+        delays_5 = Array.new(100) { client.send(:backoff_delay, 5) }
+
+        expect(delays_5.max).to be > low_max
+      end
+
+      it "caps delay at BACKOFF_CAP" do
+        100.times do
+          delay = client.send(:backoff_delay, 100)
+          expect(delay).to be <= described_class::BACKOFF_CAP
+        end
+      end
+    end
+
+    describe "#check_stale_connection (private)" do
+      it "does nothing when last_ping_at is nil" do
+        client.instance_variable_set(:@status, :subscribed)
+
+        client.send(:check_stale_connection)
+
+        expect(client.status).to eq(:subscribed)
+      end
+
+      it "does nothing when within threshold" do
+        client.instance_variable_set(:@status, :subscribed)
+        client.instance_variable_set(:@last_ping_at, Time.now)
+
+        client.send(:check_stale_connection)
+
+        expect(client.status).to eq(:subscribed)
+      end
+
+      it "disconnects when ping is stale" do
+        client.instance_variable_set(:@status, :subscribed)
+        client.instance_variable_set(:@last_ping_at,
+          Time.now - described_class::PING_STALE_THRESHOLD - 1)
+
+        client.send(:check_stale_connection)
+
+        expect(client.status).to eq(:disconnected)
+      end
+
+      it "only checks when subscribed" do
+        client.instance_variable_set(:@status, :connected)
+        client.instance_variable_set(:@last_ping_at,
+          Time.now - described_class::PING_STALE_THRESHOLD - 1)
+
+        client.send(:check_stale_connection)
+
+        expect(client.status).to eq(:connected)
+      end
+    end
+
+    describe "#stale_generation? (private)" do
+      it "returns false for current generation" do
+        generation = client.instance_variable_get(:@connection_generation)
+
+        expect(client.send(:stale_generation?, generation)).to be false
+      end
+
+      it "returns true for outdated generation" do
+        old_generation = client.instance_variable_get(:@connection_generation)
+        client.instance_variable_set(:@connection_generation, old_generation + 1)
+
+        expect(client.send(:stale_generation?, old_generation)).to be true
+      end
     end
   end
 end

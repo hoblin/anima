@@ -12,6 +12,10 @@ module TUI
   # {SessionChannel}, receive event broadcasts, and send user input
   # via the +speak+ action.
   #
+  # Automatically reconnects with exponential backoff when the connection
+  # drops unexpectedly. Detects stale connections via Action Cable ping
+  # heartbeat monitoring.
+  #
   # @example
   #   client = TUI::CableClient.new(host: "localhost:42134", session_id: 1)
   #   client.connect
@@ -21,6 +25,11 @@ module TUI
   class CableClient
     DISCONNECT_TIMEOUT = 2 # seconds to wait for WebSocket thread to finish
     POLL_INTERVAL = 0.1 # seconds between connection status checks
+    CONNECTION_TIMEOUT = 10 # seconds to wait for welcome before retrying
+    MAX_RECONNECT_ATTEMPTS = 10
+    BACKOFF_BASE = 1.0 # initial backoff delay in seconds
+    BACKOFF_CAP = 30.0 # maximum backoff delay
+    PING_STALE_THRESHOLD = 6.0 # seconds without ping before connection is stale
 
     # @return [String] brain server host:port
     attr_reader :host
@@ -28,8 +37,11 @@ module TUI
     # @return [Integer] current session ID
     attr_reader :session_id
 
-    # @return [Symbol] connection status (:disconnected, :connecting, :connected, :subscribed)
+    # @return [Symbol] connection status (:disconnected, :connecting, :connected, :subscribed, :reconnecting)
     attr_reader :status
+
+    # @return [Integer] current reconnection attempt (0 when connected)
+    attr_reader :reconnect_attempt
 
     # @param host [String] brain server address (e.g. "localhost:42134")
     # @param session_id [Integer] session to subscribe to
@@ -41,14 +53,22 @@ module TUI
       @mutex = Mutex.new
       @ws = nil
       @ws_thread = nil
+      @intentional_disconnect = false
+      @reconnect_attempt = 0
+      @last_ping_at = nil
+      @connection_generation = 0
     end
 
     # Opens the WebSocket connection in a background thread.
     # The connection subscribes to the session channel automatically
-    # after receiving the Action Cable welcome message.
+    # after receiving the Action Cable welcome message. Reconnects
+    # automatically on unexpected disconnection.
     def connect
-      @mutex.synchronize { @status = :connecting }
-      @ws_thread = Thread.new { run_websocket }
+      @mutex.synchronize do
+        @intentional_disconnect = false
+        @status = :connecting
+      end
+      @ws_thread = Thread.new { run_websocket_loop }
     end
 
     # Sends user input to the brain for processing.
@@ -113,15 +133,52 @@ module TUI
     end
 
     # Closes the WebSocket connection and cleans up the background thread.
+    # Prevents automatic reconnection.
     def disconnect
-      @mutex.synchronize { @status = :disconnected }
+      @mutex.synchronize do
+        @intentional_disconnect = true
+        @status = :disconnected
+      end
       @ws&.close
       @ws_thread&.join(DISCONNECT_TIMEOUT)
     end
 
     private
 
-    def run_websocket
+    # Main connection loop: connect -> monitor -> reconnect if needed.
+    # Runs in a background thread spawned by {#connect}.
+    def run_websocket_loop
+      loop do
+        return if intentional_disconnect?
+
+        if open_websocket
+          monitor_connection
+        end
+
+        return if intentional_disconnect?
+        break unless schedule_reconnect
+      end
+    rescue => _e
+      on_disconnected
+    end
+
+    # Establishes WebSocket connection and registers event handlers.
+    #
+    # @return [Boolean] true if connection was opened, false on failure
+    def open_websocket
+      begin
+        @ws&.close
+      rescue
+        nil
+      end
+
+      generation = @mutex.synchronize do
+        @connection_generation += 1
+        @status = :connecting
+        @last_ping_at = nil
+        @connection_generation
+      end
+
       url = "ws://#{@host}/cable"
       client = self
 
@@ -134,6 +191,7 @@ module TUI
       end
 
       @ws.on :message do |msg|
+        next if client.send(:stale_generation?, generation)
         data = JSON.parse(msg.data)
         client.send(:handle_protocol_message, data)
       rescue JSON::ParserError
@@ -141,40 +199,142 @@ module TUI
       end
 
       @ws.on :close do |_e|
-        client.send(:on_disconnected)
+        client.send(:on_disconnected) unless client.send(:stale_generation?, generation)
       end
 
       @ws.on :error do |_e|
-        client.send(:on_disconnected)
+        client.send(:on_disconnected) unless client.send(:stale_generation?, generation)
       end
 
-      # Keep thread alive while connected
-      sleep POLL_INTERVAL while @status != :disconnected
-    rescue => _e
+      true
+    rescue Errno::ECONNREFUSED, Errno::ETIMEDOUT, Errno::EHOSTUNREACH,
+      SocketError, IOError => _e
+      false
+    end
+
+    # Polls connection status until disconnect is detected.
+    # Also monitors for stale connections and connection timeout.
+    def monitor_connection
+      connection_start = Time.now
+
+      loop do
+        break if @status == :disconnected
+
+        if @status == :connecting && (Time.now - connection_start) > CONNECTION_TIMEOUT
+          on_disconnected
+          break
+        end
+
+        check_stale_connection
+        sleep POLL_INTERVAL
+      end
+    end
+
+    # Detects stale connections by monitoring ping heartbeat interval.
+    # Action Cable sends pings every 3 seconds; a 6-second gap means 2 missed pings.
+    def check_stale_connection
+      return unless @last_ping_at && @status == :subscribed
+      return if (Time.now - @last_ping_at) < PING_STALE_THRESHOLD
+
       on_disconnected
+    end
+
+    # Waits with exponential backoff before next reconnection attempt.
+    #
+    # @return [Boolean] true if reconnection should proceed, false if max attempts reached
+    def schedule_reconnect
+      attempt = @mutex.synchronize do
+        @reconnect_attempt += 1
+        @reconnect_attempt
+      end
+
+      if attempt > MAX_RECONNECT_ATTEMPTS
+        @mutex.synchronize { @status = :disconnected }
+        @message_queue << {
+          "type" => "connection",
+          "status" => "failed",
+          "message" => "Reconnection failed after #{MAX_RECONNECT_ATTEMPTS} attempts"
+        }
+        return false
+      end
+
+      delay = backoff_delay(attempt)
+      @mutex.synchronize { @status = :reconnecting }
+      @message_queue << {
+        "type" => "connection",
+        "status" => "reconnecting",
+        "attempt" => attempt,
+        "max_attempts" => MAX_RECONNECT_ATTEMPTS,
+        "delay" => delay.round(1)
+      }
+
+      sleep delay
+      !intentional_disconnect?
+    end
+
+    # Full jitter backoff: random delay between 0 and min(cap, base * 2^attempt).
+    # Prevents thundering herd when multiple clients reconnect simultaneously.
+    #
+    # @param attempt [Integer] current attempt number (1-based)
+    # @return [Float] delay in seconds
+    def backoff_delay(attempt)
+      max_delay = [BACKOFF_CAP, BACKOFF_BASE * (2**(attempt - 1))].min
+      rand(0.0..max_delay)
+    end
+
+    # @return [Boolean] true if the given generation is no longer current
+    def stale_generation?(generation)
+      @mutex.synchronize { generation != @connection_generation }
+    end
+
+    # @return [Boolean] true if disconnect was initiated by the application
+    def intentional_disconnect?
+      @mutex.synchronize { @intentional_disconnect }
     end
 
     def handle_protocol_message(data)
       case data["type"]
       when "welcome"
         @mutex.synchronize { @status = :connected }
+        @last_ping_at = Time.now
         subscribe
       when "ping"
-        # Heartbeat — connection alive
+        @last_ping_at = Time.now
       when "confirm_subscription"
-        @mutex.synchronize { @status = :subscribed }
+        @mutex.synchronize do
+          @status = :subscribed
+          @reconnect_attempt = 0
+        end
         @message_queue << {"type" => "connection", "status" => "subscribed"}
       when "reject_subscription"
         on_disconnected
         @message_queue << {"type" => "connection", "status" => "rejected"}
       when "disconnect"
-        on_disconnected
+        if data["reconnect"] == false
+          @mutex.synchronize do
+            @intentional_disconnect = true
+            @status = :disconnected
+          end
+          @message_queue << {"type" => "connection", "status" => "disconnected"}
+        else
+          on_disconnected
+        end
       else
         # Regular broadcast or transmit from the channel
         if data["message"]
           @message_queue << data["message"]
         end
       end
+    end
+
+    # Transitions to disconnected state. Guards against duplicate calls
+    # from concurrent close/error handlers.
+    def on_disconnected
+      @mutex.synchronize do
+        return if @status == :disconnected || @status == :reconnecting
+        @status = :disconnected
+      end
+      @message_queue << {"type" => "connection", "status" => "disconnected"}
     end
 
     def subscribe
@@ -203,11 +363,6 @@ module TUI
         command: command,
         identifier: identifier
       }.to_json)
-    end
-
-    def on_disconnected
-      @mutex.synchronize { @status = :disconnected }
-      @message_queue << {"type" => "connection", "status" => "disconnected"}
     end
   end
 end

@@ -52,16 +52,13 @@ module Anima
       host = options[:host] || DEFAULT_HOST
 
       say "Connecting to brain at #{host}...", :cyan
-      session_id = fetch_current_session(host)
+      session_id = fetch_current_session_with_retry(host)
       say "Session ##{session_id} — starting TUI", :cyan
 
       cable_client = TUI::CableClient.new(host: host, session_id: session_id)
       cable_client.connect
 
       TUI::App.new(cable_client: cable_client).run
-    rescue Errno::ECONNREFUSED
-      say "Cannot connect to brain at #{host}. Is it running? Start it with: anima start", :red
-      exit 1
     end
 
     desc "version", "Show version"
@@ -72,6 +69,20 @@ module Anima
     end
 
     private
+
+    # Fetches the current session ID from the brain's REST API.
+    # Retries with exponential backoff if the brain is not running.
+    #
+    # @param host [String] brain server address
+    # @return [Integer] session ID
+    def fetch_current_session_with_retry(host)
+      fetch_current_session(host)
+    rescue Errno::ECONNREFUSED, Net::ReadTimeout, Net::OpenTimeout, SocketError => error
+      say "Brain not available (#{error.class.name.split("::").last}). " \
+          "Waiting... (Ctrl+C to cancel)", :yellow
+      sleep 2
+      retry
+    end
 
     # Fetches the current session ID from the brain's REST API.
     # @param host [String] brain server address

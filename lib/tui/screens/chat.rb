@@ -103,7 +103,7 @@ module TUI
           else
             case type
             when "connection"
-              # Connection status changes handled by App via cable_client.status
+              handle_connection_status(msg)
             when "user_message"
               @message_store.process_event(msg)
               @session_info[:message_count] += 1
@@ -116,6 +116,20 @@ module TUI
               @message_store.process_event(msg)
             end
           end
+        end
+      end
+
+      # Reacts to connection lifecycle changes from the WebSocket client.
+      # Clears stale state on (re)subscription so fresh history from the server
+      # replaces any messages displayed before the disconnect.
+      def handle_connection_status(msg)
+        case msg["status"]
+        when "subscribed"
+          @message_store.clear
+          @loading = false
+          @session_info[:message_count] = 0
+        when "disconnected", "failed"
+          @loading = false
         end
       end
 
@@ -203,17 +217,26 @@ module TUI
       end
 
       def render_input(frame, area, tui)
-        cursor = @loading ? "" : "\u2588"
-        border_style = @loading ? {fg: "dark_gray"} : {fg: "green"}
-        text_style = @loading ? tui.style(fg: "dark_gray") : tui.style(fg: "white")
+        disabled = @loading || !connected?
+        cursor = disabled ? "" : "\u2588"
+        border_style = disabled ? {fg: "dark_gray"} : {fg: "green"}
+        text_style = disabled ? tui.style(fg: "dark_gray") : tui.style(fg: "white")
+
+        title = if @loading
+          "Waiting..."
+        elsif !connected?
+          "Disconnected"
+        else
+          "Input"
+        end
 
         widget = tui.paragraph(
           text: tui.line(spans: [
             tui.span(content: "> #{@input}#{cursor}", style: text_style)
           ]),
           block: tui.block(
-            title: @loading ? "Waiting..." : "Input",
-            titles: @loading ? [] : [
+            title: title,
+            titles: disabled ? [] : [
               {content: "Enter send", position: :bottom, alignment: :center}
             ],
             borders: [:all],
@@ -227,6 +250,7 @@ module TUI
       def submit_message
         text = @input.strip
         return if text.empty?
+        return unless @cable_client.status == :subscribed
 
         @input = ""
         @cable_client.speak(text)
@@ -280,6 +304,11 @@ module TUI
       def scroll_down(lines)
         @scroll_offset = [@scroll_offset + lines, @max_scroll].min
         @auto_scroll = @scroll_offset >= @max_scroll
+      end
+
+      # @return [Boolean] true when WebSocket is fully subscribed and ready
+      def connected?
+        @cable_client.status == :subscribed
       end
 
       def printable_char?(event)
