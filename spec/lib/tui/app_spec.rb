@@ -187,11 +187,10 @@ RSpec.describe TUI::App do
   end
 
   describe "connection status" do
-    it "exposes cable_client status for the status bar" do
-      allow(cable_client).to receive(:status).and_return(:subscribed)
-      # The status bar rendering uses @cable_client.status
-      # Verify the status styles are defined for all states
-      expect(TUI::App::STATUS_STYLES).to include(:disconnected, :connecting, :connected, :subscribed)
+    it "defines styles for all connection states including reconnecting" do
+      expect(TUI::App::STATUS_STYLES).to include(
+        :disconnected, :connecting, :connected, :subscribed, :reconnecting
+      )
     end
   end
 end

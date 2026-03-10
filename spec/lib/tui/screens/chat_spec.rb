@@ -193,7 +193,7 @@ RSpec.describe TUI::Screens::Chat do
         ])
       end
 
-      it "ignores connection status messages" do
+      it "does not store connection status messages as chat messages" do
         allow(cable_client).to receive(:drain_messages).and_return([
           {"type" => "connection", "status" => "subscribed"}
         ])
@@ -201,6 +201,126 @@ RSpec.describe TUI::Screens::Chat do
         screen.send(:process_incoming_messages)
 
         expect(screen.messages).to be_empty
+      end
+    end
+
+    context "connection lifecycle events" do
+      it "clears message store on subscribed" do
+        message_store.process_event({"type" => "user_message", "content" => "old"})
+
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "connection", "status" => "subscribed"}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.messages).to be_empty
+      end
+
+      it "resets loading on subscribed" do
+        screen.instance_variable_set(:@loading, true)
+
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "connection", "status" => "subscribed"}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.loading?).to be false
+      end
+
+      it "resets message count on subscribed" do
+        screen.instance_variable_get(:@session_info)[:message_count] = 5
+
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "connection", "status" => "subscribed"}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.session_info[:message_count]).to eq(0)
+      end
+
+      it "clears loading on disconnected" do
+        screen.instance_variable_set(:@loading, true)
+
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "connection", "status" => "disconnected"}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.loading?).to be false
+      end
+
+      it "clears loading on failed" do
+        screen.instance_variable_set(:@loading, true)
+
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "connection", "status" => "failed"}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.loading?).to be false
+      end
+
+      it "preserves user input during disconnect" do
+        screen.handle_event(key_event(code: "h"))
+        screen.handle_event(key_event(code: "i"))
+
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "connection", "status" => "disconnected"}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.input).to eq("hi")
+      end
+
+      it "repopulates from history after reconnect" do
+        message_store.process_event({"type" => "user_message", "content" => "old"})
+
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "connection", "status" => "subscribed"},
+          {"type" => "user_message", "content" => "restored"},
+          {"type" => "agent_message", "content" => "response"}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.messages).to eq([
+          {role: "user", content: "restored"},
+          {role: "assistant", content: "response"}
+        ])
+      end
+    end
+
+    context "while disconnected" do
+      before do
+        allow(cable_client).to receive(:status).and_return(:disconnected)
+      end
+
+      it "does not submit message when not subscribed" do
+        screen.handle_event(key_event(code: "h"))
+        screen.handle_event(key_event(code: "i"))
+        screen.handle_event(key_event(code: "enter"))
+
+        expect(cable_client).not_to have_received(:speak)
+        expect(screen.input).to eq("hi")
+      end
+
+      it "allows typing while disconnected" do
+        screen.handle_event(key_event(code: "h"))
+        expect(screen.input).to eq("h")
+      end
+    end
+
+    context "while reconnecting" do
+      before do
+        allow(cable_client).to receive(:status).and_return(:reconnecting)
+      end
+
+      it "does not submit message while reconnecting" do
+        screen.handle_event(key_event(code: "h"))
+        screen.handle_event(key_event(code: "i"))
+        screen.handle_event(key_event(code: "enter"))
+
+        expect(cable_client).not_to have_received(:speak)
+        expect(screen.input).to eq("hi")
       end
     end
 

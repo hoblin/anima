@@ -64,13 +64,44 @@ RSpec.describe Anima::CLI do
   end
 
   describe "tui" do
-    it "exits with error when brain is not running" do
+    it "exits with error after max retry attempts" do
       stub_request(:get, "http://localhost:19999/api/sessions/current")
         .to_raise(Errno::ECONNREFUSED)
 
+      # Stub sleep to avoid actual delays during test
+      allow_any_instance_of(Kernel).to receive(:sleep)
+
       expect {
         described_class.start(["tui", "--host", "localhost:19999"])
-      }.to output(/Cannot connect to brain/).to_stdout.and raise_error(SystemExit)
+      }.to output(/Cannot connect to brain after #{described_class::MAX_SESSION_FETCH_ATTEMPTS} attempts/o)
+        .to_stdout.and raise_error(SystemExit)
+    end
+
+    it "retries and succeeds when brain becomes available" do
+      call_count = 0
+      stub_request(:get, "http://localhost:19999/api/sessions/current")
+        .to_return do
+          call_count += 1
+          if call_count < 3
+            raise Errno::ECONNREFUSED
+          else
+            {body: '{"id": 1}', status: 200}
+          end
+        end
+
+      allow_any_instance_of(Kernel).to receive(:sleep)
+
+      cable_client = instance_double(TUI::CableClient, connect: nil, disconnect: nil, status: :subscribed)
+      allow(TUI::CableClient).to receive(:new).and_return(cable_client)
+
+      app = instance_double(TUI::App, run: nil)
+      allow(TUI::App).to receive(:new).and_return(app)
+
+      expect {
+        described_class.start(["tui", "--host", "localhost:19999"])
+      }.to output(/Retrying 1\/#{described_class::MAX_SESSION_FETCH_ATTEMPTS}/o).to_stdout
+
+      expect(call_count).to eq(3)
     end
   end
 

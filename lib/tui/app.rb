@@ -26,7 +26,8 @@ module TUI
       disconnected: {label: " DISCONNECTED ", fg: "white", bg: "red"},
       connecting: {label: " CONNECTING ", fg: "black", bg: "yellow"},
       connected: {label: " CONNECTED ", fg: "black", bg: "yellow"},
-      subscribed: {label: " CONNECTED ", fg: "black", bg: "green"}
+      subscribed: {label: " CONNECTED ", fg: "black", bg: "green"},
+      reconnecting: {label: " RECONNECTING ", fg: "black", bg: "yellow"}
     }.freeze
 
     attr_reader :current_screen, :command_mode
@@ -147,14 +148,26 @@ module TUI
         tui.span(content: " NORMAL ", style: tui.style(fg: "black", bg: "cyan", modifiers: [:bold]))
       end
 
-      conn = STATUS_STYLES.fetch(@cable_client.status, STATUS_STYLES[:disconnected])
-      conn_span = tui.span(
-        content: conn[:label],
-        style: tui.style(fg: conn[:fg], bg: conn[:bg], modifiers: [:bold])
-      )
+      conn_span = connection_status_span(tui)
 
       widget = tui.paragraph(text: tui.line(spans: [mode_span, conn_span]))
       frame.render_widget(widget, area)
+    end
+
+    def connection_status_span(tui)
+      cable_status = @cable_client.status
+
+      if cable_status == :reconnecting
+        attempt = @cable_client.reconnect_attempt
+        max = CableClient::MAX_RECONNECT_ATTEMPTS
+        label = " RECONNECTING (#{attempt}/#{max}) "
+        style = STATUS_STYLES[:reconnecting]
+      else
+        style = STATUS_STYLES.fetch(cable_status, STATUS_STYLES[:disconnected])
+        label = style[:label]
+      end
+
+      tui.span(content: label, style: tui.style(fg: style[:fg], bg: style[:bg], modifiers: [:bold]))
     end
 
     def chat_loading?
