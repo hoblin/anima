@@ -50,13 +50,15 @@ class SessionChannel < ApplicationCable::Channel
     "session_#{params[:session_id]}"
   end
 
-  # Sends displayable events (user/agent messages) from the session history
-  # directly to the subscribing client.
+  # Sends displayable events from the LLM's viewport to the subscribing
+  # client. The TUI shows exactly what the agent can see — no more, no less.
   def transmit_history
     session = Session.find_by(id: params[:session_id])
     return unless session
 
-    session.events.where(event_type: %w[user_message agent_message]).each do |event|
+    session.viewport_events.each do |event|
+      next unless event.llm_message?
+
       transmit(event.payload)
     end
   end
