@@ -1,5 +1,8 @@
 development:
-  adapter: async
+  adapter: solid_cable
+  connects_to:
+    database:
+      writing: cable
 
 test:
   adapter: test

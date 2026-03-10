@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "cable_client"
+require_relative "message_store"
 require_relative "screens/chat"
 require_relative "screens/settings"
 require_relative "screens/anthropic"
@@ -19,13 +21,23 @@ module TUI
 
     SIDEBAR_WIDTH = 28
 
+    # Connection status display styles
+    STATUS_STYLES = {
+      disconnected: {label: " DISCONNECTED ", fg: "white", bg: "red"},
+      connecting: {label: " CONNECTING ", fg: "black", bg: "yellow"},
+      connected: {label: " CONNECTED ", fg: "black", bg: "yellow"},
+      subscribed: {label: " CONNECTED ", fg: "black", bg: "green"}
+    }.freeze
+
     attr_reader :current_screen, :command_mode
 
-    def initialize
+    # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
+    def initialize(cable_client:)
+      @cable_client = cable_client
       @current_screen = :chat
       @command_mode = false
       @screens = {
-        chat: Screens::Chat.new,
+        chat: Screens::Chat.new(cable_client: cable_client),
         settings: Screens::Settings.new,
         anthropic: Screens::Anthropic.new
       }
@@ -36,9 +48,13 @@ module TUI
         loop do
           tui.draw { |frame| render(frame, tui) }
 
-          break if handle_event(tui.poll_event) == :quit
+          event = tui.poll_event(100)
+          next if event.nil? || event.none?
+          break if handle_event(event) == :quit
         end
       end
+    ensure
+      @cable_client.disconnect
     end
 
     private
@@ -118,7 +134,13 @@ module TUI
         tui.span(content: " NORMAL ", style: tui.style(fg: "black", bg: "cyan", modifiers: [:bold]))
       end
 
-      widget = tui.paragraph(text: tui.line(spans: [mode_span]))
+      conn = STATUS_STYLES.fetch(@cable_client.status, STATUS_STYLES[:disconnected])
+      conn_span = tui.span(
+        content: conn[:label],
+        style: tui.style(fg: conn[:fg], bg: conn[:bg], modifiers: [:bold])
+      )
+
+      widget = tui.paragraph(text: tui.line(spans: [mode_span, conn_span]))
       frame.render_widget(widget, area)
     end
 
