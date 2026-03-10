@@ -2,6 +2,7 @@
 
 require "spec_helper"
 require "anima/cli"
+require "anima/brain_server"
 
 RSpec.describe Anima::CLI do
   describe "version" do
@@ -30,7 +31,9 @@ RSpec.describe Anima::CLI do
       brain = instance_double(Anima::BrainServer, run: nil)
       allow(Anima::BrainServer).to receive(:new).and_return(brain)
 
-      described_class.start(["start"])
+      with_env("RAILS_ENV" => nil) do
+        described_class.start(["start"])
+      end
 
       expect(Anima::BrainServer).to have_received(:new).with(environment: "development")
       expect(brain).to have_received(:run)
