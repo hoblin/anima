@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "thor"
+require_relative "../anima"
 
 module Anima
   class CLI < Thor
@@ -37,8 +38,9 @@ module Anima
       end
 
       gem_root = Anima.gem_root
-      system(gem_root.join("bin/rails").to_s, "db:prepare") || abort("db:prepare failed")
-      exec("foreman", "start", "-f", gem_root.join("Procfile").to_s)
+      system(gem_root.join("bin/rails").to_s, "db:prepare", chdir: gem_root.to_s) || abort("db:prepare failed")
+      Dir.chdir(gem_root)
+      exec("foreman", "start", "-f", gem_root.join("Procfile").to_s, "-p", "42134")
     end
 
     desc "tui", "Launch the Anima terminal interface"

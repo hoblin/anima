@@ -36,9 +36,10 @@ RSpec.describe Anima::CLI do
         allow(File).to receive(:directory?).with(File.expand_path("~/.anima")).and_return(true)
         # Stub Kernel methods to avoid Thor method_added warnings
         allow_any_instance_of(Kernel).to receive(:system)
-          .with(gem_root.join("bin/rails").to_s, "db:prepare").and_return(true)
+          .with(gem_root.join("bin/rails").to_s, "db:prepare", chdir: gem_root.to_s).and_return(true)
+        allow(Dir).to receive(:chdir).with(gem_root)
         allow_any_instance_of(Kernel).to receive(:exec)
-          .with("foreman", "start", "-f", gem_root.join("Procfile").to_s)
+          .with("foreman", "start", "-f", gem_root.join("Procfile").to_s, "-p", "42134")
       end
 
       it "runs db:prepare then starts foreman" do
@@ -54,7 +55,7 @@ RSpec.describe Anima::CLI do
 
       it "aborts when db:prepare fails" do
         allow_any_instance_of(Kernel).to receive(:system)
-          .with(gem_root.join("bin/rails").to_s, "db:prepare").and_return(false)
+          .with(gem_root.join("bin/rails").to_s, "db:prepare", chdir: gem_root.to_s).and_return(false)
 
         expect {
           described_class.start(["start"])
