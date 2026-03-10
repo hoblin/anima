@@ -12,6 +12,8 @@ class Session < ApplicationRecord
 
   has_many :events, -> { order(:id) }, dependent: :destroy
 
+  scope :recent, ->(limit = 10) { order(updated_at: :desc).limit(limit) }
+
   # Returns the events currently visible in the LLM context window.
   # Walks events newest-first and includes them until the token budget
   # is exhausted. Events are full-size or excluded entirely.

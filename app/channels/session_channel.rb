@@ -10,14 +10,17 @@
 # @example Client subscribes to a session
 #   App.cable.subscriptions.create({ channel: "SessionChannel", session_id: 42 })
 class SessionChannel < ApplicationCable::Channel
+  DEFAULT_LIST_LIMIT = 10
+  MAX_LIST_LIMIT = 50
+
   # Subscribes the client to the session-specific stream.
   # Rejects the subscription if no valid session_id is provided.
   # Transmits chat history to the subscribing client after confirmation.
   #
   # @param params [Hash] must include :session_id (positive integer)
   def subscribed
-    session_id = params[:session_id].to_i
-    if session_id > 0
+    @current_session_id = params[:session_id].to_i
+    if @current_session_id > 0
       stream_from stream_name
       transmit_history
     else
@@ -37,27 +40,29 @@ class SessionChannel < ApplicationCable::Channel
   # @param data [Hash] must include "content" with the user's message text
   def speak(data)
     content = data["content"].to_s.strip
-    session_id = params[:session_id].to_i
-    return if content.empty? || !Session.exists?(session_id)
+    return if content.empty? || !Session.exists?(@current_session_id)
 
-    Events::Bus.emit(Events::UserMessage.new(content: content, session_id: session_id))
-    AgentRequestJob.perform_later(session_id)
+    Events::Bus.emit(Events::UserMessage.new(content: content, session_id: @current_session_id))
+    AgentRequestJob.perform_later(@current_session_id)
   end
 
   # Returns recent sessions with metadata for session picker UI.
   #
   # @param data [Hash] optional "limit" (default 10, max 50)
   def list_sessions(data)
-    limit = (data["limit"] || 10).to_i.clamp(1, 50)
-    sessions = Session.order(updated_at: :desc).limit(limit).map do |session|
+    limit = (data["limit"] || DEFAULT_LIST_LIMIT).to_i.clamp(1, MAX_LIST_LIMIT)
+    sessions = Session.recent(limit)
+    counts = Event.where(session_id: sessions.select(:id)).llm_messages.group(:session_id).count
+
+    result = sessions.map do |session|
       {
         id: session.id,
         created_at: session.created_at.iso8601,
         updated_at: session.updated_at.iso8601,
-        message_count: session.events.llm_messages.count
+        message_count: counts[session.id] || 0
       }
     end
-    transmit({"action" => "sessions_list", "sessions" => sessions})
+    transmit({"action" => "sessions_list", "sessions" => result})
   end
 
   # Creates a new session and switches the channel stream to it.
@@ -73,18 +78,17 @@ class SessionChannel < ApplicationCable::Channel
   # @param data [Hash] must include "session_id" (positive integer)
   def switch_session(data)
     target_id = data["session_id"].to_i
-    unless target_id > 0 && Session.exists?(target_id)
-      transmit({"action" => "error", "message" => "Session not found"})
-      return
-    end
+    return transmit_error("Session not found") unless target_id > 0
 
     switch_to_session(target_id)
+  rescue ActiveRecord::RecordNotFound
+    transmit_error("Session not found")
   end
 
   private
 
   def stream_name
-    "session_#{params[:session_id]}"
+    "session_#{@current_session_id}"
   end
 
   # Switches the channel to a different session: stops current stream,
@@ -92,7 +96,7 @@ class SessionChannel < ApplicationCable::Channel
   # a session_changed signal followed by chat history.
   def switch_to_session(new_id)
     stop_all_streams
-    params[:session_id] = new_id
+    @current_session_id = new_id
     stream_from stream_name
     session = Session.find(new_id)
     transmit({
@@ -106,7 +110,7 @@ class SessionChannel < ApplicationCable::Channel
   # Sends displayable events from the LLM's viewport to the subscribing
   # client. The TUI shows exactly what the agent can see — no more, no less.
   def transmit_history
-    session = Session.find_by(id: params[:session_id])
+    session = Session.find_by(id: @current_session_id)
     return unless session
 
     session.viewport_events.each do |event|
@@ -114,5 +118,9 @@ class SessionChannel < ApplicationCable::Channel
 
       transmit(event.payload)
     end
+  end
+
+  def transmit_error(message)
+    transmit({"action" => "error", "message" => message})
   end
 end

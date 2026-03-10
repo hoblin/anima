@@ -102,8 +102,9 @@ module TUI
     end
 
     # Unsubscribes from the current session and subscribes to a new one.
-    # Used when the user creates a new session.
     #
+    # @deprecated Use {#create_session} or {#switch_session} instead.
+    #   The server now handles stream switching via the session protocol.
     # @param new_session_id [Integer] session to switch to
     def resubscribe(new_session_id)
       unsubscribe_current

@@ -169,10 +169,21 @@ RSpec.describe SessionChannel, type: :channel do
     end
 
     it "clamps limit to 50" do
+      55.times { Session.create! }
+
       perform(:list_sessions, {"limit" => 100})
 
       response = transmissions.last
       expect(response["action"]).to eq("sessions_list")
+      expect(response["sessions"].size).to eq(50)
+    end
+
+    it "returns empty list when no sessions exist" do
+      perform(:list_sessions, {})
+
+      response = transmissions.last
+      expect(response["action"]).to eq("sessions_list")
+      expect(response["sessions"]).to eq([])
     end
   end
 
@@ -244,11 +255,19 @@ RSpec.describe SessionChannel, type: :channel do
       expect(error["message"]).to eq("Session not found")
     end
 
-    it "transmits error for invalid session ID" do
+    it "transmits error for zero session ID" do
       perform(:switch_session, {"session_id" => 0})
 
       error = transmissions.find { |t| t["action"] == "error" }
       expect(error).to be_present
+    end
+
+    it "transmits error for negative session ID" do
+      perform(:switch_session, {"session_id" => -1})
+
+      error = transmissions.find { |t| t["action"] == "error" }
+      expect(error).to be_present
+      expect(error["message"]).to eq("Session not found")
     end
   end
 

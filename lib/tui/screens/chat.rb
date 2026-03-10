@@ -99,7 +99,7 @@ module TUI
           when "sessions_list"
             @sessions_list = msg["sessions"]
           when "error"
-            # Protocol errors logged for debugging
+            # Silently ignored — no user-facing error display yet
           else
             case type
             when "connection"
