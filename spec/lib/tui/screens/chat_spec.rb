@@ -27,7 +27,8 @@ RSpec.describe TUI::Screens::Chat do
     defaults = {
       key?: true, mouse?: false, enter?: false, backspace?: false, esc?: false,
       none?: false, ctrl_c?: false, up?: false, down?: false,
-      page_up?: false, page_down?: false
+      page_up?: false, page_down?: false, left?: false, right?: false,
+      home?: false, end?: false
     }
     defaults[:enter?] = true if code == "enter"
     defaults[:backspace?] = true if code == "backspace"
@@ -36,7 +37,18 @@ RSpec.describe TUI::Screens::Chat do
     defaults[:down?] = true if code == "down"
     defaults[:page_up?] = true if code == "page_up"
     defaults[:page_down?] = true if code == "page_down"
+    defaults[:left?] = true if code == "left"
+    defaults[:right?] = true if code == "right"
+    defaults[:home?] = true if code == "home"
+    defaults[:end?] = true if code == "end"
     double("Event", **defaults, code: code, modifiers: modifiers, **overrides)
+  end
+
+  # Sets input buffer state directly for testing
+  def set_input(text, cursor_pos: nil)
+    buf = screen.instance_variable_get(:@input_buffer)
+    buf.instance_variable_set(:@text, text)
+    buf.instance_variable_set(:@cursor_pos, cursor_pos || text.length)
   end
 
   def mouse_event(kind:, **overrides)
@@ -61,6 +73,10 @@ RSpec.describe TUI::Screens::Chat do
       expect(screen.input).to eq("")
     end
 
+    it "starts with cursor at position 0" do
+      expect(screen.cursor_pos).to eq(0)
+    end
+
     it "starts not loading" do
       expect(screen.loading?).to be false
     end
@@ -72,6 +88,7 @@ RSpec.describe TUI::Screens::Chat do
         screen.handle_event(key_event(code: "h"))
         screen.handle_event(key_event(code: "i"))
         expect(screen.input).to eq("hi")
+        expect(screen.cursor_pos).to eq(2)
       end
 
       it "appends space to input" do
@@ -92,10 +109,11 @@ RSpec.describe TUI::Screens::Chat do
         expect(screen.handle_event(event)).to be false
       end
 
-      it "stops accepting input at MAX_INPUT_LENGTH" do
-        screen.instance_variable_set(:@input, "a" * described_class::MAX_INPUT_LENGTH)
+      it "stops accepting input at MAX_LENGTH" do
+        max = TUI::InputBuffer::MAX_LENGTH
+        set_input("a" * max)
         expect(screen.handle_event(key_event(code: "x"))).to be false
-        expect(screen.input.length).to eq(described_class::MAX_INPUT_LENGTH)
+        expect(screen.input.length).to eq(max)
       end
 
       it "returns true for handled character events" do
@@ -443,6 +461,92 @@ RSpec.describe TUI::Screens::Chat do
       end
     end
 
+    context "cursor movement with arrow keys" do
+      before do
+        screen.handle_event(key_event(code: "h"))
+        screen.handle_event(key_event(code: "e"))
+        screen.handle_event(key_event(code: "l"))
+        screen.handle_event(key_event(code: "l"))
+        screen.handle_event(key_event(code: "o"))
+      end
+
+      it "moves cursor left" do
+        screen.handle_event(key_event(code: "left"))
+        expect(screen.cursor_pos).to eq(4)
+      end
+
+      it "moves cursor right after moving left" do
+        screen.handle_event(key_event(code: "left"))
+        screen.handle_event(key_event(code: "right"))
+        expect(screen.cursor_pos).to eq(5)
+      end
+
+      it "returns false when moving left at beginning" do
+        set_input("hello", cursor_pos: 0)
+        expect(screen.handle_event(key_event(code: "left"))).to be false
+      end
+
+      it "returns false when moving right at end" do
+        expect(screen.handle_event(key_event(code: "right"))).to be false
+      end
+
+      it "inserts characters at cursor position" do
+        screen.handle_event(key_event(code: "left"))
+        screen.handle_event(key_event(code: "left"))
+        screen.handle_event(key_event(code: "X"))
+        expect(screen.input).to eq("helXlo")
+        expect(screen.cursor_pos).to eq(4)
+      end
+
+      it "deletes character before cursor position" do
+        screen.handle_event(key_event(code: "left"))
+        screen.handle_event(key_event(code: "left"))
+        screen.handle_event(key_event(code: "backspace"))
+        expect(screen.input).to eq("helo")
+        expect(screen.cursor_pos).to eq(2)
+      end
+    end
+
+    context "home and end keys" do
+      before { set_input("hello\nworld", cursor_pos: 8) }
+
+      it "moves cursor to start of current line with home" do
+        screen.handle_event(key_event(code: "home"))
+        expect(screen.cursor_pos).to eq(6)
+      end
+
+      it "moves cursor to end of current line with end" do
+        set_input("hello\nworld", cursor_pos: 6)
+        screen.handle_event(key_event(code: "end"))
+        expect(screen.cursor_pos).to eq(11)
+      end
+
+      it "moves to position 0 on first line with home" do
+        set_input("hello\nworld", cursor_pos: 3)
+        screen.handle_event(key_event(code: "home"))
+        expect(screen.cursor_pos).to eq(0)
+      end
+
+      it "returns false when already at home position" do
+        set_input("hello\nworld", cursor_pos: 6)
+        expect(screen.handle_event(key_event(code: "home"))).to be false
+      end
+
+      it "returns false when already at end position" do
+        set_input("hello\nworld", cursor_pos: 11)
+        expect(screen.handle_event(key_event(code: "end"))).to be false
+      end
+    end
+
+    context "backspace deletes newlines" do
+      it "joins lines when deleting newline character" do
+        set_input("hello\nworld", cursor_pos: 6)
+        screen.handle_event(key_event(code: "backspace"))
+        expect(screen.input).to eq("helloworld")
+        expect(screen.cursor_pos).to eq(5)
+      end
+    end
+
     context "unrecognized keys" do
       it "returns false for unknown keys" do
         event = key_event(code: "f5")
@@ -461,7 +565,7 @@ RSpec.describe TUI::Screens::Chat do
   describe "session_changed protocol message" do
     before do
       message_store.process_event({"type" => "user_message", "content" => "old message"})
-      screen.instance_variable_set(:@input, "partial")
+      set_input("partial", cursor_pos: 4)
       screen.instance_variable_set(:@loading, true)
       screen.instance_variable_set(:@scroll_offset, 15)
       screen.instance_variable_set(:@auto_scroll, false)
@@ -490,10 +594,11 @@ RSpec.describe TUI::Screens::Chat do
       expect(screen.session_info).to eq({id: 99, message_count: 5})
     end
 
-    it "clears input" do
+    it "clears input and resets cursor" do
       allow(cable_client).to receive(:drain_messages).and_return([session_changed_msg])
       screen.send(:process_incoming_messages)
       expect(screen.input).to eq("")
+      expect(screen.cursor_pos).to eq(0)
     end
 
     it "resets loading state" do

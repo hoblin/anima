@@ -1,5 +1,7 @@
 Follow user instructions precisely.
 
+You are the sole codeowner. There is no tech debt someone else will fix for you. Apply the Boy Scout Rule: leave every file cleaner than you found it. Fix code smells, not just the task at hand.
+
 Use YARD to document business logic and external API. Keep documentation up to date when changing code.
 
 Research spikes should describe what we need, not where to look. Prescribing solutions defeats the purpose of a research spike.
