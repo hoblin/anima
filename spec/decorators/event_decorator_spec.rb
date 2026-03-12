@@ -90,6 +90,20 @@ RSpec.describe EventDecorator, type: :decorator do
 
       expect(decorator.render("debug")).to eq(["You: hi"])
     end
+
+    it "raises ArgumentError for invalid mode" do
+      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      decorator = described_class.for(event)
+
+      expect { decorator.render("hacker_mode") }.to raise_error(ArgumentError, /Invalid view mode/)
+    end
+
+    it "raises ArgumentError for nil mode" do
+      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      decorator = described_class.for(event)
+
+      expect { decorator.render(nil) }.to raise_error(ArgumentError, /Invalid view mode/)
+    end
   end
 
   describe "#render_verbose" do

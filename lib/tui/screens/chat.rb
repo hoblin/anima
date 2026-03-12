@@ -18,6 +18,8 @@ module TUI
       TOOL_ICON = "\u{1F527}"
       CHECKMARK = "\u2713"
 
+      # Intentionally duplicated from Session::VIEW_MODES to keep the TUI
+      # independent of Rails. Must stay in sync when adding new modes.
       VIEW_MODES = %w[basic verbose debug].freeze
 
       attr_reader :message_store, :scroll_offset, :session_info, :view_mode
@@ -196,7 +198,10 @@ module TUI
       # Handles server broadcast of view mode change. Clears the message store
       # in preparation for the re-decorated viewport events that follow.
       def handle_view_mode_changed(msg)
-        @view_mode = msg["view_mode"] if msg["view_mode"]
+        new_mode = msg["view_mode"]
+        return unless new_mode && VIEW_MODES.include?(new_mode)
+
+        @view_mode = new_mode
         @message_store.clear
         @scroll_offset = 0
         @auto_scroll = true

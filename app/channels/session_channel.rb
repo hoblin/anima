@@ -127,6 +127,8 @@ class SessionChannel < ApplicationCable::Channel
   end
 
   # Transmits the current view_mode so the TUI initializes correctly.
+  # Sends `{action: "view_mode", view_mode: <mode>}` to the subscribing client.
+  # @return [void]
   def transmit_view_mode
     session = Session.find_by(id: @current_session_id)
     return unless session
@@ -150,6 +152,8 @@ class SessionChannel < ApplicationCable::Channel
 
   # Broadcasts the re-decorated viewport to all clients on the session stream.
   # Used after a view mode change to refresh all connected clients.
+  # @param session [Session] the session whose viewport to broadcast
+  # @return [void]
   def broadcast_viewport(session)
     session.viewport_events.each do |event|
       ActionCable.server.broadcast(stream_name, decorate_event_payload(event, session.view_mode))

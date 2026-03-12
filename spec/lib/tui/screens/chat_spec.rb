@@ -854,6 +854,41 @@ RSpec.describe TUI::Screens::Chat do
       end
     end
 
+    describe "view_mode_changed with invalid data" do
+      it "ignores nil view_mode and preserves state" do
+        message_store.process_event({"type" => "user_message", "content" => "keep me"})
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "view_mode_changed", "view_mode" => nil}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.view_mode).to eq("basic")
+        expect(screen.messages).not_to be_empty
+      end
+
+      it "ignores missing view_mode key and preserves state" do
+        message_store.process_event({"type" => "user_message", "content" => "keep me"})
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "view_mode_changed"}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.view_mode).to eq("basic")
+        expect(screen.messages).not_to be_empty
+      end
+
+      it "ignores invalid view_mode value and preserves state" do
+        message_store.process_event({"type" => "user_message", "content" => "keep me"})
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "view_mode_changed", "view_mode" => "hacker_mode"}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.view_mode).to eq("basic")
+        expect(screen.messages).not_to be_empty
+      end
+    end
+
     describe "view_mode action (initial subscription)" do
       it "sets view_mode from server" do
         allow(cable_client).to receive(:drain_messages).and_return([

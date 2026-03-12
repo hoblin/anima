@@ -105,6 +105,7 @@ module TUI
     # followed by the re-decorated viewport.
     #
     # @param mode [String] one of "basic", "verbose", "debug"
+    # @return [void]
     def change_view_mode(mode)
       send_action("change_view_mode", {"view_mode" => mode})
     end

@@ -57,6 +57,9 @@ module TUI
       end
     end
 
+    # Removes all entries. Called on view mode change and session switch
+    # to prepare for re-decorated viewport events from the server.
+    # @return [void]
     def clear
       @mutex.synchronize { @entries = [] }
     end
@@ -64,7 +67,9 @@ module TUI
     private
 
     # Extracts the first non-nil rendered lines array from the payload.
-    # The "rendered" hash is keyed by view mode (e.g. {"basic" => ["You: hello"]}).
+    # The "rendered" hash is keyed by view mode — the server includes only the
+    # session's current mode, so there is always at most one entry.
+    # (e.g. {"basic" => ["You: hello"]} or {"basic" => nil} for hidden events)
     #
     # @return [Array<String>, nil] rendered lines, or nil if not present
     def extract_rendered(event_data)

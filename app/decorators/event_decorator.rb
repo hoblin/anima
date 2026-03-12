@@ -56,12 +56,23 @@ class EventDecorator < ApplicationDecorator
     klass_name.constantize.new(source)
   end
 
+  RENDER_DISPATCH = {
+    "basic" => :render_basic,
+    "verbose" => :render_verbose,
+    "debug" => :render_debug
+  }.freeze
+  private_constant :RENDER_DISPATCH
+
   # Dispatches to the render method for the given view mode.
   #
   # @param mode [String] one of "basic", "verbose", "debug"
   # @return [Array<String>, nil] lines to display, or nil to hide the event
+  # @raise [ArgumentError] if the mode is not a valid view mode
   def render(mode)
-    send("render_#{mode}")
+    method = RENDER_DISPATCH[mode]
+    raise ArgumentError, "Invalid view mode: #{mode.inspect}" unless method
+
+    public_send(method)
   end
 
   # @abstract Subclasses must implement to render the event for basic view mode.
