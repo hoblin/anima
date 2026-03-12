@@ -50,8 +50,6 @@ class EventDecorator < ApplicationDecorator
     return nil unless klass_name
 
     klass_name.constantize.new(source)
-  rescue NameError
-    nil
   end
 
   # @abstract Subclasses must implement to render the event for basic view mode.
