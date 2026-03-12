@@ -401,7 +401,6 @@ module TUI
 
         event.code.length == 1 && event.code.match?(PRINTABLE_CHAR)
       end
-
     end
   end
 end
