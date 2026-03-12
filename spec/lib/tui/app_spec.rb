@@ -177,6 +177,17 @@ RSpec.describe TUI::App do
         event = double("MouseEvent", none?: false, ctrl_c?: false, key?: false, mouse?: true)
         expect { app.send(:handle_event, event) }.not_to raise_error
       end
+
+      it "delegates paste events to the current screen" do
+        event = double("PasteEvent", none?: false, ctrl_c?: false, key?: false, mouse?: false, paste?: true,
+          content: "pasted text")
+        chat = app.instance_variable_get(:@screens)[:chat]
+        allow(chat).to receive(:handle_event)
+
+        app.send(:handle_event, event)
+
+        expect(chat).to have_received(:handle_event).with(event)
+      end
     end
 
     describe "no-op on none events" do

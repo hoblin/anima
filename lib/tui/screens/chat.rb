@@ -261,7 +261,6 @@ module TUI
 
       def render_input(frame, area, tui)
         disabled = @loading || !connected?
-        cursor_char = disabled ? "" : "\u2588"
         styles = input_styles(tui, disabled)
 
         title = input_title
@@ -269,7 +268,7 @@ module TUI
         inner_width = [area.width - 2, 1].max
         input_visible_height = [area.height - 2, 0].max
 
-        lines = build_input_lines(tui, styles[:text], cursor_char)
+        lines = build_input_lines(tui, styles[:text])
         input_scroll = calculate_input_scroll(tui, inner_width, input_visible_height)
 
         widget = tui.paragraph(
@@ -287,6 +286,16 @@ module TUI
           )
         )
         frame.render_widget(widget, area)
+
+        return if disabled
+
+        col = cursor_visual_col(tui, inner_width)
+        cursor_x = area.x + 1 + col
+        cursor_y = area.y + 1 + @cursor_visual_row - input_scroll
+
+        if cursor_y >= area.y + 1 && cursor_y < area.y + area.height - 1
+          frame.set_cursor_position(cursor_x, cursor_y)
+        end
       end
 
       def input_styles(tui, disabled)
@@ -306,12 +315,9 @@ module TUI
         end
       end
 
-      # Builds input text as array of Line objects with cursor character inserted
-      def build_input_lines(tui, text_style, cursor_char)
-        input_text = @input_buffer.text
-        pos = @input_buffer.cursor_pos
-        display = "> #{input_text[0...pos]}#{cursor_char}#{input_text[pos..]}"
-
+      # Builds input text as Line objects for the Paragraph widget.
+      def build_input_lines(tui, text_style)
+        display = "> #{@input_buffer.text}"
         display.split("\n", -1).map { |text|
           tui.line(spans: [tui.span(content: text, style: text_style)])
         }
@@ -320,6 +326,7 @@ module TUI
       # Scrolls input to keep cursor visible when content exceeds visible height.
       # Measures wrapped line count of text before cursor to find its visual row,
       # then adjusts the scroll window so that row stays in view.
+      # Stores @cursor_visual_row for hardware cursor positioning.
       def calculate_input_scroll(tui, inner_width, visible_height)
         return 0 if visible_height <= 0
 
@@ -329,16 +336,47 @@ module TUI
         }
 
         temp = tui.paragraph(text: before_lines, wrap: true)
-        cursor_visual_line = [temp.line_count(inner_width) - 1, 0].max
+        @cursor_visual_row = [temp.line_count(inner_width) - 1, 0].max
 
         # Snap scroll window: pull up if cursor is above view, push down if below
-        if cursor_visual_line < @input_scroll_offset
-          @input_scroll_offset = cursor_visual_line
-        elsif cursor_visual_line >= @input_scroll_offset + visible_height
-          @input_scroll_offset = cursor_visual_line - visible_height + 1
+        if @cursor_visual_row < @input_scroll_offset
+          @input_scroll_offset = @cursor_visual_row
+        elsif @cursor_visual_row >= @input_scroll_offset + visible_height
+          @input_scroll_offset = @cursor_visual_row - visible_height + 1
         end
 
         @input_scroll_offset
+      end
+
+      # Calculates the visual column of the cursor within the wrapped input.
+      # For text that wraps, uses binary search to find where the last visual
+      # line starts, then computes offset from there.
+      def cursor_visual_col(tui, inner_width)
+        before_display = "> #{@input_buffer.text[0...@input_buffer.cursor_pos]}"
+        last_physical = before_display.split("\n", -1).last || ""
+
+        return last_physical.length if last_physical.length <= inner_width
+
+        para = tui.paragraph(text: [tui.line(spans: [tui.span(content: last_physical)])], wrap: true)
+        target_lines = para.line_count(inner_width)
+        return last_physical.length if target_lines <= 1
+
+        # Binary search for the first character where line_count reaches target_lines
+        lo, hi = 0, last_physical.length
+        while lo < hi
+          mid = (lo + hi) / 2
+          sub = tui.paragraph(
+            text: [tui.line(spans: [tui.span(content: last_physical[0..mid])])],
+            wrap: true
+          )
+          if sub.line_count(inner_width) >= target_lines
+            hi = mid
+          else
+            lo = mid + 1
+          end
+        end
+
+        last_physical.length - lo
       end
 
       def submit_message

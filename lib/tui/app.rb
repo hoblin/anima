@@ -205,7 +205,7 @@ module TUI
     end
 
     def handle_normal_mode(event)
-      if event.mouse?
+      if event.mouse? || event.paste?
         delegate_to_screen(event)
         return nil
       end
