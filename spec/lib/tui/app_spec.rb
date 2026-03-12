@@ -25,6 +25,10 @@ RSpec.describe TUI::App do
     it "starts in normal mode" do
       expect(app.command_mode).to be false
     end
+
+    it "starts with shutdown not requested" do
+      expect(app.shutdown_requested).to be false
+    end
   end
 
   describe "event handling" do
@@ -195,6 +199,185 @@ RSpec.describe TUI::App do
         event = double("Event", none?: true)
         result = app.send(:handle_event, event)
         expect(result).to be_nil
+      end
+    end
+  end
+
+  describe "signal handling" do
+    let(:captured_handlers) { {} }
+
+    before do
+      allow(Signal).to receive(:trap) do |signal, *args, &block|
+        captured_handlers[signal] = block || args.first
+        "DEFAULT"
+      end
+    end
+
+    describe "install_signal_handlers" do
+      it "traps HUP, TERM, and INT signals" do
+        app.send(:install_signal_handlers)
+
+        expect(Signal).to have_received(:trap).with("HUP", any_args)
+        expect(Signal).to have_received(:trap).with("TERM", any_args)
+        expect(Signal).to have_received(:trap).with("INT", any_args)
+      end
+
+      it "saves previous handler return values" do
+        app.send(:install_signal_handlers)
+
+        handlers = app.instance_variable_get(:@previous_signal_handlers)
+        expect(handlers.keys).to contain_exactly("HUP", "TERM", "INT")
+        expect(handlers.values).to all(eq("DEFAULT"))
+      end
+
+      it "sets shutdown_requested when any handler fires" do
+        app.send(:install_signal_handlers)
+
+        %w[HUP TERM INT].each do |signal|
+          app.instance_variable_set(:@shutdown_requested, false)
+          captured_handlers[signal].call
+          expect(app.shutdown_requested).to be(true), "expected #{signal} handler to set shutdown_requested"
+        end
+      end
+
+      it "skips unsupported signals without raising" do
+        allow(Signal).to receive(:trap).with("HUP").and_raise(ArgumentError)
+        allow(Signal).to receive(:trap).with("TERM") do |_, &block|
+          captured_handlers["TERM"] = block
+          "DEFAULT"
+        end
+        allow(Signal).to receive(:trap).with("INT") do |_, &block|
+          captured_handlers["INT"] = block
+          "DEFAULT"
+        end
+
+        expect { app.send(:install_signal_handlers) }.not_to raise_error
+
+        handlers = app.instance_variable_get(:@previous_signal_handlers)
+        expect(handlers.keys).to contain_exactly("TERM", "INT")
+      end
+    end
+
+    describe "restore_signal_handlers" do
+      it "restores previously saved handlers" do
+        previous = {"HUP" => "DEFAULT", "TERM" => proc {}, "INT" => "IGNORE"}
+        app.instance_variable_set(:@previous_signal_handlers, previous)
+
+        app.send(:restore_signal_handlers)
+
+        previous.each do |signal, handler|
+          expect(Signal).to have_received(:trap).with(signal, handler)
+        end
+      end
+
+      it "uses DEFAULT when previous handler was nil" do
+        app.instance_variable_set(:@previous_signal_handlers, {"HUP" => nil})
+
+        app.send(:restore_signal_handlers)
+
+        expect(Signal).to have_received(:trap).with("HUP", "DEFAULT")
+      end
+
+      it "skips unrestorable signals without raising" do
+        app.instance_variable_set(:@previous_signal_handlers, {"HUP" => "DEFAULT"})
+        allow(Signal).to receive(:trap).with("HUP", "DEFAULT").and_raise(ArgumentError)
+
+        expect { app.send(:restore_signal_handlers) }.not_to raise_error
+      end
+
+      it "does not leave shutdown flag set" do
+        app.send(:install_signal_handlers)
+        app.send(:restore_signal_handlers)
+
+        expect(app.shutdown_requested).to be false
+      end
+    end
+  end
+
+  describe "terminal watchdog" do
+    let(:stat_double) { instance_double(File::Stat) }
+
+    describe "start_terminal_watchdog" do
+      before do
+        allow(File).to receive(:stat).with(TUI::App::CONTROLLING_TERMINAL).and_raise(Errno::ENOENT)
+      end
+
+      after { app.send(:stop_terminal_watchdog) }
+
+      it "starts a background thread" do
+        app.send(:start_terminal_watchdog)
+
+        watchdog = app.instance_variable_get(:@watchdog_thread)
+        expect(watchdog).to be_a(Thread)
+      end
+
+      it "thread exits when terminal is unavailable" do
+        app.send(:start_terminal_watchdog)
+        watchdog = app.instance_variable_get(:@watchdog_thread)
+        watchdog.join(1)
+
+        expect(watchdog.status).to be false
+      end
+    end
+
+    describe "stop_terminal_watchdog" do
+      it "clears the watchdog thread reference" do
+        allow(File).to receive(:stat).with(TUI::App::CONTROLLING_TERMINAL).and_raise(Errno::ENOENT)
+        app.send(:start_terminal_watchdog)
+        app.send(:stop_terminal_watchdog)
+
+        expect(app.instance_variable_get(:@watchdog_thread)).to be_nil
+      end
+
+      it "is safe to call when no watchdog is running" do
+        expect { app.send(:stop_terminal_watchdog) }.not_to raise_error
+      end
+    end
+
+    describe "terminal_watchdog_loop" do
+      it "exits loop when shutdown_requested is set" do
+        allow(File).to receive(:stat).with(TUI::App::CONTROLLING_TERMINAL).and_return(stat_double)
+        app.instance_variable_set(:@shutdown_requested, true)
+
+        expect { app.send(:terminal_watchdog_loop) }.not_to raise_error
+      end
+
+      it "exits silently without a controlling terminal" do
+        allow(File).to receive(:stat).with(TUI::App::CONTROLLING_TERMINAL).and_raise(Errno::ENOENT)
+
+        expect { app.send(:terminal_watchdog_loop) }.not_to raise_error
+      end
+
+      it "calls handle_terminal_loss when terminal disappears mid-loop" do
+        call_count = 0
+        allow(File).to receive(:stat).with(TUI::App::CONTROLLING_TERMINAL) do
+          call_count += 1
+          raise Errno::ENXIO if call_count > 1
+          stat_double
+        end
+        allow(app).to receive(:sleep)
+        allow(app).to receive(:handle_terminal_loss) { throw :force_exit }
+
+        catch(:force_exit) { app.send(:terminal_watchdog_loop) }
+
+        expect(app).to have_received(:handle_terminal_loss)
+      end
+    end
+
+    describe "handle_terminal_loss" do
+      it "attempts cable disconnect" do
+        allow(Kernel).to receive(:exit!)
+
+        app.send(:handle_terminal_loss)
+
+        expect(cable_client).to have_received(:disconnect)
+      end
+
+      it "tolerates disconnect failure" do
+        allow(cable_client).to receive(:disconnect).and_raise(IOError)
+        allow(Kernel).to receive(:exit!)
+
+        expect { app.send(:handle_terminal_loss) }.not_to raise_error
       end
     end
   end
