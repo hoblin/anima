@@ -25,13 +25,15 @@ RSpec.describe TUI::Screens::Chat do
   # so we use plain doubles instead of instance_double
   def key_event(code:, modifiers: nil, **overrides)
     defaults = {
-      key?: true, mouse?: false, enter?: false, backspace?: false, esc?: false,
+      key?: true, mouse?: false, paste?: false,
+      enter?: false, backspace?: false, delete?: false, esc?: false,
       none?: false, ctrl_c?: false, up?: false, down?: false,
       page_up?: false, page_down?: false, left?: false, right?: false,
       home?: false, end?: false
     }
     defaults[:enter?] = true if code == "enter"
     defaults[:backspace?] = true if code == "backspace"
+    defaults[:delete?] = true if code == "delete"
     defaults[:esc?] = true if code == "esc"
     defaults[:up?] = true if code == "up"
     defaults[:down?] = true if code == "down"
@@ -42,6 +44,10 @@ RSpec.describe TUI::Screens::Chat do
     defaults[:home?] = true if code == "home"
     defaults[:end?] = true if code == "end"
     double("Event", **defaults, code: code, modifiers: modifiers, **overrides)
+  end
+
+  def paste_event(content:)
+    double("PasteEvent", paste?: true, key?: false, mouse?: false, content: content)
   end
 
   # Sets input buffer state directly for testing
@@ -357,6 +363,10 @@ RSpec.describe TUI::Screens::Chat do
       it "ignores backspace" do
         expect(screen.handle_event(key_event(code: "backspace"))).to be false
       end
+
+      it "ignores delete" do
+        expect(screen.handle_event(key_event(code: "delete"))).to be false
+      end
     end
 
     context "scrolling with keyboard" do
@@ -535,6 +545,73 @@ RSpec.describe TUI::Screens::Chat do
       it "returns false when already at end position" do
         set_input("hello\nworld", cursor_pos: 11)
         expect(screen.handle_event(key_event(code: "end"))).to be false
+      end
+    end
+
+    context "delete key (forward delete)" do
+      before { set_input("hello", cursor_pos: 2) }
+
+      it "deletes character at cursor" do
+        screen.handle_event(key_event(code: "delete"))
+        expect(screen.input).to eq("helo")
+        expect(screen.cursor_pos).to eq(2)
+      end
+
+      it "does nothing at end of input" do
+        set_input("hello", cursor_pos: 5)
+        screen.handle_event(key_event(code: "delete"))
+        expect(screen.input).to eq("hello")
+      end
+
+      it "returns true" do
+        expect(screen.handle_event(key_event(code: "delete"))).to be true
+      end
+
+      it "deletes newline character" do
+        set_input("hello\nworld", cursor_pos: 5)
+        screen.handle_event(key_event(code: "delete"))
+        expect(screen.input).to eq("helloworld")
+      end
+    end
+
+    context "clipboard paste" do
+      it "inserts pasted text at cursor" do
+        set_input("hello ", cursor_pos: 6)
+        screen.handle_event(paste_event(content: "world"))
+        expect(screen.input).to eq("hello world")
+        expect(screen.cursor_pos).to eq(11)
+      end
+
+      it "inserts pasted text in the middle" do
+        set_input("helo", cursor_pos: 2)
+        screen.handle_event(paste_event(content: "ll"))
+        expect(screen.input).to eq("helllo")
+      end
+
+      it "handles multiline paste" do
+        screen.handle_event(paste_event(content: "line1\nline2\nline3"))
+        expect(screen.input).to eq("line1\nline2\nline3")
+      end
+
+      it "returns true on success" do
+        expect(screen.handle_event(paste_event(content: "text"))).to be true
+      end
+
+      it "returns false when buffer is full" do
+        set_input("x" * TUI::InputBuffer::MAX_LENGTH)
+        expect(screen.handle_event(paste_event(content: "more"))).to be false
+      end
+
+      it "rejects paste that would exceed MAX_LENGTH" do
+        set_input("x" * (TUI::InputBuffer::MAX_LENGTH - 5))
+        expect(screen.handle_event(paste_event(content: "too long!"))).to be false
+        expect(screen.input.length).to eq(TUI::InputBuffer::MAX_LENGTH - 5)
+      end
+
+      it "ignores paste while loading" do
+        screen.instance_variable_set(:@loading, true)
+        screen.handle_event(paste_event(content: "text"))
+        expect(screen.input).to eq("")
       end
     end
 

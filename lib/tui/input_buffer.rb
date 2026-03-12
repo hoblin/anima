@@ -48,9 +48,9 @@ module TUI
     end
 
     # @param char [String] character(s) to insert at cursor
-    # @return [Boolean] true if inserted
+    # @return [Boolean] true if inserted, false if result would exceed MAX_LENGTH
     def insert(char)
-      return false if full?
+      return false if @text.length + char.length > MAX_LENGTH
 
       @text = "#{@text[0...@cursor_pos]}#{char}#{@text[@cursor_pos..]}"
       @cursor_pos += char.length
@@ -73,6 +73,15 @@ module TUI
 
       @text = "#{@text[0...@cursor_pos - 1]}#{@text[@cursor_pos..]}"
       @cursor_pos -= 1
+      true
+    end
+
+    # Deletes the character at the cursor (forward delete).
+    # @return [Boolean] true if a character was deleted
+    def delete
+      return false if @cursor_pos >= @text.length
+
+      @text = "#{@text[0...@cursor_pos]}#{@text[@cursor_pos + 1..]}"
       true
     end
 
