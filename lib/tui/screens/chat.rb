@@ -18,7 +18,11 @@ module TUI
       TOOL_ICON = "\u{1F527}"
       CHECKMARK = "\u2713"
 
-      attr_reader :message_store, :scroll_offset, :session_info
+      # Intentionally duplicated from Session::VIEW_MODES to keep the TUI
+      # independent of Rails. Must stay in sync when adding new modes.
+      VIEW_MODES = %w[basic verbose debug].freeze
+
+      attr_reader :message_store, :scroll_offset, :session_info, :view_mode
 
       # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
       # @param message_store [TUI::MessageStore, nil] injectable for testing
@@ -32,6 +36,7 @@ module TUI
         @visible_height = 0
         @max_scroll = 0
         @input_scroll_offset = 0
+        @view_mode = "basic"
         @session_info = {id: cable_client.session_id, message_count: 0}
       end
 
@@ -109,6 +114,15 @@ module TUI
         @cable_client.create_session
       end
 
+      # Cycles to the next view mode and requests the server to switch.
+      # The server broadcasts the mode change and re-transmits the viewport
+      # decorated in the new mode to all connected clients.
+      def cycle_view_mode
+        current_index = VIEW_MODES.index(@view_mode) || 0
+        next_mode = VIEW_MODES[(current_index + 1) % VIEW_MODES.size]
+        @cable_client.change_view_mode(next_mode)
+      end
+
       def finalize
       end
 
@@ -127,6 +141,10 @@ module TUI
           case action
           when "session_changed"
             handle_session_changed(msg)
+          when "view_mode_changed"
+            handle_view_mode_changed(msg)
+          when "view_mode"
+            @view_mode = msg["view_mode"] if msg["view_mode"]
           when "sessions_list"
             @sessions_list = msg["sessions"]
           when "error"
@@ -168,12 +186,25 @@ module TUI
         new_id = msg["session_id"]
         @cable_client.update_session_id(new_id)
         @message_store.clear
+        @view_mode = msg["view_mode"] if msg["view_mode"]
         @session_info = {id: new_id, message_count: msg["message_count"] || 0}
         @input_buffer.clear
         @loading = false
         @scroll_offset = 0
         @auto_scroll = true
         @input_scroll_offset = 0
+      end
+
+      # Handles server broadcast of view mode change. Clears the message store
+      # in preparation for the re-decorated viewport events that follow.
+      def handle_view_mode_changed(msg)
+        new_mode = msg["view_mode"]
+        return unless new_mode && VIEW_MODES.include?(new_mode)
+
+        @view_mode = new_mode
+        @message_store.clear
+        @scroll_offset = 0
+        @auto_scroll = true
       end
 
       def render_messages(frame, area, tui)
@@ -231,6 +262,8 @@ module TUI
       def build_message_lines(tui)
         messages.flat_map do |entry|
           case entry[:type]
+          when :rendered
+            build_rendered_lines(tui, entry)
           when :tool_counter
             build_tool_counter_lines(tui, entry)
           when :message
@@ -254,6 +287,25 @@ module TUI
           tui.line(spans: [tui.span(content: label, style: tui.style(fg: color))]),
           tui.line(spans: [tui.span(content: "")])
         ]
+      end
+
+      # Renders pre-decorated lines from the server. Applies basic styling
+      # based on the role prefix (green for user, cyan for agent).
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param entry [Hash] entry shaped `{type: :rendered, lines:}`
+      # @return [Array<RatatuiRuby::Widgets::Line>] rendered lines + blank separator
+      def build_rendered_lines(tui, entry)
+        lines = entry[:lines].map do |text|
+          style = if text.start_with?("You: ")
+            tui.style(fg: "green")
+          elsif text.start_with?("Anima: ")
+            tui.style(fg: "cyan")
+          else
+            tui.style(fg: "white")
+          end
+          tui.line(spans: [tui.span(content: text, style: style)])
+        end
+        lines << tui.line(spans: [tui.span(content: "")])
       end
 
       def build_chat_message_lines(tui, msg)

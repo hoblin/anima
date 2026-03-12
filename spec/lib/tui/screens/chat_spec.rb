@@ -19,6 +19,7 @@ RSpec.describe TUI::Screens::Chat do
     allow(cable_client).to receive(:switch_session)
     allow(cable_client).to receive(:list_sessions)
     allow(cable_client).to receive(:update_session_id)
+    allow(cable_client).to receive(:change_view_mode)
   end
 
   # RatatuiRuby::Event uses method_missing for dynamic predicates,
@@ -211,9 +212,23 @@ RSpec.describe TUI::Screens::Chat do
 
         screen.send(:process_incoming_messages)
 
+        expect(screen.messages).to contain_exactly(
+          a_hash_including(type: :message, role: "user", content: "hello"),
+          a_hash_including(type: :message, role: "assistant", content: "hi there")
+        )
+      end
+
+      it "stores pre-rendered content when available" do
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "user_message", "content" => "hello", "rendered" => {"basic" => ["You: hello"]}},
+          {"type" => "agent_message", "content" => "hi", "rendered" => {"basic" => ["Anima: hi"]}}
+        ])
+
+        screen.send(:process_incoming_messages)
+
         expect(screen.messages).to eq([
-          {type: :message, role: "user", content: "hello"},
-          {type: :message, role: "assistant", content: "hi there"}
+          {type: :rendered, lines: ["You: hello"]},
+          {type: :rendered, lines: ["Anima: hi"]}
         ])
       end
 
@@ -782,6 +797,116 @@ RSpec.describe TUI::Screens::Chat do
   describe "#finalize" do
     it "does not raise" do
       expect { screen.finalize }.not_to raise_error
+    end
+  end
+
+  describe "view mode" do
+    it "starts with basic view_mode" do
+      expect(screen.view_mode).to eq("basic")
+    end
+
+    describe "#cycle_view_mode" do
+      it "sends change_view_mode to cable_client with next mode" do
+        screen.cycle_view_mode
+        expect(cable_client).to have_received(:change_view_mode).with("verbose")
+      end
+
+      it "cycles from verbose to debug" do
+        screen.instance_variable_set(:@view_mode, "verbose")
+        screen.cycle_view_mode
+        expect(cable_client).to have_received(:change_view_mode).with("debug")
+      end
+
+      it "cycles from debug to basic" do
+        screen.instance_variable_set(:@view_mode, "debug")
+        screen.cycle_view_mode
+        expect(cable_client).to have_received(:change_view_mode).with("basic")
+      end
+    end
+
+    describe "view_mode_changed action" do
+      it "updates view_mode" do
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "view_mode_changed", "view_mode" => "verbose"}
+        ])
+        screen.send(:process_incoming_messages)
+        expect(screen.view_mode).to eq("verbose")
+      end
+
+      it "clears message store" do
+        message_store.process_event({"type" => "user_message", "content" => "old"})
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "view_mode_changed", "view_mode" => "verbose"}
+        ])
+        screen.send(:process_incoming_messages)
+        expect(screen.messages).to be_empty
+      end
+
+      it "resets scroll state" do
+        screen.instance_variable_set(:@scroll_offset, 15)
+        screen.instance_variable_set(:@auto_scroll, false)
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "view_mode_changed", "view_mode" => "verbose"}
+        ])
+        screen.send(:process_incoming_messages)
+        expect(screen.scroll_offset).to eq(0)
+        expect(screen.instance_variable_get(:@auto_scroll)).to be true
+      end
+    end
+
+    describe "view_mode_changed with invalid data" do
+      it "ignores nil view_mode and preserves state" do
+        message_store.process_event({"type" => "user_message", "content" => "keep me"})
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "view_mode_changed", "view_mode" => nil}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.view_mode).to eq("basic")
+        expect(screen.messages).not_to be_empty
+      end
+
+      it "ignores missing view_mode key and preserves state" do
+        message_store.process_event({"type" => "user_message", "content" => "keep me"})
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "view_mode_changed"}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.view_mode).to eq("basic")
+        expect(screen.messages).not_to be_empty
+      end
+
+      it "ignores invalid view_mode value and preserves state" do
+        message_store.process_event({"type" => "user_message", "content" => "keep me"})
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "view_mode_changed", "view_mode" => "hacker_mode"}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.view_mode).to eq("basic")
+        expect(screen.messages).not_to be_empty
+      end
+    end
+
+    describe "view_mode action (initial subscription)" do
+      it "sets view_mode from server" do
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "view_mode", "view_mode" => "debug"}
+        ])
+        screen.send(:process_incoming_messages)
+        expect(screen.view_mode).to eq("debug")
+      end
+    end
+
+    describe "view_mode in session_changed" do
+      it "extracts view_mode from session_changed payload" do
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "session_changed", "session_id" => 99, "message_count" => 0, "view_mode" => "verbose"}
+        ])
+        screen.send(:process_incoming_messages)
+        expect(screen.view_mode).to eq("verbose")
+      end
     end
   end
 

@@ -6,8 +6,13 @@ module TUI
   # TUI, with no dependency on Rails or the Events module.
   #
   # Accepts Action Cable event payloads and stores typed entries:
-  # - `{type: :message, role:, content:}` for user/agent messages
+  # - `{type: :rendered, lines:}` for events with pre-rendered decorator output
+  # - `{type: :message, role:, content:}` for user/agent messages (fallback)
   # - `{type: :tool_counter, calls:, responses:}` for tool activity
+  #
+  # Pre-rendered content takes priority when available. Events with nil
+  # rendered content fall back to existing behavior: tool events aggregate
+  # into counters, messages store role and content.
   #
   # Tool counters aggregate per agent turn: a new counter starts when a
   # tool_call arrives after a message entry. Consecutive tool events
@@ -31,25 +36,52 @@ module TUI
     end
 
     # Processes a raw event payload from the WebSocket channel.
-    # Stores user/agent messages and tracks tool call/response counts.
+    # Uses pre-rendered decorator output when available; falls back to
+    # role/content extraction for messages and tool counter aggregation.
     #
-    # @param event_data [Hash] Action Cable event payload with "type" and "content"
+    # @param event_data [Hash] Action Cable event payload with "type", "content",
+    #   and optionally "rendered" (hash of mode => lines)
     # @return [Boolean] true if the event type was recognized and handled
-    #   (even if no visible entry was created, e.g. orphaned tool_response)
     def process_event(event_data)
-      case event_data["type"]
-      when "tool_call" then record_tool_call
-      when "tool_response" then record_tool_response
-      when *MESSAGE_TYPES then record_message(event_data)
-      else false
+      rendered = extract_rendered(event_data)
+
+      if rendered
+        record_rendered(rendered)
+      else
+        case event_data["type"]
+        when "tool_call" then record_tool_call
+        when "tool_response" then record_tool_response
+        when *MESSAGE_TYPES then record_message(event_data)
+        else false
+        end
       end
     end
 
+    # Removes all entries. Called on view mode change and session switch
+    # to prepare for re-decorated viewport events from the server.
+    # @return [void]
     def clear
       @mutex.synchronize { @entries = [] }
     end
 
     private
+
+    # Extracts the first non-nil rendered lines array from the payload.
+    # The "rendered" hash is keyed by view mode — the server includes only the
+    # session's current mode, so there is always at most one entry.
+    # (e.g. {"basic" => ["You: hello"]} or {"basic" => nil} for hidden events)
+    #
+    # @return [Array<String>, nil] rendered lines, or nil if not present
+    def extract_rendered(event_data)
+      event_data.dig("rendered")&.values&.compact&.first
+    end
+
+    def record_rendered(lines)
+      @mutex.synchronize do
+        @entries << {type: :rendered, lines: lines}
+      end
+      true
+    end
 
     def record_tool_call
       @mutex.synchronize do

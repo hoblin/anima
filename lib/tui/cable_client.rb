@@ -100,6 +100,16 @@ module TUI
       send_action("list_sessions", {"limit" => limit})
     end
 
+    # Requests the brain to change the session's view mode.
+    # The server broadcasts view_mode_changed to all clients on the session,
+    # followed by the re-decorated viewport.
+    #
+    # @param mode [String] one of "basic", "verbose", "debug"
+    # @return [void]
+    def change_view_mode(mode)
+      send_action("change_view_mode", {"view_mode" => mode})
+    end
+
     # Updates the local session ID reference after a server-side session switch.
     #
     # @param new_id [Integer] the new session ID

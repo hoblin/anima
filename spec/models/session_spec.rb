@@ -3,6 +3,44 @@
 require "rails_helper"
 
 RSpec.describe Session do
+  describe "validations" do
+    it "accepts valid view modes" do
+      session = Session.new
+      %w[basic verbose debug].each do |mode|
+        session.view_mode = mode
+        expect(session).to be_valid
+      end
+    end
+
+    it "rejects invalid view modes" do
+      session = Session.new(view_mode: "fancy")
+      expect(session).not_to be_valid
+      expect(session.errors[:view_mode]).to be_present
+    end
+
+    it "defaults view_mode to basic" do
+      session = Session.create!
+      expect(session.view_mode).to eq("basic")
+    end
+  end
+
+  describe "#next_view_mode" do
+    it "cycles basic → verbose" do
+      session = Session.new(view_mode: "basic")
+      expect(session.next_view_mode).to eq("verbose")
+    end
+
+    it "cycles verbose → debug" do
+      session = Session.new(view_mode: "verbose")
+      expect(session.next_view_mode).to eq("debug")
+    end
+
+    it "cycles debug → basic" do
+      session = Session.new(view_mode: "debug")
+      expect(session.next_view_mode).to eq("basic")
+    end
+  end
+
   describe "associations" do
     it "has many events ordered by id" do
       session = Session.create!

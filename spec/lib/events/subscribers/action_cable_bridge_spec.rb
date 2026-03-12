@@ -98,6 +98,7 @@ RSpec.describe Events::Subscribers::ActionCableBridge do
 
   describe "decoration" do
     it "includes rendered basic output for user messages" do
+      Session.create!(id: 42)
       expect {
         bridge.emit(event_hash(Events::UserMessage.new(content: "hello", session_id: 42)))
       }.to have_broadcasted_to("session_42")
@@ -105,6 +106,7 @@ RSpec.describe Events::Subscribers::ActionCableBridge do
     end
 
     it "includes rendered basic output for agent messages" do
+      Session.create!(id: 7)
       expect {
         bridge.emit(event_hash(Events::AgentMessage.new(content: "hi there", session_id: 7)))
       }.to have_broadcasted_to("session_7")
@@ -112,6 +114,7 @@ RSpec.describe Events::Subscribers::ActionCableBridge do
     end
 
     it "includes nil rendered basic output for tool calls" do
+      Session.create!(id: 5)
       expect {
         bridge.emit(event_hash(Events::ToolCall.new(
           content: "calling bash", tool_name: "bash",
@@ -122,12 +125,28 @@ RSpec.describe Events::Subscribers::ActionCableBridge do
     end
 
     it "includes nil rendered basic output for tool responses" do
+      Session.create!(id: 5)
       expect {
         bridge.emit(event_hash(Events::ToolResponse.new(
           content: "output", tool_name: "bash", success: true, session_id: 5
         )))
       }.to have_broadcasted_to("session_5")
         .with(a_hash_including("rendered" => {"basic" => nil}))
+    end
+
+    it "decorates in the session's view_mode" do
+      Session.create!(id: 42, view_mode: "verbose")
+      expect {
+        bridge.emit(event_hash(Events::UserMessage.new(content: "hello", session_id: 42)))
+      }.to have_broadcasted_to("session_42")
+        .with(a_hash_including("rendered" => {"verbose" => ["You: hello"]}))
+    end
+
+    it "falls back to basic when session is not found" do
+      expect {
+        bridge.emit(event_hash(Events::UserMessage.new(content: "hello", session_id: 999)))
+      }.to have_broadcasted_to("session_999")
+        .with(a_hash_including("rendered" => {"basic" => ["You: hello"]}))
     end
   end
 

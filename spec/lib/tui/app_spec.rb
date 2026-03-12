@@ -67,20 +67,6 @@ RSpec.describe TUI::App do
     describe "command mode actions" do
       before { app.instance_variable_set(:@command_mode, true) }
 
-      it "navigates to settings on 's'" do
-        event = key_event(code: "s")
-        app.send(:handle_event, event)
-        expect(app.current_screen).to eq(:settings)
-        expect(app.command_mode).to be false
-      end
-
-      it "navigates to anthropic on 'a'" do
-        event = key_event(code: "a")
-        app.send(:handle_event, event)
-        expect(app.current_screen).to eq(:anthropic)
-        expect(app.command_mode).to be false
-      end
-
       it "starts new session on 'n'" do
         chat = app.instance_variable_get(:@screens)[:chat]
         allow(chat).to receive(:new_session)
@@ -93,15 +79,16 @@ RSpec.describe TUI::App do
         expect(app.command_mode).to be false
       end
 
-      it "returns to chat screen on 'n' from other screens" do
-        app.instance_variable_set(:@current_screen, :settings)
+      it "cycles view mode on 'v'" do
         chat = app.instance_variable_get(:@screens)[:chat]
-        allow(chat).to receive(:new_session)
+        allow(chat).to receive(:cycle_view_mode)
 
-        event = key_event(code: "n")
+        event = key_event(code: "v")
         app.send(:handle_event, event)
 
+        expect(chat).to have_received(:cycle_view_mode)
         expect(app.current_screen).to eq(:chat)
+        expect(app.command_mode).to be false
       end
 
       it "quits on 'q'" do
@@ -123,33 +110,7 @@ RSpec.describe TUI::App do
       end
     end
 
-    describe "Esc returns to chat from other screens" do
-      it "returns to chat from settings" do
-        app.instance_variable_set(:@current_screen, :settings)
-        event = key_event(code: "esc")
-        app.send(:handle_event, event)
-        expect(app.current_screen).to eq(:chat)
-      end
-
-      it "stays on chat when already there" do
-        event = key_event(code: "esc")
-        app.send(:handle_event, event)
-        expect(app.current_screen).to eq(:chat)
-      end
-    end
-
     describe "screen event delegation" do
-      it "delegates key events to the current screen's handle_event" do
-        app.instance_variable_set(:@current_screen, :settings)
-        event = key_event(code: "j")
-        settings = app.instance_variable_get(:@screens)[:settings]
-        allow(settings).to receive(:handle_event)
-
-        app.send(:handle_event, event)
-
-        expect(settings).to have_received(:handle_event).with(event)
-      end
-
       it "delegates key events to chat screen's handle_event" do
         event = key_event(code: "a")
         chat = app.instance_variable_get(:@screens)[:chat]
@@ -160,12 +121,6 @@ RSpec.describe TUI::App do
         expect(chat).to have_received(:handle_event).with(event)
       end
 
-      it "does not delegate to screens without handle_event" do
-        app.instance_variable_set(:@current_screen, :anthropic)
-        event = key_event(code: "j")
-        expect { app.send(:handle_event, event) }.not_to raise_error
-      end
-
       it "delegates mouse events to the current screen" do
         event = double("MouseEvent", none?: false, ctrl_c?: false, key?: false, mouse?: true)
         chat = app.instance_variable_get(:@screens)[:chat]
@@ -174,12 +129,6 @@ RSpec.describe TUI::App do
         app.send(:handle_event, event)
 
         expect(chat).to have_received(:handle_event).with(event)
-      end
-
-      it "does not delegate mouse events to screens without handle_event" do
-        app.instance_variable_set(:@current_screen, :anthropic)
-        event = double("MouseEvent", none?: false, ctrl_c?: false, key?: false, mouse?: true)
-        expect { app.send(:handle_event, event) }.not_to raise_error
       end
 
       it "delegates paste events to the current screen" do
