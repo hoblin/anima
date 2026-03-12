@@ -307,7 +307,7 @@ module TUI
     end
 
     # Polls {CONTROLLING_TERMINAL} every {TERMINAL_CHECK_INTERVAL} seconds.
-    # When the terminal disappears, attempts WebSocket disconnect and force-exits.
+    # When the terminal disappears, calls {#handle_terminal_loss}.
     # Exits silently in non-TTY environments (CI, test suites).
     # @return [void]
     def terminal_watchdog_loop
@@ -318,17 +318,24 @@ module TUI
         begin
           File.stat(CONTROLLING_TERMINAL)
         rescue Errno::ENXIO, Errno::EIO, Errno::ENOENT
-          begin
-            @cable_client.disconnect
-          rescue
-            nil
-          end
-          Kernel.exit!(0)
+          handle_terminal_loss
         end
         sleep TERMINAL_CHECK_INTERVAL
       end
     rescue Errno::ENXIO, Errno::EIO, Errno::ENOENT
       # No controlling terminal — nothing to watch
+    end
+
+    # Best-effort WebSocket cleanup followed by immediate process termination.
+    # Uses Kernel.exit!(0) because the main thread is stuck in native Rust FFI
+    # (crossterm poll_event/draw) and cannot be interrupted by Ruby signals.
+    # @return [void]
+    def handle_terminal_loss
+      @cable_client.disconnect
+    rescue
+      nil
+    ensure
+      Kernel.exit!(0)
     end
   end
 end

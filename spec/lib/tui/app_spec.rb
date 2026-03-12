@@ -348,7 +348,7 @@ RSpec.describe TUI::App do
         expect { app.send(:terminal_watchdog_loop) }.not_to raise_error
       end
 
-      it "force-exits when terminal disappears mid-loop" do
+      it "calls handle_terminal_loss when terminal disappears mid-loop" do
         call_count = 0
         allow(File).to receive(:stat).with(TUI::App::CONTROLLING_TERMINAL) do
           call_count += 1
@@ -356,43 +356,28 @@ RSpec.describe TUI::App do
           stat_double
         end
         allow(app).to receive(:sleep)
-        allow(Kernel).to receive(:exit!) { throw :force_exit }
+        allow(app).to receive(:handle_terminal_loss) { throw :force_exit }
 
         catch(:force_exit) { app.send(:terminal_watchdog_loop) }
 
-        expect(Kernel).to have_received(:exit!).with(0)
+        expect(app).to have_received(:handle_terminal_loss)
       end
+    end
 
-      it "attempts cable disconnect before force-exit" do
-        call_count = 0
-        allow(File).to receive(:stat).with(TUI::App::CONTROLLING_TERMINAL) do
-          call_count += 1
-          raise Errno::EIO if call_count > 1
-          stat_double
-        end
-        allow(app).to receive(:sleep)
-        allow(Kernel).to receive(:exit!) { throw :force_exit }
+    describe "handle_terminal_loss" do
+      it "attempts cable disconnect" do
+        allow(Kernel).to receive(:exit!)
 
-        catch(:force_exit) { app.send(:terminal_watchdog_loop) }
+        app.send(:handle_terminal_loss)
 
         expect(cable_client).to have_received(:disconnect)
-        expect(Kernel).to have_received(:exit!).with(0)
       end
 
-      it "force-exits even when disconnect raises" do
-        call_count = 0
-        allow(File).to receive(:stat).with(TUI::App::CONTROLLING_TERMINAL) do
-          call_count += 1
-          raise Errno::ENXIO if call_count > 1
-          stat_double
-        end
-        allow(app).to receive(:sleep)
+      it "tolerates disconnect failure" do
         allow(cable_client).to receive(:disconnect).and_raise(IOError)
-        allow(Kernel).to receive(:exit!) { throw :force_exit }
+        allow(Kernel).to receive(:exit!)
 
-        catch(:force_exit) { app.send(:terminal_watchdog_loop) }
-
-        expect(Kernel).to have_received(:exit!).with(0)
+        expect { app.send(:handle_terminal_loss) }.not_to raise_error
       end
     end
   end
