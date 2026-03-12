@@ -32,14 +32,15 @@ RSpec.describe TUI::App do
     # so we use plain doubles instead of instance_double
     def key_event(code:, modifiers: nil, **overrides)
       defaults = {
-        none?: false, ctrl_c?: false, key?: true, mouse?: false, esc?: false,
-        enter?: false, backspace?: false, up?: false, down?: false,
-        page_up?: false, page_down?: false, left?: false, right?: false,
-        home?: false, end?: false
+        none?: false, ctrl_c?: false, key?: true, mouse?: false, paste?: false,
+        esc?: false, enter?: false, backspace?: false, delete?: false,
+        up?: false, down?: false, page_up?: false, page_down?: false,
+        left?: false, right?: false, home?: false, end?: false
       }
       defaults[:esc?] = true if code == "esc"
       defaults[:enter?] = true if code == "enter"
       defaults[:backspace?] = true if code == "backspace"
+      defaults[:delete?] = true if code == "delete"
       double("Event", **defaults, code: code, modifiers: modifiers, **overrides)
     end
 
