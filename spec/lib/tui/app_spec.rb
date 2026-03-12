@@ -298,7 +298,7 @@ RSpec.describe TUI::App do
     # Stubs File.open for the controlling terminal path.
     # Yields to the block (like the real File.open with {}) on success,
     # or raises on failure.
-    def stub_terminal_open(succeeds: true, error: Errno::ENOENT)
+    def stub_terminal_open(succeeds: true, error: Errno::ENXIO)
       allow(File).to receive(:open).and_call_original
       stub = allow(File).to receive(:open).with(TUI::App::CONTROLLING_TERMINAL, "r")
       if succeeds
@@ -356,12 +356,27 @@ RSpec.describe TUI::App do
         expect { app.send(:terminal_watchdog_loop) }.not_to raise_error
       end
 
-      it "calls handle_terminal_loss when terminal disappears mid-loop" do
+      it "calls handle_terminal_loss when terminal disappears mid-loop (ENXIO)" do
         call_count = 0
         allow(File).to receive(:open).and_call_original
         allow(File).to receive(:open).with(TUI::App::CONTROLLING_TERMINAL, "r") do
           call_count += 1
           raise Errno::ENXIO if call_count > 1
+        end
+        allow(app).to receive(:sleep)
+        allow(app).to receive(:handle_terminal_loss) { throw :force_exit }
+
+        catch(:force_exit) { app.send(:terminal_watchdog_loop) }
+
+        expect(app).to have_received(:handle_terminal_loss)
+      end
+
+      it "calls handle_terminal_loss when terminal disappears mid-loop (EIO)" do
+        call_count = 0
+        allow(File).to receive(:open).and_call_original
+        allow(File).to receive(:open).with(TUI::App::CONTROLLING_TERMINAL, "r") do
+          call_count += 1
+          raise Errno::EIO if call_count > 1
         end
         allow(app).to receive(:sleep)
         allow(app).to receive(:handle_terminal_loss) { throw :force_exit }

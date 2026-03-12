@@ -311,8 +311,11 @@ module TUI
     # filesystem entry which always exists; open actually probes the device.
     # When the terminal disappears, calls {#handle_terminal_loss}.
     # Exits silently in non-TTY environments (CI, test suites).
+    # @see CONTROLLING_TERMINAL
+    # @see TERMINAL_CHECK_INTERVAL
     # @return [void]
     def terminal_watchdog_loop
+      # Empty block triggers open syscall to probe the device, then immediately closes the FD.
       File.open(CONTROLLING_TERMINAL, "r") {}
 
       loop do
@@ -324,8 +327,8 @@ module TUI
         end
         sleep TERMINAL_CHECK_INTERVAL
       end
-    rescue Errno::ENXIO, Errno::EIO, Errno::ENOENT
-      # No controlling terminal — nothing to watch
+    rescue SystemCallError
+      # No controlling terminal — nothing to watch (ENXIO, EIO, ENOENT, EACCES, etc.)
     end
 
     # Best-effort WebSocket cleanup followed by immediate process termination.
