@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe ToolCallDecorator do
+RSpec.describe ToolCallDecorator, type: :decorator do
   let(:session) { Session.create! }
 
   describe "#render_basic" do

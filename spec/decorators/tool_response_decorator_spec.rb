@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe ToolResponseDecorator do
+RSpec.describe ToolResponseDecorator, type: :decorator do
   let(:session) { Session.create! }
 
   describe "#render_basic" do

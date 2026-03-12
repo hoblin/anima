@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe AgentMessageDecorator do
+RSpec.describe AgentMessageDecorator, type: :decorator do
   let(:session) { Session.create! }
 
   describe "#render_basic" do

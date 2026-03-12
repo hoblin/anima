@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe SystemMessageDecorator do
+RSpec.describe SystemMessageDecorator, type: :decorator do
   let(:session) { Session.create! }
 
   describe "#render_basic" do

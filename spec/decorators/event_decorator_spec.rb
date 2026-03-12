@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe EventDecorator do
+RSpec.describe EventDecorator, type: :decorator do
   let(:session) { Session.create! }
 
   describe ".for" do

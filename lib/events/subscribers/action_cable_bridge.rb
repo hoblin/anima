@@ -38,12 +38,13 @@ module Events
       private
 
       # Decorates the payload hash with pre-rendered output for each view mode.
+      # Uses string keys for the +rendered+ hash to match JSON wire format.
       # Falls back to the raw payload if decoration fails.
       def decorate_payload(payload)
         decorator = EventDecorator.for(payload)
         return payload unless decorator
 
-        payload.merge(rendered: {basic: decorator.render_basic})
+        payload.merge("rendered" => {"basic" => decorator.render_basic})
       end
     end
   end

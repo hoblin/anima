@@ -117,8 +117,6 @@ class SessionChannel < ApplicationCable::Channel
     return unless session
 
     session.viewport_events.each do |event|
-      next unless event.context_event?
-
       transmit(decorate_event_payload(event))
     end
   end
