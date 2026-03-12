@@ -8,6 +8,8 @@ Research spikes should describe what we need, not where to look. Prescribing sol
 
 Always fix flaky tests. Never skip, mark pending, or work around them — fix the root cause.
 
+Do not add "defense-in-depth" rescue clauses or fallback logic. Silently swallowing exceptions hides bugs, violates the Single Responsibility Principle, and masks missing business logic. Let exceptions propagate — they signal that a use case is not covered. Fix the gap in logic instead of papering over it.
+
 The development environment is fully configured (LLM API keys, credentials, dependencies). Don't ask — just run things.
 
 ## Testing TUI in tmux

@@ -53,6 +53,19 @@ RSpec.describe SessionChannel, type: :channel do
       expect(transmissions[2]).to include("type" => "tool_call", "content" => "calling bash")
     end
 
+    it "includes decorated rendered output in history transmissions" do
+      session = Session.create!(id: session_id)
+      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
+      session.events.create!(event_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi"}, timestamp: 2)
+      session.events.create!(event_type: "tool_call", payload: {"type" => "tool_call", "content" => "calling bash"}, timestamp: 3)
+
+      subscribe(session_id: session_id)
+
+      expect(transmissions[0]["rendered"]).to eq("basic" => ["You: hello"])
+      expect(transmissions[1]["rendered"]).to eq("basic" => ["Anima: hi"])
+      expect(transmissions[2]["rendered"]).to eq("basic" => nil)
+    end
+
     it "excludes system_message events from history" do
       session = Session.create!(id: session_id)
       session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)

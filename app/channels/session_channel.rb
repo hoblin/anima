@@ -107,18 +107,26 @@ class SessionChannel < ApplicationCable::Channel
     transmit_history
   end
 
-  # Sends context events (messages + tool interactions) from the LLM's
-  # viewport to the subscribing client. Tool events are included so the
-  # TUI can reconstruct tool call counters on reconnect.
+  # Sends decorated context events (messages + tool interactions) from
+  # the LLM's viewport to the subscribing client. Each event is wrapped
+  # in an {EventDecorator} and the pre-rendered output is included in
+  # the transmitted payload. Tool events are included so the TUI can
+  # reconstruct tool call counters on reconnect.
   def transmit_history
     session = Session.find_by(id: @current_session_id)
     return unless session
 
     session.viewport_events.each do |event|
-      next unless event.context_event?
-
-      transmit(event.payload)
+      transmit(decorate_event_payload(event))
     end
+  end
+
+  def decorate_event_payload(event)
+    payload = event.payload
+    decorator = EventDecorator.for(event)
+    return payload unless decorator
+
+    payload.merge("rendered" => {"basic" => decorator.render_basic})
   end
 
   def transmit_error(message)
