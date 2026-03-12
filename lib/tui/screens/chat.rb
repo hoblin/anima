@@ -68,6 +68,7 @@ module TUI
       # read chat history during LLM calls.
       def handle_event(event)
         return handle_mouse_event(event) if event.mouse?
+        return handle_paste_event(event) if event.paste?
         return handle_scroll_key(event) if event.page_up? || event.page_down?
         return handle_scroll_key(event) if event.up? || event.down?
 
@@ -78,6 +79,9 @@ module TUI
           true
         elsif event.backspace?
           @input_buffer.backspace
+          true
+        elsif event.delete?
+          @input_buffer.delete
           true
         elsif event.left?
           @input_buffer.move_left
@@ -394,6 +398,17 @@ module TUI
       # @return [Boolean] true when WebSocket is fully subscribed and ready
       def connected?
         @cable_client.status == :subscribed
+      end
+
+      # Inserts pasted clipboard content at cursor position.
+      # Paste events bypass the loading guard since they represent
+      # intentional user action that should not be silently dropped.
+      # @param event [RatatuiRuby::Event::Paste] paste event with content
+      # @return [Boolean] true if content was inserted
+      def handle_paste_event(event)
+        return false if @loading || @input_buffer.full?
+
+        @input_buffer.insert(event.content)
       end
 
       def printable_char?(event)

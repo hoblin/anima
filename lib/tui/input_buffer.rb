@@ -76,6 +76,15 @@ module TUI
       true
     end
 
+    # Deletes the character at the cursor (forward delete).
+    # @return [Boolean] true if a character was deleted
+    def delete
+      return false if @cursor_pos >= @text.length
+
+      @text = "#{@text[0...@cursor_pos]}#{@text[@cursor_pos + 1..]}"
+      true
+    end
+
     # @return [Boolean] true if cursor moved
     def move_left
       return false if @cursor_pos == 0
