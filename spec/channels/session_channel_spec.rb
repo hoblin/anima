@@ -39,7 +39,7 @@ RSpec.describe SessionChannel, type: :channel do
       expect(subscription).to be_rejected
     end
 
-    it "transmits chat history for existing session" do
+    it "transmits chat history including tool events for existing session" do
       session = Session.create!(id: session_id)
       session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
       session.events.create!(event_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi there"}, timestamp: 2)
@@ -47,9 +47,21 @@ RSpec.describe SessionChannel, type: :channel do
 
       subscribe(session_id: session_id)
 
-      expect(transmissions.size).to eq(2)
+      expect(transmissions.size).to eq(3)
       expect(transmissions[0]).to include("type" => "user_message", "content" => "hello")
       expect(transmissions[1]).to include("type" => "agent_message", "content" => "hi there")
+      expect(transmissions[2]).to include("type" => "tool_call", "content" => "calling bash")
+    end
+
+    it "excludes system_message events from history" do
+      session = Session.create!(id: session_id)
+      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
+      session.events.create!(event_type: "system_message", payload: {"type" => "system_message", "content" => "internal"}, timestamp: 2)
+
+      subscribe(session_id: session_id)
+
+      expect(transmissions.size).to eq(1)
+      expect(transmissions[0]).to include("type" => "user_message")
     end
 
     it "transmits no history for a session with no messages" do

@@ -107,14 +107,15 @@ class SessionChannel < ApplicationCable::Channel
     transmit_history
   end
 
-  # Sends displayable events from the LLM's viewport to the subscribing
-  # client. The TUI shows exactly what the agent can see — no more, no less.
+  # Sends context events (messages + tool interactions) from the LLM's
+  # viewport to the subscribing client. Tool events are included so the
+  # TUI can reconstruct tool call counters on reconnect.
   def transmit_history
     session = Session.find_by(id: @current_session_id)
     return unless session
 
     session.viewport_events.each do |event|
-      next unless event.llm_message?
+      next unless event.context_event?
 
       transmit(event.payload)
     end

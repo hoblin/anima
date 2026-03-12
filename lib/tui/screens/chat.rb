@@ -15,6 +15,9 @@ module TUI
       SCROLL_STEP = 1
       MOUSE_SCROLL_STEP = 2
 
+      TOOL_ICON = "\u{1F527}"
+      CHECKMARK = "\u2713"
+
       attr_reader :message_store, :scroll_offset, :session_info
 
       # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
@@ -140,7 +143,7 @@ module TUI
               @message_store.process_event(msg)
               @session_info[:message_count] += 1
               @loading = false
-            else
+            else # tool_call, tool_response, and other event types
               @message_store.process_event(msg)
             end
           end
@@ -226,20 +229,46 @@ module TUI
       end
 
       def build_message_lines(tui)
-        messages.flat_map do |msg|
-          role = msg[:role]
-          role_style = (role == ROLE_USER) ? tui.style(fg: "green", modifiers: [:bold]) : tui.style(fg: "cyan", modifiers: [:bold])
-
-          label = ROLE_LABELS.fetch(role, role)
-          content_lines = msg[:content].to_s.split("\n", -1)
-
-          lines = [tui.line(spans: [
-            tui.span(content: "#{label}: ", style: role_style),
-            tui.span(content: content_lines.first.to_s)
-          ])]
-          content_lines.drop(1).each { |text| lines << tui.line(spans: [tui.span(content: text)]) }
-          lines << tui.line(spans: [tui.span(content: "")])
+        messages.flat_map do |entry|
+          case entry[:type]
+          when :tool_counter
+            build_tool_counter_lines(tui, entry)
+          when :message
+            build_chat_message_lines(tui, entry)
+          end
         end
+      end
+
+      # Renders a tool activity counter (e.g. "🔧 Tools: 2/2 ✓").
+      # Green when all calls have responses, yellow while in-progress.
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param counter [Hash] entry shaped `{type: :tool_counter, calls:, responses:}`
+      # @return [Array<RatatuiRuby::Widgets::Line>] counter line + blank separator
+      def build_tool_counter_lines(tui, counter)
+        calls = counter[:calls]
+        responses = counter[:responses]
+        complete = calls == responses
+        label = "#{TOOL_ICON} Tools: #{calls}/#{responses}#{" #{CHECKMARK}" if complete}"
+        color = complete ? "green" : "yellow"
+        [
+          tui.line(spans: [tui.span(content: label, style: tui.style(fg: color))]),
+          tui.line(spans: [tui.span(content: "")])
+        ]
+      end
+
+      def build_chat_message_lines(tui, msg)
+        role = msg[:role]
+        role_style = (role == ROLE_USER) ? tui.style(fg: "green", modifiers: [:bold]) : tui.style(fg: "cyan", modifiers: [:bold])
+
+        label = ROLE_LABELS.fetch(role, role)
+        content_lines = msg[:content].to_s.split("\n", -1)
+
+        lines = [tui.line(spans: [
+          tui.span(content: "#{label}: ", style: role_style),
+          tui.span(content: content_lines.first.to_s)
+        ])]
+        content_lines.drop(1).each { |text| lines << tui.line(spans: [tui.span(content: text)]) }
+        lines << tui.line(spans: [tui.span(content: "")])
       end
 
       # Dynamically calculates input area height based on wrapped content.

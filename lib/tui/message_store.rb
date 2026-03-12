@@ -1,13 +1,19 @@
 # frozen_string_literal: true
 
 module TUI
-  # Thread-safe in-memory store for chat messages displayed in the TUI.
+  # Thread-safe in-memory store for chat entries displayed in the TUI.
   # Replaces {Events::Subscribers::MessageCollector} in the WebSocket-based
   # TUI, with no dependency on Rails or the Events module.
   #
-  # Accepts Action Cable event payloads and extracts displayable messages.
+  # Accepts Action Cable event payloads and stores typed entries:
+  # - `{type: :message, role:, content:}` for user/agent messages
+  # - `{type: :tool_counter, calls:, responses:}` for tool activity
+  #
+  # Tool counters aggregate per agent turn: a new counter starts when a
+  # tool_call arrives after a message entry. Consecutive tool events
+  # increment the same counter until the next message breaks the chain.
   class MessageStore
-    DISPLAYABLE_TYPES = %w[user_message agent_message].freeze
+    MESSAGE_TYPES = %w[user_message agent_message].freeze
 
     ROLE_MAP = {
       "user_message" => "user",
@@ -15,35 +21,70 @@ module TUI
     }.freeze
 
     def initialize
-      @messages = []
+      @entries = []
       @mutex = Mutex.new
     end
 
-    # @return [Array<Hash>] thread-safe copy of collected messages
+    # @return [Array<Hash>] thread-safe copy of stored entries
     def messages
-      @mutex.synchronize { @messages.dup }
+      @mutex.synchronize { @entries.dup }
     end
 
     # Processes a raw event payload from the WebSocket channel.
-    # Only user_message and agent_message events are stored.
+    # Stores user/agent messages and tracks tool call/response counts.
     #
     # @param event_data [Hash] Action Cable event payload with "type" and "content"
-    # @return [Boolean] true if the message was stored
+    # @return [Boolean] true if the event type was recognized and handled
+    #   (even if no visible entry was created, e.g. orphaned tool_response)
     def process_event(event_data)
-      type = event_data["type"]
-      return false unless DISPLAYABLE_TYPES.include?(type)
+      case event_data["type"]
+      when "tool_call" then record_tool_call
+      when "tool_response" then record_tool_response
+      when *MESSAGE_TYPES then record_message(event_data)
+      else false
+      end
+    end
 
-      content = event_data["content"]
-      return false if content.nil?
+    def clear
+      @mutex.synchronize { @entries = [] }
+    end
 
+    private
+
+    def record_tool_call
       @mutex.synchronize do
-        @messages << {role: ROLE_MAP.fetch(type), content: content}
+        current = current_tool_counter
+        if current
+          current[:calls] += 1
+        else
+          @entries << {type: :tool_counter, calls: 1, responses: 0}
+        end
       end
       true
     end
 
-    def clear
-      @mutex.synchronize { @messages = [] }
+    def record_tool_response
+      @mutex.synchronize do
+        current = current_tool_counter
+        current[:responses] += 1 if current
+      end
+      true
+    end
+
+    def record_message(event_data)
+      content = event_data["content"]
+      return false if content.nil?
+
+      @mutex.synchronize do
+        @entries << {type: :message, role: ROLE_MAP.fetch(event_data["type"]), content: content}
+      end
+      true
+    end
+
+    # @return [Hash, nil] the last entry if it is a tool counter
+    def current_tool_counter
+      last = @entries.last
+      last if last&.dig(:type) == :tool_counter
     end
   end
 end

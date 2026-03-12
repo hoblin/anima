@@ -212,9 +212,40 @@ RSpec.describe TUI::Screens::Chat do
         screen.send(:process_incoming_messages)
 
         expect(screen.messages).to eq([
-          {role: "user", content: "hello"},
-          {role: "assistant", content: "hi there"}
+          {type: :message, role: "user", content: "hello"},
+          {type: :message, role: "assistant", content: "hi there"}
         ])
+      end
+
+      it "tracks tool_call events as tool counter entries" do
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "user_message", "content" => "hi"},
+          {"type" => "tool_call", "content" => "calling bash"},
+          {"type" => "tool_response", "content" => "ok"},
+          {"type" => "agent_message", "content" => "done"}
+        ])
+
+        screen.send(:process_incoming_messages)
+
+        expect(screen.messages).to eq([
+          {type: :message, role: "user", content: "hi"},
+          {type: :tool_counter, calls: 1, responses: 1},
+          {type: :message, role: "assistant", content: "done"}
+        ])
+      end
+
+      it "does not increment message_count for tool events" do
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "user_message", "content" => "hi"},
+          {"type" => "tool_call", "content" => "calling bash"},
+          {"type" => "tool_response", "content" => "ok"},
+          {"type" => "tool_call", "content" => "calling web"},
+          {"type" => "tool_response", "content" => "ok"}
+        ])
+
+        screen.send(:process_incoming_messages)
+
+        expect(screen.session_info[:message_count]).to eq(1)
       end
 
       it "does not store connection status messages as chat messages" do
@@ -307,8 +338,27 @@ RSpec.describe TUI::Screens::Chat do
         screen.send(:process_incoming_messages)
 
         expect(screen.messages).to eq([
-          {role: "user", content: "restored"},
-          {role: "assistant", content: "response"}
+          {type: :message, role: "user", content: "restored"},
+          {type: :message, role: "assistant", content: "response"}
+        ])
+      end
+
+      it "reconstructs tool counters from history on reconnect" do
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "connection", "status" => "subscribed"},
+          {"type" => "user_message", "content" => "hi"},
+          {"type" => "tool_call", "content" => "bash"},
+          {"type" => "tool_response", "content" => "ok"},
+          {"type" => "tool_call", "content" => "web"},
+          {"type" => "tool_response", "content" => "ok"},
+          {"type" => "agent_message", "content" => "done"}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.messages).to eq([
+          {type: :message, role: "user", content: "hi"},
+          {type: :tool_counter, calls: 2, responses: 2},
+          {type: :message, role: "assistant", content: "done"}
         ])
       end
     end
