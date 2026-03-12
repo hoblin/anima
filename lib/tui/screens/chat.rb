@@ -2,7 +2,8 @@
 
 require "draper"
 
-# Load event decorator hierarchy (not autoloaded outside Rails)
+# Load event decorator hierarchy manually because TUI runs outside Rails autoload.
+# New decorators must be added here and in EventDecorator.decorator_map.
 decorator_dir = File.expand_path("../../../app/decorators", __dir__)
 require "#{decorator_dir}/application_decorator"
 require "#{decorator_dir}/event_decorator"

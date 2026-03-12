@@ -26,6 +26,11 @@ RSpec.describe AgentMessageDecorator do
       event_data["content"] = ""
       expect(decorator.render_basic).to eq(["Anima: "])
     end
+
+    it "preserves trailing newlines in content" do
+      event_data["content"] = "hello\n"
+      expect(decorator.render_basic).to eq(["Anima: hello", ""])
+    end
   end
 
   describe "#label" do

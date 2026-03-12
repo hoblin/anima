@@ -35,10 +35,22 @@ RSpec.describe EventDecorator do
       }.to raise_error(ArgumentError, /Unknown event type: "unknown"/)
     end
 
-    it "raises ArgumentError for nil event type" do
+    it "raises ArgumentError when type key is missing" do
       expect {
         described_class.for({"content" => "data"})
       }.to raise_error(ArgumentError, /Unknown event type: nil/)
+    end
+
+    it "raises ArgumentError when event_data is not a Hash" do
+      expect {
+        described_class.for("not a hash")
+      }.to raise_error(ArgumentError, /event_data must be a Hash/)
+    end
+
+    it "raises ArgumentError when event_data is nil" do
+      expect {
+        described_class.for(nil)
+      }.to raise_error(ArgumentError, /event_data must be a Hash/)
     end
 
     it "passes context to the decorator" do

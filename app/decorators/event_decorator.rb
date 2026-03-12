@@ -13,26 +13,33 @@
 #   decorator = EventDecorator.for({"type" => "tool_call", "content" => "bash"})
 #   decorator.render_basic  #=> nil
 class EventDecorator < ApplicationDecorator
-  DECORATOR_MAP = {
-    "user_message" => "UserMessageDecorator",
-    "agent_message" => "AgentMessageDecorator",
-    "tool_call" => "ToolCallDecorator",
-    "tool_response" => "ToolResponseDecorator",
-    "system_message" => "SystemMessageDecorator"
-  }.freeze
+  # Maps event type strings to their decorator subclasses.
+  # Lazily initialized because subclasses are defined after this base class.
+  # Add new event types here when extending the decorator hierarchy.
+  def self.decorator_map
+    @decorator_map ||= {
+      "user_message" => UserMessageDecorator,
+      "agent_message" => AgentMessageDecorator,
+      "tool_call" => ToolCallDecorator,
+      "tool_response" => ToolResponseDecorator,
+      "system_message" => SystemMessageDecorator
+    }.freeze
+  end
 
   # Factory method that returns the correct subclass for the given event data.
   #
   # @param event_data [Hash] raw event payload with "type" and "content" keys
   # @param context [Hash] additional rendering context (e.g. view mode settings)
   # @return [EventDecorator] subclass instance appropriate for the event type
-  # @raise [ArgumentError] if event_data has an unknown "type"
+  # @raise [ArgumentError] if event_data is not a Hash or has an unknown "type"
   def self.for(event_data, context: {})
+    raise ArgumentError, "event_data must be a Hash, got #{event_data.class}" unless event_data.is_a?(Hash)
+
     event_type = event_data["type"]
-    class_name = DECORATOR_MAP.fetch(event_type) do
+    klass = decorator_map.fetch(event_type) do
       raise ArgumentError, "Unknown event type: #{event_type.inspect}"
     end
-    Object.const_get(class_name).new(event_data, context: context)
+    klass.new(event_data, context: context)
   end
 
   # Renders the event for basic (default) view mode.

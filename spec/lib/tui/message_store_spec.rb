@@ -49,8 +49,22 @@ RSpec.describe TUI::MessageStore do
         expect(store.messages).to be_empty
       end
 
+      it "stores message events with empty string content" do
+        result = store.process_event({"type" => "user_message", "content" => ""})
+
+        expect(result).to be true
+        expect(store.messages.size).to eq(1)
+      end
+
       it "ignores events with unknown type" do
         result = store.process_event({"type" => "unknown", "content" => "data"})
+
+        expect(result).to be false
+        expect(store.messages).to be_empty
+      end
+
+      it "ignores events with no type key" do
+        result = store.process_event({"content" => "orphan"})
 
         expect(result).to be false
         expect(store.messages).to be_empty
