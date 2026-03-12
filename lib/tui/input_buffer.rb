@@ -16,6 +16,8 @@ module TUI
       @cursor_pos = 0
     end
 
+    # Resets the buffer to empty state.
+    # @return [void]
     def clear
       @text = ""
       @cursor_pos = 0
@@ -29,15 +31,18 @@ module TUI
       content
     end
 
+    # @return [Boolean] whether the buffer contains any newline characters
     def multiline?
       @text.include?("\n")
     end
 
+    # @return [Boolean] whether the buffer has reached MAX_LENGTH
     def full?
       @text.length >= MAX_LENGTH
     end
 
-    # Ensures cursor stays within valid bounds after external state changes
+    # Ensures cursor stays within valid bounds after external state changes.
+    # @return [void]
     def clamp_cursor
       @cursor_pos = @cursor_pos.clamp(0, @text.length)
     end
@@ -112,6 +117,7 @@ module TUI
     end
 
     # Moves cursor up one physical line, preserving column position.
+    # Clamps column to the target line's length when the previous line is shorter.
     # @return [Boolean] true if cursor moved
     def move_up
       line_idx, col = cursor_location
@@ -125,6 +131,7 @@ module TUI
     end
 
     # Moves cursor down one physical line, preserving column position.
+    # Clamps column to the target line's length when the next line is shorter.
     # @return [Boolean] true if cursor moved
     def move_down
       lines = @text.split("\n", -1)
@@ -151,6 +158,8 @@ module TUI
       [lines.length - 1, lines.last.length]
     end
 
+    # Maps each physical line to its starting offset within the text buffer.
+    # Position after each newline marks the start of the next line.
     # @return [Array<Integer>] start position of each physical line
     def line_start_positions
       positions = [0]

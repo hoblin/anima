@@ -34,7 +34,8 @@ RSpec.describe TUI::App do
       defaults = {
         none?: false, ctrl_c?: false, key?: true, mouse?: false, esc?: false,
         enter?: false, backspace?: false, up?: false, down?: false,
-        page_up?: false, page_down?: false
+        page_up?: false, page_down?: false, left?: false, right?: false,
+        home?: false, end?: false
       }
       defaults[:esc?] = true if code == "esc"
       defaults[:enter?] = true if code == "enter"

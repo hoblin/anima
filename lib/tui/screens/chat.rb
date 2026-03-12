@@ -48,7 +48,6 @@ module TUI
 
       def render(frame, area, tui)
         process_incoming_messages
-        @input_buffer.clamp_cursor
 
         input_height = calculate_input_height(tui, area.width, area.height)
 
@@ -250,7 +249,7 @@ module TUI
 
         temp = tui.paragraph(text: display_lines, wrap: true)
         content_height = temp.line_count(inner_width)
-        desired = content_height + 2
+        desired = content_height + 2 # top + bottom border
 
         max_height = [area_height / 2, MIN_INPUT_HEIGHT].max
         desired.clamp(MIN_INPUT_HEIGHT, max_height)
@@ -314,7 +313,9 @@ module TUI
         }
       end
 
-      # Scrolls input to keep cursor visible when content exceeds visible height
+      # Scrolls input to keep cursor visible when content exceeds visible height.
+      # Measures wrapped line count of text before cursor to find its visual row,
+      # then adjusts the scroll window so that row stays in view.
       def calculate_input_scroll(tui, inner_width, visible_height)
         return 0 if visible_height <= 0
 
@@ -326,6 +327,7 @@ module TUI
         temp = tui.paragraph(text: before_lines, wrap: true)
         cursor_visual_line = [temp.line_count(inner_width) - 1, 0].max
 
+        # Snap scroll window: pull up if cursor is above view, push down if below
         if cursor_visual_line < @input_scroll_offset
           @input_scroll_offset = cursor_visual_line
         elsif cursor_visual_line >= @input_scroll_offset + visible_height
@@ -344,7 +346,7 @@ module TUI
         @cable_client.speak(text)
       end
 
-      # Dispatches scroll key events to {#scroll_up} or {#scroll_down}
+      # Dispatches arrow and page keys to {#scroll_up} or {#scroll_down}.
       # @return [true] always redraws after scrolling
       def handle_scroll_key(event)
         if event.up?
