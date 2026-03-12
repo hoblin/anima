@@ -21,18 +21,16 @@ RSpec.describe TUI::MessageStore do
 
   describe "#process_event" do
     context "with message events" do
-      it "stores user_message events as raw payloads" do
-        event = {"type" => "user_message", "content" => "hello"}
-        store.process_event(event)
+      it "stores user_message events with typed entry" do
+        store.process_event({"type" => "user_message", "content" => "hello"})
 
-        expect(store.messages).to eq([event])
+        expect(store.messages).to eq([{type: :message, role: "user", content: "hello"}])
       end
 
-      it "stores agent_message events as raw payloads" do
-        event = {"type" => "agent_message", "content" => "hi there"}
-        store.process_event(event)
+      it "stores agent_message events with typed entry" do
+        store.process_event({"type" => "agent_message", "content" => "hi there"})
 
-        expect(store.messages).to eq([event])
+        expect(store.messages).to eq([{type: :message, role: "assistant", content: "hi there"}])
       end
 
       it "ignores system_message events" do
@@ -42,29 +40,15 @@ RSpec.describe TUI::MessageStore do
         expect(store.messages).to be_empty
       end
 
-      it "ignores message events with nil content" do
+      it "ignores events with nil content" do
         result = store.process_event({"type" => "user_message", "content" => nil})
 
         expect(result).to be false
         expect(store.messages).to be_empty
       end
 
-      it "stores message events with empty string content" do
-        result = store.process_event({"type" => "user_message", "content" => ""})
-
-        expect(result).to be true
-        expect(store.messages.size).to eq(1)
-      end
-
       it "ignores events with unknown type" do
         result = store.process_event({"type" => "unknown", "content" => "data"})
-
-        expect(result).to be false
-        expect(store.messages).to be_empty
-      end
-
-      it "ignores events with no type key" do
-        result = store.process_event({"content" => "orphan"})
 
         expect(result).to be false
         expect(store.messages).to be_empty
@@ -79,81 +63,93 @@ RSpec.describe TUI::MessageStore do
         store.process_event({"type" => "agent_message", "content" => "second"})
         store.process_event({"type" => "user_message", "content" => "third"})
 
-        expect(store.messages.map { |m| m["content"] }).to eq(%w[first second third])
+        expect(store.messages.map { |m| m[:content] }).to eq(%w[first second third])
       end
     end
 
     context "with tool events" do
-      it "stores tool_call events as raw payloads" do
-        event = {"type" => "tool_call", "content" => "calling bash", "tool_name" => "bash"}
-        store.process_event(event)
+      it "creates a tool_counter entry on first tool_call" do
+        store.process_event({"type" => "tool_call", "content" => "calling bash"})
 
-        expect(store.messages).to eq([event])
+        expect(store.messages).to eq([{type: :tool_counter, calls: 1, responses: 0}])
       end
 
-      it "stores tool_response events as raw payloads" do
-        event = {"type" => "tool_response", "content" => "output", "tool_name" => "bash"}
-        store.process_event(event)
+      it "increments calls on consecutive tool_call events" do
+        store.process_event({"type" => "tool_call", "content" => "calling bash"})
+        store.process_event({"type" => "tool_call", "content" => "calling web_get"})
 
-        expect(store.messages).to eq([event])
+        expect(store.messages).to eq([{type: :tool_counter, calls: 2, responses: 0}])
       end
 
-      it "stores consecutive tool events individually" do
-        call = {"type" => "tool_call", "content" => "calling bash"}
-        response = {"type" => "tool_response", "content" => "ok"}
-        store.process_event(call)
-        store.process_event(response)
+      it "increments responses on tool_response" do
+        store.process_event({"type" => "tool_call", "content" => "calling bash"})
+        store.process_event({"type" => "tool_response", "content" => "output"})
 
-        expect(store.messages).to eq([call, response])
+        expect(store.messages).to eq([{type: :tool_counter, calls: 1, responses: 1}])
+      end
+
+      it "tracks interleaved tool_call and tool_response events" do
+        store.process_event({"type" => "tool_call", "content" => "calling bash"})
+        store.process_event({"type" => "tool_response", "content" => "output1"})
+        store.process_event({"type" => "tool_call", "content" => "calling web_get"})
+        store.process_event({"type" => "tool_response", "content" => "output2"})
+
+        expect(store.messages).to eq([{type: :tool_counter, calls: 2, responses: 2}])
       end
 
       it "returns true for tool_call events" do
-        expect(store.process_event({"type" => "tool_call", "content" => "bash"})).to be true
+        expect(store.process_event({"type" => "tool_call", "content" => "calling bash"})).to be true
       end
 
       it "returns true for tool_response events" do
-        expect(store.process_event({"type" => "tool_response", "content" => "ok"})).to be true
+        store.process_event({"type" => "tool_call", "content" => "calling bash"})
+        expect(store.process_event({"type" => "tool_response", "content" => "output"})).to be true
       end
 
-      it "stores tool_response without preceding tool_call" do
-        event = {"type" => "tool_response", "content" => "output"}
-        store.process_event(event)
+      it "handles tool_response without preceding tool_call (no-op)" do
+        result = store.process_event({"type" => "tool_response", "content" => "output"})
 
-        expect(store.messages).to eq([event])
+        expect(result).to be true
+        expect(store.messages).to be_empty
+      end
+
+      it "handles multiple orphaned tool_responses without error" do
+        store.process_event({"type" => "tool_response", "content" => "output1"})
+        store.process_event({"type" => "tool_response", "content" => "output2"})
+
+        expect(store.messages).to be_empty
       end
     end
 
     context "with mixed message and tool event sequences" do
-      it "preserves full event sequence" do
-        events = [
-          {"type" => "user_message", "content" => "What's the git status?"},
-          {"type" => "tool_call", "content" => "calling bash"},
-          {"type" => "tool_response", "content" => "clean"},
-          {"type" => "tool_call", "content" => "calling bash"},
-          {"type" => "tool_response", "content" => "ok"},
-          {"type" => "agent_message", "content" => "Your branch is clean."}
-        ]
+      it "interlaces messages and tool counters" do
+        store.process_event({"type" => "user_message", "content" => "What's the git status?"})
+        store.process_event({"type" => "tool_call", "content" => "calling bash"})
+        store.process_event({"type" => "tool_response", "content" => "clean"})
+        store.process_event({"type" => "tool_call", "content" => "calling bash"})
+        store.process_event({"type" => "tool_response", "content" => "ok"})
+        store.process_event({"type" => "agent_message", "content" => "Your branch is clean."})
 
-        events.each { |e| store.process_event(e) }
-
-        expect(store.messages).to eq(events)
+        expect(store.messages).to eq([
+          {type: :message, role: "user", content: "What's the git status?"},
+          {type: :tool_counter, calls: 2, responses: 2},
+          {type: :message, role: "assistant", content: "Your branch is clean."}
+        ])
       end
 
-      it "preserves multiple conversation turns" do
-        events = [
-          {"type" => "user_message", "content" => "first"},
-          {"type" => "tool_call", "content" => "bash"},
-          {"type" => "tool_response", "content" => "ok"},
-          {"type" => "agent_message", "content" => "done"},
-          {"type" => "user_message", "content" => "second"},
-          {"type" => "tool_call", "content" => "web"},
-          {"type" => "tool_response", "content" => "ok"},
-          {"type" => "agent_message", "content" => "done again"}
-        ]
+      it "creates separate counters for multiple tool chains" do
+        store.process_event({"type" => "user_message", "content" => "first"})
+        store.process_event({"type" => "tool_call", "content" => "bash"})
+        store.process_event({"type" => "tool_response", "content" => "ok"})
+        store.process_event({"type" => "agent_message", "content" => "done"})
+        store.process_event({"type" => "user_message", "content" => "second"})
+        store.process_event({"type" => "tool_call", "content" => "web"})
+        store.process_event({"type" => "tool_response", "content" => "ok"})
+        store.process_event({"type" => "agent_message", "content" => "done again"})
 
-        events.each { |e| store.process_event(e) }
-
-        expect(store.messages).to eq(events)
+        counters = store.messages.select { |e| e[:type] == :tool_counter }
+        expect(counters.size).to eq(2)
+        expect(counters).to all(include(calls: 1, responses: 1))
       end
     end
   end

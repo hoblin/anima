@@ -203,7 +203,7 @@ RSpec.describe TUI::Screens::Chat do
         expect(screen.loading?).to be false
       end
 
-      it "adds messages to the message store as raw payloads" do
+      it "adds messages to the message store" do
         allow(cable_client).to receive(:drain_messages).and_return([
           {"type" => "user_message", "content" => "hello"},
           {"type" => "agent_message", "content" => "hi there"}
@@ -212,12 +212,12 @@ RSpec.describe TUI::Screens::Chat do
         screen.send(:process_incoming_messages)
 
         expect(screen.messages).to eq([
-          {"type" => "user_message", "content" => "hello"},
-          {"type" => "agent_message", "content" => "hi there"}
+          {type: :message, role: "user", content: "hello"},
+          {type: :message, role: "assistant", content: "hi there"}
         ])
       end
 
-      it "stores tool events as raw payloads (counter aggregation happens at render time)" do
+      it "tracks tool_call events as tool counter entries" do
         allow(cable_client).to receive(:drain_messages).and_return([
           {"type" => "user_message", "content" => "hi"},
           {"type" => "tool_call", "content" => "calling bash"},
@@ -228,10 +228,9 @@ RSpec.describe TUI::Screens::Chat do
         screen.send(:process_incoming_messages)
 
         expect(screen.messages).to eq([
-          {"type" => "user_message", "content" => "hi"},
-          {"type" => "tool_call", "content" => "calling bash"},
-          {"type" => "tool_response", "content" => "ok"},
-          {"type" => "agent_message", "content" => "done"}
+          {type: :message, role: "user", content: "hi"},
+          {type: :tool_counter, calls: 1, responses: 1},
+          {type: :message, role: "assistant", content: "done"}
         ])
       end
 
@@ -339,12 +338,12 @@ RSpec.describe TUI::Screens::Chat do
         screen.send(:process_incoming_messages)
 
         expect(screen.messages).to eq([
-          {"type" => "user_message", "content" => "restored"},
-          {"type" => "agent_message", "content" => "response"}
+          {type: :message, role: "user", content: "restored"},
+          {type: :message, role: "assistant", content: "response"}
         ])
       end
 
-      it "stores all event types from history on reconnect" do
+      it "reconstructs tool counters from history on reconnect" do
         allow(cable_client).to receive(:drain_messages).and_return([
           {"type" => "connection", "status" => "subscribed"},
           {"type" => "user_message", "content" => "hi"},
@@ -357,12 +356,9 @@ RSpec.describe TUI::Screens::Chat do
         screen.send(:process_incoming_messages)
 
         expect(screen.messages).to eq([
-          {"type" => "user_message", "content" => "hi"},
-          {"type" => "tool_call", "content" => "bash"},
-          {"type" => "tool_response", "content" => "ok"},
-          {"type" => "tool_call", "content" => "web"},
-          {"type" => "tool_response", "content" => "ok"},
-          {"type" => "agent_message", "content" => "done"}
+          {type: :message, role: "user", content: "hi"},
+          {type: :tool_counter, calls: 2, responses: 2},
+          {type: :message, role: "assistant", content: "done"}
         ])
       end
     end

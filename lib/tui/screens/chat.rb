@@ -1,16 +1,5 @@
 # frozen_string_literal: true
 
-require "draper"
-
-# Load event decorator hierarchy manually because TUI runs outside Rails autoload.
-# New decorators must be added here and in EventDecorator.decorator_map.
-decorator_dir = File.expand_path("../../../app/decorators", __dir__)
-require "#{decorator_dir}/application_decorator"
-require "#{decorator_dir}/event_decorator"
-%w[user_message agent_message tool_call tool_response system_message].each do |type|
-  require "#{decorator_dir}/#{type}_decorator"
-end
-
 require_relative "../input_buffer"
 
 module TUI
@@ -19,10 +8,9 @@ module TUI
       MIN_INPUT_HEIGHT = 3
       PRINTABLE_CHAR = /\A[[:print:]]\z/
 
-      ROLE_STYLES = {
-        user: ->(tui) { tui.style(fg: "green", modifiers: [:bold]) },
-        assistant: ->(tui) { tui.style(fg: "cyan", modifiers: [:bold]) }
-      }.freeze
+      ROLE_USER = "user"
+      ROLE_ASSISTANT = "assistant"
+      ROLE_LABELS = {ROLE_USER => "You", ROLE_ASSISTANT => "Anima"}.freeze
 
       SCROLL_STEP = 1
       MOUSE_SCROLL_STEP = 2
@@ -240,51 +228,21 @@ module TUI
         frame.render_widget(scrollbar, area)
       end
 
-      # Iterates raw events from MessageStore, decorates each via EventDecorator,
-      # and converts to styled TUI lines. Consecutive hidden tool events are
-      # aggregated into a tool counter display.
       def build_message_lines(tui)
-        lines = []
-        tool_counter = nil
-
-        messages.each do |event_data|
-          decorator = EventDecorator.for(event_data)
-          rendered = decorator.render_basic
-
-          if rendered
-            tool_counter = flush_tool_counter(lines, tui, tool_counter)
-            lines.concat(styled_message_lines(tui, decorator, rendered))
-          else
-            tool_counter = aggregate_tool_event(tool_counter, event_data["type"])
+        messages.flat_map do |entry|
+          case entry[:type]
+          when :tool_counter
+            build_tool_counter_lines(tui, entry)
+          when :message
+            build_chat_message_lines(tui, entry)
           end
         end
-
-        flush_tool_counter(lines, tui, tool_counter)
-        lines
-      end
-
-      # Appends tool counter lines if a counter is pending, then resets it.
-      # @return [nil] always returns nil to reset the counter
-      def flush_tool_counter(lines, tui, tool_counter)
-        lines.concat(build_tool_counter_lines(tui, tool_counter)) if tool_counter
-        nil
-      end
-
-      # Aggregates a hidden tool event into a running counter hash.
-      # @param counter [Hash, nil] current counter or nil to start a new one
-      # @param event_type [String] "tool_call" or "tool_response"
-      # @return [Hash] updated counter with :calls and :responses tallies
-      def aggregate_tool_event(counter, event_type)
-        counter ||= {calls: 0, responses: 0}
-        counter[:calls] += 1 if event_type == "tool_call"
-        counter[:responses] += 1 if event_type == "tool_response"
-        counter
       end
 
       # Renders a tool activity counter (e.g. "🔧 Tools: 2/2 ✓").
       # Green when all calls have responses, yellow while in-progress.
       # @param tui [RatatuiRuby] TUI rendering API
-      # @param counter [Hash] shaped `{calls: Integer, responses: Integer}`
+      # @param counter [Hash] entry shaped `{type: :tool_counter, calls:, responses:}`
       # @return [Array<RatatuiRuby::Widgets::Line>] counter line + blank separator
       def build_tool_counter_lines(tui, counter)
         calls = counter[:calls]
@@ -298,30 +256,18 @@ module TUI
         ]
       end
 
-      # Converts decorator output (plain strings) to styled TUI Line widgets.
-      # The label prefix on the first line gets role-based styling; remaining
-      # content lines are unstyled.
-      # @param tui [RatatuiRuby] TUI rendering API
-      # @param decorator [EventDecorator] the decorator that produced the lines
-      # @param rendered [Array<String>] plain text lines from render_basic
-      # @return [Array<RatatuiRuby::Widgets::Line>] styled TUI lines + blank separator
-      def styled_message_lines(tui, decorator, rendered)
-        first_line = rendered.first.to_s
-        event_label = decorator.label
-        role_style = ROLE_STYLES[decorator.role]&.call(tui)
+      def build_chat_message_lines(tui, msg)
+        role = msg[:role]
+        role_style = (role == ROLE_USER) ? tui.style(fg: "green", modifiers: [:bold]) : tui.style(fg: "cyan", modifiers: [:bold])
 
-        lines = if event_label && role_style
-          label_prefix = "#{event_label}: "
-          content_part = first_line[label_prefix.length..]
-          [tui.line(spans: [
-            tui.span(content: label_prefix, style: role_style),
-            tui.span(content: content_part.to_s)
-          ])]
-        else
-          [tui.line(spans: [tui.span(content: first_line)])]
-        end
+        label = ROLE_LABELS.fetch(role, role)
+        content_lines = msg[:content].to_s.split("\n", -1)
 
-        rendered.drop(1).each { |text| lines << tui.line(spans: [tui.span(content: text)]) }
+        lines = [tui.line(spans: [
+          tui.span(content: "#{label}: ", style: role_style),
+          tui.span(content: content_lines.first.to_s)
+        ])]
+        content_lines.drop(1).each { |text| lines << tui.line(spans: [tui.span(content: text)]) }
         lines << tui.line(spans: [tui.span(content: "")])
       end
 

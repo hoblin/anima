@@ -10,7 +10,6 @@ require "action_cable/engine"
 require "rails/test_unit/railtie"
 require "solid_cable"
 require "solid_queue"
-require "draper"
 
 Bundler.require(*Rails.groups) if ENV.key?("BUNDLE_GEMFILE")
 
