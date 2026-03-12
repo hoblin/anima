@@ -363,6 +363,10 @@ RSpec.describe TUI::Screens::Chat do
       it "ignores backspace" do
         expect(screen.handle_event(key_event(code: "backspace"))).to be false
       end
+
+      it "ignores delete" do
+        expect(screen.handle_event(key_event(code: "delete"))).to be false
+      end
     end
 
     context "scrolling with keyboard" do
@@ -596,6 +600,12 @@ RSpec.describe TUI::Screens::Chat do
       it "returns false when buffer is full" do
         set_input("x" * TUI::InputBuffer::MAX_LENGTH)
         expect(screen.handle_event(paste_event(content: "more"))).to be false
+      end
+
+      it "rejects paste that would exceed MAX_LENGTH" do
+        set_input("x" * (TUI::InputBuffer::MAX_LENGTH - 5))
+        expect(screen.handle_event(paste_event(content: "too long!"))).to be false
+        expect(screen.input.length).to eq(TUI::InputBuffer::MAX_LENGTH - 5)
       end
 
       it "ignores paste while loading" do

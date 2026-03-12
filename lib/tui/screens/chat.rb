@@ -401,10 +401,10 @@ module TUI
       end
 
       # Inserts pasted clipboard content at cursor position.
-      # Paste events bypass the loading guard since they represent
-      # intentional user action that should not be silently dropped.
+      # Paste is dispatched before the generic loading guard in {#handle_event}
+      # but still blocked during loading to match the visually-disabled input.
       # @param event [RatatuiRuby::Event::Paste] paste event with content
-      # @return [Boolean] true if content was inserted
+      # @return [Boolean] true if content was inserted, false if loading or buffer full
       def handle_paste_event(event)
         return false if @loading || @input_buffer.full?
 

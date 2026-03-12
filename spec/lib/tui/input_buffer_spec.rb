@@ -39,6 +39,13 @@ RSpec.describe TUI::InputBuffer do
       expect(buffer.insert("a")).to be false
     end
 
+    it "rejects multi-char insert that would exceed MAX_LENGTH" do
+      buffer.instance_variable_set(:@text, "x" * (described_class::MAX_LENGTH - 3))
+      buffer.instance_variable_set(:@cursor_pos, described_class::MAX_LENGTH - 3)
+      expect(buffer.insert("toolong")).to be false
+      expect(buffer.text.length).to eq(described_class::MAX_LENGTH - 3)
+    end
+
     it "returns true on success" do
       expect(buffer.insert("a")).to be true
     end
