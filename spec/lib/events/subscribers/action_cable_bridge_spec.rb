@@ -96,6 +96,41 @@ RSpec.describe Events::Subscribers::ActionCableBridge do
     end
   end
 
+  describe "decoration" do
+    it "includes rendered basic output for user messages" do
+      expect {
+        bridge.emit(event_hash(Events::UserMessage.new(content: "hello", session_id: 42)))
+      }.to have_broadcasted_to("session_42")
+        .with(a_hash_including(rendered: {basic: ["You: hello"]}))
+    end
+
+    it "includes rendered basic output for agent messages" do
+      expect {
+        bridge.emit(event_hash(Events::AgentMessage.new(content: "hi there", session_id: 7)))
+      }.to have_broadcasted_to("session_7")
+        .with(a_hash_including(rendered: {basic: ["Anima: hi there"]}))
+    end
+
+    it "includes nil rendered basic output for tool calls" do
+      expect {
+        bridge.emit(event_hash(Events::ToolCall.new(
+          content: "calling bash", tool_name: "bash",
+          tool_input: {}, session_id: 5
+        )))
+      }.to have_broadcasted_to("session_5")
+        .with(a_hash_including(rendered: {basic: nil}))
+    end
+
+    it "includes nil rendered basic output for tool responses" do
+      expect {
+        bridge.emit(event_hash(Events::ToolResponse.new(
+          content: "output", tool_name: "bash", success: true, session_id: 5
+        )))
+      }.to have_broadcasted_to("session_5")
+        .with(a_hash_including(rendered: {basic: nil}))
+    end
+  end
+
   describe "subscriber interface" do
     it "includes Events::Subscriber" do
       expect(bridge).to be_a(Events::Subscriber)
