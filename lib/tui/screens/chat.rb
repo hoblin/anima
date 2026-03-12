@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
+require_relative "../input_buffer"
+
 module TUI
   module Screens
     class Chat
-      INPUT_HEIGHT = 3
-      MAX_INPUT_LENGTH = 10_000
+      MIN_INPUT_HEIGHT = 3
       PRINTABLE_CHAR = /\A[[:print:]]\z/
 
       ROLE_USER = "user"
@@ -14,19 +15,20 @@ module TUI
       SCROLL_STEP = 1
       MOUSE_SCROLL_STEP = 2
 
-      attr_reader :input, :message_store, :scroll_offset, :session_info
+      attr_reader :message_store, :scroll_offset, :session_info
 
       # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
       # @param message_store [TUI::MessageStore, nil] injectable for testing
       def initialize(cable_client:, message_store: nil)
         @cable_client = cable_client
         @message_store = message_store || MessageStore.new
-        @input = ""
+        @input_buffer = InputBuffer.new
         @loading = false
         @scroll_offset = 0
         @auto_scroll = true
         @visible_height = 0
         @max_scroll = 0
+        @input_scroll_offset = 0
         @session_info = {id: cable_client.session_id, message_count: 0}
       end
 
@@ -34,15 +36,27 @@ module TUI
         @message_store.messages
       end
 
+      # @return [String] current input text (delegates to InputBuffer)
+      def input
+        @input_buffer.text
+      end
+
+      # @return [Integer] current cursor position (delegates to InputBuffer)
+      def cursor_pos
+        @input_buffer.cursor_pos
+      end
+
       def render(frame, area, tui)
         process_incoming_messages
+
+        input_height = calculate_input_height(tui, area.width, area.height)
 
         chat_area, input_area = tui.split(
           area,
           direction: :vertical,
           constraints: [
             tui.constraint_fill(1),
-            tui.constraint_length(INPUT_HEIGHT)
+            tui.constraint_length(input_height)
           ]
         )
 
@@ -50,21 +64,31 @@ module TUI
         render_input(frame, input_area, tui)
       end
 
-      # Scrolling bypasses the loading guard so users can read chat history during LLM calls
+      # Scrolling and cursor navigation bypass the loading guard so users can
+      # read chat history during LLM calls.
       def handle_event(event)
         return handle_mouse_event(event) if event.mouse?
-        return handle_scroll_key(event) if scroll_key?(event)
+        return handle_scroll_key(event) if event.page_up? || event.page_down?
+        return handle_scroll_key(event) if event.up? || event.down?
+
         return false if @loading
 
         if event.enter?
           submit_message
           true
         elsif event.backspace?
-          @input = @input.chop
+          @input_buffer.backspace
           true
-        elsif printable_char?(event) && @input.length < MAX_INPUT_LENGTH
-          @input += event.code
-          true
+        elsif event.left?
+          @input_buffer.move_left
+        elsif event.right?
+          @input_buffer.move_right
+        elsif event.home?
+          @input_buffer.move_home
+        elsif event.end?
+          @input_buffer.move_end
+        elsif printable_char?(event) && !@input_buffer.full?
+          @input_buffer.insert(event.code)
         else
           false
         end
@@ -138,10 +162,11 @@ module TUI
         @cable_client.update_session_id(new_id)
         @message_store.clear
         @session_info = {id: new_id, message_count: msg["message_count"] || 0}
-        @input = ""
+        @input_buffer.clear
         @loading = false
         @scroll_offset = 0
         @auto_scroll = true
+        @input_scroll_offset = 0
       end
 
       def render_messages(frame, area, tui)
@@ -183,28 +208,25 @@ module TUI
         )
         frame.render_widget(widget, area)
 
-        if @max_scroll > 0
-          scrollbar = tui.scrollbar(
-            content_length: @max_scroll,
-            position: @scroll_offset,
-            orientation: :vertical_right,
-            thumb_style: {fg: "cyan"},
-            track_symbol: "│",
-            track_style: {fg: "dark_gray"}
-          )
-          frame.render_widget(scrollbar, area)
-        end
+        return unless @max_scroll > 0
+
+        scrollbar = tui.scrollbar(
+          content_length: @max_scroll,
+          position: @scroll_offset,
+          orientation: :vertical_right,
+          thumb_style: {fg: "cyan"},
+          track_symbol: "\u2502",
+          track_style: {fg: "dark_gray"}
+        )
+        frame.render_widget(scrollbar, area)
       end
 
       def build_message_lines(tui)
         messages.flat_map do |msg|
-          role_style = if msg[:role] == ROLE_USER
-            tui.style(fg: "green", modifiers: [:bold])
-          else
-            tui.style(fg: "cyan", modifiers: [:bold])
-          end
+          role = msg[:role]
+          role_style = (role == ROLE_USER) ? tui.style(fg: "green", modifiers: [:bold]) : tui.style(fg: "cyan", modifiers: [:bold])
 
-          label = ROLE_LABELS.fetch(msg[:role], msg[:role])
+          label = ROLE_LABELS.fetch(role, role)
           content_lines = msg[:content].to_s.split("\n", -1)
 
           lines = [tui.line(spans: [
@@ -216,24 +238,40 @@ module TUI
         end
       end
 
+      # Dynamically calculates input area height based on wrapped content.
+      # Clamped between MIN_INPUT_HEIGHT and 50% of available height.
+      def calculate_input_height(tui, area_width, area_height)
+        inner_width = [area_width - 2, 1].max
+
+        display_lines = "> #{@input_buffer.text}".split("\n", -1).map { |text|
+          tui.line(spans: [tui.span(content: text)])
+        }
+
+        temp = tui.paragraph(text: display_lines, wrap: true)
+        content_height = temp.line_count(inner_width)
+        desired = content_height + 2 # top + bottom border
+
+        max_height = [area_height / 2, MIN_INPUT_HEIGHT].max
+        desired.clamp(MIN_INPUT_HEIGHT, max_height)
+      end
+
       def render_input(frame, area, tui)
         disabled = @loading || !connected?
-        cursor = disabled ? "" : "\u2588"
-        border_style = disabled ? {fg: "dark_gray"} : {fg: "green"}
-        text_style = disabled ? tui.style(fg: "dark_gray") : tui.style(fg: "white")
+        cursor_char = disabled ? "" : "\u2588"
+        styles = input_styles(tui, disabled)
 
-        title = if @loading
-          "Waiting..."
-        elsif !connected?
-          "Disconnected"
-        else
-          "Input"
-        end
+        title = input_title
+
+        inner_width = [area.width - 2, 1].max
+        input_visible_height = [area.height - 2, 0].max
+
+        lines = build_input_lines(tui, styles[:text], cursor_char)
+        input_scroll = calculate_input_scroll(tui, inner_width, input_visible_height)
 
         widget = tui.paragraph(
-          text: tui.line(spans: [
-            tui.span(content: "> #{@input}#{cursor}", style: text_style)
-          ]),
+          text: lines,
+          wrap: true,
+          scroll: [input_scroll, 0],
           block: tui.block(
             title: title,
             titles: disabled ? [] : [
@@ -241,27 +279,74 @@ module TUI
             ],
             borders: [:all],
             border_type: :rounded,
-            border_style: border_style
+            border_style: styles[:border]
           )
         )
         frame.render_widget(widget, area)
       end
 
-      def submit_message
-        text = @input.strip
-        return if text.empty?
-        return unless @cable_client.status == :subscribed
+      def input_styles(tui, disabled)
+        {
+          text: disabled ? tui.style(fg: "dark_gray") : tui.style(fg: "white"),
+          border: disabled ? {fg: "dark_gray"} : {fg: "green"}
+        }
+      end
 
-        @input = ""
+      def input_title
+        if @loading
+          "Waiting..."
+        elsif !connected?
+          "Disconnected"
+        else
+          "Input"
+        end
+      end
+
+      # Builds input text as array of Line objects with cursor character inserted
+      def build_input_lines(tui, text_style, cursor_char)
+        input_text = @input_buffer.text
+        pos = @input_buffer.cursor_pos
+        display = "> #{input_text[0...pos]}#{cursor_char}#{input_text[pos..]}"
+
+        display.split("\n", -1).map { |text|
+          tui.line(spans: [tui.span(content: text, style: text_style)])
+        }
+      end
+
+      # Scrolls input to keep cursor visible when content exceeds visible height.
+      # Measures wrapped line count of text before cursor to find its visual row,
+      # then adjusts the scroll window so that row stays in view.
+      def calculate_input_scroll(tui, inner_width, visible_height)
+        return 0 if visible_height <= 0
+
+        before_display = "> #{@input_buffer.text[0...@input_buffer.cursor_pos]}"
+        before_lines = before_display.split("\n", -1).map { |text|
+          tui.line(spans: [tui.span(content: text)])
+        }
+
+        temp = tui.paragraph(text: before_lines, wrap: true)
+        cursor_visual_line = [temp.line_count(inner_width) - 1, 0].max
+
+        # Snap scroll window: pull up if cursor is above view, push down if below
+        if cursor_visual_line < @input_scroll_offset
+          @input_scroll_offset = cursor_visual_line
+        elsif cursor_visual_line >= @input_scroll_offset + visible_height
+          @input_scroll_offset = cursor_visual_line - visible_height + 1
+        end
+
+        @input_scroll_offset
+      end
+
+      def submit_message
+        return if @input_buffer.text.strip.empty?
+        return unless connected?
+
+        text = @input_buffer.consume
+        @input_scroll_offset = 0
         @cable_client.speak(text)
       end
 
-      # @return [Boolean] whether the event is an arrow or page key used for scrolling
-      def scroll_key?(event)
-        event.up? || event.down? || event.page_up? || event.page_down?
-      end
-
-      # Dispatches scroll key events to {#scroll_up} or {#scroll_down}
+      # Dispatches arrow and page keys to {#scroll_up} or {#scroll_down}.
       # @return [true] always redraws after scrolling
       def handle_scroll_key(event)
         if event.up?
