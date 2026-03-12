@@ -34,9 +34,19 @@ module TUI
     SHUTDOWN_SIGNALS = %w[HUP TERM INT].freeze
 
     # How often the watchdog thread checks if the controlling terminal is alive.
+    # @see #terminal_watchdog_loop
     TERMINAL_CHECK_INTERVAL = 0.5
 
-    attr_reader :current_screen, :command_mode, :shutdown_requested
+    # Unix controlling terminal device path.
+    # @see #terminal_watchdog_loop
+    CONTROLLING_TERMINAL = "/dev/tty"
+
+    # Grace period for watchdog thread to exit before force-killing it.
+    WATCHDOG_SHUTDOWN_TIMEOUT = 1
+
+    attr_reader :current_screen, :command_mode
+    # @return [Boolean] true when graceful shutdown has been requested via signal
+    attr_reader :shutdown_requested
 
     # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
     def initialize(cable_client:)
@@ -253,7 +263,9 @@ module TUI
     end
 
     # Traps SIGHUP, SIGTERM, and SIGINT to trigger graceful shutdown.
-    # Saves previous handlers so they can be restored after the TUI exits.
+    # Saves previous handlers so they can be restored when {#run} exits.
+    # Must only be called once per {#run} invocation.
+    # @return [void]
     def install_signal_handlers
       @previous_signal_handlers = {}
       SHUTDOWN_SIGNALS.each do |signal|
@@ -264,6 +276,7 @@ module TUI
     end
 
     # Restores signal handlers that were in place before the TUI started.
+    # @return [void]
     def restore_signal_handlers
       @previous_signal_handlers.each do |signal, handler|
         Signal.trap(signal, handler || "DEFAULT")
@@ -276,26 +289,34 @@ module TUI
     # RatatuiRuby's Rust layer (crossterm) intercepts SIGHUP at the native level,
     # preventing Ruby signal handlers from running when the PTY master closes
     # (tmux kill-session, SSH disconnect, terminal crash). This watchdog detects
-    # terminal loss by probing /dev/tty and force-exits the process since the
-    # main thread is stuck in native Rust code that cannot be interrupted.
+    # terminal loss by probing {CONTROLLING_TERMINAL} and force-exits the process
+    # since the main thread is stuck in native Rust code that cannot be interrupted.
+    # @return [void]
     def start_terminal_watchdog
       @watchdog_thread = Thread.new { terminal_watchdog_loop }
     end
 
+    # Stops the watchdog thread, waiting briefly for graceful exit before force-killing.
+    # @return [void]
     def stop_terminal_watchdog
-      @watchdog_thread&.kill
+      return unless @watchdog_thread
+
+      @watchdog_thread.join(WATCHDOG_SHUTDOWN_TIMEOUT)
+      @watchdog_thread.kill if @watchdog_thread.alive?
       @watchdog_thread = nil
     end
 
+    # Polls {CONTROLLING_TERMINAL} every {TERMINAL_CHECK_INTERVAL} seconds.
+    # When the terminal disappears, attempts WebSocket disconnect and force-exits.
+    # Exits silently in non-TTY environments (CI, test suites).
+    # @return [void]
     def terminal_watchdog_loop
-      # Verify terminal is accessible before monitoring.
-      # Non-TTY environments (CI, test suites) don't have /dev/tty.
-      File.open("/dev/tty", "r") {}
+      File.stat(CONTROLLING_TERMINAL)
 
       loop do
         break if @shutdown_requested
         begin
-          File.open("/dev/tty", "r") {}
+          File.stat(CONTROLLING_TERMINAL)
         rescue Errno::ENXIO, Errno::EIO, Errno::ENOENT
           begin
             @cable_client.disconnect
