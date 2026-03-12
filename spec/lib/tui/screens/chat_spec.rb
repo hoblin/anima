@@ -734,4 +734,96 @@ RSpec.describe TUI::Screens::Chat do
       expect { screen.finalize }.not_to raise_error
     end
   end
+
+  describe "#word_wrap_segments (private)" do
+    def wrap(text, width)
+      screen.send(:word_wrap_segments, text, width)
+    end
+
+    it "returns single segment for short text" do
+      expect(wrap("hello", 10)).to eq([[0, 5]])
+    end
+
+    it "returns single segment for text at exact width" do
+      expect(wrap("hello", 5)).to eq([[0, 5]])
+    end
+
+    it "breaks at word boundary" do
+      expect(wrap("hello world", 8)).to eq([[0, 5], [6, 5]])
+    end
+
+    it "hard-breaks when a single word exceeds width" do
+      expect(wrap("abcdefghij", 4)).to eq([[0, 4], [4, 4], [8, 2]])
+    end
+
+    it "handles multiple words with wrapping" do
+      expect(wrap("aaa bbb ccc", 8)).to eq([[0, 7], [8, 3]])
+    end
+
+    it "breaks before the word that overflows" do
+      # "aaaa bbbbcccc" — word "bbbbcccc" (8 chars) doesn't fit after "aaaa " on width 10
+      expect(wrap("aaaa bbbbcccc", 10)).to eq([[0, 4], [5, 8]])
+    end
+
+    it "handles text with the '>  ' prompt prefix" do
+      expect(wrap("> hello world", 10)).to eq([[0, 7], [8, 5]])
+    end
+
+    it "returns original for empty text" do
+      expect(wrap("", 10)).to eq([[0, 0]])
+    end
+  end
+
+  describe "cursor visual position with wrapping" do
+    # Exercises calculate_cursor_and_scroll via private method
+    def cursor_position(inner_width)
+      screen.send(:calculate_cursor_and_scroll, inner_width, 10)
+      [screen.instance_variable_get(:@cursor_visual_row),
+        screen.instance_variable_get(:@cursor_visual_col)]
+    end
+
+    it "places cursor correctly for short text" do
+      set_input("hello", cursor_pos: 5)
+      row, col = cursor_position(80)
+      # "> hello" = 7 chars, cursor after "hello" = col 7
+      expect(row).to eq(0)
+      expect(col).to eq(7)
+    end
+
+    it "places cursor at start of wrapped line" do
+      # "> aaaa bbbbcccc" with width 10 wraps to:
+      #   "> aaaa"  (6 chars)
+      #   "bbbbcccc" (8 chars)
+      # cursor at pos 5 = on first 'b', col should be 0 on row 1
+      set_input("aaaa bbbbcccc", cursor_pos: 5)
+      row, col = cursor_position(10)
+      expect(row).to eq(1)
+      expect(col).to eq(0)
+    end
+
+    it "places cursor at end of wrapped line" do
+      # cursor at end of "aaaa bbbbcccc" (13 chars), col should be 8 on row 1
+      set_input("aaaa bbbbcccc", cursor_pos: 13)
+      row, col = cursor_position(10)
+      expect(row).to eq(1)
+      expect(col).to eq(8)
+    end
+
+    it "places cursor correctly with multiline text" do
+      set_input("hello\nworld", cursor_pos: 8)
+      row, col = cursor_position(80)
+      # Line 0: "> hello" (7 chars, 1 visual line)
+      # Line 1: "world", cursor at offset 2 within "world" → "wo|rld"
+      expect(row).to eq(1)
+      expect(col).to eq(2)
+    end
+
+    it "places cursor at beginning of input" do
+      set_input("hello", cursor_pos: 0)
+      row, col = cursor_position(80)
+      # "> " prefix → col 2
+      expect(row).to eq(0)
+      expect(col).to eq(2)
+    end
+  end
 end

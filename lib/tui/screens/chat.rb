@@ -244,15 +244,12 @@ module TUI
 
       # Dynamically calculates input area height based on wrapped content.
       # Clamped between MIN_INPUT_HEIGHT and 50% of available height.
-      def calculate_input_height(tui, area_width, area_height)
+      def calculate_input_height(_tui, area_width, area_height)
         inner_width = [area_width - 2, 1].max
 
-        display_lines = "> #{@input_buffer.text}".split("\n", -1).map { |text|
-          tui.line(spans: [tui.span(content: text)])
+        content_height = "> #{@input_buffer.text}".split("\n", -1).sum { |pline|
+          word_wrap_segments(pline, inner_width).length
         }
-
-        temp = tui.paragraph(text: display_lines, wrap: true)
-        content_height = temp.line_count(inner_width)
         desired = content_height + 2 # top + bottom border
 
         max_height = [area_height / 2, MIN_INPUT_HEIGHT].max
@@ -268,12 +265,11 @@ module TUI
         inner_width = [area.width - 2, 1].max
         input_visible_height = [area.height - 2, 0].max
 
-        lines = build_input_lines(tui, styles[:text])
-        input_scroll = calculate_input_scroll(tui, inner_width, input_visible_height)
+        lines = build_input_lines(tui, styles[:text], inner_width)
+        input_scroll = calculate_cursor_and_scroll(inner_width, input_visible_height)
 
         widget = tui.paragraph(
           text: lines,
-          wrap: true,
           scroll: [input_scroll, 0],
           block: tui.block(
             title: title,
@@ -289,8 +285,7 @@ module TUI
 
         return if disabled
 
-        col = cursor_visual_col(tui, inner_width)
-        cursor_x = area.x + 1 + col
+        cursor_x = area.x + 1 + @cursor_visual_col
         cursor_y = area.y + 1 + @cursor_visual_row - input_scroll
 
         if cursor_y >= area.y + 1 && cursor_y < area.y + area.height - 1
@@ -315,30 +310,57 @@ module TUI
         end
       end
 
-      # Builds input text as Line objects for the Paragraph widget.
-      def build_input_lines(tui, text_style)
+      # Builds input text as pre-wrapped Line objects for the Paragraph widget.
+      # Lines are word-wrapped here so the Paragraph renders without its own
+      # wrapping, keeping cursor positioning in sync with the displayed text.
+      def build_input_lines(tui, text_style, inner_width)
         display = "> #{@input_buffer.text}"
-        display.split("\n", -1).map { |text|
-          tui.line(spans: [tui.span(content: text, style: text_style)])
+        display.split("\n", -1).flat_map { |pline|
+          word_wrap_segments(pline, inner_width).map { |start, len|
+            tui.line(spans: [tui.span(content: pline[start, len], style: text_style)])
+          }
         }
       end
 
-      # Scrolls input to keep cursor visible when content exceeds visible height.
-      # Measures wrapped line count of text before cursor to find its visual row,
-      # then adjusts the scroll window so that row stays in view.
-      # Stores @cursor_visual_row for hardware cursor positioning.
-      def calculate_input_scroll(tui, inner_width, visible_height)
-        return 0 if visible_height <= 0
-
+      # Computes cursor visual position (row, column) and input scroll offset.
+      # Uses the full physical line's wrap segments so cursor placement matches
+      # the actual rendered word-wrap breaks (not prefix-based approximations).
+      # @return [Integer] input scroll offset
+      def calculate_cursor_and_scroll(inner_width, visible_height)
         before_display = "> #{@input_buffer.text[0...@input_buffer.cursor_pos]}"
-        before_lines = before_display.split("\n", -1).map { |text|
-          tui.line(spans: [tui.span(content: text)])
+        full_display = "> #{@input_buffer.text}"
+
+        before_physical = before_display.split("\n", -1)
+        full_physical = full_display.split("\n", -1)
+
+        cursor_line_idx = before_physical.length - 1
+
+        # Count visual rows for physical lines above the cursor's line
+        row = 0
+        full_physical[0...cursor_line_idx].each { |pline|
+          row += word_wrap_segments(pline, inner_width).length
         }
 
-        temp = tui.paragraph(text: before_lines, wrap: true)
-        @cursor_visual_row = [temp.line_count(inner_width) - 1, 0].max
+        # Locate cursor within the full physical line's wrap segments
+        full_line = full_physical[cursor_line_idx] || ""
+        segments = word_wrap_segments(full_line, inner_width)
+        cursor_offset = (before_physical.last || "").length
+
+        col = cursor_offset
+        segments.each_with_index do |(start, len), idx|
+          if cursor_offset <= start + len
+            row += idx
+            col = cursor_offset - start
+            break
+          end
+        end
+
+        @cursor_visual_row = [row, 0].max
+        @cursor_visual_col = col
 
         # Snap scroll window: pull up if cursor is above view, push down if below
+        return 0 if visible_height <= 0
+
         if @cursor_visual_row < @input_scroll_offset
           @input_scroll_offset = @cursor_visual_row
         elsif @cursor_visual_row >= @input_scroll_offset + visible_height
@@ -348,35 +370,36 @@ module TUI
         @input_scroll_offset
       end
 
-      # Calculates the visual column of the cursor within the wrapped input.
-      # For text that wraps, uses binary search to find where the last visual
-      # line starts, then computes offset from there.
-      def cursor_visual_col(tui, inner_width)
-        before_display = "> #{@input_buffer.text[0...@input_buffer.cursor_pos]}"
-        last_physical = before_display.split("\n", -1).last || ""
+      # Word-wraps a single physical line into segments.
+      # Breaks at word boundaries (spaces) when possible, falls back to
+      # character-level breaks for words exceeding the width.
+      # @param text [String] text to wrap (should not contain newlines)
+      # @param width [Integer] maximum visual line width
+      # @return [Array<Array(Integer, Integer)>] [start_position, length] pairs
+      def word_wrap_segments(text, width)
+        return [[0, text.length]] if text.length <= width || width <= 0
 
-        return last_physical.length if last_physical.length <= inner_width
+        segments = []
+        pos = 0
 
-        para = tui.paragraph(text: [tui.line(spans: [tui.span(content: last_physical)])], wrap: true)
-        target_lines = para.line_count(inner_width)
-        return last_physical.length if target_lines <= 1
+        while pos < text.length
+          remaining = text.length - pos
+          if remaining <= width
+            segments << [pos, remaining]
+            break
+          end
 
-        # Binary search for the first character where line_count reaches target_lines
-        lo, hi = 0, last_physical.length
-        while lo < hi
-          mid = (lo + hi) / 2
-          sub = tui.paragraph(
-            text: [tui.line(spans: [tui.span(content: last_physical[0..mid])])],
-            wrap: true
-          )
-          if sub.line_count(inner_width) >= target_lines
-            hi = mid
+          break_at = text.rindex(" ", pos + width - 1)
+          if break_at && break_at > pos
+            segments << [pos, break_at - pos]
+            pos = break_at + 1
           else
-            lo = mid + 1
+            segments << [pos, width]
+            pos += width
           end
         end
 
-        last_physical.length - lo
+        segments
       end
 
       def submit_message
