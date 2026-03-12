@@ -25,6 +25,10 @@ RSpec.describe TUI::App do
     it "starts in normal mode" do
       expect(app.command_mode).to be false
     end
+
+    it "starts with shutdown not requested" do
+      expect(app.shutdown_requested).to be false
+    end
   end
 
   describe "event handling" do
@@ -195,6 +199,122 @@ RSpec.describe TUI::App do
         event = double("Event", none?: true)
         result = app.send(:handle_event, event)
         expect(result).to be_nil
+      end
+    end
+  end
+
+  describe "signal handling" do
+    after do
+      app.send(:restore_signal_handlers)
+    end
+
+    describe "install_signal_handlers" do
+      it "traps HUP, TERM, and INT signals" do
+        app.send(:install_signal_handlers)
+
+        handlers = app.instance_variable_get(:@previous_signal_handlers)
+        expect(handlers.keys).to contain_exactly("HUP", "TERM", "INT")
+      end
+
+      it "sets shutdown_requested on SIGHUP" do
+        app.send(:install_signal_handlers)
+
+        Process.kill("HUP", Process.pid)
+        sleep 0.05
+
+        expect(app.shutdown_requested).to be true
+      end
+
+      it "sets shutdown_requested on SIGTERM" do
+        app.send(:install_signal_handlers)
+
+        Process.kill("TERM", Process.pid)
+        sleep 0.05
+
+        expect(app.shutdown_requested).to be true
+      end
+
+      it "sets shutdown_requested on SIGINT" do
+        app.send(:install_signal_handlers)
+
+        Process.kill("INT", Process.pid)
+        sleep 0.05
+
+        expect(app.shutdown_requested).to be true
+      end
+    end
+
+    describe "restore_signal_handlers" do
+      it "restores previously saved handlers" do
+        captured = false
+        original = Signal.trap("HUP") { captured = true }
+
+        begin
+          app.send(:install_signal_handlers)
+          app.send(:restore_signal_handlers)
+
+          Process.kill("HUP", Process.pid)
+          sleep 0.05
+
+          expect(captured).to be true
+        ensure
+          Signal.trap("HUP", original || "DEFAULT")
+        end
+      end
+
+      it "does not leave shutdown handler active after restoration" do
+        app.send(:install_signal_handlers)
+        app.send(:restore_signal_handlers)
+
+        expect(app.shutdown_requested).to be false
+      end
+    end
+  end
+
+  describe "terminal watchdog" do
+    after do
+      app.send(:stop_terminal_watchdog)
+    end
+
+    describe "start_terminal_watchdog" do
+      it "starts a background thread" do
+        app.send(:start_terminal_watchdog)
+
+        watchdog = app.instance_variable_get(:@watchdog_thread)
+        expect(watchdog).to be_a(Thread)
+      end
+
+      it "exits gracefully when no controlling terminal exists" do
+        app.send(:start_terminal_watchdog)
+        watchdog = app.instance_variable_get(:@watchdog_thread)
+        watchdog.join(1)
+
+        # Thread should exit cleanly without calling exit!, not raise
+        expect(watchdog.status).to be false # terminated normally
+      end
+    end
+
+    describe "stop_terminal_watchdog" do
+      it "clears the watchdog thread reference" do
+        app.send(:start_terminal_watchdog)
+        app.send(:stop_terminal_watchdog)
+
+        expect(app.instance_variable_get(:@watchdog_thread)).to be_nil
+      end
+
+      it "is safe to call when no watchdog is running" do
+        expect { app.send(:stop_terminal_watchdog) }.not_to raise_error
+      end
+    end
+
+    describe "terminal_watchdog_loop" do
+      it "exits loop when shutdown_requested is set" do
+        app.instance_variable_set(:@shutdown_requested, true)
+        expect { app.send(:terminal_watchdog_loop) }.not_to raise_error
+      end
+
+      it "exits silently without a controlling terminal" do
+        expect { app.send(:terminal_watchdog_loop) }.not_to raise_error
       end
     end
   end

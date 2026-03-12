@@ -30,13 +30,22 @@ module TUI
       reconnecting: {label: " RECONNECTING ", fg: "black", bg: "yellow"}
     }.freeze
 
-    attr_reader :current_screen, :command_mode
+    # Signals that trigger graceful shutdown when received from the OS.
+    SHUTDOWN_SIGNALS = %w[HUP TERM INT].freeze
+
+    # How often the watchdog thread checks if the controlling terminal is alive.
+    TERMINAL_CHECK_INTERVAL = 0.5
+
+    attr_reader :current_screen, :command_mode, :shutdown_requested
 
     # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
     def initialize(cable_client:)
       @cable_client = cable_client
       @current_screen = :chat
       @command_mode = false
+      @shutdown_requested = false
+      @previous_signal_handlers = {}
+      @watchdog_thread = nil
       @screens = {
         chat: Screens::Chat.new(cable_client: cable_client),
         settings: Screens::Settings.new,
@@ -45,16 +54,23 @@ module TUI
     end
 
     def run
+      install_signal_handlers
+      start_terminal_watchdog
       RatatuiRuby.run do |tui|
         loop do
+          break if @shutdown_requested
+
           tui.draw { |frame| render(frame, tui) }
 
           event = tui.poll_event(timeout: 0.1)
+          break if @shutdown_requested
           next if event.nil? || event.none?
           break if handle_event(event) == :quit
         end
       end
     ensure
+      stop_terminal_watchdog
+      restore_signal_handlers
       @cable_client.disconnect
     end
 
@@ -234,6 +250,64 @@ module TUI
 
     def ctrl_a?(event)
       event.code == "a" && event.modifiers&.include?("ctrl")
+    end
+
+    # Traps SIGHUP, SIGTERM, and SIGINT to trigger graceful shutdown.
+    # Saves previous handlers so they can be restored after the TUI exits.
+    def install_signal_handlers
+      @previous_signal_handlers = {}
+      SHUTDOWN_SIGNALS.each do |signal|
+        @previous_signal_handlers[signal] = Signal.trap(signal) { @shutdown_requested = true }
+      rescue ArgumentError
+        # Signal not supported on this platform
+      end
+    end
+
+    # Restores signal handlers that were in place before the TUI started.
+    def restore_signal_handlers
+      @previous_signal_handlers.each do |signal, handler|
+        Signal.trap(signal, handler || "DEFAULT")
+      rescue ArgumentError
+        # Signal not restorable
+      end
+    end
+
+    # Monitors the controlling terminal in a background thread.
+    # RatatuiRuby's Rust layer (crossterm) intercepts SIGHUP at the native level,
+    # preventing Ruby signal handlers from running when the PTY master closes
+    # (tmux kill-session, SSH disconnect, terminal crash). This watchdog detects
+    # terminal loss by probing /dev/tty and force-exits the process since the
+    # main thread is stuck in native Rust code that cannot be interrupted.
+    def start_terminal_watchdog
+      @watchdog_thread = Thread.new { terminal_watchdog_loop }
+    end
+
+    def stop_terminal_watchdog
+      @watchdog_thread&.kill
+      @watchdog_thread = nil
+    end
+
+    def terminal_watchdog_loop
+      # Verify terminal is accessible before monitoring.
+      # Non-TTY environments (CI, test suites) don't have /dev/tty.
+      File.open("/dev/tty", "r") {}
+
+      loop do
+        break if @shutdown_requested
+        begin
+          File.open("/dev/tty", "r") {}
+        rescue Errno::ENXIO, Errno::EIO, Errno::ENOENT
+          begin
+            @cable_client.disconnect
+          rescue
+            nil
+          end
+          Kernel.exit!(0)
+        end
+        sleep TERMINAL_CHECK_INTERVAL
+      end
+    rescue Errno::ENXIO, Errno::EIO, Errno::ENOENT
+      # No controlling terminal — nothing to watch
     end
   end
 end
