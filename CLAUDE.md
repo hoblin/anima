@@ -16,7 +16,7 @@ RatatuiRuby requires a real PTY. Background processes (`&`) and `script` don't w
 
 ```bash
 # Launch TUI in a detached tmux session
-tmux new-session -d -s anima-test -x 120 -y 30 'bundle exec anima tui'
+tmux new-session -d -s anima-test -x 120 -y 30 './exe/anima tui'
 
 # Wait for render, then capture the screen
 sleep 1 && tmux capture-pane -t anima-test -p
@@ -37,6 +37,10 @@ tmux kill-session -t anima-test
 If the TUI crashes on startup, append `; sleep 30` to the command to keep the session alive for error inspection.
 
 Always clean up tmux sessions when done. Use `anima-test` as the session name for consistency.
+
+**Important:** Use `./exe/anima` (not `bundle exec anima`) to test local code changes. The exe uses `require_relative` so it loads local `lib/` directly. `bundle exec` may load the installed gem version instead.
+
+`File.stat` cannot detect terminal/device loss — it only checks the filesystem entry which always exists for `/dev/tty`. Use `File.open` to actually probe the device.
 
 ## GitHub sub-issues
 
