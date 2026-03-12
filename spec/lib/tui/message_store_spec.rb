@@ -106,10 +106,17 @@ RSpec.describe TUI::MessageStore do
         expect(store.process_event({"type" => "tool_response", "content" => "output"})).to be true
       end
 
-      it "ignores tool_response without preceding tool_counter" do
+      it "handles tool_response without preceding tool_call (no-op)" do
         result = store.process_event({"type" => "tool_response", "content" => "output"})
 
         expect(result).to be true
+        expect(store.messages).to be_empty
+      end
+
+      it "handles multiple orphaned tool_responses without error" do
+        store.process_event({"type" => "tool_response", "content" => "output1"})
+        store.process_event({"type" => "tool_response", "content" => "output2"})
+
         expect(store.messages).to be_empty
       end
     end

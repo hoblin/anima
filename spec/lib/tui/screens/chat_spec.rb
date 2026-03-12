@@ -234,6 +234,20 @@ RSpec.describe TUI::Screens::Chat do
         ])
       end
 
+      it "does not increment message_count for tool events" do
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "user_message", "content" => "hi"},
+          {"type" => "tool_call", "content" => "calling bash"},
+          {"type" => "tool_response", "content" => "ok"},
+          {"type" => "tool_call", "content" => "calling web"},
+          {"type" => "tool_response", "content" => "ok"}
+        ])
+
+        screen.send(:process_incoming_messages)
+
+        expect(screen.session_info[:message_count]).to eq(1)
+      end
+
       it "does not store connection status messages as chat messages" do
         allow(cable_client).to receive(:drain_messages).and_return([
           {"type" => "connection", "status" => "subscribed"}

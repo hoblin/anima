@@ -15,6 +15,9 @@ module TUI
       SCROLL_STEP = 1
       MOUSE_SCROLL_STEP = 2
 
+      TOOL_ICON = "\u{1F527}"
+      CHECKMARK = "\u2713"
+
       attr_reader :message_store, :scroll_offset, :session_info
 
       # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
@@ -140,9 +143,7 @@ module TUI
               @message_store.process_event(msg)
               @session_info[:message_count] += 1
               @loading = false
-            when "tool_call", "tool_response"
-              @message_store.process_event(msg)
-            else
+            else # tool_call, tool_response, and other event types
               @message_store.process_event(msg)
             end
           end
@@ -232,17 +233,22 @@ module TUI
           case entry[:type]
           when :tool_counter
             build_tool_counter_lines(tui, entry)
-          else
+          when :message
             build_chat_message_lines(tui, entry)
           end
         end
       end
 
+      # Renders a tool activity counter (e.g. "🔧 Tools: 2/2 ✓").
+      # Green when all calls have responses, yellow while in-progress.
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param counter [Hash] entry shaped `{type: :tool_counter, calls:, responses:}`
+      # @return [Array<RatatuiRuby::Widgets::Line>] counter line + blank separator
       def build_tool_counter_lines(tui, counter)
         calls = counter[:calls]
         responses = counter[:responses]
         complete = calls == responses
-        label = "\u{1F527} Tools: #{calls}/#{responses}#{" \u2713" if complete}"
+        label = "#{TOOL_ICON} Tools: #{calls}/#{responses}#{" #{CHECKMARK}" if complete}"
         color = complete ? "green" : "yellow"
         [
           tui.line(spans: [tui.span(content: label, style: tui.style(fg: color))]),

@@ -8,6 +8,10 @@ module TUI
   # Accepts Action Cable event payloads and stores typed entries:
   # - `{type: :message, role:, content:}` for user/agent messages
   # - `{type: :tool_counter, calls:, responses:}` for tool activity
+  #
+  # Tool counters aggregate per agent turn: a new counter starts when a
+  # tool_call arrives after a message entry. Consecutive tool events
+  # increment the same counter until the next message breaks the chain.
   class MessageStore
     MESSAGE_TYPES = %w[user_message agent_message].freeze
 
@@ -30,7 +34,8 @@ module TUI
     # Stores user/agent messages and tracks tool call/response counts.
     #
     # @param event_data [Hash] Action Cable event payload with "type" and "content"
-    # @return [Boolean] true if the event was processed
+    # @return [Boolean] true if the event type was recognized and handled
+    #   (even if no visible entry was created, e.g. orphaned tool_response)
     def process_event(event_data)
       case event_data["type"]
       when "tool_call" then record_tool_call
