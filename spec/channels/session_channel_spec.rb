@@ -47,10 +47,11 @@ RSpec.describe SessionChannel, type: :channel do
 
       subscribe(session_id: session_id)
 
-      expect(transmissions.size).to eq(3)
-      expect(transmissions[0]).to include("type" => "user_message", "content" => "hello")
-      expect(transmissions[1]).to include("type" => "agent_message", "content" => "hi there")
-      expect(transmissions[2]).to include("type" => "tool_call", "content" => "calling bash")
+      history = transmissions.reject { |t| t["action"] == "view_mode" }
+      expect(history.size).to eq(3)
+      expect(history[0]).to include("type" => "user_message", "content" => "hello")
+      expect(history[1]).to include("type" => "agent_message", "content" => "hi there")
+      expect(history[2]).to include("type" => "tool_call", "content" => "calling bash")
     end
 
     it "includes decorated rendered output in history transmissions" do
@@ -61,9 +62,34 @@ RSpec.describe SessionChannel, type: :channel do
 
       subscribe(session_id: session_id)
 
-      expect(transmissions[0]["rendered"]).to eq("basic" => ["You: hello"])
-      expect(transmissions[1]["rendered"]).to eq("basic" => ["Anima: hi"])
-      expect(transmissions[2]["rendered"]).to eq("basic" => nil)
+      # First transmission is view_mode, then history
+      view_mode_msg = transmissions.find { |t| t["action"] == "view_mode" }
+      expect(view_mode_msg["view_mode"]).to eq("basic")
+
+      history = transmissions.reject { |t| t["action"] == "view_mode" }
+      expect(history[0]["rendered"]).to eq("basic" => ["You: hello"])
+      expect(history[1]["rendered"]).to eq("basic" => ["Anima: hi"])
+      expect(history[2]["rendered"]).to eq("basic" => nil)
+    end
+
+    it "transmits view_mode on subscription" do
+      Session.create!(id: session_id)
+
+      subscribe(session_id: session_id)
+
+      view_mode_msg = transmissions.find { |t| t["action"] == "view_mode" }
+      expect(view_mode_msg).to be_present
+      expect(view_mode_msg["view_mode"]).to eq("basic")
+    end
+
+    it "decorates history in the session's view_mode" do
+      session = Session.create!(id: session_id, view_mode: "verbose")
+      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
+
+      subscribe(session_id: session_id)
+
+      history = transmissions.reject { |t| t["action"] == "view_mode" }
+      expect(history[0]["rendered"]).to eq("verbose" => ["You: hello"])
     end
 
     it "excludes system_message events from history" do
@@ -73,16 +99,18 @@ RSpec.describe SessionChannel, type: :channel do
 
       subscribe(session_id: session_id)
 
-      expect(transmissions.size).to eq(1)
-      expect(transmissions[0]).to include("type" => "user_message")
+      history = transmissions.reject { |t| t["action"] == "view_mode" }
+      expect(history.size).to eq(1)
+      expect(history[0]).to include("type" => "user_message")
     end
 
-    it "transmits no history for a session with no messages" do
+    it "transmits only view_mode for a session with no messages" do
       Session.create!(id: session_id)
 
       subscribe(session_id: session_id)
 
-      expect(transmissions).to be_empty
+      expect(transmissions.size).to eq(1)
+      expect(transmissions[0]["action"]).to eq("view_mode")
     end
   end
 
@@ -249,12 +277,13 @@ RSpec.describe SessionChannel, type: :channel do
       subscribe(session_id: session_id)
     end
 
-    it "transmits session_changed with the target session info" do
+    it "transmits session_changed with the target session info including view_mode" do
       perform(:switch_session, {"session_id" => target_session.id})
 
       changed = transmissions.find { |t| t["action"] == "session_changed" }
       expect(changed["session_id"]).to eq(target_session.id)
       expect(changed["message_count"]).to eq(2)
+      expect(changed["view_mode"]).to eq("basic")
     end
 
     it "transmits chat history from the target session" do
@@ -293,6 +322,51 @@ RSpec.describe SessionChannel, type: :channel do
       error = transmissions.find { |t| t["action"] == "error" }
       expect(error).to be_present
       expect(error["message"]).to eq("Session not found")
+    end
+  end
+
+  describe "#change_view_mode" do
+    let!(:session) { Session.create!(id: session_id) }
+
+    before do
+      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
+      session.events.create!(event_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi"}, timestamp: 2)
+      subscribe(session_id: session_id)
+    end
+
+    it "updates session view_mode" do
+      perform(:change_view_mode, {"view_mode" => "verbose"})
+
+      expect(session.reload.view_mode).to eq("verbose")
+    end
+
+    it "broadcasts view_mode_changed to all clients" do
+      expect {
+        perform(:change_view_mode, {"view_mode" => "verbose"})
+      }.to have_broadcasted_to(stream_name)
+        .with(a_hash_including("action" => "view_mode_changed", "view_mode" => "verbose"))
+    end
+
+    it "broadcasts re-decorated viewport events" do
+      expect {
+        perform(:change_view_mode, {"view_mode" => "verbose"})
+      }.to have_broadcasted_to(stream_name)
+        .with(a_hash_including("rendered" => {"verbose" => ["You: hello"]}))
+    end
+
+    it "transmits error for invalid view mode" do
+      perform(:change_view_mode, {"view_mode" => "fancy"})
+
+      error = transmissions.find { |t| t["action"] == "error" }
+      expect(error).to be_present
+      expect(error["message"]).to eq("Invalid view mode")
+    end
+
+    it "transmits error for nil view mode" do
+      perform(:change_view_mode, {"view_mode" => nil})
+
+      error = transmissions.find { |t| t["action"] == "error" }
+      expect(error).to be_present
     end
   end
 

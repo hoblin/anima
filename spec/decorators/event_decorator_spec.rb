@@ -69,21 +69,44 @@ RSpec.describe EventDecorator, type: :decorator do
     end
   end
 
-  describe "#render_verbose" do
-    it "raises NotImplementedError" do
+  describe "#render" do
+    it "dispatches to render_basic for basic mode" do
       event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       decorator = described_class.for(event)
 
-      expect { decorator.render_verbose }.to raise_error(NotImplementedError, /Verbose mode/)
+      expect(decorator.render("basic")).to eq(["You: hi"])
+    end
+
+    it "dispatches to render_verbose for verbose mode" do
+      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      decorator = described_class.for(event)
+
+      expect(decorator.render("verbose")).to eq(["You: hi"])
+    end
+
+    it "dispatches to render_debug for debug mode" do
+      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      decorator = described_class.for(event)
+
+      expect(decorator.render("debug")).to eq(["You: hi"])
+    end
+  end
+
+  describe "#render_verbose" do
+    it "delegates to render_basic by default" do
+      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      decorator = described_class.for(event)
+
+      expect(decorator.render_verbose).to eq(decorator.render_basic)
     end
   end
 
   describe "#render_debug" do
-    it "raises NotImplementedError" do
+    it "delegates to render_basic by default" do
       event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       decorator = described_class.for(event)
 
-      expect { decorator.render_debug }.to raise_error(NotImplementedError, /Debug mode/)
+      expect(decorator.render_debug).to eq(decorator.render_basic)
     end
   end
 end

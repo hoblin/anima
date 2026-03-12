@@ -10,9 +10,21 @@ class Session < ApplicationRecord
   # Heuristic: average bytes per token for English prose.
   BYTES_PER_TOKEN = 4
 
+  VIEW_MODES = %w[basic verbose debug].freeze
+
   has_many :events, -> { order(:id) }, dependent: :destroy
 
+  validates :view_mode, inclusion: {in: VIEW_MODES}
+
   scope :recent, ->(limit = 10) { order(updated_at: :desc).limit(limit) }
+
+  # Cycles to the next view mode: basic → verbose → debug → basic.
+  #
+  # @return [String] the next view mode in the cycle
+  def next_view_mode
+    current_index = VIEW_MODES.index(view_mode) || 0
+    VIEW_MODES[(current_index + 1) % VIEW_MODES.size]
+  end
 
   # Returns the events currently visible in the LLM context window.
   # Walks events newest-first and includes them until the token budget

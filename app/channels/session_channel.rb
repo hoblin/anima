@@ -15,13 +15,14 @@ class SessionChannel < ApplicationCable::Channel
 
   # Subscribes the client to the session-specific stream.
   # Rejects the subscription if no valid session_id is provided.
-  # Transmits chat history to the subscribing client after confirmation.
+  # Transmits the current view_mode and chat history to the subscribing client.
   #
   # @param params [Hash] must include :session_id (positive integer)
   def subscribed
     @current_session_id = params[:session_id].to_i
     if @current_session_id > 0
       stream_from stream_name
+      transmit_view_mode
       transmit_history
     else
       reject
@@ -85,6 +86,23 @@ class SessionChannel < ApplicationCable::Channel
     transmit_error("Session not found")
   end
 
+  # Changes the session's view mode and re-broadcasts the viewport.
+  # All clients on the session receive the mode change and fresh history.
+  #
+  # @param data [Hash] must include "view_mode" (one of Session::VIEW_MODES)
+  def change_view_mode(data)
+    mode = data["view_mode"].to_s
+    return transmit_error("Invalid view mode") unless Session::VIEW_MODES.include?(mode)
+
+    session = Session.find(@current_session_id)
+    session.update!(view_mode: mode)
+
+    ActionCable.server.broadcast(stream_name, {"action" => "view_mode_changed", "view_mode" => mode})
+    broadcast_viewport(session)
+  rescue ActiveRecord::RecordNotFound
+    transmit_error("Session not found")
+  end
+
   private
 
   def stream_name
@@ -102,9 +120,18 @@ class SessionChannel < ApplicationCable::Channel
     transmit({
       "action" => "session_changed",
       "session_id" => new_id,
-      "message_count" => session.events.llm_messages.count
+      "message_count" => session.events.llm_messages.count,
+      "view_mode" => session.view_mode
     })
     transmit_history
+  end
+
+  # Transmits the current view_mode so the TUI initializes correctly.
+  def transmit_view_mode
+    session = Session.find_by(id: @current_session_id)
+    return unless session
+
+    transmit({"action" => "view_mode", "view_mode" => session.view_mode})
   end
 
   # Sends decorated context events (messages + tool interactions) from
@@ -117,16 +144,24 @@ class SessionChannel < ApplicationCable::Channel
     return unless session
 
     session.viewport_events.each do |event|
-      transmit(decorate_event_payload(event))
+      transmit(decorate_event_payload(event, session.view_mode))
     end
   end
 
-  def decorate_event_payload(event)
+  # Broadcasts the re-decorated viewport to all clients on the session stream.
+  # Used after a view mode change to refresh all connected clients.
+  def broadcast_viewport(session)
+    session.viewport_events.each do |event|
+      ActionCable.server.broadcast(stream_name, decorate_event_payload(event, session.view_mode))
+    end
+  end
+
+  def decorate_event_payload(event, mode = "basic")
     payload = event.payload
     decorator = EventDecorator.for(event)
     return payload unless decorator
 
-    payload.merge("rendered" => {"basic" => decorator.render_basic})
+    payload.merge("rendered" => {mode => decorator.render(mode)})
   end
 
   def transmit_error(message)

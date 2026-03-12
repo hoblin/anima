@@ -3,21 +3,18 @@
 require_relative "cable_client"
 require_relative "message_store"
 require_relative "screens/chat"
-require_relative "screens/settings"
-require_relative "screens/anthropic"
 
 module TUI
   class App
-    SCREENS = %i[chat settings anthropic].freeze
+    SCREENS = %i[chat].freeze
 
     COMMAND_KEYS = {
       "n" => :new_session,
-      "s" => :settings,
-      "a" => :anthropic,
+      "v" => :view_mode,
       "q" => :quit
     }.freeze
 
-    MENU_LABELS = COMMAND_KEYS.map { |key, action| "[#{key}] #{action.capitalize}" }.freeze
+    MENU_LABELS = COMMAND_KEYS.map { |key, action| "[#{key}] #{action.to_s.tr("_", " ").capitalize}" }.freeze
 
     SIDEBAR_WIDTH = 28
 
@@ -57,9 +54,7 @@ module TUI
       @previous_signal_handlers = {}
       @watchdog_thread = nil
       @screens = {
-        chat: Screens::Chat.new(cable_client: cable_client),
-        settings: Screens::Settings.new,
-        anthropic: Screens::Anthropic.new
+        chat: Screens::Chat.new(cable_client: cable_client)
       }
     end
 
@@ -87,7 +82,7 @@ module TUI
     private
 
     def render(frame, tui)
-      main_area, sidebar = tui.split(
+      content_area, sidebar = tui.split(
         frame.area,
         direction: :horizontal,
         constraints: [
@@ -96,18 +91,8 @@ module TUI
         ]
       )
 
-      content_area, status_bar = tui.split(
-        main_area,
-        direction: :vertical,
-        constraints: [
-          tui.constraint_fill(1),
-          tui.constraint_length(1)
-        ]
-      )
-
       @screens[@current_screen].render(frame, content_area, tui)
       render_sidebar(frame, sidebar, tui)
-      render_status_bar(frame, status_bar, tui)
     end
 
     def render_sidebar(frame, area, tui)
@@ -133,6 +118,15 @@ module TUI
 
     def render_info(frame, area, tui)
       session = @screens[:chat].session_info
+      view_mode = @screens[:chat].view_mode
+
+      mode_label = view_mode.capitalize
+      mode_color = case view_mode
+      when "verbose" then "yellow"
+      when "debug" then "magenta"
+      else "cyan"
+      end
+
       lines = [
         tui.line(spans: [
           tui.span(content: "Anima v#{Anima::VERSION}", style: tui.style(fg: "white"))
@@ -146,6 +140,14 @@ module TUI
           tui.span(content: "Messages ", style: tui.style(fg: "dark_gray")),
           tui.span(content: session[:message_count].to_s, style: tui.style(fg: "cyan"))
         ]),
+        tui.line(spans: [tui.span(content: "")]),
+        tui.line(spans: [
+          tui.span(content: "Mode ", style: tui.style(fg: "dark_gray")),
+          tui.span(content: mode_label, style: tui.style(fg: mode_color, modifiers: [:bold]))
+        ]),
+        interaction_state_line(tui),
+        tui.line(spans: [tui.span(content: "")]),
+        connection_status_line(tui),
         tui.line(spans: [tui.span(content: "")]),
         tui.line(spans: [
           tui.span(content: "Ctrl+a", style: tui.style(fg: "cyan", modifiers: [:bold])),
@@ -165,35 +167,36 @@ module TUI
       frame.render_widget(info, area)
     end
 
-    def render_status_bar(frame, area, tui)
-      mode_span = if @command_mode
-        tui.span(content: " COMMAND ", style: tui.style(fg: "black", bg: "yellow", modifiers: [:bold]))
-      elsif chat_loading?
-        tui.span(content: " THINKING ", style: tui.style(fg: "black", bg: "magenta", modifiers: [:bold]))
+    # Builds the interaction state line for the info panel.
+    # Shows "Thinking..." during LLM processing.
+    def interaction_state_line(tui)
+      if chat_loading?
+        tui.line(spans: [
+          tui.span(content: "Thinking...", style: tui.style(fg: "magenta", modifiers: [:bold]))
+        ])
       else
-        tui.span(content: " NORMAL ", style: tui.style(fg: "black", bg: "cyan", modifiers: [:bold]))
+        tui.line(spans: [tui.span(content: "")])
       end
-
-      conn_span = connection_status_span(tui)
-
-      widget = tui.paragraph(text: tui.line(spans: [mode_span, conn_span]))
-      frame.render_widget(widget, area)
     end
 
-    def connection_status_span(tui)
+    # Builds the connection status line for the info panel.
+    def connection_status_line(tui)
       cable_status = @cable_client.status
 
       if cable_status == :reconnecting
         attempt = @cable_client.reconnect_attempt
         max = CableClient::MAX_RECONNECT_ATTEMPTS
-        label = " RECONNECTING (#{attempt}/#{max}) "
-        style = STATUS_STYLES[:reconnecting]
+        label = "Reconnecting (#{attempt}/#{max})"
+        color = "yellow"
       else
         style = STATUS_STYLES.fetch(cable_status, STATUS_STYLES[:disconnected])
-        label = style[:label]
+        label = style[:label].strip
+        color = style[:bg]
       end
 
-      tui.span(content: label, style: tui.style(fg: style[:fg], bg: style[:bg], modifiers: [:bold]))
+      tui.line(spans: [
+        tui.span(content: label, style: tui.style(fg: color, modifiers: [:bold]))
+      ])
     end
 
     def chat_loading?
@@ -224,8 +227,9 @@ module TUI
         @screens[:chat].new_session
         @current_screen = :chat
         nil
-      when :settings, :anthropic
-        @current_screen = action
+      when :view_mode
+        @screens[:chat].cycle_view_mode
+        @current_screen = :chat
         nil
       end
     end
@@ -240,11 +244,6 @@ module TUI
 
       if ctrl_a?(event)
         @command_mode = true
-        return nil
-      end
-
-      if event.esc? && @current_screen != :chat
-        @current_screen = :chat
         return nil
       end
 

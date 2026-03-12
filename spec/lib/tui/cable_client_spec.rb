@@ -242,6 +242,23 @@ RSpec.describe TUI::CableClient do
     end
   end
 
+  describe "#change_view_mode" do
+    let(:ws) { double("WebSocket") }
+
+    before { client.instance_variable_set(:@ws, ws) }
+
+    it "sends a change_view_mode action with view_mode" do
+      sent = nil
+      allow(ws).to receive(:send) { |msg| sent = JSON.parse(msg) }
+
+      client.change_view_mode("verbose")
+
+      data = JSON.parse(sent["data"])
+      expect(data["action"]).to eq("change_view_mode")
+      expect(data["view_mode"]).to eq("verbose")
+    end
+  end
+
   describe "#update_session_id" do
     it "updates the session_id" do
       client.update_session_id(99)

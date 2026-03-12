@@ -20,14 +20,50 @@ RSpec.describe TUI::MessageStore do
   end
 
   describe "#process_event" do
+    context "with pre-rendered content" do
+      it "stores rendered lines when present" do
+        store.process_event({"type" => "user_message", "content" => "hello",
+                             "rendered" => {"basic" => ["You: hello"]}})
+
+        expect(store.messages).to eq([{type: :rendered, lines: ["You: hello"]}])
+      end
+
+      it "uses rendered content from any mode key" do
+        store.process_event({"type" => "agent_message", "content" => "hi",
+                             "rendered" => {"verbose" => ["Anima: hi"]}})
+
+        expect(store.messages).to eq([{type: :rendered, lines: ["Anima: hi"]}])
+      end
+
+      it "falls back to tool counter when rendered is nil for tool events" do
+        store.process_event({"type" => "tool_call", "content" => "calling bash",
+                             "rendered" => {"basic" => nil}})
+
+        expect(store.messages).to eq([{type: :tool_counter, calls: 1, responses: 0}])
+      end
+
+      it "stores rendered content when non-nil for tool events" do
+        store.process_event({"type" => "tool_call", "content" => "calling bash",
+                             "rendered" => {"verbose" => ["🔧 bash: ls -la"]}})
+
+        expect(store.messages).to eq([{type: :rendered, lines: ["🔧 bash: ls -la"]}])
+      end
+
+      it "returns true for rendered events" do
+        result = store.process_event({"type" => "user_message", "content" => "hi",
+                                      "rendered" => {"basic" => ["You: hi"]}})
+        expect(result).to be true
+      end
+    end
+
     context "with message events" do
-      it "stores user_message events with typed entry" do
+      it "stores user_message events with typed entry when no rendered content" do
         store.process_event({"type" => "user_message", "content" => "hello"})
 
         expect(store.messages).to eq([{type: :message, role: "user", content: "hello"}])
       end
 
-      it "stores agent_message events with typed entry" do
+      it "stores agent_message events with typed entry when no rendered content" do
         store.process_event({"type" => "agent_message", "content" => "hi there"})
 
         expect(store.messages).to eq([{type: :message, role: "assistant", content: "hi there"}])
