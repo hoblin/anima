@@ -306,17 +306,19 @@ module TUI
       @watchdog_thread = nil
     end
 
-    # Polls {CONTROLLING_TERMINAL} every {TERMINAL_CHECK_INTERVAL} seconds.
+    # Opens {CONTROLLING_TERMINAL} every {TERMINAL_CHECK_INTERVAL} seconds.
+    # File.open (not File.stat) is required because stat only checks the
+    # filesystem entry which always exists; open actually probes the device.
     # When the terminal disappears, calls {#handle_terminal_loss}.
     # Exits silently in non-TTY environments (CI, test suites).
     # @return [void]
     def terminal_watchdog_loop
-      File.stat(CONTROLLING_TERMINAL)
+      File.open(CONTROLLING_TERMINAL, "r") {}
 
       loop do
         break if @shutdown_requested
         begin
-          File.stat(CONTROLLING_TERMINAL)
+          File.open(CONTROLLING_TERMINAL, "r") {}
         rescue Errno::ENXIO, Errno::EIO, Errno::ENOENT
           handle_terminal_loss
         end

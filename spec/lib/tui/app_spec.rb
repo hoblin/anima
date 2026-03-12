@@ -295,13 +295,21 @@ RSpec.describe TUI::App do
   end
 
   describe "terminal watchdog" do
-    let(:stat_double) { instance_double(File::Stat) }
+    # Stubs File.open for the controlling terminal path.
+    # Yields to the block (like the real File.open with {}) on success,
+    # or raises on failure.
+    def stub_terminal_open(succeeds: true, error: Errno::ENOENT)
+      allow(File).to receive(:open).and_call_original
+      stub = allow(File).to receive(:open).with(TUI::App::CONTROLLING_TERMINAL, "r")
+      if succeeds
+        stub.and_yield
+      else
+        stub.and_raise(error)
+      end
+    end
 
     describe "start_terminal_watchdog" do
-      before do
-        allow(File).to receive(:stat).with(TUI::App::CONTROLLING_TERMINAL).and_raise(Errno::ENOENT)
-      end
-
+      before { stub_terminal_open(succeeds: false) }
       after { app.send(:stop_terminal_watchdog) }
 
       it "starts a background thread" do
@@ -322,7 +330,7 @@ RSpec.describe TUI::App do
 
     describe "stop_terminal_watchdog" do
       it "clears the watchdog thread reference" do
-        allow(File).to receive(:stat).with(TUI::App::CONTROLLING_TERMINAL).and_raise(Errno::ENOENT)
+        stub_terminal_open(succeeds: false)
         app.send(:start_terminal_watchdog)
         app.send(:stop_terminal_watchdog)
 
@@ -336,24 +344,24 @@ RSpec.describe TUI::App do
 
     describe "terminal_watchdog_loop" do
       it "exits loop when shutdown_requested is set" do
-        allow(File).to receive(:stat).with(TUI::App::CONTROLLING_TERMINAL).and_return(stat_double)
+        stub_terminal_open(succeeds: true)
         app.instance_variable_set(:@shutdown_requested, true)
 
         expect { app.send(:terminal_watchdog_loop) }.not_to raise_error
       end
 
       it "exits silently without a controlling terminal" do
-        allow(File).to receive(:stat).with(TUI::App::CONTROLLING_TERMINAL).and_raise(Errno::ENOENT)
+        stub_terminal_open(succeeds: false)
 
         expect { app.send(:terminal_watchdog_loop) }.not_to raise_error
       end
 
       it "calls handle_terminal_loss when terminal disappears mid-loop" do
         call_count = 0
-        allow(File).to receive(:stat).with(TUI::App::CONTROLLING_TERMINAL) do
+        allow(File).to receive(:open).and_call_original
+        allow(File).to receive(:open).with(TUI::App::CONTROLLING_TERMINAL, "r") do
           call_count += 1
           raise Errno::ENXIO if call_count > 1
-          stat_double
         end
         allow(app).to receive(:sleep)
         allow(app).to receive(:handle_terminal_loss) { throw :force_exit }
