@@ -20,6 +20,12 @@ module TUI
 
     SIDEBAR_WIDTH = 28
 
+    VIEW_MODE_LABELS = {
+      "basic" => "Chat messages only",
+      "verbose" => "Tools & timestamps",
+      "debug" => "Full LLM context"
+    }.freeze
+
     # Connection status display styles
     STATUS_STYLES = {
       disconnected: {label: " DISCONNECTED ", fg: "white", bg: "red"},
@@ -43,7 +49,7 @@ module TUI
     # Grace period for watchdog thread to exit before force-killing it.
     WATCHDOG_SHUTDOWN_TIMEOUT = 1
 
-    attr_reader :current_screen, :command_mode, :session_picker_active
+    attr_reader :current_screen, :command_mode, :session_picker_active, :view_mode_picker_active
     # @return [Boolean] true when graceful shutdown has been requested via signal
     attr_reader :shutdown_requested
 
@@ -54,6 +60,8 @@ module TUI
       @command_mode = false
       @session_picker_active = false
       @session_picker_index = 0
+      @view_mode_picker_active = false
+      @view_mode_picker_index = 0
       @shutdown_requested = false
       @previous_signal_handlers = {}
       @watchdog_thread = nil
@@ -102,6 +110,8 @@ module TUI
     def render_sidebar(frame, area, tui)
       if @session_picker_active
         render_session_picker(frame, area, tui)
+      elsif @view_mode_picker_active
+        render_view_mode_picker(frame, area, tui)
       elsif @command_mode
         render_menu(frame, area, tui)
       else
@@ -215,6 +225,8 @@ module TUI
 
       if @session_picker_active
         handle_session_picker(event)
+      elsif @view_mode_picker_active
+        handle_view_mode_picker(event)
       elsif @command_mode
         handle_command_mode(event)
       else
@@ -239,8 +251,7 @@ module TUI
         activate_session_picker
         nil
       when :view_mode
-        @screens[:chat].cycle_view_mode
-        @current_screen = :chat
+        activate_view_mode_picker
         nil
       end
     end
@@ -272,6 +283,70 @@ module TUI
       event.code == "a" && event.modifiers&.include?("ctrl")
     end
 
+    # -- Command mode pickers ------------------------------------------
+
+    # Shared keyboard navigation for Command Mode picker overlays.
+    # Handles arrow keys, Enter, Escape, and digit hotkeys.
+    #
+    # @param event [RatatuiRuby::Event] keyboard event
+    # @param items [Array] list of selectable items
+    # @param index_ivar [Symbol] instance variable name tracking selected index
+    # @return [:close, Object, nil] :close on Escape, selected item on
+    #   Enter/hotkey, nil otherwise
+    def navigate_picker(event, items:, index_ivar:)
+      return nil unless event.key?
+      return :close if event.esc?
+
+      current_index = instance_variable_get(index_ivar)
+
+      if event.up?
+        instance_variable_set(index_ivar, [current_index - 1, 0].max)
+        return nil
+      end
+
+      if event.down?
+        max = [items.size - 1, 0].max
+        instance_variable_set(index_ivar, [current_index + 1, max].min)
+        return nil
+      end
+
+      if event.enter? && items.any?
+        return items[current_index]
+      end
+
+      idx = hotkey_to_index(event.code)
+      if idx && idx < items.size
+        return items[idx]
+      end
+
+      nil
+    end
+
+    # Maps digit key codes to picker list indices.
+    # Keys 1-9 map to indices 0-8, key 0 maps to index 9.
+    #
+    # @param code [String] the key code
+    # @return [Integer, nil] list index, or nil for non-digit keys
+    def hotkey_to_index(code)
+      return nil unless code.length == 1
+
+      case code
+      when "1".."9" then code.to_i - 1
+      when "0" then 9
+      end
+    end
+
+    # Returns the hotkey character for a given picker list position.
+    # Positions 0-8 get keys "1"-"9", position 9 gets "0".
+    #
+    # @param idx [Integer] zero-based list position
+    # @return [String, nil] hotkey character, or nil for positions beyond 9
+    def picker_hotkey(idx)
+      return (idx + 1).to_s if idx < 9
+      return "0" if idx == 9
+      nil
+    end
+
     # -- Session picker ------------------------------------------------
 
     # Requests the session list from the brain and opens the picker overlay.
@@ -283,42 +358,18 @@ module TUI
     end
 
     # Dispatches keyboard events while the session picker overlay is open.
-    # Arrow keys navigate the list, digit hotkeys (1-9, 0) switch to
-    # the session at the corresponding index if it exists, Enter confirms
-    # the highlighted entry, and Escape closes the picker.
     #
     # @param event [RatatuiRuby::Event] keyboard event
     # @return [nil]
     def handle_session_picker(event)
-      return nil unless event.key?
-
       sessions = @screens[:chat].sessions_list || []
+      result = navigate_picker(event, items: sessions, index_ivar: :@session_picker_index)
 
-      if event.esc?
+      case result
+      when :close
         @session_picker_active = false
-        return nil
-      end
-
-      if event.up?
-        @session_picker_index = [@session_picker_index - 1, 0].max
-        return nil
-      end
-
-      if event.down?
-        max = [sessions.size - 1, 0].max
-        @session_picker_index = [@session_picker_index + 1, max].min
-        return nil
-      end
-
-      if event.enter? && sessions.any?
-        pick_session(sessions[@session_picker_index])
-        return nil
-      end
-
-      idx = hotkey_to_index(event.code)
-      if idx && idx < sessions.size
-        pick_session(sessions[idx])
-        return nil
+      when Hash
+        pick_session(result)
       end
 
       nil
@@ -333,20 +384,6 @@ module TUI
 
       @session_picker_active = false
       @screens[:chat].switch_session(session["id"])
-    end
-
-    # Maps digit key codes to session list indices.
-    # Keys 1-9 map to indices 0-8, key 0 maps to index 9.
-    #
-    # @param code [String] the key code
-    # @return [Integer, nil] session list index, or nil for non-digit keys
-    def hotkey_to_index(code)
-      return nil unless code.length == 1
-
-      case code
-      when "1".."9" then code.to_i - 1
-      when "0" then 9
-      end
     end
 
     # Renders the session picker overlay in the sidebar.
@@ -400,7 +437,7 @@ module TUI
       selected = idx == @session_picker_index
       is_current = session["id"] == current_id
 
-      hotkey = session_hotkey(idx)
+      hotkey = picker_hotkey(idx)
       prefix = hotkey ? "[#{hotkey}]" : "   "
       marker = is_current ? "*" : " "
       id_label = "##{session["id"]}"
@@ -420,15 +457,98 @@ module TUI
       [tui.line(spans: [tui.span(content: label, style: style)])]
     end
 
-    # Returns the hotkey character for a given session list position.
-    # Positions 0-8 get keys "1"-"9", position 9 gets "0".
+    # -- View mode picker ----------------------------------------------
+
+    # Opens the view mode picker overlay. Pre-selects the current mode.
+    # @return [void]
+    def activate_view_mode_picker
+      @view_mode_picker_active = true
+      @view_mode_picker_index = Screens::Chat::VIEW_MODES.index(@screens[:chat].view_mode) || 0
+    end
+
+    # Dispatches keyboard events while the view mode picker is open.
     #
-    # @param idx [Integer] zero-based list position
-    # @return [String, nil] hotkey character, or nil for positions beyond 9
-    def session_hotkey(idx)
-      return (idx + 1).to_s if idx < 9
-      return "0" if idx == 9
+    # @param event [RatatuiRuby::Event] keyboard event
+    # @return [nil]
+    def handle_view_mode_picker(event)
+      result = navigate_picker(event, items: Screens::Chat::VIEW_MODES, index_ivar: :@view_mode_picker_index)
+
+      case result
+      when :close
+        @view_mode_picker_active = false
+      when String
+        pick_view_mode(result)
+      end
+
       nil
+    end
+
+    # Switches to the selected view mode and closes the picker.
+    #
+    # @param mode [String] view mode name
+    # @return [void]
+    def pick_view_mode(mode)
+      @view_mode_picker_active = false
+      @screens[:chat].switch_view_mode(mode)
+    end
+
+    # Renders the view mode picker overlay in the sidebar.
+    #
+    # @param frame [RatatuiRuby::Frame] terminal frame for widget rendering
+    # @param area [RatatuiRuby::Rect] sidebar area to render into
+    # @param tui [RatatuiRuby] TUI rendering API
+    # @return [void]
+    def render_view_mode_picker(frame, area, tui)
+      current_mode = @screens[:chat].view_mode
+
+      lines = Screens::Chat::VIEW_MODES.each_with_index.flat_map do |mode, idx|
+        format_view_mode_entry(tui, mode, idx, current_mode)
+      end
+
+      picker = tui.paragraph(
+        text: lines,
+        block: tui.block(
+          title: "View Mode",
+          borders: [:all],
+          border_type: :rounded,
+          border_style: {fg: "cyan"}
+        )
+      )
+      frame.render_widget(picker, area)
+    end
+
+    # Formats a view mode entry with name and description.
+    # Highlights the selected entry and marks the current mode.
+    #
+    # @param tui [RatatuiRuby] TUI rendering API
+    # @param mode [String] view mode name
+    # @param idx [Integer] position in the list
+    # @param current_mode [String] currently active mode
+    # @return [Array<RatatuiRuby::Widgets::Line>] name and description lines
+    def format_view_mode_entry(tui, mode, idx, current_mode)
+      selected = idx == @view_mode_picker_index
+      is_current = mode == current_mode
+
+      hotkey = picker_hotkey(idx)
+      prefix = hotkey ? "[#{hotkey}]" : "   "
+      marker = is_current ? "*" : " "
+
+      selected_style = tui.style(fg: "black", bg: "cyan")
+
+      name_style = if selected
+        selected_style
+      elsif is_current
+        tui.style(fg: "cyan", modifiers: [:bold])
+      else
+        tui.style(fg: "white")
+      end
+
+      desc_style = selected ? selected_style : tui.style(fg: "dark_gray")
+
+      [
+        tui.line(spans: [tui.span(content: "#{prefix}#{marker}#{mode.capitalize}", style: name_style)]),
+        tui.line(spans: [tui.span(content: "     #{VIEW_MODE_LABELS[mode]}", style: desc_style)])
+      ]
     end
 
     # Formats an ISO8601 timestamp as a human-readable relative time.

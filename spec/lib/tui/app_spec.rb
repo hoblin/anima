@@ -16,6 +16,7 @@ RSpec.describe TUI::App do
     allow(cable_client).to receive(:speak)
     allow(cable_client).to receive(:list_sessions)
     allow(cable_client).to receive(:switch_session)
+    allow(cable_client).to receive(:change_view_mode)
   end
 
   describe "#initialize" do
@@ -29,6 +30,10 @@ RSpec.describe TUI::App do
 
     it "starts with session picker inactive" do
       expect(app.session_picker_active).to be false
+    end
+
+    it "starts with view mode picker inactive" do
+      expect(app.view_mode_picker_active).to be false
     end
 
     it "starts with shutdown not requested" do
@@ -92,15 +97,11 @@ RSpec.describe TUI::App do
         expect(app.command_mode).to be false
       end
 
-      it "cycles view mode on 'v'" do
-        chat = app.instance_variable_get(:@screens)[:chat]
-        allow(chat).to receive(:cycle_view_mode)
-
+      it "opens view mode picker on 'v'" do
         event = key_event(code: "v")
         app.send(:handle_event, event)
 
-        expect(chat).to have_received(:cycle_view_mode)
-        expect(app.current_screen).to eq(:chat)
+        expect(app.view_mode_picker_active).to be true
         expect(app.command_mode).to be false
       end
 
@@ -221,6 +222,112 @@ RSpec.describe TUI::App do
 
         expect(chat).not_to have_received(:switch_session)
         expect(app.session_picker_active).to be true
+      end
+
+      it "does not delegate events to chat screen while picker is active" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        allow(chat).to receive(:handle_event)
+
+        app.send(:handle_event, key_event(code: "a"))
+
+        expect(chat).not_to have_received(:handle_event)
+      end
+    end
+
+    describe "view mode picker" do
+      before do
+        app.instance_variable_set(:@command_mode, true)
+        app.send(:handle_event, key_event(code: "v"))
+
+        chat = app.instance_variable_get(:@screens)[:chat]
+        allow(chat).to receive(:switch_view_mode)
+      end
+
+      it "closes on Escape" do
+        app.send(:handle_event, key_event(code: "esc", esc?: true))
+        expect(app.view_mode_picker_active).to be false
+      end
+
+      it "pre-selects current view mode" do
+        expect(app.instance_variable_get(:@view_mode_picker_index)).to eq(0)
+      end
+
+      it "pre-selects verbose when that is the current mode" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.instance_variable_set(:@view_mode, "verbose")
+
+        app.instance_variable_set(:@view_mode_picker_active, false)
+        app.instance_variable_set(:@command_mode, true)
+        app.send(:handle_event, key_event(code: "v"))
+
+        expect(app.instance_variable_get(:@view_mode_picker_index)).to eq(1)
+      end
+
+      it "moves selection down on arrow down" do
+        app.send(:handle_event, key_event(code: "down"))
+        expect(app.instance_variable_get(:@view_mode_picker_index)).to eq(1)
+      end
+
+      it "moves selection up on arrow up" do
+        app.send(:handle_event, key_event(code: "down"))
+        app.send(:handle_event, key_event(code: "up"))
+        expect(app.instance_variable_get(:@view_mode_picker_index)).to eq(0)
+      end
+
+      it "clamps selection at top" do
+        app.send(:handle_event, key_event(code: "up"))
+        expect(app.instance_variable_get(:@view_mode_picker_index)).to eq(0)
+      end
+
+      it "clamps selection at bottom" do
+        5.times { app.send(:handle_event, key_event(code: "down")) }
+        expect(app.instance_variable_get(:@view_mode_picker_index)).to eq(2)
+      end
+
+      it "switches view mode on Enter" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        app.send(:handle_event, key_event(code: "enter"))
+
+        expect(chat).to have_received(:switch_view_mode).with("basic")
+        expect(app.view_mode_picker_active).to be false
+      end
+
+      it "switches to verbose on Enter after moving down" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        app.send(:handle_event, key_event(code: "down"))
+        app.send(:handle_event, key_event(code: "enter"))
+
+        expect(chat).to have_received(:switch_view_mode).with("verbose")
+      end
+
+      it "switches view mode on digit hotkey 1" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        app.send(:handle_event, key_event(code: "1"))
+
+        expect(chat).to have_received(:switch_view_mode).with("basic")
+        expect(app.view_mode_picker_active).to be false
+      end
+
+      it "switches to verbose on digit hotkey 2" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        app.send(:handle_event, key_event(code: "2"))
+
+        expect(chat).to have_received(:switch_view_mode).with("verbose")
+      end
+
+      it "switches to debug on digit hotkey 3" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        app.send(:handle_event, key_event(code: "3"))
+
+        expect(chat).to have_received(:switch_view_mode).with("debug")
+      end
+
+      it "ignores digit hotkey beyond list size" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        app.send(:handle_event, key_event(code: "9"))
+
+        expect(chat).not_to have_received(:switch_view_mode)
+        expect(app.view_mode_picker_active).to be true
       end
 
       it "does not delegate events to chat screen while picker is active" do
@@ -477,7 +584,7 @@ RSpec.describe TUI::App do
     end
   end
 
-  describe "session picker helpers" do
+  describe "picker helpers" do
     describe "#hotkey_to_index (private)" do
       it "maps 1-9 to indices 0-8" do
         (1..9).each do |n|
@@ -495,19 +602,19 @@ RSpec.describe TUI::App do
       end
     end
 
-    describe "#session_hotkey (private)" do
+    describe "#picker_hotkey (private)" do
       it "returns 1-9 for first 9 positions" do
         (0..8).each do |idx|
-          expect(app.send(:session_hotkey, idx)).to eq((idx + 1).to_s)
+          expect(app.send(:picker_hotkey, idx)).to eq((idx + 1).to_s)
         end
       end
 
       it "returns 0 for position 9" do
-        expect(app.send(:session_hotkey, 9)).to eq("0")
+        expect(app.send(:picker_hotkey, 9)).to eq("0")
       end
 
       it "returns nil for positions beyond 9" do
-        expect(app.send(:session_hotkey, 10)).to be_nil
+        expect(app.send(:picker_hotkey, 10)).to be_nil
       end
     end
 

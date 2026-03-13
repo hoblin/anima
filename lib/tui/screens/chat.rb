@@ -128,13 +128,13 @@ module TUI
         @cable_client.switch_session(session_id)
       end
 
-      # Cycles to the next view mode and requests the server to switch.
+      # Sends an explicit view mode switch command to the server.
       # The server broadcasts the mode change and re-transmits the viewport
       # decorated in the new mode to all connected clients.
-      def cycle_view_mode
-        current_index = VIEW_MODES.index(@view_mode) || 0
-        next_mode = VIEW_MODES[(current_index + 1) % VIEW_MODES.size]
-        @cable_client.change_view_mode(next_mode)
+      #
+      # @param mode [String] target view mode ("basic", "verbose", or "debug")
+      def switch_view_mode(mode)
+        @cable_client.change_view_mode(mode)
       end
 
       def finalize
