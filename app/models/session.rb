@@ -77,12 +77,12 @@ class Session < ApplicationRecord
   #
   # @return [Integer] number of promoted messages
   def promote_pending_messages!
-    pending = events.where(event_type: "user_message", status: Event::PENDING_STATUS)
-    count = pending.count
-    pending.find_each do |event|
+    promoted = 0
+    events.where(event_type: "user_message", status: Event::PENDING_STATUS).find_each do |event|
       event.update!(status: nil, payload: event.payload.except("status"))
+      promoted += 1
     end
-    count
+    promoted
   end
 
   private

@@ -55,7 +55,7 @@ class SessionChannel < ApplicationCable::Channel
     return unless session
 
     if session.processing?
-      Events::Bus.emit(Events::UserMessage.new(content: content, session_id: @current_session_id, status: "pending"))
+      Events::Bus.emit(Events::UserMessage.new(content: content, session_id: @current_session_id, status: Event::PENDING_STATUS))
     else
       Events::Bus.emit(Events::UserMessage.new(content: content, session_id: @current_session_id))
       AgentRequestJob.perform_later(@current_session_id)
