@@ -87,11 +87,12 @@ class AgentLoop
   private
 
   # Builds the default tool registry with all available tools.
-  # @return [Tools::Registry] registry with Bash and WebGet tools
+  # @return [Tools::Registry] registry with Bash, Read, and WebGet tools
   def build_tool_registry
     registry = Tools::Registry.new(context: {shell_session: @shell_session})
-    registry.register(Tools::WebGet)
     registry.register(Tools::Bash)
+    registry.register(Tools::Read)
+    registry.register(Tools::WebGet)
     registry
   end
 end
