@@ -177,11 +177,13 @@ module TUI
       end
 
       # Reacts to connection lifecycle changes from the WebSocket client.
-      # Clears stale state on (re)subscription so fresh history from the server
-      # replaces any messages displayed before the disconnect.
+      # Clears stale state when subscription begins so the store is empty
+      # before history arrives. Action Cable sends confirm_subscription
+      # AFTER transmit calls in the subscribed callback, so clearing on
+      # "subscribed" would wipe history that already arrived.
       def handle_connection_status(msg)
         case msg["status"]
-        when "subscribed"
+        when "subscribing"
           @message_store.clear
           @loading = false
           @session_info[:message_count] = 0
