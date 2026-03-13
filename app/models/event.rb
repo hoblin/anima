@@ -21,6 +21,7 @@ class Event < ApplicationRecord
   TYPES = %w[system_message user_message agent_message tool_call tool_response].freeze
   LLM_TYPES = %w[user_message agent_message].freeze
   CONTEXT_TYPES = %w[user_message agent_message tool_call tool_response].freeze
+  PENDING_STATUS = "pending"
 
   ROLE_MAP = {"user_message" => "user", "agent_message" => "assistant"}.freeze
 
@@ -45,6 +46,17 @@ class Event < ApplicationRecord
   #   @return [ActiveRecord::Relation]
   scope :context_events, -> { where(event_type: CONTEXT_TYPES) }
 
+  # @!method self.pending
+  #   User messages queued during active agent processing, not yet sent to LLM.
+  #   @return [ActiveRecord::Relation]
+  scope :pending, -> { where(status: PENDING_STATUS) }
+
+  # @!method self.deliverable
+  #   Events eligible for LLM context (excludes pending messages).
+  #   NULL status means delivered/processed — the only excluded value is "pending".
+  #   @return [ActiveRecord::Relation]
+  scope :deliverable, -> { where(status: nil) }
+
   # Maps event_type to the Anthropic Messages API role.
   # @return [String] "user" or "assistant"
   def api_role
@@ -59,6 +71,11 @@ class Event < ApplicationRecord
   # @return [Boolean] true if this event is part of the LLM context window
   def context_event?
     event_type.in?(CONTEXT_TYPES)
+  end
+
+  # @return [Boolean] true if this is a pending message not yet sent to the LLM
+  def pending?
+    status == PENDING_STATUS
   end
 
   # Heuristic token estimate: ~4 bytes per token for English prose.

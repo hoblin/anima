@@ -246,6 +246,79 @@ RSpec.describe Session do
     end
   end
 
+  describe "#promote_pending_messages!" do
+    let(:session) { Session.create! }
+
+    it "promotes pending user messages to delivered (nil status)" do
+      event = session.events.create!(
+        event_type: "user_message",
+        payload: {"content" => "queued", "status" => "pending"},
+        timestamp: 1,
+        status: "pending"
+      )
+
+      session.promote_pending_messages!
+
+      event.reload
+      expect(event.status).to be_nil
+      expect(event.payload).not_to have_key("status")
+    end
+
+    it "returns the count of promoted messages" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "q1", "status" => "pending"}, timestamp: 1, status: "pending")
+      session.events.create!(event_type: "user_message", payload: {"content" => "q2", "status" => "pending"}, timestamp: 2, status: "pending")
+
+      expect(session.promote_pending_messages!).to eq(2)
+    end
+
+    it "returns zero when no pending messages exist" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "done"}, timestamp: 1)
+
+      expect(session.promote_pending_messages!).to eq(0)
+    end
+
+    it "does not affect non-pending events" do
+      delivered = session.events.create!(event_type: "user_message", payload: {"content" => "done"}, timestamp: 1)
+      session.events.create!(event_type: "user_message", payload: {"content" => "q", "status" => "pending"}, timestamp: 2, status: "pending")
+
+      session.promote_pending_messages!
+
+      expect(delivered.reload.status).to be_nil
+    end
+  end
+
+  describe "#messages_for_llm with pending messages" do
+    let(:session) { Session.create! }
+
+    it "excludes pending messages from LLM context" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "delivered"}, timestamp: 1)
+      session.events.create!(event_type: "user_message", payload: {"content" => "queued", "status" => "pending"}, timestamp: 2, status: "pending")
+
+      result = session.messages_for_llm
+      expect(result).to eq([{role: "user", content: "delivered"}])
+    end
+  end
+
+  describe "#viewport_events with pending messages" do
+    let(:session) { Session.create! }
+
+    it "includes pending messages by default (for display)" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "delivered"}, timestamp: 1, token_count: 10)
+      session.events.create!(event_type: "user_message", payload: {"content" => "queued"}, timestamp: 2, status: "pending", token_count: 10)
+
+      events = session.viewport_events
+      expect(events.map { |e| e.payload["content"] }).to eq(%w[delivered queued])
+    end
+
+    it "excludes pending messages when include_pending is false" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "delivered"}, timestamp: 1, token_count: 10)
+      session.events.create!(event_type: "user_message", payload: {"content" => "queued"}, timestamp: 2, status: "pending", token_count: 10)
+
+      events = session.viewport_events(include_pending: false)
+      expect(events.map { |e| e.payload["content"] }).to eq(%w[delivered])
+    end
+  end
+
   describe "#estimate_tokens (private)" do
     let(:session) { Session.create! }
 

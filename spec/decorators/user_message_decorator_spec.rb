@@ -33,6 +33,31 @@ RSpec.describe UserMessageDecorator, type: :decorator do
     end
   end
 
+  describe "#render_basic with pending status" do
+    it "includes status when event is pending" do
+      event = session.events.create!(
+        event_type: "user_message",
+        payload: {"content" => "queued", "status" => "pending"},
+        timestamp: 1,
+        status: "pending"
+      )
+      decorator = EventDecorator.for(event)
+
+      expect(decorator.render_basic).to eq({role: :user, content: "queued", status: "pending"})
+    end
+
+    it "excludes status for delivered messages" do
+      event = session.events.create!(
+        event_type: "user_message",
+        payload: {"content" => "delivered"},
+        timestamp: 1
+      )
+      decorator = EventDecorator.for(event)
+
+      expect(decorator.render_basic).to eq({role: :user, content: "delivered"})
+    end
+  end
+
   describe "#render_verbose" do
     it "includes nanosecond timestamp" do
       ts = 1_709_312_325_000_000_000

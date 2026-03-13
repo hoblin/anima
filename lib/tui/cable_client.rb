@@ -126,6 +126,14 @@ module TUI
       send_action("change_view_mode", {"view_mode" => mode})
     end
 
+    # Requests the brain to recall (delete) a pending message so the user
+    # can edit it before the LLM sees it.
+    #
+    # @param event_id [Integer] database ID of the pending user_message event
+    def recall_pending(event_id)
+      send_action("recall_pending", {"event_id" => event_id})
+    end
+
     # Updates the local session ID reference after a server-side session switch.
     #
     # @param new_id [Integer] the new session ID

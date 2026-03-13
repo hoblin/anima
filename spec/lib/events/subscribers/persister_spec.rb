@@ -75,6 +75,15 @@ RSpec.describe Events::Subscribers::Persister do
       expect(contents).to eq(%w[first second third])
     end
 
+    it "persists status field for pending user messages" do
+      Events::Bus.subscribe(persister)
+      Events::Bus.emit(Events::UserMessage.new(content: "queued", session_id: session.id, status: "pending"))
+
+      event = session.events.first
+      expect(event.status).to eq("pending")
+      expect(event.payload["status"]).to eq("pending")
+    end
+
     it "preserves nanosecond timestamps" do
       Events::Bus.subscribe(persister)
       Events::Bus.emit(Events::UserMessage.new(content: "hello", session_id: session.id))

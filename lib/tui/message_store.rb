@@ -80,6 +80,41 @@ module TUI
       end
     end
 
+    # Returns the last pending user message for recall editing.
+    # Walks entries backwards and returns the first pending user_message found.
+    #
+    # @return [Hash, nil] `{id: Integer, content: String}` or nil if none pending
+    def last_pending_user_message
+      @mutex.synchronize do
+        @entries.reverse_each do |entry|
+          next unless entry[:event_type] == "user_message"
+
+          if entry[:type] == :rendered && entry.dig(:data, "status") == "pending"
+            return {id: entry[:id], content: entry.dig(:data, "content")}
+          end
+
+          # Only check the most recent user message
+          break
+        end
+        nil
+      end
+    end
+
+    # Removes an entry by its event ID. Used when a pending message is
+    # recalled for editing or deleted by another client.
+    #
+    # @param event_id [Integer] database ID of the event to remove
+    # @return [Boolean] true if the entry was found and removed
+    def remove_by_id(event_id)
+      @mutex.synchronize do
+        entry = @entries_by_id.delete(event_id)
+        return false unless entry
+
+        @entries.delete(entry)
+        true
+      end
+    end
+
     private
 
     # Replaces data on an existing entry matched by event ID.

@@ -208,6 +208,82 @@ RSpec.describe SessionChannel, type: :channel do
 
       Events::Bus.unsubscribe(subscriber)
     end
+
+    context "when session is processing" do
+      before { session.update!(processing: true) }
+
+      it "emits a pending user_message event" do
+        emitted = []
+        subscriber = double("subscriber")
+        allow(subscriber).to receive(:emit) { |event| emitted << event }
+        Events::Bus.subscribe(subscriber)
+
+        perform(:speak, {"content" => "queued message"})
+
+        user_event = emitted.find { |e| e.dig(:payload, :type) == "user_message" }
+        expect(user_event.dig(:payload, :status)).to eq("pending")
+
+        Events::Bus.unsubscribe(subscriber)
+      end
+
+      it "does not enqueue AgentRequestJob" do
+        expect { perform(:speak, {"content" => "queued"}) }
+          .not_to have_enqueued_job(AgentRequestJob)
+      end
+    end
+  end
+
+  describe "#recall_pending" do
+    let!(:session) { Session.create!(id: session_id) }
+
+    before { subscribe(session_id: session_id) }
+
+    it "deletes the pending event and broadcasts recall" do
+      event = session.events.create!(
+        event_type: "user_message",
+        payload: {"type" => "user_message", "content" => "pending", "status" => "pending"},
+        timestamp: 1,
+        status: "pending"
+      )
+
+      expect {
+        perform(:recall_pending, {"event_id" => event.id})
+      }.to change(Event, :count).by(-1)
+        .and have_broadcasted_to(stream_name)
+        .with(a_hash_including("action" => "user_message_recalled", "event_id" => event.id))
+    end
+
+    it "ignores non-pending events" do
+      event = session.events.create!(
+        event_type: "user_message",
+        payload: {"type" => "user_message", "content" => "delivered"},
+        timestamp: 1
+      )
+
+      expect {
+        perform(:recall_pending, {"event_id" => event.id})
+      }.not_to change(Event, :count)
+    end
+
+    it "ignores events from other sessions" do
+      other_session = Session.create!
+      event = other_session.events.create!(
+        event_type: "user_message",
+        payload: {"type" => "user_message", "content" => "pending", "status" => "pending"},
+        timestamp: 1,
+        status: "pending"
+      )
+
+      expect {
+        perform(:recall_pending, {"event_id" => event.id})
+      }.not_to change(Event, :count)
+    end
+
+    it "ignores invalid event_id" do
+      expect {
+        perform(:recall_pending, {"event_id" => 0})
+      }.not_to change(Event, :count)
+    end
   end
 
   describe "#list_sessions" do

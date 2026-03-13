@@ -3,22 +3,33 @@
 # Decorates user_message events for display in the TUI.
 # Basic mode returns role and content. Verbose mode adds a timestamp.
 # Debug mode adds token count (exact when counted, estimated when not).
+# Pending messages include `status: "pending"` so the TUI renders them
+# with a visual indicator (dimmed, clock icon).
 class UserMessageDecorator < EventDecorator
   # @return [Hash] structured user message data
-  #   `{role: :user, content: String}`
+  #   `{role: :user, content: String}` or with `status: "pending"` when queued
   def render_basic
-    {role: :user, content: content}
+    base = {role: :user, content: content}
+    base[:status] = "pending" if pending?
+    base
   end
 
   # @return [Hash] structured user message with nanosecond timestamp
-  #   `{role: :user, content: String, timestamp: Integer|nil}`
   def render_verbose
-    {role: :user, content: content, timestamp: timestamp}
+    base = {role: :user, content: content, timestamp: timestamp}
+    base[:status] = "pending" if pending?
+    base
   end
 
   # @return [Hash] verbose output plus token count for debugging
-  #   `{role: :user, content: String, timestamp: Integer|nil, tokens: Integer, estimated: Boolean}`
   def render_debug
     render_verbose.merge(token_info)
+  end
+
+  private
+
+  # @return [Boolean] true when this message is queued but not yet sent to LLM
+  def pending?
+    payload["status"] == Event::PENDING_STATUS
   end
 end

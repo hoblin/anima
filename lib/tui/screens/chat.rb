@@ -16,6 +16,7 @@ module TUI
       MOUSE_SCROLL_STEP = 2
 
       TOOL_ICON = "\u{1F527}"
+      CLOCK_ICON = "\u{1F552}"
       CHECKMARK = "\u2713"
       RETURN_ARROW = "\u21A9"
       ERROR_ICON = "\u274C"
@@ -77,15 +78,20 @@ module TUI
         render_input(frame, input_area, tui)
       end
 
-      # Scrolling and cursor navigation bypass the loading guard so users can
-      # read chat history during LLM calls.
+      # Input is always active — users can type and send messages even while
+      # the agent is processing. Messages sent during processing are queued
+      # as "pending" on the server and delivered after the current loop.
+      # Arrow-up recalls the last pending message for editing.
       def handle_event(event)
         return handle_mouse_event(event) if event.mouse?
         return handle_paste_event(event) if event.paste?
         return handle_scroll_key(event) if event.page_up? || event.page_down?
-        return handle_scroll_key(event) if event.up? || event.down?
 
-        return false if @loading
+        if event.up?
+          return true if @input_buffer.text.empty? && recall_pending_message
+          return handle_scroll_key(event)
+        end
+        return handle_scroll_key(event) if event.down?
 
         if event.enter?
           submit_message
@@ -161,6 +167,8 @@ module TUI
             @view_mode = msg["view_mode"] if msg["view_mode"]
           when "sessions_list"
             @sessions_list = msg["sessions"]
+          when "user_message_recalled"
+            @message_store.remove_by_id(msg["event_id"]) if msg["event_id"]
           when "error"
             # Silently ignored — no user-facing error display yet
           else
@@ -341,14 +349,18 @@ module TUI
       end
 
       # Renders a user or assistant message with optional timestamp and token count.
+      # Pending messages are dimmed with a clock icon to indicate they haven't
+      # been sent to the LLM yet.
       # @param tui [RatatuiRuby] TUI rendering API
       # @param data [Hash] structured data with "role", "content", and optional
-      #   "timestamp", "tokens", "estimated"
+      #   "timestamp", "tokens", "estimated", "status"
       # @param role [String] "user" or "assistant"
       # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_conversation_entry(tui, data, role)
-        color = ROLE_COLORS.fetch(role, "white")
+        pending = data["status"] == "pending"
+        color = pending ? "dark_gray" : ROLE_COLORS.fetch(role, "white")
         prefix = ROLE_LABELS.fetch(role, role)
+        prefix = "#{CLOCK_ICON} #{prefix}" if pending
         style = tui.style(fg: color)
 
         meta = []
@@ -480,7 +492,7 @@ module TUI
       end
 
       def render_input(frame, area, tui)
-        disabled = @loading || !connected?
+        disabled = !connected?
         styles = input_styles(tui, disabled)
 
         title = input_title
@@ -524,9 +536,7 @@ module TUI
       end
 
       def input_title
-        if @loading
-          "Waiting..."
-        elsif !connected?
+        if !connected?
           "Disconnected"
         else
           "Input"
@@ -634,6 +644,22 @@ module TUI
         @cable_client.speak(text)
       end
 
+      # Recalls the last pending user message for editing. Removes it from
+      # the message store, puts its content back in the input buffer, and
+      # tells the server to delete the event.
+      #
+      # @return [Boolean] true if a message was recalled
+      def recall_pending_message
+        pending = @message_store.last_pending_user_message
+        return false unless pending
+
+        @message_store.remove_by_id(pending[:id])
+        @input_buffer.clear
+        @input_buffer.insert(pending[:content])
+        @cable_client.recall_pending(pending[:id])
+        true
+      end
+
       # Dispatches arrow and page keys to {#scroll_up} or {#scroll_down}.
       # @return [true] always redraws after scrolling
       def handle_scroll_key(event)
@@ -685,12 +711,10 @@ module TUI
       end
 
       # Inserts pasted clipboard content at cursor position.
-      # Paste is dispatched before the generic loading guard in {#handle_event}
-      # but still blocked during loading to match the visually-disabled input.
       # @param event [RatatuiRuby::Event::Paste] paste event with content
-      # @return [Boolean] true if content was inserted, false if loading or buffer full
+      # @return [Boolean] true if content was inserted, false if buffer full
       def handle_paste_event(event)
-        return false if @loading || @input_buffer.full?
+        return false if @input_buffer.full?
 
         @input_buffer.insert(event.content)
       end

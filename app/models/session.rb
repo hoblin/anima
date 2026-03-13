@@ -28,12 +28,17 @@ class Session < ApplicationRecord
   # is exhausted. Events are full-size or excluded entirely.
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
+  # @param include_pending [Boolean] whether to include pending messages (true for
+  #   display, false for LLM context assembly)
   # @return [Array<Event>] chronologically ordered
-  def viewport_events(token_budget: DEFAULT_TOKEN_BUDGET)
+  def viewport_events(token_budget: DEFAULT_TOKEN_BUDGET, include_pending: true)
+    scope = events.context_events
+    scope = scope.deliverable unless include_pending
+
     selected = []
     remaining = token_budget
 
-    events.context_events.reorder(id: :desc).each do |event|
+    scope.reorder(id: :desc).each do |event|
       cost = (event.token_count > 0) ? event.token_count : estimate_tokens(event)
       break if cost > remaining && selected.any?
 
@@ -58,11 +63,26 @@ class Session < ApplicationRecord
   # Anthropic's wire format. Consecutive tool_call events are grouped
   # into a single assistant message; consecutive tool_response events
   # are grouped into a single user message with tool_result blocks.
+  # Pending messages are excluded — they haven't been delivered yet.
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @return [Array<Hash>] Anthropic Messages API format
   def messages_for_llm(token_budget: DEFAULT_TOKEN_BUDGET)
-    assemble_messages(viewport_events(token_budget: token_budget))
+    assemble_messages(viewport_events(token_budget: token_budget, include_pending: false))
+  end
+
+  # Promotes all pending user messages to delivered status so they
+  # appear in the next LLM context. Triggers broadcast_update for
+  # each event so connected clients refresh the pending indicator.
+  #
+  # @return [Integer] number of promoted messages
+  def promote_pending_messages!
+    promoted = 0
+    events.where(event_type: "user_message", status: Event::PENDING_STATUS).find_each do |event|
+      event.update!(status: nil, payload: event.payload.except("status"))
+      promoted += 1
+    end
+    promoted
   end
 
   private
