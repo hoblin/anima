@@ -118,9 +118,9 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
         success: true
       )
 
-      expect(decorator.render_verbose).to include(
-        role: :tool_response, content: "success output", success: true
-      )
+      expect(decorator.render_verbose).to eq({
+        role: :tool_response, content: "success output", success: true, timestamp: nil
+      })
     end
   end
 end

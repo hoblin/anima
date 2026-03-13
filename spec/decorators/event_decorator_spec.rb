@@ -132,23 +132,6 @@ RSpec.describe EventDecorator, type: :decorator do
     end
   end
 
-  describe "#format_timestamp (private)" do
-    it "converts nanosecond timestamp to HH:MM:SS" do
-      ts = 1_709_312_325_000_000_000
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: ts)
-      decorator = described_class.for(event)
-      expected = Time.at(ts / 1_000_000_000.0).strftime("%H:%M:%S")
-
-      expect(decorator.send(:format_timestamp)).to eq(expected)
-    end
-
-    it "returns placeholder for nil timestamp" do
-      decorator = described_class.for(type: "user_message", content: "hi")
-
-      expect(decorator.send(:format_timestamp)).to eq("--:--:--")
-    end
-  end
-
   describe "#truncate_lines (private)" do
     let(:decorator) do
       event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)

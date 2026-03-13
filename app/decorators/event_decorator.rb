@@ -109,14 +109,6 @@ class EventDecorator < ApplicationDecorator
     payload["content"]
   end
 
-  # Converts nanosecond-precision timestamp to human-readable HH:MM:SS.
-  # @return [String] formatted time, or "--:--:--" when timestamp is nil
-  def format_timestamp
-    return "--:--:--" unless timestamp
-
-    Time.at(timestamp / 1_000_000_000.0).strftime("%H:%M:%S")
-  end
-
   # Truncates multi-line text, appending "..." when lines exceed the limit.
   # @param text [String, nil] text to truncate (nil is coerced to empty string)
   # @param max_lines [Integer] maximum number of lines to keep

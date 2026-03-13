@@ -64,19 +64,18 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       })
     end
 
-    it "truncates long generic input to 2 lines" do
-      long_input = {"a" => "1\n2\n3\n4\n5"}
+    it "renders compact JSON for generic tool input" do
+      input = {"a" => "1\n2\n3\n4\n5"}
       event = session.events.create!(
         event_type: "tool_call",
-        payload: {"content" => "calling", "tool_name" => "custom", "tool_input" => long_input},
+        payload: {"content" => "calling", "tool_name" => "custom", "tool_input" => input},
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
-      result = decorator.render_verbose
 
-      expect(result[:role]).to eq(:tool_call)
-      expect(result[:tool]).to eq("custom")
-      expect(result[:input]).to be_a(String)
+      expect(decorator.render_verbose).to eq({
+        role: :tool_call, tool: "custom", input: input.to_json, timestamp: 1
+      })
     end
 
     it "handles nil tool_input for bash" do
@@ -100,9 +99,9 @@ RSpec.describe ToolCallDecorator, type: :decorator do
         tool_input: {"command" => "ls -la"}
       )
 
-      expect(decorator.render_verbose).to include(
-        role: :tool_call, tool: "bash", input: "$ ls -la"
-      )
+      expect(decorator.render_verbose).to eq({
+        role: :tool_call, tool: "bash", input: "$ ls -la", timestamp: nil
+      })
     end
   end
 end

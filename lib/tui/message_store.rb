@@ -36,7 +36,7 @@ module TUI
     end
 
     # Processes a raw event payload from the WebSocket channel.
-    # Uses pre-rendered decorator output when available; falls back to
+    # Uses structured decorator data when available; falls back to
     # role/content extraction for messages and tool counter aggregation.
     #
     # @param event_data [Hash] Action Cable event payload with "type", "content",

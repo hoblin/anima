@@ -321,6 +321,11 @@ module TUI
         lines
       end
 
+      # Renders a user or assistant message with optional timestamp prefix.
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param data [Hash] structured data with "role", "content", and optional "timestamp"
+      # @param role [String] "user" or "assistant"
+      # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_conversation_entry(tui, data, role)
         color = ROLE_COLORS.fetch(role, "white")
         prefix = ROLE_LABELS.fetch(role, role)
@@ -330,6 +335,10 @@ module TUI
         [tui.line(spans: [tui.span(content: text, style: tui.style(fg: color))])]
       end
 
+      # Renders a tool invocation with tool name and indented input preview.
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param data [Hash] structured data with "tool" and "input"
+      # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_tool_call_entry(tui, data)
         style = tui.style(fg: "white")
         lines = [tui.line(spans: [tui.span(content: "#{TOOL_ICON} #{data["tool"]}", style: style)])]
@@ -339,6 +348,10 @@ module TUI
         lines
       end
 
+      # Renders tool output with success/failure indicator prefix.
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param data [Hash] structured data with "content" and "success"
+      # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_tool_response_entry(tui, data)
         prefix = (data["success"] == false) ? "#{ERROR_ICON} " : "#{RETURN_ARROW} "
         content_lines = data["content"].to_s.split("\n")
@@ -348,6 +361,10 @@ module TUI
         lines
       end
 
+      # Renders a system message with optional timestamp prefix.
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param data [Hash] structured data with "content" and optional "timestamp"
+      # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_system_entry(tui, data)
         body = data["content"]
         ts = data["timestamp"]
