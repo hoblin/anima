@@ -31,13 +31,28 @@ module TUI
     BACKOFF_CAP = 30.0 # maximum backoff delay
     PING_STALE_THRESHOLD = 6.0 # seconds without ping before connection is stale
 
+    # Message types queued for the TUI render loop via @message_queue
+    MSG_TYPE_CONNECTION = "connection"
+
+    # Connection status values sent as MSG_TYPE_CONNECTION messages.
+    # These are message-level concepts for the TUI — distinct from the
+    # internal @status state machine (:disconnected, :connecting, etc.).
+    STATUS_SUBSCRIBING = "subscribing"
+    STATUS_SUBSCRIBED = "subscribed"
+    STATUS_REJECTED = "rejected"
+    STATUS_DISCONNECTED = "disconnected"
+    STATUS_RECONNECTING = "reconnecting"
+    STATUS_FAILED = "failed"
+
     # @return [String] brain server host:port
     attr_reader :host
 
     # @return [Integer] current session ID
     attr_reader :session_id
 
-    # @return [Symbol] connection status (:disconnected, :connecting, :connected, :subscribed, :reconnecting)
+    # @return [Symbol] connection status (:disconnected, :connecting, :connected, :subscribed, :reconnecting).
+    #   Note: the "subscribing" concept exists only as a message-level status
+    #   (see {STATUS_SUBSCRIBING}) queued for the TUI, not as an internal state.
     attr_reader :status
 
     # @return [Integer] current reconnection attempt (0 when connected)
@@ -254,8 +269,8 @@ module TUI
       if attempt > MAX_RECONNECT_ATTEMPTS
         @mutex.synchronize { @status = :disconnected }
         @message_queue << {
-          "type" => "connection",
-          "status" => "failed",
+          "type" => MSG_TYPE_CONNECTION,
+          "status" => STATUS_FAILED,
           "message" => "Reconnection failed after #{MAX_RECONNECT_ATTEMPTS} attempts"
         }
         return false
@@ -264,8 +279,8 @@ module TUI
       delay = backoff_delay(attempt)
       @mutex.synchronize { @status = :reconnecting }
       @message_queue << {
-        "type" => "connection",
-        "status" => "reconnecting",
+        "type" => MSG_TYPE_CONNECTION,
+        "status" => STATUS_RECONNECTING,
         "attempt" => attempt,
         "max_attempts" => MAX_RECONNECT_ATTEMPTS,
         "delay" => delay.round(1)
@@ -314,17 +329,17 @@ module TUI
           @status = :subscribed
           @reconnect_attempt = 0
         end
-        @message_queue << {"type" => "connection", "status" => "subscribed"}
+        @message_queue << {"type" => MSG_TYPE_CONNECTION, "status" => STATUS_SUBSCRIBED}
       when "reject_subscription"
         on_disconnected
-        @message_queue << {"type" => "connection", "status" => "rejected"}
+        @message_queue << {"type" => MSG_TYPE_CONNECTION, "status" => STATUS_REJECTED}
       when "disconnect"
         if data["reconnect"] == false
           @mutex.synchronize do
             @intentional_disconnect = true
             @status = :disconnected
           end
-          @message_queue << {"type" => "connection", "status" => "disconnected"}
+          @message_queue << {"type" => MSG_TYPE_CONNECTION, "status" => STATUS_DISCONNECTED}
         else
           on_disconnected
         end
@@ -343,14 +358,24 @@ module TUI
         return if @status == :disconnected || @status == :reconnecting
         @status = :disconnected
       end
-      @message_queue << {"type" => "connection", "status" => "disconnected"}
+      @message_queue << {"type" => MSG_TYPE_CONNECTION, "status" => STATUS_DISCONNECTED}
     end
 
+    # Captures the current session ID under mutex, queues a "subscribing"
+    # status for the TUI, then sends the Action Cable subscribe command.
+    #
+    # The "subscribing" message must be queued _before_ the subscribe command
+    # so the TUI clears stale state before history arrives. Action Cable
+    # transmits history (via +subscribed+ callback) before sending
+    # +confirm_subscription+, so the TUI would see history first, then
+    # the "subscribed" status.
+    #
+    # @see handle_protocol_message called on "welcome" to trigger this
     def subscribe
       sid = @mutex.synchronize do
         @subscribed_session_id = @session_id
       end
-      @message_queue << {"type" => "connection", "status" => "subscribing"}
+      @message_queue << {"type" => MSG_TYPE_CONNECTION, "status" => STATUS_SUBSCRIBING}
       identifier = {channel: "SessionChannel", session_id: sid}.to_json
       send_command("subscribe", identifier)
     end
