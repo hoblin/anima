@@ -180,6 +180,19 @@ RSpec.describe Tools::Read do
       end
     end
 
+    context "with a file exceeding MAX_READ_SIZE" do
+      it "returns an error suggesting bash" do
+        path = write_file("huge.log", "x")
+        allow(File).to receive(:size).with(path).and_return(Tools::Read::MAX_READ_SIZE + 1)
+
+        result = tool.execute("path" => path)
+
+        expect(result).to be_a(Hash)
+        expect(result[:error]).to include("Max readable size")
+        expect(result[:error]).to include("bash tool")
+      end
+    end
+
     context "with error conditions" do
       it "returns error for blank path" do
         result = tool.execute("path" => "  ")

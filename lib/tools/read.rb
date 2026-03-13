@@ -4,7 +4,7 @@ module Tools
   # Reads file contents with smart truncation and offset/limit paging.
   # Returns plain text without line numbers, normalized to LF line endings.
   #
-  # Truncation limits: {MAX_LINES} lines or {MAX_BYTES} bytes, whichever
+  # Truncation limits: `MAX_LINES` lines or `MAX_BYTES` bytes, whichever
   # hits first. When truncated, appends a continuation hint with the next
   # offset value so the agent can page through large files.
   #
@@ -27,9 +27,9 @@ module Tools
       {
         type: "object",
         properties: {
-          path: {type: "string", description: "File path (relative resolved against working directory)"},
+          path: {type: "string", description: "Absolute or relative file path (relative resolved against working directory)"},
           offset: {type: "integer", description: "1-indexed line number to start from (default: 1)"},
-          limit: {type: "integer", description: "Maximum number of lines to read (default: 2000)"}
+          limit: {type: "integer", description: "Maximum number of lines to read (default: 2000, also limited by #{MAX_BYTES} byte cap)"}
         },
         required: ["path"]
       }
@@ -81,8 +81,18 @@ module Tools
 
     # Reads the file, normalizes line endings, and applies truncation limits.
     # Two limits are enforced as first-hit-wins: line count and byte size.
-    # A single line exceeding {MAX_BYTES} is rejected outright (likely minified).
+    # A single line exceeding `MAX_BYTES` is rejected outright (likely minified).
+    # Files larger than `MAX_READ_SIZE` are rejected to avoid memory exhaustion.
+    MAX_READ_SIZE = 10 * 1024 * 1024 # 10 MB
+
     def read_file(path, offset, limit)
+      file_size = File.size(path)
+      if file_size > MAX_READ_SIZE
+        return {error: "File is #{file_size} bytes (#{file_size / 1_048_576} MB). " \
+                       "Max readable size is #{MAX_READ_SIZE / 1_048_576} MB. " \
+                       "Use bash tool with: head -n #{offset + limit} #{path} | tail -n +#{offset}"}
+      end
+
       lines = normalize(File.read(path))
       return "" if lines.empty?
 
@@ -121,20 +131,22 @@ module Tools
       end
     end
 
-    # Accumulates lines until {MAX_BYTES} would be exceeded.
+    # Accumulates lines until `MAX_BYTES` would be exceeded.
     # @return [Array(String, Integer)] accumulated text and number of lines included
     def accumulate_lines(window)
       output = +""
       bytes = 0
+      count = 0
 
       window.each_with_index do |line, index|
         break if bytes + line.bytesize > MAX_BYTES && index > 0
 
         output << line
         bytes += line.bytesize
+        count += 1
       end
 
-      [output, output.lines.size]
+      [output, count]
     end
   end
 end
