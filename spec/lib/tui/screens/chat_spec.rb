@@ -1001,4 +1001,35 @@ RSpec.describe TUI::Screens::Chat do
       expect(col).to eq(2)
     end
   end
+
+  describe "#format_token_label (private)" do
+    it "formats exact token count" do
+      expect(screen.send(:format_token_label, 42, false)).to eq("[42 tok]")
+    end
+
+    it "prefixes estimated counts with tilde" do
+      expect(screen.send(:format_token_label, 28, true)).to eq("[~28 tok]")
+    end
+
+    it "returns empty string for nil tokens" do
+      expect(screen.send(:format_token_label, nil, false)).to eq("")
+    end
+  end
+
+  describe "system_prompt message processing" do
+    it "stores system_prompt as rendered entry" do
+      allow(cable_client).to receive(:drain_messages).and_return([
+        {
+          "type" => "system_prompt",
+          "rendered" => {"debug" => {"role" => "system_prompt", "content" => "You are Anima.", "tokens" => 4, "estimated" => true}}
+        }
+      ])
+
+      screen.send(:process_incoming_messages)
+
+      expect(screen.messages).to eq([
+        {type: :rendered, data: {"role" => "system_prompt", "content" => "You are Anima.", "tokens" => 4, "estimated" => true}, event_type: "system_prompt"}
+      ])
+    end
+  end
 end

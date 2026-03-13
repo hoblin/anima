@@ -47,7 +47,19 @@ class EventDecorator < ApplicationDecorator
   # @!attribute payload [r] string-keyed hash of event data
   # @!attribute timestamp [r] nanosecond-precision timestamp
   # @!attribute token_count [r] cumulative token count
-  EventPayload = Struct.new(:event_type, :payload, :timestamp, :token_count, keyword_init: true)
+  EventPayload = Struct.new(:event_type, :payload, :timestamp, :token_count, keyword_init: true) do
+    # Heuristic token estimate matching {Event#estimate_tokens} so decorators
+    # can call it uniformly on both AR models and hash payloads.
+    # @return [Integer] at least 1
+    def estimate_tokens
+      text = if event_type.to_s.in?(%w[tool_call tool_response])
+        payload.to_json
+      else
+        payload&.dig("content").to_s
+      end
+      [(text.bytesize / Event::BYTES_PER_TOKEN.to_f).ceil, 1].max
+    end
+  end
 
   # Factory returning the appropriate subclass decorator for the given event.
   # Hashes are normalized via {EventPayload} to provide a uniform interface.
@@ -102,6 +114,28 @@ class EventDecorator < ApplicationDecorator
   end
 
   private
+
+  # Token count for display: exact count from {CountEventTokensJob} when
+  # available, heuristic estimate otherwise. Estimated counts are flagged
+  # so the TUI can prefix them with a tilde.
+  #
+  # @return [Hash] `{tokens: Integer, estimated: Boolean}`
+  def token_info
+    count = token_count.to_i
+    if count > 0
+      {tokens: count, estimated: false}
+    else
+      {tokens: estimate_token_count, estimated: true}
+    end
+  end
+
+  # Delegates to the underlying object's heuristic token estimator.
+  # Both {Event} AR models and {EventPayload} structs implement this.
+  #
+  # @return [Integer] at least 1
+  def estimate_token_count
+    object.estimate_tokens
+  end
 
   # Extracts display content from the event payload.
   # @return [String, nil]

@@ -370,6 +370,111 @@ RSpec.describe SessionChannel, type: :channel do
     end
   end
 
+  describe "debug mode system prompt" do
+    let!(:session) { Session.create!(id: session_id, view_mode: "debug") }
+
+    it "prepends system prompt in debug mode history when prompt exists" do
+      allow_any_instance_of(Session).to receive(:system_prompt).and_return("You are Anima.")
+      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+
+      subscribe(session_id: session_id)
+
+      history = transmissions.reject { |t| t["action"] }
+      system_prompt_msg = history.find { |t| t["type"] == "system_prompt" }
+
+      expect(system_prompt_msg).to be_present
+      expect(system_prompt_msg["rendered"]["debug"]["role"]).to eq(:system_prompt)
+      expect(system_prompt_msg["rendered"]["debug"]["content"]).to eq("You are Anima.")
+      expect(system_prompt_msg["rendered"]["debug"]["tokens"]).to be_positive
+      expect(system_prompt_msg["rendered"]["debug"]["estimated"]).to be true
+    end
+
+    it "does not prepend system prompt when prompt is nil" do
+      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+
+      subscribe(session_id: session_id)
+
+      history = transmissions.reject { |t| t["action"] }
+      system_prompt_msg = history.find { |t| t["type"] == "system_prompt" }
+      expect(system_prompt_msg).to be_nil
+    end
+
+    it "does not prepend system prompt in basic mode" do
+      session.update!(view_mode: "basic")
+      allow_any_instance_of(Session).to receive(:system_prompt).and_return("You are Anima.")
+      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+
+      subscribe(session_id: session_id)
+
+      history = transmissions.reject { |t| t["action"] }
+      system_prompt_msg = history.find { |t| t["type"] == "system_prompt" }
+      expect(system_prompt_msg).to be_nil
+    end
+
+    it "broadcasts system prompt on view mode change to debug" do
+      session.update!(view_mode: "basic")
+      allow_any_instance_of(Session).to receive(:system_prompt).and_return("You are Anima.")
+      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+
+      subscribe(session_id: session_id)
+
+      expect {
+        perform(:change_view_mode, {"view_mode" => "debug"})
+      }.to have_broadcasted_to(stream_name)
+        .with(a_hash_including(
+          "type" => "system_prompt",
+          "rendered" => {"debug" => a_hash_including(
+            "role" => "system_prompt", "content" => "You are Anima.",
+            "tokens" => a_value > 0, "estimated" => true
+          )}
+        ))
+    end
+  end
+
+  describe "debug mode renders token counts" do
+    let!(:session) { Session.create!(id: session_id, view_mode: "debug") }
+
+    it "includes token info in debug-decorated user messages" do
+      session.events.create!(
+        event_type: "user_message",
+        payload: {"type" => "user_message", "content" => "hello"},
+        timestamp: 1,
+        token_count: 5
+      )
+
+      subscribe(session_id: session_id)
+
+      history = transmissions.reject { |t| t["action"] }
+      msg = history.find { |t| t["type"] == "user_message" }
+      rendered = msg.dig("rendered", "debug")
+
+      expect(rendered["tokens"]).to eq(5)
+      expect(rendered["estimated"]).to be false
+    end
+
+    it "includes tool_use_id in debug-decorated tool calls" do
+      session.events.create!(
+        event_type: "tool_call",
+        payload: {
+          "type" => "tool_call", "content" => "calling bash",
+          "tool_name" => "bash", "tool_input" => {"command" => "ls"},
+          "tool_use_id" => "toolu_abc"
+        },
+        timestamp: 1,
+        tool_use_id: "toolu_abc"
+      )
+
+      subscribe(session_id: session_id)
+
+      history = transmissions.reject { |t| t["action"] }
+      msg = history.find { |t| t["type"] == "tool_call" }
+      rendered = msg.dig("rendered", "debug")
+
+      expect(rendered["tool_use_id"]).to eq("toolu_abc")
+      expect(rendered["tool"]).to eq("bash")
+    end
+  end
+
   describe "stream isolation" do
     it "does not broadcast to other sessions" do
       subscribe(session_id: session_id)

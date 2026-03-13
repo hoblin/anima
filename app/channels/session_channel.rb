@@ -141,9 +141,12 @@ class SessionChannel < ApplicationCable::Channel
   # in an {EventDecorator} and the pre-rendered output is included in
   # the transmitted payload. Tool events are included so the TUI can
   # reconstruct tool call counters on reconnect.
+  # In debug mode, prepends the assembled system prompt as a special block.
   def transmit_history
     session = Session.find_by(id: @current_session_id)
     return unless session
+
+    transmit_system_prompt(session) if session.view_mode == "debug"
 
     session.viewport_events.each do |event|
       transmit(decorate_event_payload(event, session.view_mode))
@@ -152,9 +155,12 @@ class SessionChannel < ApplicationCable::Channel
 
   # Broadcasts the re-decorated viewport to all clients on the session stream.
   # Used after a view mode change to refresh all connected clients.
+  # In debug mode, prepends the assembled system prompt as a special block.
   # @param session [Session] the session whose viewport to broadcast
   # @return [void]
   def broadcast_viewport(session)
+    broadcast_system_prompt(session) if session.view_mode == "debug"
+
     session.viewport_events.each do |event|
       ActionCable.server.broadcast(stream_name, decorate_event_payload(event, session.view_mode))
     end
@@ -166,6 +172,44 @@ class SessionChannel < ApplicationCable::Channel
     return payload unless decorator
 
     payload.merge("rendered" => {mode => decorator.render(mode)})
+  end
+
+  # Transmits the assembled system prompt to the subscribing client.
+  # Skipped when the session has no system prompt configured.
+  # @param session [Session]
+  # @return [void]
+  def transmit_system_prompt(session)
+    payload = system_prompt_payload(session)
+    return unless payload
+
+    transmit(payload)
+  end
+
+  # Broadcasts the assembled system prompt to all clients on the stream.
+  # Skipped when the session has no system prompt configured.
+  # @param session [Session]
+  # @return [void]
+  def broadcast_system_prompt(session)
+    payload = system_prompt_payload(session)
+    return unless payload
+
+    ActionCable.server.broadcast(stream_name, payload)
+  end
+
+  # Builds the system prompt payload for debug mode transmission.
+  # @param session [Session]
+  # @return [Hash, nil] the system prompt payload, or nil if no prompt
+  def system_prompt_payload(session)
+    prompt = session.system_prompt
+    return unless prompt
+
+    tokens = [(prompt.bytesize / Event::BYTES_PER_TOKEN.to_f).ceil, 1].max
+    {
+      "type" => "system_prompt",
+      "rendered" => {
+        "debug" => {role: :system_prompt, content: prompt, tokens: tokens, estimated: true}
+      }
+    }
   end
 
   def transmit_error(message)

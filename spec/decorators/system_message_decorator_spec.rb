@@ -45,4 +45,26 @@ RSpec.describe SystemMessageDecorator, type: :decorator do
       expect(decorator.render_verbose).to eq({role: :system, content: "boot", timestamp: nil})
     end
   end
+
+  describe "#render_debug" do
+    it "returns same structure as verbose" do
+      ts = 1_709_312_325_000_000_000
+      event = session.events.create!(
+        event_type: "system_message",
+        payload: {"content" => "retrying after error"},
+        timestamp: ts
+      )
+      decorator = EventDecorator.for(event)
+
+      expect(decorator.render_debug).to eq({
+        role: :system, content: "retrying after error", timestamp: ts
+      })
+    end
+
+    it "works with hash payloads" do
+      decorator = EventDecorator.for(type: "system_message", content: "boot")
+
+      expect(decorator.render_debug).to eq({role: :system, content: "boot", timestamp: nil})
+    end
+  end
 end

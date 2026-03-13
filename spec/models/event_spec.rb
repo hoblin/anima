@@ -141,6 +141,45 @@ RSpec.describe Event do
     end
   end
 
+  describe "#estimate_tokens" do
+    it "estimates tokens from content for message events" do
+      event = session.events.create!(
+        event_type: "user_message", payload: {"content" => "hello world"}, timestamp: 1
+      )
+
+      # "hello world" = 11 bytes, 11/4 = 2.75, ceil = 3
+      expect(event.estimate_tokens).to eq(3)
+    end
+
+    it "estimates tokens from full payload JSON for tool events" do
+      event = session.events.create!(
+        event_type: "tool_call",
+        payload: {"content" => "calling", "tool_name" => "bash", "tool_input" => {"command" => "ls"}},
+        timestamp: 1
+      )
+      json_size = event.payload.to_json.bytesize
+      expected = (json_size / 4.0).ceil
+
+      expect(event.estimate_tokens).to eq(expected)
+    end
+
+    it "returns at least 1 for empty content" do
+      event = session.events.create!(
+        event_type: "user_message", payload: {"content" => ""}, timestamp: 1
+      )
+
+      expect(event.estimate_tokens).to eq(1)
+    end
+
+    it "returns at least 1 for nil content" do
+      event = session.events.create!(
+        event_type: "user_message", payload: {"content" => nil}, timestamp: 1
+      )
+
+      expect(event.estimate_tokens).to eq(1)
+    end
+  end
+
   describe "after_create callback" do
     it "enqueues CountEventTokensJob for LLM events" do
       expect {
