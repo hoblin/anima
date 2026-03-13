@@ -25,7 +25,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
   end
 
   describe "#render_verbose" do
-    it "shows return arrow with successful output" do
+    it "returns structured hash with success for successful output" do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => "file.txt", "tool_name" => "bash", "success" => true},
@@ -33,10 +33,12 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       )
       decorator = EventDecorator.for(event)
 
-      expect(decorator.render_verbose).to eq(["  \u21A9 file.txt"])
+      expect(decorator.render_verbose).to eq({
+        role: :tool_response, content: "file.txt", success: true, timestamp: 1
+      })
     end
 
-    it "shows error indicator for failed tool" do
+    it "returns structured hash with success false for failed tool" do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => "command not found", "tool_name" => "bash", "success" => false},
@@ -44,7 +46,9 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       )
       decorator = EventDecorator.for(event)
 
-      expect(decorator.render_verbose).to eq(["  \u274C command not found"])
+      expect(decorator.render_verbose).to eq({
+        role: :tool_response, content: "command not found", success: false, timestamp: 1
+      })
     end
 
     it "truncates output exceeding 3 lines" do
@@ -57,12 +61,8 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       decorator = EventDecorator.for(event)
       result = decorator.render_verbose
 
-      expect(result).to eq([
-        "  \u21A9 line1",
-        "    line2",
-        "    line3",
-        "    ..."
-      ])
+      expect(result[:content]).to eq("line1\nline2\nline3\n...")
+      expect(result[:success]).to be true
     end
 
     it "preserves multiline output within the limit" do
@@ -74,11 +74,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       )
       decorator = EventDecorator.for(event)
 
-      expect(decorator.render_verbose).to eq([
-        "  \u21A9 line1",
-        "    line2",
-        "    line3"
-      ])
+      expect(decorator.render_verbose[:content]).to eq("line1\nline2\nline3")
     end
 
     it "handles nil content" do
@@ -89,7 +85,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       )
       decorator = EventDecorator.for(event)
 
-      expect(decorator.render_verbose).to eq(["  \u21A9 "])
+      expect(decorator.render_verbose[:content]).to eq("")
     end
 
     it "handles empty content" do
@@ -100,10 +96,10 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       )
       decorator = EventDecorator.for(event)
 
-      expect(decorator.render_verbose).to eq(["  \u21A9 "])
+      expect(decorator.render_verbose[:content]).to eq("")
     end
 
-    it "shows return arrow when success field is missing" do
+    it "defaults success to true when field is missing" do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => "output", "tool_name" => "bash"},
@@ -111,7 +107,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       )
       decorator = EventDecorator.for(event)
 
-      expect(decorator.render_verbose).to eq(["  \u21A9 output"])
+      expect(decorator.render_verbose[:success]).to be true
     end
 
     it "works with hash payloads" do
@@ -122,7 +118,9 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
         success: true
       )
 
-      expect(decorator.render_verbose).to eq(["  \u21A9 success output"])
+      expect(decorator.render_verbose).to eq({
+        role: :tool_response, content: "success output", success: true, timestamp: nil
+      })
     end
   end
 end

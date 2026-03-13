@@ -97,20 +97,20 @@ RSpec.describe Events::Subscribers::ActionCableBridge do
   end
 
   describe "decoration" do
-    it "includes rendered basic output for user messages" do
+    it "includes structured basic output for user messages" do
       Session.create!(id: 42)
       expect {
         bridge.emit(event_hash(Events::UserMessage.new(content: "hello", session_id: 42)))
       }.to have_broadcasted_to("session_42")
-        .with(a_hash_including("rendered" => {"basic" => ["You: hello"]}))
+        .with(a_hash_including("rendered" => {"basic" => {"role" => "user", "content" => "hello"}}))
     end
 
-    it "includes rendered basic output for agent messages" do
+    it "includes structured basic output for agent messages" do
       Session.create!(id: 7)
       expect {
         bridge.emit(event_hash(Events::AgentMessage.new(content: "hi there", session_id: 7)))
       }.to have_broadcasted_to("session_7")
-        .with(a_hash_including("rendered" => {"basic" => ["Anima: hi there"]}))
+        .with(a_hash_including("rendered" => {"basic" => {"role" => "assistant", "content" => "hi there"}}))
     end
 
     it "includes nil rendered basic output for tool calls" do
@@ -137,18 +137,17 @@ RSpec.describe Events::Subscribers::ActionCableBridge do
     it "decorates in the session's view_mode" do
       Session.create!(id: 42, view_mode: "verbose")
       event = Events::UserMessage.new(content: "hello", session_id: 42)
-      expected_time = Time.at(event.timestamp / 1_000_000_000.0).strftime("%H:%M:%S")
       expect {
         bridge.emit(event_hash(event))
       }.to have_broadcasted_to("session_42")
-        .with(a_hash_including("rendered" => {"verbose" => ["[#{expected_time}] You: hello"]}))
+        .with(a_hash_including("rendered" => {"verbose" => a_hash_including("role" => "user", "content" => "hello", "timestamp" => event.timestamp)}))
     end
 
     it "falls back to basic when session is not found" do
       expect {
         bridge.emit(event_hash(Events::UserMessage.new(content: "hello", session_id: 999)))
       }.to have_broadcasted_to("session_999")
-        .with(a_hash_including("rendered" => {"basic" => ["You: hello"]}))
+        .with(a_hash_including("rendered" => {"basic" => {"role" => "user", "content" => "hello"}}))
     end
   end
 

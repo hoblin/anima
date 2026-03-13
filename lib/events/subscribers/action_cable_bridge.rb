@@ -8,8 +8,8 @@ module Events
     # name used by {SessionChannel}.
     #
     # Events are decorated via {EventDecorator} before broadcast, adding
-    # pre-rendered text for the session's current view mode. The TUI
-    # receives ready-to-display strings and never loads Draper.
+    # structured data for the session's current view mode. The TUI
+    # receives semantic hashes (role, content, timestamp) and never loads Draper.
     #
     # Only events with a valid session_id are broadcast — events without
     # one have no destination channel and are silently skipped.
@@ -39,7 +39,7 @@ module Events
 
       private
 
-      # Decorates the payload hash with pre-rendered output for the given view mode.
+      # Decorates the payload hash with structured data for the given view mode.
       # Uses string keys for the +rendered+ hash to match JSON wire format.
       # Falls back to the raw payload if decoration fails.
       def decorate_payload(payload, mode = "basic")

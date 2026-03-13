@@ -74,16 +74,15 @@ RSpec.describe EventDecorator, type: :decorator do
       event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       decorator = described_class.for(event)
 
-      expect(decorator.render("basic")).to eq(["You: hi"])
+      expect(decorator.render("basic")).to eq({role: :user, content: "hi"})
     end
 
     it "dispatches to render_verbose for verbose mode" do
       ts = 1_709_312_325_000_000_000
       event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: ts)
       decorator = described_class.for(event)
-      expected_time = Time.at(ts / 1_000_000_000.0).strftime("%H:%M:%S")
 
-      expect(decorator.render("verbose")).to eq(["[#{expected_time}] You: hi"])
+      expect(decorator.render("verbose")).to eq({role: :user, content: "hi", timestamp: ts})
     end
 
     it "dispatches to render_debug for debug mode" do
@@ -91,7 +90,7 @@ RSpec.describe EventDecorator, type: :decorator do
       decorator = described_class.for(event)
 
       # Debug still delegates to basic until #77 implements it
-      expect(decorator.render("debug")).to eq(["You: hi"])
+      expect(decorator.render("debug")).to eq({role: :user, content: "hi"})
     end
 
     it "raises ArgumentError for invalid mode" do
@@ -114,13 +113,13 @@ RSpec.describe EventDecorator, type: :decorator do
       # Verify the base class delegation pattern — subclasses may override
       stub_decorator = Class.new(described_class) do
         def render_basic
-          ["stub output"]
+          {role: :stub, content: "stub output"}
         end
       end
       source = described_class.send(:wrap_source, {type: "user_message", content: "hi"})
       decorator = stub_decorator.new(source)
 
-      expect(decorator.render_verbose).to eq(["stub output"])
+      expect(decorator.render_verbose).to eq({role: :stub, content: "stub output"})
     end
   end
 
@@ -130,23 +129,6 @@ RSpec.describe EventDecorator, type: :decorator do
       decorator = described_class.for(event)
 
       expect(decorator.render_debug).to eq(decorator.render_basic)
-    end
-  end
-
-  describe "#format_timestamp (private)" do
-    it "converts nanosecond timestamp to HH:MM:SS" do
-      ts = 1_709_312_325_000_000_000
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: ts)
-      decorator = described_class.for(event)
-      expected = Time.at(ts / 1_000_000_000.0).strftime("%H:%M:%S")
-
-      expect(decorator.send(:format_timestamp)).to eq(expected)
-    end
-
-    it "returns placeholder for nil timestamp" do
-      decorator = described_class.for(type: "user_message", content: "hi")
-
-      expect(decorator.send(:format_timestamp)).to eq("--:--:--")
     end
   end
 

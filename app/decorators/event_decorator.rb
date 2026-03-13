@@ -4,23 +4,25 @@
 # for the TUI. Each event type has a dedicated subclass that implements
 # rendering methods for each view mode (basic, verbose, debug).
 #
-# Decorators are applied server-side before broadcasting via ActionCable —
-# the TUI receives pre-rendered text and never loads Draper.
+# Decorators return structured hashes (not pre-formatted strings) so that
+# the TUI can style and lay out content based on semantic role, without
+# fragile regex parsing. The TUI receives structured data via ActionCable
+# and formats it for display.
 #
 # Subclasses must override {#render_basic}. Verbose and debug modes
 # delegate to basic until subclasses provide their own implementations.
 #
 # @example Decorate an Event AR model
 #   decorator = EventDecorator.for(event)
-#   decorator.render_basic  #=> ["You: hello"] or nil
+#   decorator.render_basic  #=> {role: :user, content: "hello"} or nil
 #
 # @example Render for a specific view mode
 #   decorator = EventDecorator.for(event)
-#   decorator.render("verbose")  #=> ["You: hello"] (falls back to basic)
+#   decorator.render("verbose")  #=> {role: :user, content: "hello", timestamp: 1709312325000000000}
 #
 # @example Decorate a raw payload hash (from EventBus)
 #   decorator = EventDecorator.for(type: "user_message", content: "hello")
-#   decorator.render_basic  #=> ["You: hello"]
+#   decorator.render_basic  #=> {role: :user, content: "hello"}
 class EventDecorator < ApplicationDecorator
   delegate_all
 
@@ -70,7 +72,7 @@ class EventDecorator < ApplicationDecorator
   # Dispatches to the render method for the given view mode.
   #
   # @param mode [String] one of "basic", "verbose", "debug"
-  # @return [Array<String>, nil] lines to display, or nil to hide the event
+  # @return [Hash, nil] structured event data, or nil to hide the event
   # @raise [ArgumentError] if the mode is not a valid view mode
   def render(mode)
     method = RENDER_DISPATCH[mode]
@@ -80,21 +82,21 @@ class EventDecorator < ApplicationDecorator
   end
 
   # @abstract Subclasses must implement to render the event for basic view mode.
-  # @return [Array<String>, nil] lines to display, or nil to hide the event
+  # @return [Hash, nil] structured event data, or nil to hide the event
   def render_basic
     raise NotImplementedError, "#{self.class} must implement #render_basic"
   end
 
   # Verbose view mode with timestamps and tool details.
   # Delegates to {#render_basic} until subclasses provide their own implementations.
-  # @return [Array<String>, nil] lines to display, or nil to hide the event
+  # @return [Hash, nil] structured event data, or nil to hide the event
   def render_verbose
     render_basic
   end
 
   # Debug view mode with token counts and system prompts.
   # Delegates to {#render_basic} until subclasses provide their own implementations.
-  # @return [Array<String>, nil] lines to display, or nil to hide the event
+  # @return [Hash, nil] structured event data, or nil to hide the event
   def render_debug
     render_basic
   end
@@ -105,14 +107,6 @@ class EventDecorator < ApplicationDecorator
   # @return [String, nil]
   def content
     payload["content"]
-  end
-
-  # Converts nanosecond-precision timestamp to human-readable HH:MM:SS.
-  # @return [String] formatted time, or "--:--:--" when timestamp is nil
-  def format_timestamp
-    return "--:--:--" unless timestamp
-
-    Time.at(timestamp / 1_000_000_000.0).strftime("%H:%M:%S")
   end
 
   # Truncates multi-line text, appending "..." when lines exceed the limit.

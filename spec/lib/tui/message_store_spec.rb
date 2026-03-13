@@ -20,19 +20,19 @@ RSpec.describe TUI::MessageStore do
   end
 
   describe "#process_event" do
-    context "with pre-rendered content" do
-      it "stores rendered lines when present" do
+    context "with structured decorator data" do
+      it "stores structured data when present" do
         store.process_event({"type" => "user_message", "content" => "hello",
-                             "rendered" => {"basic" => ["You: hello"]}})
+                             "rendered" => {"basic" => {"role" => "user", "content" => "hello"}}})
 
-        expect(store.messages).to eq([{type: :rendered, lines: ["You: hello"], event_type: "user_message"}])
+        expect(store.messages).to eq([{type: :rendered, data: {"role" => "user", "content" => "hello"}, event_type: "user_message"}])
       end
 
       it "uses rendered content from any mode key" do
         store.process_event({"type" => "agent_message", "content" => "hi",
-                             "rendered" => {"verbose" => ["Anima: hi"]}})
+                             "rendered" => {"verbose" => {"role" => "assistant", "content" => "hi", "timestamp" => 123}}})
 
-        expect(store.messages).to eq([{type: :rendered, lines: ["Anima: hi"], event_type: "agent_message"}])
+        expect(store.messages).to eq([{type: :rendered, data: {"role" => "assistant", "content" => "hi", "timestamp" => 123}, event_type: "agent_message"}])
       end
 
       it "falls back to tool counter when rendered is nil for tool events" do
@@ -42,16 +42,16 @@ RSpec.describe TUI::MessageStore do
         expect(store.messages).to eq([{type: :tool_counter, calls: 1, responses: 0}])
       end
 
-      it "stores rendered content when non-nil for tool events" do
+      it "stores structured data when non-nil for tool events" do
         store.process_event({"type" => "tool_call", "content" => "calling bash",
-                             "rendered" => {"verbose" => ["🔧 bash: ls -la"]}})
+                             "rendered" => {"verbose" => {"role" => "tool_call", "tool" => "bash", "input" => "$ ls -la"}}})
 
-        expect(store.messages).to eq([{type: :rendered, lines: ["🔧 bash: ls -la"], event_type: "tool_call"}])
+        expect(store.messages).to eq([{type: :rendered, data: {"role" => "tool_call", "tool" => "bash", "input" => "$ ls -la"}, event_type: "tool_call"}])
       end
 
       it "returns true for rendered events" do
         result = store.process_event({"type" => "user_message", "content" => "hi",
-                                      "rendered" => {"basic" => ["You: hi"]}})
+                                      "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
         expect(result).to be true
       end
     end

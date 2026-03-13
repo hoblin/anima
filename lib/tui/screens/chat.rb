@@ -17,6 +17,10 @@ module TUI
 
       TOOL_ICON = "\u{1F527}"
       CHECKMARK = "\u2713"
+      RETURN_ARROW = "\u21A9"
+      ERROR_ICON = "\u274C"
+
+      ROLE_COLORS = {"user" => "green", "assistant" => "cyan"}.freeze
 
       # Intentionally duplicated from Session::VIEW_MODES to keep the TUI
       # independent of Rails. Must stay in sync when adding new modes.
@@ -289,32 +293,92 @@ module TUI
         ]
       end
 
-      # Renders pre-decorated lines from the server. Applies basic styling
-      # based on the role prefix (green for user, cyan for agent).
+      # Renders structured event data from the server. Uses the role field
+      # for styling — no string parsing or regex needed.
       # @param tui [RatatuiRuby] TUI rendering API
-      # @param entry [Hash] entry shaped `{type: :rendered, lines:}`
+      # @param entry [Hash] entry shaped `{type: :rendered, data: Hash}`
       # @return [Array<RatatuiRuby::Widgets::Line>] rendered lines + blank separator
       def build_rendered_lines(tui, entry)
-        lines = entry[:lines].map do |text|
-          style = rendered_line_style(tui, text)
-          tui.line(spans: [tui.span(content: text, style: style)])
+        data = entry[:data]
+        role = data["role"].to_s
+
+        lines = case role
+        when "user", "assistant"
+          render_conversation_entry(tui, data, role)
+        when "tool_call"
+          render_tool_call_entry(tui, data)
+        when "tool_response"
+          render_tool_response_entry(tui, data)
+        when "system"
+          render_system_entry(tui, data)
+        else
+          [tui.line(spans: [tui.span(content: data["content"].to_s, style: tui.style(fg: "white"))])]
         end
+
         # Tool calls and their responses are visually one unit — no separator
         # between them. Separator appears after the response completes the pair.
         lines << tui.line(spans: [tui.span(content: "")]) unless entry[:event_type] == "tool_call"
         lines
       end
 
-      # Determines text color based on the line's role prefix.
-      # Handles both basic ("You: ...") and verbose ("[HH:MM:SS] You: ...") formats.
-      def rendered_line_style(tui, text)
-        if text.start_with?("You: ") || text =~ /\A\[\d{2}:\d{2}:\d{2}\] You: /
-          tui.style(fg: "green")
-        elsif text.start_with?("Anima: ") || text =~ /\A\[\d{2}:\d{2}:\d{2}\] Anima: /
-          tui.style(fg: "cyan")
-        else
-          tui.style(fg: "white")
+      # Renders a user or assistant message with optional timestamp prefix.
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param data [Hash] structured data with "role", "content", and optional "timestamp"
+      # @param role [String] "user" or "assistant"
+      # @return [Array<RatatuiRuby::Widgets::Line>]
+      def render_conversation_entry(tui, data, role)
+        color = ROLE_COLORS.fetch(role, "white")
+        prefix = ROLE_LABELS.fetch(role, role)
+        body = data["content"]
+        ts = data["timestamp"]
+        text = ts ? "[#{format_ns_timestamp(ts)}] #{prefix}: #{body}" : "#{prefix}: #{body}"
+        [tui.line(spans: [tui.span(content: text, style: tui.style(fg: color))])]
+      end
+
+      # Renders a tool invocation with tool name and indented input preview.
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param data [Hash] structured data with "tool" and "input"
+      # @return [Array<RatatuiRuby::Widgets::Line>]
+      def render_tool_call_entry(tui, data)
+        style = tui.style(fg: "white")
+        lines = [tui.line(spans: [tui.span(content: "#{TOOL_ICON} #{data["tool"]}", style: style)])]
+        data["input"].to_s.split("\n").each do |line|
+          lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)])
         end
+        lines
+      end
+
+      # Renders tool output with success/failure indicator prefix.
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param data [Hash] structured data with "content" and "success"
+      # @return [Array<RatatuiRuby::Widgets::Line>]
+      def render_tool_response_entry(tui, data)
+        prefix = (data["success"] == false) ? "#{ERROR_ICON} " : "#{RETURN_ARROW} "
+        content_lines = data["content"].to_s.split("\n")
+        style = tui.style(fg: "white")
+        lines = [tui.line(spans: [tui.span(content: "  #{prefix}#{content_lines.first}", style: style)])]
+        content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: "    #{line}", style: style)]) }
+        lines
+      end
+
+      # Renders a system message with optional timestamp prefix.
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param data [Hash] structured data with "content" and optional "timestamp"
+      # @return [Array<RatatuiRuby::Widgets::Line>]
+      def render_system_entry(tui, data)
+        body = data["content"]
+        ts = data["timestamp"]
+        text = ts ? "[#{format_ns_timestamp(ts)}] [system] #{body}" : "[system] #{body}"
+        [tui.line(spans: [tui.span(content: text, style: tui.style(fg: "white"))])]
+      end
+
+      # Converts nanosecond-precision timestamp to human-readable HH:MM:SS.
+      # @param ns [Integer, nil] nanosecond timestamp
+      # @return [String] formatted time, or "--:--:--" when nil
+      def format_ns_timestamp(ns)
+        return "--:--:--" unless ns
+
+        Time.at(ns / 1_000_000_000.0).strftime("%H:%M:%S")
       end
 
       def build_chat_message_lines(tui, msg)

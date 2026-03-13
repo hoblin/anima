@@ -1,16 +1,17 @@
 # frozen_string_literal: true
 
 # Decorates user_message events for display in the TUI.
-# Basic mode shows the message with a "You:" prefix.
-# Verbose mode adds a timestamp.
+# Basic mode returns role and content. Verbose mode adds a timestamp.
 class UserMessageDecorator < EventDecorator
-  # @return [Array<String>] the user message prefixed with "You:"
+  # @return [Hash] structured user message data
+  #   `{role: :user, content: String}`
   def render_basic
-    ["You: #{content}"]
+    {role: :user, content: content}
   end
 
-  # @return [Array<String>] timestamped user message
+  # @return [Hash] structured user message with nanosecond timestamp
+  #   `{role: :user, content: String, timestamp: Integer|nil}`
   def render_verbose
-    ["[#{format_timestamp}] You: #{content}"]
+    {role: :user, content: content, timestamp: timestamp}
   end
 end

@@ -25,7 +25,7 @@ RSpec.describe SystemMessageDecorator, type: :decorator do
   end
 
   describe "#render_verbose" do
-    it "shows timestamped system message" do
+    it "returns structured hash with system role and timestamp" do
       ts = 1_709_312_325_000_000_000
       event = session.events.create!(
         event_type: "system_message",
@@ -33,15 +33,16 @@ RSpec.describe SystemMessageDecorator, type: :decorator do
         timestamp: ts
       )
       decorator = EventDecorator.for(event)
-      expected_time = Time.at(ts / 1_000_000_000.0).strftime("%H:%M:%S")
 
-      expect(decorator.render_verbose).to eq(["[#{expected_time}] [system] retrying after error"])
+      expect(decorator.render_verbose).to eq({
+        role: :system, content: "retrying after error", timestamp: ts
+      })
     end
 
-    it "shows placeholder when timestamp is nil" do
+    it "includes nil timestamp when missing" do
       decorator = EventDecorator.for(type: "system_message", content: "boot")
 
-      expect(decorator.render_verbose).to eq(["[--:--:--] [system] boot"])
+      expect(decorator.render_verbose).to eq({role: :system, content: "boot", timestamp: nil})
     end
   end
 end
