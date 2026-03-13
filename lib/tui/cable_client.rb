@@ -347,8 +347,10 @@ module TUI
     end
 
     def subscribe
-      sid = @mutex.synchronize { @session_id }
-      @mutex.synchronize { @subscribed_session_id = sid }
+      sid = @mutex.synchronize do
+        @subscribed_session_id = @session_id
+      end
+      @message_queue << {"type" => "connection", "status" => "subscribing"}
       identifier = {channel: "SessionChannel", session_id: sid}.to_json
       send_command("subscribe", identifier)
     end

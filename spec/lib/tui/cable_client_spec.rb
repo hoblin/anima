@@ -59,6 +59,13 @@ RSpec.describe TUI::CableClient do
       expect(client.status).to eq(:connected)
     end
 
+    it "queues subscribing status before sending subscribe command on welcome" do
+      client.send(:handle_protocol_message, {"type" => "welcome"})
+
+      messages = client.drain_messages
+      expect(messages.first).to eq({"type" => "connection", "status" => "subscribing"})
+    end
+
     it "transitions to subscribed on confirm_subscription" do
       client.send(:handle_protocol_message, {"type" => "confirm_subscription"})
 

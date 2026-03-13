@@ -289,7 +289,7 @@ RSpec.describe TUI::Screens::Chat do
 
       it "does not store connection status messages as chat messages" do
         allow(cable_client).to receive(:drain_messages).and_return([
-          {"type" => "connection", "status" => "subscribed"}
+          {"type" => "connection", "status" => "subscribing"}
         ])
 
         screen.send(:process_incoming_messages)
@@ -299,33 +299,33 @@ RSpec.describe TUI::Screens::Chat do
     end
 
     context "connection lifecycle events" do
-      it "clears message store on subscribed" do
+      it "clears message store on subscribing" do
         message_store.process_event({"type" => "user_message", "content" => "old"})
 
         allow(cable_client).to receive(:drain_messages).and_return([
-          {"type" => "connection", "status" => "subscribed"}
+          {"type" => "connection", "status" => "subscribing"}
         ])
         screen.send(:process_incoming_messages)
 
         expect(screen.messages).to be_empty
       end
 
-      it "resets loading on subscribed" do
+      it "resets loading on subscribing" do
         screen.instance_variable_set(:@loading, true)
 
         allow(cable_client).to receive(:drain_messages).and_return([
-          {"type" => "connection", "status" => "subscribed"}
+          {"type" => "connection", "status" => "subscribing"}
         ])
         screen.send(:process_incoming_messages)
 
         expect(screen.loading?).to be false
       end
 
-      it "resets message count on subscribed" do
+      it "resets message count on subscribing" do
         screen.instance_variable_get(:@session_info)[:message_count] = 5
 
         allow(cable_client).to receive(:drain_messages).and_return([
-          {"type" => "connection", "status" => "subscribed"}
+          {"type" => "connection", "status" => "subscribing"}
         ])
         screen.send(:process_incoming_messages)
 
@@ -369,10 +369,14 @@ RSpec.describe TUI::Screens::Chat do
       it "repopulates from history after reconnect" do
         message_store.process_event({"type" => "user_message", "content" => "old"})
 
+        # Real ordering: subscribing clears store, then history arrives,
+        # then subscribed confirms (Action Cable sends confirm_subscription
+        # after transmit calls in the subscribed callback).
         allow(cable_client).to receive(:drain_messages).and_return([
-          {"type" => "connection", "status" => "subscribed"},
+          {"type" => "connection", "status" => "subscribing"},
           {"type" => "user_message", "content" => "restored"},
-          {"type" => "agent_message", "content" => "response"}
+          {"type" => "agent_message", "content" => "response"},
+          {"type" => "connection", "status" => "subscribed"}
         ])
         screen.send(:process_incoming_messages)
 
@@ -384,13 +388,14 @@ RSpec.describe TUI::Screens::Chat do
 
       it "reconstructs tool counters from history on reconnect" do
         allow(cable_client).to receive(:drain_messages).and_return([
-          {"type" => "connection", "status" => "subscribed"},
+          {"type" => "connection", "status" => "subscribing"},
           {"type" => "user_message", "content" => "hi"},
           {"type" => "tool_call", "content" => "bash"},
           {"type" => "tool_response", "content" => "ok"},
           {"type" => "tool_call", "content" => "web"},
           {"type" => "tool_response", "content" => "ok"},
-          {"type" => "agent_message", "content" => "done"}
+          {"type" => "agent_message", "content" => "done"},
+          {"type" => "connection", "status" => "subscribed"}
         ])
         screen.send(:process_incoming_messages)
 
