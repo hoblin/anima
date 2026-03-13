@@ -26,10 +26,15 @@ class AgentRequestJob < ApplicationJob
 
   discard_on ActiveRecord::RecordNotFound
   discard_on Providers::Anthropic::AuthenticationError do |job, error|
+    session_id = job.arguments.first
     Events::Bus.emit(Events::SystemMessage.new(
       content: "Authentication failed: #{error.message}",
-      session_id: job.arguments.first
+      session_id: session_id
     ))
+    ActionCable.server.broadcast(
+      "session_#{session_id}",
+      {"action" => "authentication_required", "message" => error.message}
+    )
   end
 
   # @param session_id [Integer] ID of the session to process

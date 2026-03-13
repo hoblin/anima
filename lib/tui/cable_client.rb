@@ -134,6 +134,15 @@ module TUI
       send_action("recall_pending", {"event_id" => event_id})
     end
 
+    # Sends an Anthropic subscription token to the brain for validation and storage.
+    # The token flows directly from TUI input to encrypted credentials — never
+    # enters the LLM context window.
+    #
+    # @param token [String] Anthropic subscription token (sk-ant-oat01-...)
+    def save_token(token)
+      send_action("save_token", {"token" => token})
+    end
+
     # Updates the local session ID reference after a server-side session switch.
     #
     # @param new_id [Integer] the new session ID

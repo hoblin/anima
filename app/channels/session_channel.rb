@@ -121,6 +121,23 @@ class SessionChannel < ApplicationCable::Channel
     transmit_error("Session not found")
   end
 
+  # Validates and saves an Anthropic subscription token to encrypted credentials.
+  # Format-validated and API-validated before storage. The token never enters the
+  # LLM context window — it flows directly from WebSocket to encrypted credentials.
+  #
+  # @param data [Hash] must include "token" (Anthropic subscription token string)
+  def save_token(data)
+    token = data["token"].to_s.strip
+
+    Providers::Anthropic.validate_token_format!(token)
+    Providers::Anthropic.validate_token_api!(token)
+    write_anthropic_token(token)
+
+    transmit({"action" => "token_saved"})
+  rescue Providers::Anthropic::TokenFormatError, Providers::Anthropic::AuthenticationError => error
+    transmit({"action" => "token_error", "message" => error.message})
+  end
+
   # Changes the session's view mode and re-broadcasts the viewport.
   # All clients on the session receive the mode change and fresh history.
   #
@@ -274,6 +291,25 @@ class SessionChannel < ApplicationCable::Channel
         "debug" => {role: :system_prompt, content: prompt, tokens: tokens, estimated: true}
       }
     }
+  end
+
+  # Merges the Anthropic subscription token into encrypted credentials,
+  # preserving existing keys (e.g. secret_key_base). Clears the memoized
+  # config so subsequent reads pick up the new token.
+  #
+  # @param token [String] validated Anthropic subscription token
+  # @return [void]
+  def write_anthropic_token(token)
+    creds = Rails.application.credentials
+    existing = begin
+      YAML.safe_load(creds.read) || {}
+    rescue ActiveSupport::EncryptedFile::MissingContentError
+      {}
+    end
+    existing["anthropic"] ||= {}
+    existing["anthropic"]["subscription_token"] = token
+    creds.write(existing.to_yaml)
+    creds.instance_variable_set(:@config, nil)
   end
 
   def transmit_error(message)

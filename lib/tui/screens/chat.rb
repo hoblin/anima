@@ -27,7 +27,8 @@ module TUI
       # independent of Rails. Must stay in sync when adding new modes.
       VIEW_MODES = %w[basic verbose debug].freeze
 
-      attr_reader :message_store, :scroll_offset, :session_info, :view_mode, :sessions_list
+      attr_reader :message_store, :scroll_offset, :session_info, :view_mode, :sessions_list,
+        :authentication_required, :token_save_result
 
       # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
       # @param message_store [TUI::MessageStore, nil] injectable for testing
@@ -44,6 +45,8 @@ module TUI
         @view_mode = "basic"
         @session_info = {id: cable_client.session_id || 0, message_count: 0}
         @sessions_list = nil
+        @authentication_required = false
+        @token_save_result = nil
       end
 
       def messages
@@ -143,6 +146,20 @@ module TUI
         @cable_client.change_view_mode(mode)
       end
 
+      # Clears the authentication_required flag after the App has consumed it.
+      # @return [void]
+      def clear_authentication_required
+        @authentication_required = false
+      end
+
+      # Returns and clears the token save result for one-shot consumption by the App.
+      # @return [Hash, nil] {success: true} or {success: false, message: "..."}, or nil
+      def consume_token_save_result
+        result = @token_save_result
+        @token_save_result = nil
+        result
+      end
+
       def finalize
       end
 
@@ -169,6 +186,13 @@ module TUI
             @sessions_list = msg["sessions"]
           when "user_message_recalled"
             @message_store.remove_by_id(msg["event_id"]) if msg["event_id"]
+          when "authentication_required"
+            @authentication_required = true
+          when "token_saved"
+            @authentication_required = false
+            @token_save_result = {success: true}
+          when "token_error"
+            @token_save_result = {success: false, message: msg["message"]}
           when "error"
             # Silently ignored — no user-facing error display yet
           else
