@@ -283,7 +283,12 @@ module TUI
     end
 
     # Dispatches keyboard events while the session picker overlay is open.
-    # Arrow keys navigate, digits switch instantly, Enter confirms, Escape closes.
+    # Arrow keys navigate the list, digit hotkeys (1-9, 0) switch to
+    # the session at the corresponding index if it exists, Enter confirms
+    # the highlighted entry, and Escape closes the picker.
+    #
+    # @param event [RatatuiRuby::Event] keyboard event
+    # @return [nil]
     def handle_session_picker(event)
       return nil unless event.key?
 
@@ -346,6 +351,11 @@ module TUI
 
     # Renders the session picker overlay in the sidebar.
     # Shows a loading indicator until the sessions_list arrives from the brain.
+    #
+    # @param frame [RatatuiRuby::Frame] terminal frame for widget rendering
+    # @param area [RatatuiRuby::Rect] sidebar area to render into
+    # @param tui [RatatuiRuby] TUI rendering API
+    # @return [void]
     def render_session_picker(frame, area, tui)
       sessions = @screens[:chat].sessions_list
       current_id = @screens[:chat].session_info[:id]
@@ -385,7 +395,7 @@ module TUI
     # @param session [Hash] session data with "id", "message_count", "updated_at"
     # @param idx [Integer] position in the list (determines hotkey)
     # @param current_id [Integer] the active session's ID
-    # @return [Array<RatatuiRuby::Widgets::Line>] one or two lines for this entry
+    # @return [Array<RatatuiRuby::Widgets::Line>] single line for this entry
     def format_session_picker_entry(tui, session, idx, current_id)
       selected = idx == @session_picker_index
       is_current = session["id"] == current_id
@@ -433,10 +443,10 @@ module TUI
 
       if delta < 60
         "now"
-      elsif delta < 3600
+      elsif delta < 3_600
         "#{(delta / 60).to_i}m ago"
       elsif delta < 86_400
-        "#{(delta / 3600).to_i}h ago"
+        "#{(delta / 3_600).to_i}h ago"
       else
         time.strftime("%b %d")
       end

@@ -26,9 +26,13 @@ class SessionChannel < ApplicationCable::Channel
   def subscribed
     @current_session_id = resolve_session_id
     stream_from stream_name
-    transmit_session_resolved
-    transmit_view_mode
-    transmit_history
+
+    session = Session.find_by(id: @current_session_id)
+    return unless session
+
+    transmit_session_changed(session)
+    transmit_view_mode(session)
+    transmit_history(session)
   end
 
   # Receives messages from clients and broadcasts them to all session subscribers.
@@ -120,18 +124,16 @@ class SessionChannel < ApplicationCable::Channel
     id = params[:session_id].to_i
     return id if id > 0
 
-    (Session.last || Session.create!).id
+    (Session.recent(1).first || Session.create!).id
   end
 
-  # Transmits the resolved session metadata to the subscribing client.
-  # Uses the same session_changed action as session switches so the
+  # Transmits session metadata as a session_changed signal.
+  # Used on initial subscription and after session switches so the
   # client can handle both paths with a single code path.
   #
+  # @param session [Session] the session to announce
   # @return [void]
-  def transmit_session_resolved
-    session = Session.find_by(id: @current_session_id)
-    return unless session
-
+  def transmit_session_changed(session)
     transmit({
       "action" => "session_changed",
       "session_id" => session.id,
@@ -147,23 +149,18 @@ class SessionChannel < ApplicationCable::Channel
     stop_all_streams
     @current_session_id = new_id
     stream_from stream_name
+
     session = Session.find(new_id)
-    transmit({
-      "action" => "session_changed",
-      "session_id" => new_id,
-      "message_count" => session.events.llm_messages.count,
-      "view_mode" => session.view_mode
-    })
-    transmit_history
+    transmit_session_changed(session)
+    transmit_history(session)
   end
 
   # Transmits the current view_mode so the TUI initializes correctly.
   # Sends `{action: "view_mode", view_mode: <mode>}` to the subscribing client.
+  #
+  # @param session [Session] the session whose view_mode to transmit
   # @return [void]
-  def transmit_view_mode
-    session = Session.find_by(id: @current_session_id)
-    return unless session
-
+  def transmit_view_mode(session)
     transmit({"action" => "view_mode", "view_mode" => session.view_mode})
   end
 
@@ -173,10 +170,9 @@ class SessionChannel < ApplicationCable::Channel
   # the transmitted payload. Tool events are included so the TUI can
   # reconstruct tool call counters on reconnect.
   # In debug mode, prepends the assembled system prompt as a special block.
-  def transmit_history
-    session = Session.find_by(id: @current_session_id)
-    return unless session
-
+  #
+  # @param session [Session] the session whose history to transmit
+  def transmit_history(session)
     transmit_system_prompt(session) if session.view_mode == "debug"
 
     session.viewport_events.each do |event|
