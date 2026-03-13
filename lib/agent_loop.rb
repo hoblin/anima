@@ -93,6 +93,7 @@ class AgentLoop
     registry.register(Tools::Bash)
     registry.register(Tools::Read)
     registry.register(Tools::Write)
+    registry.register(Tools::Edit)
     registry.register(Tools::WebGet)
     registry
   end
