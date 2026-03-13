@@ -79,7 +79,7 @@ RSpec.describe Tools::Write do
 
         result = tool.execute("path" => path, "content" => "deep\n")
 
-        expect(result).to include("Wrote 5 bytes")
+        expect(result).to eq("Wrote 5 bytes to #{path}")
         expect(File.read(path)).to eq("deep\n")
       end
     end
@@ -106,21 +106,51 @@ RSpec.describe Tools::Write do
 
         result = tool.execute("path" => path, "content" => "overwrite")
 
-        expect(result).to be_a(Hash)
-        expect(result[:error]).to include("Not writable")
+        expect(result).to eq({error: "Not writable: #{path}"})
+        expect(File.read(path)).to eq("locked")
       ensure
         File.chmod(0o644, path)
+      end
+    end
+
+    context "with filesystem errors during write" do
+      it "returns error when disk is full" do
+        path = File.join(tmpdir, "full.txt")
+        allow(File).to receive(:write).with(path, "data").and_raise(Errno::ENOSPC)
+
+        result = tool.execute("path" => path, "content" => "data")
+
+        expect(result).to eq({error: "No space left on device: #{path}"})
+      end
+
+      it "returns error on read-only file system" do
+        path = File.join(tmpdir, "rofs.txt")
+        allow(File).to receive(:write).with(path, "data").and_raise(Errno::EROFS)
+
+        result = tool.execute("path" => path, "content" => "data")
+
+        expect(result).to eq({error: "Read-only file system: #{path}"})
+      end
+
+      it "returns error when directory creation is denied" do
+        path = File.join(tmpdir, "denied", "file.txt")
+        allow(FileUtils).to receive(:mkdir_p).and_raise(Errno::EACCES)
+
+        result = tool.execute("path" => path, "content" => "data")
+
+        expect(result).to eq({error: "Permission denied: #{path}"})
       end
     end
 
     context "with relative path resolution" do
       it "resolves relative paths against working directory" do
         tool_with_wd = described_class.new(shell_session: double(pwd: tmpdir))
+        expected_path = File.join(tmpdir, "relative.txt")
 
         result = tool_with_wd.execute("path" => "relative.txt", "content" => "resolved\n")
 
-        expect(result).to include("Wrote 9 bytes")
-        expect(File.read(File.join(tmpdir, "relative.txt"))).to eq("resolved\n")
+        expect(result).to eq("Wrote 9 bytes to #{expected_path}")
+        expect(File.read(expected_path)).to eq("resolved\n")
       end
 
       it "resolves relative paths against process directory without shell session" do
@@ -128,7 +158,7 @@ RSpec.describe Tools::Write do
 
         result = tool.execute("path" => path, "content" => "absolute\n")
 
-        expect(result).to include("Wrote 9 bytes")
+        expect(result).to eq("Wrote 9 bytes to #{path}")
         expect(File.read(path)).to eq("absolute\n")
       end
     end
