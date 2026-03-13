@@ -25,14 +25,18 @@ RSpec.describe TUI::MessageStore do
         store.process_event({"type" => "user_message", "content" => "hello",
                              "rendered" => {"basic" => {"role" => "user", "content" => "hello"}}})
 
-        expect(store.messages).to eq([{type: :rendered, data: {"role" => "user", "content" => "hello"}, event_type: "user_message"}])
+        expect(store.messages).to contain_exactly(
+          a_hash_including(type: :rendered, data: {"role" => "user", "content" => "hello"}, event_type: "user_message")
+        )
       end
 
       it "uses rendered content from any mode key" do
         store.process_event({"type" => "agent_message", "content" => "hi",
                              "rendered" => {"verbose" => {"role" => "assistant", "content" => "hi", "timestamp" => 123}}})
 
-        expect(store.messages).to eq([{type: :rendered, data: {"role" => "assistant", "content" => "hi", "timestamp" => 123}, event_type: "agent_message"}])
+        expect(store.messages).to contain_exactly(
+          a_hash_including(type: :rendered, data: {"role" => "assistant", "content" => "hi", "timestamp" => 123}, event_type: "agent_message")
+        )
       end
 
       it "falls back to tool counter when rendered is nil for tool events" do
@@ -46,7 +50,9 @@ RSpec.describe TUI::MessageStore do
         store.process_event({"type" => "tool_call", "content" => "calling bash",
                              "rendered" => {"verbose" => {"role" => "tool_call", "tool" => "bash", "input" => "$ ls -la"}}})
 
-        expect(store.messages).to eq([{type: :rendered, data: {"role" => "tool_call", "tool" => "bash", "input" => "$ ls -la"}, event_type: "tool_call"}])
+        expect(store.messages).to contain_exactly(
+          a_hash_including(type: :rendered, data: {"role" => "tool_call", "tool" => "bash", "input" => "$ ls -la"}, event_type: "tool_call")
+        )
       end
 
       it "returns true for rendered events" do
@@ -54,19 +60,30 @@ RSpec.describe TUI::MessageStore do
                                       "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
         expect(result).to be true
       end
+
+      it "stores the event ID when present" do
+        store.process_event({"type" => "user_message", "content" => "hi", "id" => 42,
+                             "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
+
+        expect(store.messages.first[:id]).to eq(42)
+      end
     end
 
     context "with message events" do
       it "stores user_message events with typed entry when no rendered content" do
         store.process_event({"type" => "user_message", "content" => "hello"})
 
-        expect(store.messages).to eq([{type: :message, role: "user", content: "hello"}])
+        expect(store.messages).to contain_exactly(
+          a_hash_including(type: :message, role: "user", content: "hello")
+        )
       end
 
       it "stores agent_message events with typed entry when no rendered content" do
         store.process_event({"type" => "agent_message", "content" => "hi there"})
 
-        expect(store.messages).to eq([{type: :message, role: "assistant", content: "hi there"}])
+        expect(store.messages).to contain_exactly(
+          a_hash_including(type: :message, role: "assistant", content: "hi there")
+        )
       end
 
       it "ignores system_message events" do
@@ -100,6 +117,12 @@ RSpec.describe TUI::MessageStore do
         store.process_event({"type" => "user_message", "content" => "third"})
 
         expect(store.messages.map { |m| m[:content] }).to eq(%w[first second third])
+      end
+
+      it "stores the event ID when present" do
+        store.process_event({"type" => "user_message", "content" => "hi", "id" => 99})
+
+        expect(store.messages.first[:id]).to eq(99)
       end
     end
 
@@ -166,10 +189,10 @@ RSpec.describe TUI::MessageStore do
         store.process_event({"type" => "tool_response", "content" => "ok"})
         store.process_event({"type" => "agent_message", "content" => "Your branch is clean."})
 
-        expect(store.messages).to eq([
-          {type: :message, role: "user", content: "What's the git status?"},
+        expect(store.messages).to match([
+          a_hash_including(type: :message, role: "user", content: "What's the git status?"),
           {type: :tool_counter, calls: 2, responses: 2},
-          {type: :message, role: "assistant", content: "Your branch is clean."}
+          a_hash_including(type: :message, role: "assistant", content: "Your branch is clean.")
         ])
       end
 
@@ -188,14 +211,73 @@ RSpec.describe TUI::MessageStore do
         expect(counters).to all(include(calls: 1, responses: 1))
       end
     end
+
+    context "with update events" do
+      it "replaces rendered data for an existing entry by ID" do
+        store.process_event({"type" => "user_message", "id" => 42, "action" => "create",
+                             "rendered" => {"debug" => {"role" => "user", "content" => "hi", "tokens" => 5, "estimated" => true}}})
+
+        store.process_event({"type" => "user_message", "id" => 42, "action" => "update",
+                             "rendered" => {"debug" => {"role" => "user", "content" => "hi", "tokens" => 12, "estimated" => false}}})
+
+        expect(store.messages.size).to eq(1)
+        expect(store.messages.first[:data]).to include("tokens" => 12, "estimated" => false)
+      end
+
+      it "preserves entry order when updating" do
+        store.process_event({"type" => "user_message", "id" => 1, "action" => "create",
+                             "rendered" => {"basic" => {"role" => "user", "content" => "first"}}})
+        store.process_event({"type" => "agent_message", "id" => 2, "action" => "create",
+                             "rendered" => {"basic" => {"role" => "assistant", "content" => "second"}}})
+
+        store.process_event({"type" => "user_message", "id" => 1, "action" => "update",
+                             "rendered" => {"basic" => {"role" => "user", "content" => "first (updated)"}}})
+
+        contents = store.messages.map { |m| m[:data]["content"] }
+        expect(contents).to eq(["first (updated)", "second"])
+      end
+
+      it "returns false when updating a non-existent ID" do
+        result = store.process_event({"type" => "user_message", "id" => 999, "action" => "update",
+                                      "rendered" => {"basic" => {"role" => "user", "content" => "nope"}}})
+        expect(result).to be false
+        expect(store.messages).to be_empty
+      end
+
+      it "returns false when update has no rendered data" do
+        store.process_event({"type" => "user_message", "id" => 42, "action" => "create",
+                             "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
+
+        result = store.process_event({"type" => "user_message", "id" => 42, "action" => "update",
+                                      "content" => "only content, no rendered"})
+        expect(result).to be false
+      end
+
+      it "does not duplicate entries on update" do
+        store.process_event({"type" => "user_message", "id" => 42, "action" => "create",
+                             "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
+        store.process_event({"type" => "user_message", "id" => 42, "action" => "update",
+                             "rendered" => {"basic" => {"role" => "user", "content" => "hi (v2)"}}})
+        store.process_event({"type" => "user_message", "id" => 42, "action" => "update",
+                             "rendered" => {"basic" => {"role" => "user", "content" => "hi (v3)"}}})
+
+        expect(store.messages.size).to eq(1)
+        expect(store.messages.first[:data]["content"]).to eq("hi (v3)")
+      end
+    end
   end
 
   describe "#clear" do
-    it "removes all entries" do
-      store.process_event({"type" => "user_message", "content" => "hi"})
+    it "removes all entries and clears the ID index" do
+      store.process_event({"type" => "user_message", "content" => "hi", "id" => 42,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
       store.process_event({"type" => "tool_call", "content" => "bash"})
       store.clear
       expect(store.messages).to be_empty
+
+      result = store.process_event({"type" => "user_message", "id" => 42, "action" => "update",
+                                    "rendered" => {"basic" => {"role" => "user", "content" => "updated"}}})
+      expect(result).to be false
     end
   end
 

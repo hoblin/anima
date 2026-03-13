@@ -16,6 +16,8 @@
 # @!attribute tool_use_id
 #   @return [String, nil] Anthropic-assigned ID correlating tool_call and tool_response
 class Event < ApplicationRecord
+  include Event::Broadcasting
+
   TYPES = %w[system_message user_message agent_message tool_call tool_response].freeze
   LLM_TYPES = %w[user_message agent_message].freeze
   CONTEXT_TYPES = %w[user_message agent_message tool_call tool_response].freeze

@@ -167,7 +167,7 @@ class SessionChannel < ApplicationCable::Channel
   end
 
   def decorate_event_payload(event, mode = "basic")
-    payload = event.payload
+    payload = event.payload.merge("id" => event.id)
     decorator = EventDecorator.for(event)
     return payload unless decorator
 

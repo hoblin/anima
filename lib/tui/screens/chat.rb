@@ -159,12 +159,16 @@ module TUI
               handle_connection_status(msg)
             when "user_message"
               @message_store.process_event(msg)
-              @session_info[:message_count] += 1
-              @loading = true
+              unless action == "update"
+                @session_info[:message_count] += 1
+                @loading = true
+              end
             when "agent_message"
               @message_store.process_event(msg)
-              @session_info[:message_count] += 1
-              @loading = false
+              unless action == "update"
+                @session_info[:message_count] += 1
+                @loading = false
+              end
             else # tool_call, tool_response, and other event types
               @message_store.process_event(msg)
             end

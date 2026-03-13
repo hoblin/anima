@@ -12,7 +12,7 @@ class CountEventTokensJob < ApplicationJob
   # @param event_id [Integer] the Event record to count tokens for
   def perform(event_id)
     event = Event.find(event_id)
-    return if event.token_count > 0
+    return if already_counted?(event)
 
     provider = Providers::Anthropic.new
     messages = [{role: event.api_role, content: event.payload["content"].to_s}]
@@ -22,7 +22,18 @@ class CountEventTokensJob < ApplicationJob
       messages: messages
     )
 
-    # Atomic update: only write if still uncounted (avoids race with parallel jobs).
-    Event.where(id: event.id, token_count: 0).update_all(token_count: token_count)
+    # Guard against parallel jobs: reload and re-check before writing.
+    # Uses update! (not update_all) so after_update_commit broadcasts
+    # the updated token count to connected clients.
+    event.reload
+    return if already_counted?(event)
+
+    event.update!(token_count: token_count)
+  end
+
+  private
+
+  def already_counted?(event)
+    event.token_count > 0
   end
 end
