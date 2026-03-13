@@ -1,12 +1,23 @@
 ## [Unreleased]
 
+## [0.2.1] - 2026-03-13
+
 ### Added
-- Verbose view mode rendering — `render_verbose` on all decorator subclasses (#76)
-- Timestamped messages in verbose mode (`[HH:MM:SS] You:` / `[HH:MM:SS] Anima:`)
+- TUI view mode switching via `Ctrl+a → v` — cycle between Basic, Verbose, and Debug (#75)
+- Draper EventDecorator hierarchy — structured data decorators for all event types (#74)
+- Decorators return structured hashes (not strings) for transport-layer filtering (#86)
+- Basic mode tool call counter — inline `🔧 Tools: X/Y ✓` aggregation (#73)
+- Verbose view mode rendering — timestamps, tool call previews, system messages (#76)
 - Tool call previews: bash `$ command`, web_get `GET url`, generic JSON fallback
 - Tool response display: truncated to 3 lines, `↩` success / `❌` failure indicators
-- System messages visible in verbose mode (`[HH:MM:SS] [system] ...`)
-- TUI view mode switching via `Ctrl+a → v` (#75)
+- Debug view mode — token counts per message, full tool args/responses, tool use IDs (#77)
+- Estimated token indicator (`~` prefix) for events not yet counted by background job
+- View mode persisted on Session model — survives TUI disconnect/reconnect
+- Mode changes broadcast to all connected clients with re-decorated viewport
+
+### Fixed
+- Newlines in LLM responses collapsed into single line in rendered view modes
+- Loading state stuck after view mode switch — input blocked with "Thinking..."
 
 ## [0.2.0] - 2026-03-10
 

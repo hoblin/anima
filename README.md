@@ -194,7 +194,19 @@ Events fire, subscribers react, state updates, the cortex (LLM) reads the result
 
 There is no linear chat history. There are only events attached to a session. The context window is a **viewport** — a sliding window over the event stream, assembled on demand for each LLM call within a configured token budget.
 
-Currently uses a simple sliding window (newest events first, walk backwards until budget exhausted). Future versions will add multi-resolution compression with Draper decorators and associative recall from Mneme.
+Currently uses a simple sliding window (newest events first, walk backwards until budget exhausted). Future versions will add associative recall from Mneme.
+
+### TUI View Modes
+
+Three switchable view modes let you control how much detail the TUI shows. Cycle with `Ctrl+a → v`:
+
+| Mode | What you see |
+|------|-------------|
+| **Basic** (default) | User + assistant messages. Tool calls are hidden but summarized as an inline counter: `🔧 Tools: 2/2 ✓` |
+| **Verbose** | Everything in Basic, plus timestamps `[HH:MM:SS]`, tool call previews (`🔧 bash` / `$ command` / `↩ response`), and system messages |
+| **Debug** | Full X-ray view — timestamps, token counts per message (`[14 tok]`), full tool call args, full tool responses, tool use IDs |
+
+View modes are implemented via Draper decorators that operate at the transport layer. Each event type has a dedicated decorator (`UserMessageDecorator`, `ToolCallDecorator`, etc.) that returns structured data — the TUI renders it. Mode is stored on the `Session` model server-side, so it persists across reconnections.
 
 ### Brain as Microservices on a Shared Event Bus
 
@@ -331,7 +343,7 @@ This single example demonstrates every core principle:
 
 ## Status
 
-**Core agent complete.** The conversational agent works end-to-end: event-driven architecture, LLM integration with tool calling (bash, web), sliding viewport context assembly, persistent sessions, and client-server architecture with WebSocket transport and graceful reconnection.
+**Core agent complete.** The conversational agent works end-to-end: event-driven architecture, LLM integration with tool calling (bash, web), sliding viewport context assembly, persistent sessions, client-server architecture with WebSocket transport, graceful reconnection, and three TUI view modes (Basic/Verbose/Debug) via Draper decorators.
 
 The hormonal system (Thymos, feelings, desires), semantic memory (Mneme), and soul matrix (Psyche) are designed but not yet implemented — they're the next layer on top of the working agent.
 

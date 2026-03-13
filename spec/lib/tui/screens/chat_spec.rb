@@ -852,6 +852,15 @@ RSpec.describe TUI::Screens::Chat do
         expect(screen.scroll_offset).to eq(0)
         expect(screen.instance_variable_get(:@auto_scroll)).to be true
       end
+
+      it "resets loading state" do
+        screen.instance_variable_set(:@loading, true)
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "view_mode_changed", "view_mode" => "verbose"}
+        ])
+        screen.send(:process_incoming_messages)
+        expect(screen.loading?).to be false
+      end
     end
 
     describe "view_mode_changed with invalid data" do

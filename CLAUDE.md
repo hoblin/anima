@@ -12,13 +12,30 @@ Do not add "defense-in-depth" rescue clauses or fallback logic. Silently swallow
 
 The development environment is fully configured (LLM API keys, credentials, dependencies). Don't ask — just run things.
 
+## Starting the dev environment
+
+Start the brain in a detached tmux session so it persists across commands:
+
+```bash
+# Start brain (web server + background worker) on port 42135
+tmux new-session -d -s anima-brain 'bin/dev; sleep 30'
+
+# Verify it's running (look for "Listening on" in output)
+sleep 3 && tmux capture-pane -t anima-brain -p
+
+# Clean up when done
+tmux kill-session -t anima-brain
+```
+
+Development uses port **42135** (not 42134) to avoid conflicting with the production brain running via systemd.
+
 ## Testing TUI in tmux
 
 RatatuiRuby requires a real PTY. Background processes (`&`) and `script` don't work reliably. Use tmux to smoke-test the TUI:
 
 ```bash
-# Launch TUI in a detached tmux session
-tmux new-session -d -s anima-test -x 120 -y 30 './exe/anima tui'
+# Launch TUI in a detached tmux session (connects to dev brain on 42135)
+tmux new-session -d -s anima-test -x 120 -y 30 './exe/anima tui --host localhost:42135'
 
 # Wait for render, then capture the screen
 sleep 1 && tmux capture-pane -t anima-test -p
