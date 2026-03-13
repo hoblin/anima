@@ -22,6 +22,11 @@ RSpec.describe TUI::CableClient do
       expect(client.session_id).to eq(session_id)
     end
 
+    it "defaults session_id to nil" do
+      client = described_class.new(host: host)
+      expect(client.session_id).to be_nil
+    end
+
     it "starts with zero reconnect attempts" do
       expect(client.reconnect_attempt).to eq(0)
     end
@@ -64,6 +69,13 @@ RSpec.describe TUI::CableClient do
 
       messages = client.drain_messages
       expect(messages.first).to eq({"type" => "connection", "status" => "subscribing"})
+    end
+
+    it "subscribes with session_id 0 when session_id is nil" do
+      nil_client = described_class.new(host: host)
+      nil_client.send(:handle_protocol_message, {"type" => "welcome"})
+
+      expect(nil_client.instance_variable_get(:@subscribed_session_id)).to eq(0)
     end
 
     it "transitions to subscribed on confirm_subscription" do

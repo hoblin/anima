@@ -14,6 +14,8 @@ RSpec.describe TUI::App do
   before do
     allow(cable_client).to receive(:drain_messages).and_return([])
     allow(cable_client).to receive(:speak)
+    allow(cable_client).to receive(:list_sessions)
+    allow(cable_client).to receive(:switch_session)
   end
 
   describe "#initialize" do
@@ -23,6 +25,10 @@ RSpec.describe TUI::App do
 
     it "starts in normal mode" do
       expect(app.command_mode).to be false
+    end
+
+    it "starts with session picker inactive" do
+      expect(app.session_picker_active).to be false
     end
 
     it "starts with shutdown not requested" do
@@ -44,6 +50,14 @@ RSpec.describe TUI::App do
       defaults[:enter?] = true if code == "enter"
       defaults[:backspace?] = true if code == "backspace"
       defaults[:delete?] = true if code == "delete"
+      defaults[:up?] = true if code == "up"
+      defaults[:down?] = true if code == "down"
+      defaults[:page_up?] = true if code == "page_up"
+      defaults[:page_down?] = true if code == "page_down"
+      defaults[:left?] = true if code == "left"
+      defaults[:right?] = true if code == "right"
+      defaults[:home?] = true if code == "home"
+      defaults[:end?] = true if code == "end"
       double("Event", **defaults, code: code, modifiers: modifiers, **overrides)
     end
 
@@ -106,6 +120,116 @@ RSpec.describe TUI::App do
         event = double("Event", none?: false, ctrl_c?: false, key?: false)
         app.send(:handle_event, event)
         expect(app.command_mode).to be false
+      end
+
+      it "opens session picker on 's'" do
+        event = key_event(code: "s")
+        app.send(:handle_event, event)
+
+        expect(app.session_picker_active).to be true
+        expect(app.command_mode).to be false
+        expect(cable_client).to have_received(:list_sessions)
+      end
+    end
+
+    describe "session picker" do
+      let(:sessions) do
+        [
+          {"id" => 10, "message_count" => 5, "updated_at" => Time.now.iso8601},
+          {"id" => 8, "message_count" => 3, "updated_at" => Time.now.iso8601},
+          {"id" => 5, "message_count" => 0, "updated_at" => Time.now.iso8601}
+        ]
+      end
+
+      before do
+        app.instance_variable_set(:@command_mode, true)
+        app.send(:handle_event, key_event(code: "s"))
+
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.instance_variable_set(:@sessions_list, sessions)
+
+        allow(chat).to receive(:switch_session)
+      end
+
+      it "closes on Escape" do
+        app.send(:handle_event, key_event(code: "esc", esc?: true))
+        expect(app.session_picker_active).to be false
+      end
+
+      it "moves selection down on arrow down" do
+        app.send(:handle_event, key_event(code: "down"))
+        expect(app.instance_variable_get(:@session_picker_index)).to eq(1)
+      end
+
+      it "moves selection up on arrow up" do
+        app.send(:handle_event, key_event(code: "down"))
+        app.send(:handle_event, key_event(code: "up"))
+        expect(app.instance_variable_get(:@session_picker_index)).to eq(0)
+      end
+
+      it "clamps selection at top" do
+        app.send(:handle_event, key_event(code: "up"))
+        expect(app.instance_variable_get(:@session_picker_index)).to eq(0)
+      end
+
+      it "clamps selection at bottom" do
+        3.times { app.send(:handle_event, key_event(code: "down")) }
+        expect(app.instance_variable_get(:@session_picker_index)).to eq(2)
+      end
+
+      it "switches session on Enter" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        app.send(:handle_event, key_event(code: "enter"))
+
+        expect(chat).to have_received(:switch_session).with(10)
+        expect(app.session_picker_active).to be false
+      end
+
+      it "switches to second session on Enter after moving down" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        app.send(:handle_event, key_event(code: "down"))
+        app.send(:handle_event, key_event(code: "enter"))
+
+        expect(chat).to have_received(:switch_session).with(8)
+      end
+
+      it "switches session on digit hotkey 1" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        app.send(:handle_event, key_event(code: "1"))
+
+        expect(chat).to have_received(:switch_session).with(10)
+        expect(app.session_picker_active).to be false
+      end
+
+      it "switches session on digit hotkey 2" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        app.send(:handle_event, key_event(code: "2"))
+
+        expect(chat).to have_received(:switch_session).with(8)
+      end
+
+      it "switches session on digit hotkey 3" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        app.send(:handle_event, key_event(code: "3"))
+
+        expect(chat).to have_received(:switch_session).with(5)
+      end
+
+      it "ignores digit hotkey beyond list size" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        app.send(:handle_event, key_event(code: "9"))
+
+        expect(chat).not_to have_received(:switch_session)
+        expect(app.session_picker_active).to be true
+      end
+
+      it "does not delegate events to chat screen while picker is active" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        allow(chat).to receive(:handle_event)
+
+        app.send(:handle_event, key_event(code: "a"))
+
+        expect(chat).not_to have_received(:handle_event)
       end
     end
 
@@ -349,6 +473,67 @@ RSpec.describe TUI::App do
         allow(Kernel).to receive(:exit!)
 
         expect { app.send(:handle_terminal_loss) }.not_to raise_error
+      end
+    end
+  end
+
+  describe "session picker helpers" do
+    describe "#hotkey_to_index (private)" do
+      it "maps 1-9 to indices 0-8" do
+        (1..9).each do |n|
+          expect(app.send(:hotkey_to_index, n.to_s)).to eq(n - 1)
+        end
+      end
+
+      it "maps 0 to index 9" do
+        expect(app.send(:hotkey_to_index, "0")).to eq(9)
+      end
+
+      it "returns nil for non-digit keys" do
+        expect(app.send(:hotkey_to_index, "a")).to be_nil
+        expect(app.send(:hotkey_to_index, "esc")).to be_nil
+      end
+    end
+
+    describe "#session_hotkey (private)" do
+      it "returns 1-9 for first 9 positions" do
+        (0..8).each do |idx|
+          expect(app.send(:session_hotkey, idx)).to eq((idx + 1).to_s)
+        end
+      end
+
+      it "returns 0 for position 9" do
+        expect(app.send(:session_hotkey, 9)).to eq("0")
+      end
+
+      it "returns nil for positions beyond 9" do
+        expect(app.send(:session_hotkey, 10)).to be_nil
+      end
+    end
+
+    describe "#format_relative_time (private)" do
+      it "shows 'now' for recent timestamps" do
+        expect(app.send(:format_relative_time, Time.now.iso8601)).to eq("now")
+      end
+
+      it "shows minutes for timestamps within the hour" do
+        time = (Time.now - 300).iso8601
+        expect(app.send(:format_relative_time, time)).to eq("5m ago")
+      end
+
+      it "shows hours for timestamps within the day" do
+        time = (Time.now - 7200).iso8601
+        expect(app.send(:format_relative_time, time)).to eq("2h ago")
+      end
+
+      it "shows date for older timestamps" do
+        time = (Time.now - 172_800).iso8601
+        result = app.send(:format_relative_time, time)
+        expect(result).to match(/\A\w{3} \d{2}\z/)
+      end
+
+      it "returns empty string for nil" do
+        expect(app.send(:format_relative_time, nil)).to eq("")
       end
     end
   end

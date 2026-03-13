@@ -17,7 +17,7 @@ module TUI
   # heartbeat monitoring.
   #
   # @example
-  #   client = TUI::CableClient.new(host: "localhost:42134", session_id: 1)
+  #   client = TUI::CableClient.new(host: "localhost:42134")
   #   client.connect
   #   client.speak("Hello!")
   #   messages = client.drain_messages
@@ -59,8 +59,8 @@ module TUI
     attr_reader :reconnect_attempt
 
     # @param host [String] brain server address (e.g. "localhost:42134")
-    # @param session_id [Integer] session to subscribe to
-    def initialize(host:, session_id:)
+    # @param session_id [Integer, nil] session to subscribe to (nil for server-side resolution)
+    def initialize(host:, session_id: nil)
       @host = host
       @session_id = session_id
       @subscribed_session_id = session_id
@@ -373,7 +373,7 @@ module TUI
     # @see handle_protocol_message called on "welcome" to trigger this
     def subscribe
       sid = @mutex.synchronize do
-        @subscribed_session_id = @session_id
+        @subscribed_session_id = @session_id || 0
       end
       @message_queue << {"type" => MSG_TYPE_CONNECTION, "status" => STATUS_SUBSCRIBING}
       identifier = {channel: "SessionChannel", session_id: sid}.to_json

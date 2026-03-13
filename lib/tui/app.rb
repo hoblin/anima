@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "time"
 require_relative "cable_client"
 require_relative "message_store"
 require_relative "screens/chat"
@@ -10,6 +11,7 @@ module TUI
 
     COMMAND_KEYS = {
       "n" => :new_session,
+      "s" => :session_picker,
       "v" => :view_mode,
       "q" => :quit
     }.freeze
@@ -41,7 +43,7 @@ module TUI
     # Grace period for watchdog thread to exit before force-killing it.
     WATCHDOG_SHUTDOWN_TIMEOUT = 1
 
-    attr_reader :current_screen, :command_mode
+    attr_reader :current_screen, :command_mode, :session_picker_active
     # @return [Boolean] true when graceful shutdown has been requested via signal
     attr_reader :shutdown_requested
 
@@ -50,6 +52,8 @@ module TUI
       @cable_client = cable_client
       @current_screen = :chat
       @command_mode = false
+      @session_picker_active = false
+      @session_picker_index = 0
       @shutdown_requested = false
       @previous_signal_handlers = {}
       @watchdog_thread = nil
@@ -96,7 +100,9 @@ module TUI
     end
 
     def render_sidebar(frame, area, tui)
-      if @command_mode
+      if @session_picker_active
+        render_session_picker(frame, area, tui)
+      elsif @command_mode
         render_menu(frame, area, tui)
       else
         render_info(frame, area, tui)
@@ -207,7 +213,9 @@ module TUI
       return nil if event.none?
       return :quit if event.ctrl_c?
 
-      if @command_mode
+      if @session_picker_active
+        handle_session_picker(event)
+      elsif @command_mode
         handle_command_mode(event)
       else
         handle_normal_mode(event)
@@ -226,6 +234,9 @@ module TUI
       when :new_session
         @screens[:chat].new_session
         @current_screen = :chat
+        nil
+      when :session_picker
+        activate_session_picker
         nil
       when :view_mode
         @screens[:chat].cycle_view_mode
@@ -260,6 +271,190 @@ module TUI
     def ctrl_a?(event)
       event.code == "a" && event.modifiers&.include?("ctrl")
     end
+
+    # -- Session picker ------------------------------------------------
+
+    # Requests the session list from the brain and opens the picker overlay.
+    # @return [void]
+    def activate_session_picker
+      @session_picker_active = true
+      @session_picker_index = 0
+      @cable_client.list_sessions
+    end
+
+    # Dispatches keyboard events while the session picker overlay is open.
+    # Arrow keys navigate the list, digit hotkeys (1-9, 0) switch to
+    # the session at the corresponding index if it exists, Enter confirms
+    # the highlighted entry, and Escape closes the picker.
+    #
+    # @param event [RatatuiRuby::Event] keyboard event
+    # @return [nil]
+    def handle_session_picker(event)
+      return nil unless event.key?
+
+      sessions = @screens[:chat].sessions_list || []
+
+      if event.esc?
+        @session_picker_active = false
+        return nil
+      end
+
+      if event.up?
+        @session_picker_index = [@session_picker_index - 1, 0].max
+        return nil
+      end
+
+      if event.down?
+        max = [sessions.size - 1, 0].max
+        @session_picker_index = [@session_picker_index + 1, max].min
+        return nil
+      end
+
+      if event.enter? && sessions.any?
+        pick_session(sessions[@session_picker_index])
+        return nil
+      end
+
+      idx = hotkey_to_index(event.code)
+      if idx && idx < sessions.size
+        pick_session(sessions[idx])
+        return nil
+      end
+
+      nil
+    end
+
+    # Switches to the selected session and closes the picker.
+    #
+    # @param session [Hash] session entry from sessions_list
+    # @return [void]
+    def pick_session(session)
+      return unless session
+
+      @session_picker_active = false
+      @screens[:chat].switch_session(session["id"])
+    end
+
+    # Maps digit key codes to session list indices.
+    # Keys 1-9 map to indices 0-8, key 0 maps to index 9.
+    #
+    # @param code [String] the key code
+    # @return [Integer, nil] session list index, or nil for non-digit keys
+    def hotkey_to_index(code)
+      return nil unless code.length == 1
+
+      case code
+      when "1".."9" then code.to_i - 1
+      when "0" then 9
+      end
+    end
+
+    # Renders the session picker overlay in the sidebar.
+    # Shows a loading indicator until the sessions_list arrives from the brain.
+    #
+    # @param frame [RatatuiRuby::Frame] terminal frame for widget rendering
+    # @param area [RatatuiRuby::Rect] sidebar area to render into
+    # @param tui [RatatuiRuby] TUI rendering API
+    # @return [void]
+    def render_session_picker(frame, area, tui)
+      sessions = @screens[:chat].sessions_list
+      current_id = @screens[:chat].session_info[:id]
+
+      if sessions.nil?
+        lines = [tui.line(spans: [
+          tui.span(content: "Loading...", style: tui.style(fg: "yellow"))
+        ])]
+      else
+        lines = sessions.each_with_index.flat_map do |session, idx|
+          format_session_picker_entry(tui, session, idx, current_id)
+        end
+
+        if lines.empty?
+          lines = [tui.line(spans: [
+            tui.span(content: "No sessions", style: tui.style(fg: "dark_gray"))
+          ])]
+        end
+      end
+
+      picker = tui.paragraph(
+        text: lines,
+        block: tui.block(
+          title: "Sessions",
+          borders: [:all],
+          border_type: :rounded,
+          border_style: {fg: "cyan"}
+        )
+      )
+      frame.render_widget(picker, area)
+    end
+
+    # Formats a single session entry for the picker. Highlights the selected
+    # entry and marks the currently active session.
+    #
+    # @param tui [RatatuiRuby] TUI rendering API
+    # @param session [Hash] session data with "id", "message_count", "updated_at"
+    # @param idx [Integer] position in the list (determines hotkey)
+    # @param current_id [Integer] the active session's ID
+    # @return [Array<RatatuiRuby::Widgets::Line>] single line for this entry
+    def format_session_picker_entry(tui, session, idx, current_id)
+      selected = idx == @session_picker_index
+      is_current = session["id"] == current_id
+
+      hotkey = session_hotkey(idx)
+      prefix = hotkey ? "[#{hotkey}]" : "   "
+      marker = is_current ? "*" : " "
+      id_label = "##{session["id"]}"
+      count = "#{session["message_count"]}msg"
+      time = format_relative_time(session["updated_at"])
+
+      label = "#{prefix}#{marker}#{id_label} #{count} #{time}"
+
+      style = if selected
+        tui.style(fg: "black", bg: "cyan")
+      elsif is_current
+        tui.style(fg: "cyan", modifiers: [:bold])
+      else
+        tui.style(fg: "white")
+      end
+
+      [tui.line(spans: [tui.span(content: label, style: style)])]
+    end
+
+    # Returns the hotkey character for a given session list position.
+    # Positions 0-8 get keys "1"-"9", position 9 gets "0".
+    #
+    # @param idx [Integer] zero-based list position
+    # @return [String, nil] hotkey character, or nil for positions beyond 9
+    def session_hotkey(idx)
+      return (idx + 1).to_s if idx < 9
+      return "0" if idx == 9
+      nil
+    end
+
+    # Formats an ISO8601 timestamp as a human-readable relative time.
+    #
+    # @param iso_string [String, nil] ISO8601 timestamp
+    # @return [String] e.g. "2m ago", "3h ago", "Mar 12"
+    def format_relative_time(iso_string)
+      return "" unless iso_string
+
+      time = Time.parse(iso_string)
+      delta = Time.now - time
+
+      if delta < 60
+        "now"
+      elsif delta < 3_600
+        "#{(delta / 60).to_i}m ago"
+      elsif delta < 86_400
+        "#{(delta / 3_600).to_i}h ago"
+      else
+        time.strftime("%b %d")
+      end
+    rescue ArgumentError
+      ""
+    end
+
+    # -- Signal handling -----------------------------------------------
 
     # Traps SIGHUP, SIGTERM, and SIGINT to trigger graceful shutdown.
     # Saves previous handlers so they can be restored when {#run} exits.

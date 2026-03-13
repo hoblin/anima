@@ -733,6 +733,13 @@ RSpec.describe TUI::Screens::Chat do
     end
   end
 
+  describe "#switch_session" do
+    it "sends switch_session via WebSocket protocol" do
+      screen.switch_session(99)
+      expect(cable_client).to have_received(:switch_session).with(99)
+    end
+  end
+
   describe "session_changed protocol message" do
     before do
       message_store.process_event({"type" => "user_message", "content" => "old message"})
