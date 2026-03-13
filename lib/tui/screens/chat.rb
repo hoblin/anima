@@ -158,7 +158,7 @@ module TUI
           when "view_mode_changed"
             handle_view_mode_changed(msg)
           when "view_mode"
-            @view_mode = msg["view_mode"] if msg["view_mode"] && VIEW_MODES.include?(msg["view_mode"])
+            @view_mode = msg["view_mode"] if msg["view_mode"]
           when "sessions_list"
             @sessions_list = msg["sessions"]
           when "error"
@@ -206,7 +206,7 @@ module TUI
         new_id = msg["session_id"]
         @cable_client.update_session_id(new_id)
         @message_store.clear
-        @view_mode = msg["view_mode"] if msg["view_mode"] && VIEW_MODES.include?(msg["view_mode"])
+        @view_mode = msg["view_mode"] if msg["view_mode"]
         @session_info = {id: new_id, message_count: msg["message_count"] || 0}
         @input_buffer.clear
         @loading = false
