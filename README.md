@@ -186,7 +186,7 @@ Five event types form the agent's nervous system:
 
 Events flow through two channels:
 1. **In-process** — Rails Structured Event Reporter (local subscribers like Persister)
-2. **Over the wire** — Action Cable WebSocket (the ActionCableBridge subscriber forwards events to connected TUI clients)
+2. **Over the wire** — Action Cable WebSocket (`Event::Broadcasting` callbacks push to connected TUI clients)
 
 Events fire, subscribers react, state updates, the cortex (LLM) reads the resulting desire landscape. The system prompt is assembled separately for each LLM call — it is not an event.
 
