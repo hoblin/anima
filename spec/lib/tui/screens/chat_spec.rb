@@ -841,22 +841,15 @@ RSpec.describe TUI::Screens::Chat do
       expect(screen.view_mode).to eq("basic")
     end
 
-    describe "#cycle_view_mode" do
-      it "sends change_view_mode to cable_client with next mode" do
-        screen.cycle_view_mode
+    describe "#switch_view_mode" do
+      it "sends change_view_mode to cable_client with target mode" do
+        screen.switch_view_mode("verbose")
         expect(cable_client).to have_received(:change_view_mode).with("verbose")
       end
 
-      it "cycles from verbose to debug" do
-        screen.instance_variable_set(:@view_mode, "verbose")
-        screen.cycle_view_mode
+      it "sends change_view_mode for debug mode" do
+        screen.switch_view_mode("debug")
         expect(cable_client).to have_received(:change_view_mode).with("debug")
-      end
-
-      it "cycles from debug to basic" do
-        screen.instance_variable_set(:@view_mode, "debug")
-        screen.cycle_view_mode
-        expect(cable_client).to have_received(:change_view_mode).with("basic")
       end
     end
 
