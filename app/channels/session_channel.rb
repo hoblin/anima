@@ -14,19 +14,21 @@ class SessionChannel < ApplicationCable::Channel
   MAX_LIST_LIMIT = 50
 
   # Subscribes the client to the session-specific stream.
-  # Rejects the subscription if no valid session_id is provided.
-  # Transmits the current view_mode and chat history to the subscribing client.
+  # When a valid session_id is provided, subscribes to that session.
+  # When omitted or zero, resolves to the most recent session (creating
+  # one if none exist) — this is the CQRS-compliant path where the
+  # server owns session resolution instead of a REST endpoint.
   #
-  # @param params [Hash] must include :session_id (positive integer)
+  # Always transmits a session_changed signal so the client learns
+  # the authoritative session ID, followed by view_mode and history.
+  #
+  # @param params [Hash] optional :session_id (positive integer)
   def subscribed
-    @current_session_id = params[:session_id].to_i
-    if @current_session_id > 0
-      stream_from stream_name
-      transmit_view_mode
-      transmit_history
-    else
-      reject
-    end
+    @current_session_id = resolve_session_id
+    stream_from stream_name
+    transmit_session_resolved
+    transmit_view_mode
+    transmit_history
   end
 
   # Receives messages from clients and broadcasts them to all session subscribers.
@@ -107,6 +109,35 @@ class SessionChannel < ApplicationCable::Channel
 
   def stream_name
     "session_#{@current_session_id}"
+  end
+
+  # Resolves the session to subscribe to. Uses the client-provided ID
+  # when valid, otherwise falls back to the most recent session or
+  # creates a new one.
+  #
+  # @return [Integer] resolved session ID
+  def resolve_session_id
+    id = params[:session_id].to_i
+    return id if id > 0
+
+    (Session.last || Session.create!).id
+  end
+
+  # Transmits the resolved session metadata to the subscribing client.
+  # Uses the same session_changed action as session switches so the
+  # client can handle both paths with a single code path.
+  #
+  # @return [void]
+  def transmit_session_resolved
+    session = Session.find_by(id: @current_session_id)
+    return unless session
+
+    transmit({
+      "action" => "session_changed",
+      "session_id" => session.id,
+      "message_count" => session.events.llm_messages.count,
+      "view_mode" => session.view_mode
+    })
   end
 
   # Switches the channel to a different session: stops current stream,

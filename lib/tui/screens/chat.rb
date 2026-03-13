@@ -26,7 +26,7 @@ module TUI
       # independent of Rails. Must stay in sync when adding new modes.
       VIEW_MODES = %w[basic verbose debug].freeze
 
-      attr_reader :message_store, :scroll_offset, :session_info, :view_mode
+      attr_reader :message_store, :scroll_offset, :session_info, :view_mode, :sessions_list
 
       # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
       # @param message_store [TUI::MessageStore, nil] injectable for testing
@@ -41,7 +41,8 @@ module TUI
         @max_scroll = 0
         @input_scroll_offset = 0
         @view_mode = "basic"
-        @session_info = {id: cable_client.session_id, message_count: 0}
+        @session_info = {id: cable_client.session_id || 0, message_count: 0}
+        @sessions_list = nil
       end
 
       def messages
@@ -116,6 +117,15 @@ module TUI
       # state reset happens when session_changed is received.
       def new_session
         @cable_client.create_session
+      end
+
+      # Switches to an existing session through the WebSocket protocol.
+      # The brain switches the channel stream and sends a session_changed
+      # signal followed by chat history.
+      #
+      # @param session_id [Integer] target session to switch to
+      def switch_session(session_id)
+        @cable_client.switch_session(session_id)
       end
 
       # Cycles to the next view mode and requests the server to switch.

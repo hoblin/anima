@@ -21,22 +21,57 @@ RSpec.describe SessionChannel, type: :channel do
       expect(subscription).to have_stream_from("session_7")
     end
 
-    it "rejects subscription without session_id" do
-      subscribe(session_id: nil)
+    context "without session_id (server-side resolution)" do
+      it "resolves to the most recent session" do
+        existing = Session.create!
 
-      expect(subscription).to be_rejected
+        subscribe(session_id: nil)
+
+        expect(subscription).to be_confirmed
+        expect(subscription).to have_stream_from("session_#{existing.id}")
+      end
+
+      it "creates a session when none exist" do
+        expect { subscribe(session_id: nil) }.to change(Session, :count).by(1)
+
+        expect(subscription).to be_confirmed
+      end
+
+      it "transmits session_changed with the resolved session info" do
+        existing = Session.create!
+        existing.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+
+        subscribe(session_id: nil)
+
+        changed = transmissions.find { |t| t["action"] == "session_changed" }
+        expect(changed["session_id"]).to eq(existing.id)
+        expect(changed["message_count"]).to eq(1)
+        expect(changed["view_mode"]).to eq("basic")
+      end
     end
 
-    it "rejects subscription with non-numeric session_id" do
-      subscribe(session_id: "abc")
+    context "with session_id of zero" do
+      it "resolves to the most recent session" do
+        existing = Session.create!
 
-      expect(subscription).to be_rejected
+        subscribe(session_id: 0)
+
+        expect(subscription).to be_confirmed
+        expect(subscription).to have_stream_from("session_#{existing.id}")
+      end
     end
 
-    it "rejects subscription with zero session_id" do
-      subscribe(session_id: 0)
+    it "transmits session_changed on subscription" do
+      session = Session.create!(id: session_id)
+      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
 
-      expect(subscription).to be_rejected
+      subscribe(session_id: session_id)
+
+      changed = transmissions.find { |t| t["action"] == "session_changed" }
+      expect(changed).to be_present
+      expect(changed["session_id"]).to eq(session_id)
+      expect(changed["message_count"]).to eq(1)
+      expect(changed["view_mode"]).to eq("basic")
     end
 
     it "transmits chat history including tool events for existing session" do
@@ -47,7 +82,7 @@ RSpec.describe SessionChannel, type: :channel do
 
       subscribe(session_id: session_id)
 
-      history = transmissions.reject { |t| t["action"] == "view_mode" }
+      history = transmissions.reject { |t| t["action"] }
       expect(history.size).to eq(3)
       expect(history[0]).to include("type" => "user_message", "content" => "hello")
       expect(history[1]).to include("type" => "agent_message", "content" => "hi there")
@@ -62,11 +97,11 @@ RSpec.describe SessionChannel, type: :channel do
 
       subscribe(session_id: session_id)
 
-      # First transmission is view_mode, then history
+      # First transmission is session_changed, then view_mode, then history
       view_mode_msg = transmissions.find { |t| t["action"] == "view_mode" }
       expect(view_mode_msg["view_mode"]).to eq("basic")
 
-      history = transmissions.reject { |t| t["action"] == "view_mode" }
+      history = transmissions.reject { |t| t["action"] }
       expect(history[0]["rendered"]).to eq("basic" => {"role" => :user, "content" => "hello"})
       expect(history[1]["rendered"]).to eq("basic" => {"role" => :assistant, "content" => "hi"})
       expect(history[2]["rendered"]).to eq("basic" => nil)
@@ -88,7 +123,7 @@ RSpec.describe SessionChannel, type: :channel do
 
       subscribe(session_id: session_id)
 
-      history = transmissions.reject { |t| t["action"] == "view_mode" }
+      history = transmissions.reject { |t| t["action"] }
       expect(history[0]["rendered"]).to eq("verbose" => {"role" => :user, "content" => "hello", "timestamp" => 1})
     end
 
@@ -99,18 +134,18 @@ RSpec.describe SessionChannel, type: :channel do
 
       subscribe(session_id: session_id)
 
-      history = transmissions.reject { |t| t["action"] == "view_mode" }
+      history = transmissions.reject { |t| t["action"] }
       expect(history.size).to eq(1)
       expect(history[0]).to include("type" => "user_message")
     end
 
-    it "transmits only view_mode for a session with no messages" do
+    it "transmits session_changed and view_mode for a session with no messages" do
       Session.create!(id: session_id)
 
       subscribe(session_id: session_id)
 
-      expect(transmissions.size).to eq(1)
-      expect(transmissions[0]["action"]).to eq("view_mode")
+      actions = transmissions.select { |t| t["action"] }.map { |t| t["action"] }
+      expect(actions).to eq(%w[session_changed view_mode])
     end
   end
 
@@ -253,10 +288,11 @@ RSpec.describe SessionChannel, type: :channel do
     it "transmits session_changed with the new session ID" do
       perform(:create_session, {})
 
-      changed = transmissions.find { |t| t["action"] == "session_changed" }
-      expect(changed).to be_present
-      expect(changed["session_id"]).to eq(Session.last.id)
-      expect(changed["message_count"]).to eq(0)
+      changed = transmissions.select { |t| t["action"] == "session_changed" }
+      # First session_changed is from initial subscribe, second from create
+      latest = changed.last
+      expect(latest["session_id"]).to eq(Session.last.id)
+      expect(latest["message_count"]).to eq(0)
     end
 
     it "switches the stream to the new session" do
@@ -280,7 +316,7 @@ RSpec.describe SessionChannel, type: :channel do
     it "transmits session_changed with the target session info including view_mode" do
       perform(:switch_session, {"session_id" => target_session.id})
 
-      changed = transmissions.find { |t| t["action"] == "session_changed" }
+      changed = transmissions.reverse.find { |t| t["action"] == "session_changed" }
       expect(changed["session_id"]).to eq(target_session.id)
       expect(changed["message_count"]).to eq(2)
       expect(changed["view_mode"]).to eq("basic")
