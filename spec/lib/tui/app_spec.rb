@@ -263,6 +263,17 @@ RSpec.describe TUI::App do
         expect(app.instance_variable_get(:@view_mode_picker_index)).to eq(1)
       end
 
+      it "pre-selects debug when that is the current mode" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.instance_variable_set(:@view_mode, "debug")
+
+        app.instance_variable_set(:@view_mode_picker_active, false)
+        app.instance_variable_set(:@command_mode, true)
+        app.send(:handle_event, key_event(code: "v"))
+
+        expect(app.instance_variable_get(:@view_mode_picker_index)).to eq(2)
+      end
+
       it "moves selection down on arrow down" do
         app.send(:handle_event, key_event(code: "down"))
         expect(app.instance_variable_get(:@view_mode_picker_index)).to eq(1)

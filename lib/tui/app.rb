@@ -20,6 +20,10 @@ module TUI
 
     SIDEBAR_WIDTH = 28
 
+    # Picker entry prefix width: "[N]" (3) + marker (1) + space (1) = 5
+    PICKER_PREFIX_WIDTH = 5
+
+    # User-facing descriptions shown below each mode name in the view mode picker.
     VIEW_MODE_LABELS = {
       "basic" => "Chat messages only",
       "verbose" => "Tools & timestamps",
@@ -547,7 +551,7 @@ module TUI
 
       [
         tui.line(spans: [tui.span(content: "#{prefix}#{marker}#{mode.capitalize}", style: name_style)]),
-        tui.line(spans: [tui.span(content: "     #{VIEW_MODE_LABELS[mode]}", style: desc_style)])
+        tui.line(spans: [tui.span(content: "#{" " * PICKER_PREFIX_WIDTH}#{VIEW_MODE_LABELS[mode]}", style: desc_style)])
       ]
     end
 
