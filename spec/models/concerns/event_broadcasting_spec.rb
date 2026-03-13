@@ -38,7 +38,6 @@ RSpec.describe Event::Broadcasting do
 
     it "decorates using the session's current view mode" do
       session.update!(view_mode: "verbose")
-      event = Events::UserMessage.new(content: "hello", session_id: session.id)
 
       expect {
         create_event
