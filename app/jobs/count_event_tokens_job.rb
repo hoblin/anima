@@ -23,8 +23,8 @@ class CountEventTokensJob < ApplicationJob
     )
 
     # Guard against parallel jobs: reload and re-check before writing.
-    # Uses update! (not update_all) so after_update_commit broadcasts
-    # the updated token count to connected clients.
+    # Uses update! (not update_all) so {Event::Broadcasting} after_update_commit
+    # broadcasts the updated token count to connected clients.
     event.reload
     return if already_counted?(event)
 

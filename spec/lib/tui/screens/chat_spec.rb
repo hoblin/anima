@@ -249,6 +249,30 @@ RSpec.describe TUI::Screens::Chat do
         ])
       end
 
+      it "does not increment message_count or set loading on user_message update" do
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "user_message", "content" => "hi", "id" => 1, "action" => "create"},
+          {"type" => "user_message", "content" => "hi", "id" => 1, "action" => "update"}
+        ])
+
+        screen.send(:process_incoming_messages)
+
+        expect(screen.session_info[:message_count]).to eq(1)
+        expect(screen.loading?).to be true
+      end
+
+      it "does not change loading state on agent_message update" do
+        screen.instance_variable_set(:@loading, true)
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "agent_message", "content" => "done", "id" => 2, "action" => "update"}
+        ])
+
+        screen.send(:process_incoming_messages)
+
+        expect(screen.loading?).to be true
+        expect(screen.session_info[:message_count]).to eq(0)
+      end
+
       it "does not increment message_count for tool events" do
         allow(cable_client).to receive(:drain_messages).and_return([
           {"type" => "user_message", "content" => "hi"},

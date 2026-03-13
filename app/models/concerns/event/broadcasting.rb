@@ -9,14 +9,24 @@
 # maintain an ID-indexed store for efficient in-place updates (e.g. when
 # token counts arrive asynchronously from {CountEventTokensJob}).
 #
-# @example Broadcast payload shape
+# @example Create broadcast payload
 #   {
 #     "type" => "user_message", "content" => "hello", ...,
 #     "id" => 42, "action" => "create",
 #     "rendered" => { "basic" => { "role" => "user", "content" => "hello" } }
 #   }
+#
+# @example Update broadcast payload (e.g. token count arrives)
+#   {
+#     "type" => "user_message", "content" => "hello", ...,
+#     "id" => 42, "action" => "update",
+#     "rendered" => { "debug" => { "role" => "user", "content" => "hello", "tokens" => 15 } }
+#   }
 module Event::Broadcasting
   extend ActiveSupport::Concern
+
+  ACTION_CREATE = "create"
+  ACTION_UPDATE = "update"
 
   included do
     after_create_commit :broadcast_create
@@ -26,17 +36,17 @@ module Event::Broadcasting
   private
 
   def broadcast_create
-    broadcast_event(action: "create")
+    broadcast_event(action: ACTION_CREATE)
   end
 
   def broadcast_update
-    broadcast_event(action: "update")
+    broadcast_event(action: ACTION_UPDATE)
   end
 
   # Decorates the event for the session's current view mode and broadcasts
   # the payload to the session's ActionCable stream.
   #
-  # @param action [String] "create" or "update" — tells clients how to handle the event
+  # @param action [String] ACTION_CREATE or ACTION_UPDATE — tells clients how to handle the event
   def broadcast_event(action:)
     return unless session_id
 
