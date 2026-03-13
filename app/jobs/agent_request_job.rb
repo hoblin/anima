@@ -35,13 +35,35 @@ class AgentRequestJob < ApplicationJob
   # @param session_id [Integer] ID of the session to process
   def perform(session_id)
     session = Session.find(session_id)
+
+    # Atomic: only one job processes a session at a time. If another job
+    # is already running, this one exits — the running job will pick up
+    # any pending messages after its current loop completes.
+    return unless claim_processing(session_id)
+
     agent_loop = AgentLoop.new(session: session)
-    agent_loop.run
+    loop do
+      agent_loop.run
+      promoted = session.promote_pending_messages!
+      break if promoted == 0
+    end
   ensure
+    release_processing(session_id)
     agent_loop&.finalize
   end
 
   private
+
+  # Sets the session's processing flag atomically. Returns true if this
+  # job claimed the lock, false if another job already holds it.
+  def claim_processing(session_id)
+    Session.where(id: session_id, processing: false).update_all(processing: true) == 1
+  end
+
+  # Clears the processing flag so the session can accept new jobs.
+  def release_processing(session_id)
+    Session.where(id: session_id).update_all(processing: false)
+  end
 
   # Emits a system message before each retry so the user sees
   # "retrying..." instead of nothing.

@@ -43,14 +43,43 @@ class SessionChannel < ApplicationCable::Channel
   end
 
   # Processes user input: persists the message and enqueues LLM processing.
+  # When the session is actively processing an agent request, the message
+  # is queued as "pending" and picked up after the current loop completes.
   #
   # @param data [Hash] must include "content" with the user's message text
   def speak(data)
     content = data["content"].to_s.strip
-    return if content.empty? || !Session.exists?(@current_session_id)
+    return if content.empty?
 
-    Events::Bus.emit(Events::UserMessage.new(content: content, session_id: @current_session_id))
-    AgentRequestJob.perform_later(@current_session_id)
+    session = Session.find_by(id: @current_session_id)
+    return unless session
+
+    if session.processing?
+      Events::Bus.emit(Events::UserMessage.new(content: content, session_id: @current_session_id, status: "pending"))
+    else
+      Events::Bus.emit(Events::UserMessage.new(content: content, session_id: @current_session_id))
+      AgentRequestJob.perform_later(@current_session_id)
+    end
+  end
+
+  # Recalls the most recent pending message for editing. Deletes the
+  # pending event and broadcasts the recall so all clients remove it.
+  #
+  # @param data [Hash] must include "event_id" (positive integer)
+  def recall_pending(data)
+    event_id = data["event_id"].to_i
+    return if event_id <= 0
+
+    event = Event.find_by(
+      id: event_id,
+      session_id: @current_session_id,
+      event_type: "user_message",
+      status: Event::PENDING_STATUS
+    )
+    return unless event
+
+    event.destroy!
+    ActionCable.server.broadcast(stream_name, {"action" => "user_message_recalled", "event_id" => event_id})
   end
 
   # Returns recent sessions with metadata for session picker UI.

@@ -59,6 +59,61 @@ RSpec.describe AgentRequestJob do
       Events::Bus.unsubscribe(collector)
     end
 
+    it "sets processing flag during execution" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+
+      processing_during_run = nil
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return do
+          processing_during_run = session.reload.processing?
+          {status: 200,
+           body: {content: [{type: "text", text: "ok"}], stop_reason: "end_turn"}.to_json,
+           headers: {"content-type" => "application/json"}}
+        end
+
+      described_class.perform_now(session.id)
+
+      expect(processing_during_run).to be true
+      expect(session.reload.processing?).to be false
+    end
+
+    it "skips execution when session is already processing" do
+      session.update!(processing: true)
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+
+      # Should not make any API calls
+      described_class.perform_now(session.id)
+
+      expect(session.reload.processing?).to be false
+    end
+
+    it "promotes pending messages and re-runs after agent loop" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "first"}, timestamp: 1)
+
+      call_count = 0
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return do
+          call_count += 1
+          if call_count == 1
+            # Simulate a pending message arriving during first processing
+            session.events.create!(
+              event_type: "user_message",
+              payload: {"content" => "second", "status" => "pending"},
+              timestamp: 2,
+              status: "pending"
+            )
+          end
+          {status: 200,
+           body: {content: [{type: "text", text: "response #{call_count}"}], stop_reason: "end_turn"}.to_json,
+           headers: {"content-type" => "application/json"}}
+        end
+
+      described_class.perform_now(session.id)
+
+      expect(call_count).to eq(2)
+      expect(session.events.where(status: "pending").count).to eq(0)
+    end
+
     it "finalizes the agent loop after completion" do
       session.events.create!(
         event_type: "user_message",
@@ -93,6 +148,18 @@ RSpec.describe AgentRequestJob do
 
       # discard_on prevents the error from propagating
       expect { described_class.perform_now(session.id) }.not_to raise_error
+    end
+
+    it "clears processing flag even on error" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return(status: 401, body: {error: {message: "unauthorized"}}.to_json,
+          headers: {"content-type" => "application/json"})
+
+      described_class.perform_now(session.id)
+
+      expect(session.reload.processing?).to be false
     end
   end
 

@@ -287,6 +287,18 @@ RSpec.describe TUI::Screens::Chat do
         expect(screen.session_info[:message_count]).to eq(1)
       end
 
+      it "removes entry on user_message_recalled" do
+        message_store.process_event({"type" => "user_message", "id" => 42,
+                                     "rendered" => {"basic" => {"role" => "user", "content" => "pending", "status" => "pending"}}})
+
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "user_message_recalled", "event_id" => 42}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.messages).to be_empty
+      end
+
       it "does not store connection status messages as chat messages" do
         allow(cable_client).to receive(:drain_messages).and_return([
           {"type" => "connection", "status" => "subscribing"}
@@ -442,24 +454,31 @@ RSpec.describe TUI::Screens::Chat do
       end
     end
 
-    context "while loading" do
+    context "while loading (non-blocking input)" do
       before { screen.instance_variable_set(:@loading, true) }
 
-      it "ignores character input" do
-        expect(screen.handle_event(key_event(code: "a"))).to be false
+      it "accepts character input" do
+        screen.handle_event(key_event(code: "a"))
+        expect(screen.input).to eq("a")
+      end
+
+      it "accepts enter to submit pending message" do
+        allow(cable_client).to receive(:speak)
+        screen.handle_event(key_event(code: "h"))
+        screen.handle_event(key_event(code: "i"))
+        screen.handle_event(key_event(code: "enter"))
+        expect(cable_client).to have_received(:speak).with("hi")
+      end
+
+      it "accepts backspace" do
+        screen.handle_event(key_event(code: "a"))
+        screen.handle_event(key_event(code: "backspace"))
         expect(screen.input).to eq("")
       end
 
-      it "ignores enter" do
-        expect(screen.handle_event(key_event(code: "enter"))).to be false
-      end
-
-      it "ignores backspace" do
-        expect(screen.handle_event(key_event(code: "backspace"))).to be false
-      end
-
-      it "ignores delete" do
-        expect(screen.handle_event(key_event(code: "delete"))).to be false
+      it "accepts paste" do
+        screen.handle_event(paste_event(content: "hello"))
+        expect(screen.input).to eq("hello")
       end
     end
 
@@ -668,6 +687,51 @@ RSpec.describe TUI::Screens::Chat do
       end
     end
 
+    context "arrow-up recall of pending messages" do
+      before do
+        allow(cable_client).to receive(:recall_pending)
+      end
+
+      it "recalls last pending message into input buffer" do
+        message_store.process_event({"type" => "user_message", "id" => 42,
+                                     "rendered" => {"basic" => {"role" => "user", "content" => "pending msg", "status" => "pending"}}})
+
+        expect(screen.handle_event(key_event(code: "up"))).to be true
+        expect(screen.input).to eq("pending msg")
+        expect(cable_client).to have_received(:recall_pending).with(42)
+      end
+
+      it "removes recalled message from message store" do
+        message_store.process_event({"type" => "user_message", "id" => 42,
+                                     "rendered" => {"basic" => {"role" => "user", "content" => "pending msg", "status" => "pending"}}})
+
+        screen.handle_event(key_event(code: "up"))
+        expect(screen.messages).to be_empty
+      end
+
+      it "scrolls when no pending message to recall" do
+        screen.instance_variable_set(:@visible_height, 10)
+        screen.instance_variable_set(:@max_scroll, 20)
+        screen.instance_variable_set(:@scroll_offset, 10)
+        screen.instance_variable_set(:@auto_scroll, false)
+
+        screen.handle_event(key_event(code: "up"))
+        expect(screen.scroll_offset).to eq(9)
+      end
+
+      it "scrolls when input buffer is not empty" do
+        screen.instance_variable_set(:@visible_height, 10)
+        screen.instance_variable_set(:@max_scroll, 20)
+        screen.instance_variable_set(:@scroll_offset, 10)
+        screen.instance_variable_set(:@auto_scroll, false)
+
+        set_input("some text")
+        screen.handle_event(key_event(code: "up"))
+        expect(screen.scroll_offset).to eq(9)
+        expect(screen.input).to eq("some text")
+      end
+    end
+
     context "clipboard paste" do
       it "inserts pasted text at cursor" do
         set_input("hello ", cursor_pos: 6)
@@ -702,10 +766,10 @@ RSpec.describe TUI::Screens::Chat do
         expect(screen.input.length).to eq(TUI::InputBuffer::MAX_LENGTH - 5)
       end
 
-      it "ignores paste while loading" do
+      it "accepts paste while loading" do
         screen.instance_variable_set(:@loading, true)
         screen.handle_event(paste_event(content: "text"))
-        expect(screen.input).to eq("")
+        expect(screen.input).to eq("text")
       end
     end
 

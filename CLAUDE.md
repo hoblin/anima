@@ -12,6 +12,8 @@ Do not add "defense-in-depth" rescue clauses or fallback logic. Silently swallow
 
 There is no such thing as deprecated code or backward compatibility in this project. Orphaned code should be deleted right away.
 
+This project does not use i18n. Skip translation checks entirely.
+
 The development environment is fully configured (LLM API keys, credentials, dependencies). Don't ask — just run things.
 
 ## Starting the dev environment

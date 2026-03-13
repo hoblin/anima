@@ -281,6 +281,65 @@ RSpec.describe TUI::MessageStore do
     end
   end
 
+  describe "#last_pending_user_message" do
+    it "returns the last pending user message" do
+      store.process_event({"type" => "user_message", "id" => 1,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "first"}}})
+      store.process_event({"type" => "user_message", "id" => 2,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "pending msg", "status" => "pending"}}})
+
+      result = store.last_pending_user_message
+      expect(result).to eq({id: 2, content: "pending msg"})
+    end
+
+    it "returns nil when no pending messages exist" do
+      store.process_event({"type" => "user_message", "id" => 1,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "delivered"}}})
+
+      expect(store.last_pending_user_message).to be_nil
+    end
+
+    it "returns nil when store is empty" do
+      expect(store.last_pending_user_message).to be_nil
+    end
+
+    it "only checks the most recent user message" do
+      store.process_event({"type" => "user_message", "id" => 1,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "old pending", "status" => "pending"}}})
+      store.process_event({"type" => "agent_message", "id" => 2,
+                           "rendered" => {"basic" => {"role" => "assistant", "content" => "reply"}}})
+      store.process_event({"type" => "user_message", "id" => 3,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "delivered"}}})
+
+      expect(store.last_pending_user_message).to be_nil
+    end
+  end
+
+  describe "#remove_by_id" do
+    it "removes an entry by event ID" do
+      store.process_event({"type" => "user_message", "id" => 42,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
+
+      expect(store.remove_by_id(42)).to be true
+      expect(store.messages).to be_empty
+    end
+
+    it "returns false for non-existent ID" do
+      expect(store.remove_by_id(999)).to be false
+    end
+
+    it "clears the ID index so updates to removed entries are ignored" do
+      store.process_event({"type" => "user_message", "id" => 42,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
+      store.remove_by_id(42)
+
+      result = store.process_event({"type" => "user_message", "id" => 42, "action" => "update",
+                                    "rendered" => {"basic" => {"role" => "user", "content" => "updated"}}})
+      expect(result).to be false
+      expect(store.messages).to be_empty
+    end
+  end
+
   describe "thread safety" do
     it "handles concurrent writes without errors" do
       threads = 10.times.map do |i|

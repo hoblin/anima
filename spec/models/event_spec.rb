@@ -141,6 +141,36 @@ RSpec.describe Event do
     end
   end
 
+  describe "#pending?" do
+    it "returns true when status is pending" do
+      event = Event.new(event_type: "user_message", status: "pending")
+      expect(event).to be_pending
+    end
+
+    it "returns false when status is nil" do
+      event = Event.new(event_type: "user_message", status: nil)
+      expect(event).not_to be_pending
+    end
+  end
+
+  describe ".pending" do
+    it "returns only pending events" do
+      session.events.create!(event_type: "user_message", payload: {content: "delivered"}, timestamp: 1)
+      pending = session.events.create!(event_type: "user_message", payload: {content: "queued"}, timestamp: 2, status: "pending")
+
+      expect(Event.pending).to eq([pending])
+    end
+  end
+
+  describe ".deliverable" do
+    it "excludes pending events" do
+      delivered = session.events.create!(event_type: "user_message", payload: {content: "delivered"}, timestamp: 1)
+      session.events.create!(event_type: "user_message", payload: {content: "queued"}, timestamp: 2, status: "pending")
+
+      expect(Event.deliverable).to eq([delivered])
+    end
+  end
+
   describe "#estimate_tokens" do
     it "estimates tokens from content for message events" do
       event = session.events.create!(
