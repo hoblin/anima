@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+### Added
+- Verbose view mode rendering — `render_verbose` on all decorator subclasses (#76)
+- Timestamped messages in verbose mode (`[HH:MM:SS] You:` / `[HH:MM:SS] Anima:`)
+- Tool call previews: bash `$ command`, web_get `GET url`, generic JSON fallback
+- Tool response display: truncated to 3 lines, `↩` success / `❌` failure indicators
+- System messages visible in verbose mode (`[HH:MM:SS] [system] ...`)
+- TUI view mode switching via `Ctrl+a → v` (#75)
+
 ## [0.2.0] - 2026-03-10
 
 ### Added

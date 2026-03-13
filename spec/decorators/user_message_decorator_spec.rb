@@ -32,4 +32,30 @@ RSpec.describe UserMessageDecorator, type: :decorator do
       expect(decorator.render_basic).to eq(["You: from string hash"])
     end
   end
+
+  describe "#render_verbose" do
+    it "prepends timestamp to the user message" do
+      ts = 1_709_312_325_000_000_000
+      event = session.events.create!(event_type: "user_message", payload: {"content" => "hello"}, timestamp: ts)
+      decorator = EventDecorator.for(event)
+      expected_time = Time.at(ts / 1_000_000_000.0).strftime("%H:%M:%S")
+
+      expect(decorator.render_verbose).to eq(["[#{expected_time}] You: hello"])
+    end
+
+    it "handles multiline content" do
+      ts = 1_709_312_325_000_000_000
+      event = session.events.create!(event_type: "user_message", payload: {"content" => "line 1\nline 2"}, timestamp: ts)
+      decorator = EventDecorator.for(event)
+      expected_time = Time.at(ts / 1_000_000_000.0).strftime("%H:%M:%S")
+
+      expect(decorator.render_verbose).to eq(["[#{expected_time}] You: line 1\nline 2"])
+    end
+
+    it "shows placeholder when timestamp is nil" do
+      decorator = EventDecorator.for(type: "user_message", content: "no timestamp")
+
+      expect(decorator.render_verbose).to eq(["[--:--:--] You: no timestamp"])
+    end
+  end
 end

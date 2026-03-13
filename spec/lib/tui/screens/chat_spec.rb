@@ -227,8 +227,8 @@ RSpec.describe TUI::Screens::Chat do
         screen.send(:process_incoming_messages)
 
         expect(screen.messages).to eq([
-          {type: :rendered, lines: ["You: hello"]},
-          {type: :rendered, lines: ["Anima: hi"]}
+          {type: :rendered, lines: ["You: hello"], event_type: "user_message"},
+          {type: :rendered, lines: ["Anima: hi"], event_type: "agent_message"}
         ])
       end
 

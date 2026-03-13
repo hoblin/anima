@@ -6,7 +6,7 @@ module TUI
   # TUI, with no dependency on Rails or the Events module.
   #
   # Accepts Action Cable event payloads and stores typed entries:
-  # - `{type: :rendered, lines:}` for events with pre-rendered decorator output
+  # - `{type: :rendered, lines:, event_type:}` for events with pre-rendered decorator output
   # - `{type: :message, role:, content:}` for user/agent messages (fallback)
   # - `{type: :tool_counter, calls:, responses:}` for tool activity
   #
@@ -46,7 +46,7 @@ module TUI
       rendered = extract_rendered(event_data)
 
       if rendered
-        record_rendered(rendered)
+        record_rendered(rendered, event_type: event_data["type"])
       else
         case event_data["type"]
         when "tool_call" then record_tool_call
@@ -76,9 +76,9 @@ module TUI
       event_data.dig("rendered")&.values&.compact&.first
     end
 
-    def record_rendered(lines)
+    def record_rendered(lines, event_type: nil)
       @mutex.synchronize do
-        @entries << {type: :rendered, lines: lines}
+        @entries << {type: :rendered, lines: lines, event_type: event_type}
       end
       true
     end

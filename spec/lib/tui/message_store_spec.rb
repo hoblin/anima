@@ -25,14 +25,14 @@ RSpec.describe TUI::MessageStore do
         store.process_event({"type" => "user_message", "content" => "hello",
                              "rendered" => {"basic" => ["You: hello"]}})
 
-        expect(store.messages).to eq([{type: :rendered, lines: ["You: hello"]}])
+        expect(store.messages).to eq([{type: :rendered, lines: ["You: hello"], event_type: "user_message"}])
       end
 
       it "uses rendered content from any mode key" do
         store.process_event({"type" => "agent_message", "content" => "hi",
                              "rendered" => {"verbose" => ["Anima: hi"]}})
 
-        expect(store.messages).to eq([{type: :rendered, lines: ["Anima: hi"]}])
+        expect(store.messages).to eq([{type: :rendered, lines: ["Anima: hi"], event_type: "agent_message"}])
       end
 
       it "falls back to tool counter when rendered is nil for tool events" do
@@ -46,7 +46,7 @@ RSpec.describe TUI::MessageStore do
         store.process_event({"type" => "tool_call", "content" => "calling bash",
                              "rendered" => {"verbose" => ["🔧 bash: ls -la"]}})
 
-        expect(store.messages).to eq([{type: :rendered, lines: ["🔧 bash: ls -la"]}])
+        expect(store.messages).to eq([{type: :rendered, lines: ["🔧 bash: ls -la"], event_type: "tool_call"}])
       end
 
       it "returns true for rendered events" do

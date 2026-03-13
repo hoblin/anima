@@ -296,16 +296,25 @@ module TUI
       # @return [Array<RatatuiRuby::Widgets::Line>] rendered lines + blank separator
       def build_rendered_lines(tui, entry)
         lines = entry[:lines].map do |text|
-          style = if text.start_with?("You: ")
-            tui.style(fg: "green")
-          elsif text.start_with?("Anima: ")
-            tui.style(fg: "cyan")
-          else
-            tui.style(fg: "white")
-          end
+          style = rendered_line_style(tui, text)
           tui.line(spans: [tui.span(content: text, style: style)])
         end
-        lines << tui.line(spans: [tui.span(content: "")])
+        # Tool calls and their responses are visually one unit — no separator
+        # between them. Separator appears after the response completes the pair.
+        lines << tui.line(spans: [tui.span(content: "")]) unless entry[:event_type] == "tool_call"
+        lines
+      end
+
+      # Determines text color based on the line's role prefix.
+      # Handles both basic ("You: ...") and verbose ("[HH:MM:SS] You: ...") formats.
+      def rendered_line_style(tui, text)
+        if text.start_with?("You: ") || text =~ /\A\[\d{2}:\d{2}:\d{2}\] You: /
+          tui.style(fg: "green")
+        elsif text.start_with?("Anima: ") || text =~ /\A\[\d{2}:\d{2}:\d{2}\] Anima: /
+          tui.style(fg: "cyan")
+        else
+          tui.style(fg: "white")
+        end
       end
 
       def build_chat_message_lines(tui, msg)
