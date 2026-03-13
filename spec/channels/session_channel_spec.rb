@@ -54,7 +54,7 @@ RSpec.describe SessionChannel, type: :channel do
       expect(history[2]).to include("type" => "tool_call", "content" => "calling bash")
     end
 
-    it "includes decorated rendered output in history transmissions" do
+    it "includes structured rendered output in history transmissions" do
       session = Session.create!(id: session_id)
       session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
       session.events.create!(event_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi"}, timestamp: 2)
@@ -67,8 +67,8 @@ RSpec.describe SessionChannel, type: :channel do
       expect(view_mode_msg["view_mode"]).to eq("basic")
 
       history = transmissions.reject { |t| t["action"] == "view_mode" }
-      expect(history[0]["rendered"]).to eq("basic" => ["You: hello"])
-      expect(history[1]["rendered"]).to eq("basic" => ["Anima: hi"])
+      expect(history[0]["rendered"]).to eq("basic" => {"role" => :user, "content" => "hello"})
+      expect(history[1]["rendered"]).to eq("basic" => {"role" => :assistant, "content" => "hi"})
       expect(history[2]["rendered"]).to eq("basic" => nil)
     end
 
@@ -89,8 +89,7 @@ RSpec.describe SessionChannel, type: :channel do
       subscribe(session_id: session_id)
 
       history = transmissions.reject { |t| t["action"] == "view_mode" }
-      expected_time = Time.at(1 / 1_000_000_000.0).strftime("%H:%M:%S")
-      expect(history[0]["rendered"]).to eq("verbose" => ["[#{expected_time}] You: hello"])
+      expect(history[0]["rendered"]).to eq("verbose" => {"role" => :user, "content" => "hello", "timestamp" => 1})
     end
 
     it "excludes system_message events from history" do
@@ -349,11 +348,10 @@ RSpec.describe SessionChannel, type: :channel do
     end
 
     it "broadcasts re-decorated viewport events" do
-      expected_time = Time.at(1 / 1_000_000_000.0).strftime("%H:%M:%S")
       expect {
         perform(:change_view_mode, {"view_mode" => "verbose"})
       }.to have_broadcasted_to(stream_name)
-        .with(a_hash_including("rendered" => {"verbose" => ["[#{expected_time}] You: hello"]}))
+        .with(a_hash_including("rendered" => {"verbose" => a_hash_including("role" => "user", "content" => "hello", "timestamp" => 1)}))
     end
 
     it "transmits error for invalid view mode" do

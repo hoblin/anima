@@ -218,17 +218,17 @@ RSpec.describe TUI::Screens::Chat do
         )
       end
 
-      it "stores pre-rendered content when available" do
+      it "stores structured decorator data when available" do
         allow(cable_client).to receive(:drain_messages).and_return([
-          {"type" => "user_message", "content" => "hello", "rendered" => {"basic" => ["You: hello"]}},
-          {"type" => "agent_message", "content" => "hi", "rendered" => {"basic" => ["Anima: hi"]}}
+          {"type" => "user_message", "content" => "hello", "rendered" => {"basic" => {"role" => "user", "content" => "hello"}}},
+          {"type" => "agent_message", "content" => "hi", "rendered" => {"basic" => {"role" => "assistant", "content" => "hi"}}}
         ])
 
         screen.send(:process_incoming_messages)
 
         expect(screen.messages).to eq([
-          {type: :rendered, lines: ["You: hello"], event_type: "user_message"},
-          {type: :rendered, lines: ["Anima: hi"], event_type: "agent_message"}
+          {type: :rendered, data: {"role" => "user", "content" => "hello"}, event_type: "user_message"},
+          {type: :rendered, data: {"role" => "assistant", "content" => "hi"}, event_type: "agent_message"}
         ])
       end
 

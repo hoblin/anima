@@ -1,16 +1,17 @@
 # frozen_string_literal: true
 
 # Decorates agent_message events for display in the TUI.
-# Basic mode shows the response with an "Anima:" prefix.
-# Verbose mode adds a timestamp.
+# Basic mode returns role and content. Verbose mode adds a timestamp.
 class AgentMessageDecorator < EventDecorator
-  # @return [Array<String>] the agent message prefixed with "Anima:"
+  # @return [Hash] structured agent message data
+  #   `{role: :assistant, content: String}`
   def render_basic
-    ["Anima: #{content}"]
+    {role: :assistant, content: content}
   end
 
-  # @return [Array<String>] timestamped agent message
+  # @return [Hash] structured agent message with nanosecond timestamp
+  #   `{role: :assistant, content: String, timestamp: Integer|nil}`
   def render_verbose
-    ["[#{format_timestamp}] Anima: #{content}"]
+    {role: :assistant, content: content, timestamp: timestamp}
   end
 end

@@ -2,20 +2,18 @@
 
 # Decorates tool_call events for display in the TUI.
 # Hidden in basic mode — tool activity is represented by the
-# aggregated tool counter instead. Verbose mode shows tool name
-# and a compact preview of the input arguments.
+# aggregated tool counter instead. Verbose mode returns tool name
+# and a formatted preview of the input arguments.
 class ToolCallDecorator < EventDecorator
   # @return [nil] tool calls are hidden in basic mode
   def render_basic
     nil
   end
 
-  # Shows tool name as header with truncated input preview.
-  # @return [Array<String>] header line + indented input lines
+  # @return [Hash] structured tool call data
+  #   `{role: :tool_call, tool: String, input: String, timestamp: Integer|nil}`
   def render_verbose
-    lines = ["#{TOOL_ICON} #{payload["tool_name"]}"]
-    format_input.split("\n").each { |line| lines << "  #{line}" }
-    lines
+    {role: :tool_call, tool: payload["tool_name"], input: format_input, timestamp: timestamp}
   end
 
   private

@@ -25,7 +25,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
   end
 
   describe "#render_verbose" do
-    it "shows tool name header with bash command" do
+    it "returns structured hash with tool name and bash command" do
       event = session.events.create!(
         event_type: "tool_call",
         payload: {"content" => "running git status", "tool_name" => "bash", "tool_input" => {"command" => "git status"}},
@@ -33,13 +33,12 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       )
       decorator = EventDecorator.for(event)
 
-      expect(decorator.render_verbose).to eq([
-        "\u{1F527} bash",
-        "  $ git status"
-      ])
+      expect(decorator.render_verbose).to eq({
+        role: :tool_call, tool: "bash", input: "$ git status", timestamp: 1
+      })
     end
 
-    it "shows tool name header with web_get URL" do
+    it "returns structured hash with web_get URL" do
       event = session.events.create!(
         event_type: "tool_call",
         payload: {"content" => "fetching", "tool_name" => "web_get", "tool_input" => {"url" => "https://example.com/api"}},
@@ -47,13 +46,12 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       )
       decorator = EventDecorator.for(event)
 
-      expect(decorator.render_verbose).to eq([
-        "\u{1F527} web_get",
-        "  GET https://example.com/api"
-      ])
+      expect(decorator.render_verbose).to eq({
+        role: :tool_call, tool: "web_get", input: "GET https://example.com/api", timestamp: 1
+      })
     end
 
-    it "shows generic JSON for unknown tools" do
+    it "returns generic JSON for unknown tools" do
       event = session.events.create!(
         event_type: "tool_call",
         payload: {"content" => "calling custom", "tool_name" => "custom_tool", "tool_input" => {"key" => "value"}},
@@ -61,10 +59,9 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       )
       decorator = EventDecorator.for(event)
 
-      expect(decorator.render_verbose).to eq([
-        "\u{1F527} custom_tool",
-        '  {"key":"value"}'
-      ])
+      expect(decorator.render_verbose).to eq({
+        role: :tool_call, tool: "custom_tool", input: '{"key":"value"}', timestamp: 1
+      })
     end
 
     it "truncates long generic input to 2 lines" do
@@ -77,10 +74,9 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       decorator = EventDecorator.for(event)
       result = decorator.render_verbose
 
-      expect(result.first).to eq("\u{1F527} custom")
-      # Generic JSON is single-line, so truncation doesn't apply here.
-      # Truncation matters when tool_input.to_json produces multi-line output.
-      expect(result.length).to be >= 2
+      expect(result[:role]).to eq(:tool_call)
+      expect(result[:tool]).to eq("custom")
+      expect(result[:input]).to be_a(String)
     end
 
     it "handles nil tool_input for bash" do
@@ -91,10 +87,9 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       )
       decorator = EventDecorator.for(event)
 
-      expect(decorator.render_verbose).to eq([
-        "\u{1F527} bash",
-        "  $ "
-      ])
+      expect(decorator.render_verbose).to eq({
+        role: :tool_call, tool: "bash", input: "$ ", timestamp: 1
+      })
     end
 
     it "works with hash payloads" do
@@ -105,10 +100,9 @@ RSpec.describe ToolCallDecorator, type: :decorator do
         tool_input: {"command" => "ls -la"}
       )
 
-      expect(decorator.render_verbose).to eq([
-        "\u{1F527} bash",
-        "  $ ls -la"
-      ])
+      expect(decorator.render_verbose).to include(
+        role: :tool_call, tool: "bash", input: "$ ls -la"
+      )
     end
   end
 end
