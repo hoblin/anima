@@ -245,4 +245,26 @@ RSpec.describe Session do
       end
     end
   end
+
+  describe "#estimate_tokens (private)" do
+    let(:session) { Session.create! }
+
+    it "delegates to Event#estimate_tokens" do
+      event = session.events.create!(
+        event_type: "user_message", payload: {"content" => "hello world"}, timestamp: 1
+      )
+
+      expect(session.send(:estimate_tokens, event)).to eq(event.estimate_tokens)
+    end
+
+    it "uses heuristic for tool events via Event#estimate_tokens" do
+      event = session.events.create!(
+        event_type: "tool_call",
+        payload: {"content" => "calling", "tool_name" => "bash", "tool_input" => {"command" => "ls"}},
+        timestamp: 1
+      )
+
+      expect(session.send(:estimate_tokens, event)).to eq(event.estimate_tokens)
+    end
+  end
 end

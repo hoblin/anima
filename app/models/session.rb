@@ -7,9 +7,6 @@ class Session < ApplicationRecord
   # Claude Sonnet 4 context window minus system prompt reserve.
   DEFAULT_TOKEN_BUDGET = 190_000
 
-  # Heuristic: average bytes per token for English prose.
-  BYTES_PER_TOKEN = 4
-
   VIEW_MODES = %w[basic verbose debug].freeze
 
   has_many :events, -> { order(:id) }, dependent: :destroy

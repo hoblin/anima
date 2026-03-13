@@ -421,7 +421,13 @@ RSpec.describe SessionChannel, type: :channel do
       expect {
         perform(:change_view_mode, {"view_mode" => "debug"})
       }.to have_broadcasted_to(stream_name)
-        .with(a_hash_including("type" => "system_prompt"))
+        .with(a_hash_including(
+          "type" => "system_prompt",
+          "rendered" => {"debug" => a_hash_including(
+            "role" => "system_prompt", "content" => "You are Anima.",
+            "tokens" => a_value > 0, "estimated" => true
+          )}
+        ))
     end
   end
 
