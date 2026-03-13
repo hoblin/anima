@@ -13,8 +13,8 @@ class ToolCallDecorator < EventDecorator
   # Shows tool name as header with truncated input preview.
   # @return [Array<String>] header line + indented input lines
   def render_verbose
-    lines = ["\u{1F527} #{payload["tool_name"]}"]
-    formatted_input.split("\n").each { |line| lines << "  #{line}" }
+    lines = ["#{TOOL_ICON} #{payload["tool_name"]}"]
+    format_input.split("\n").each { |line| lines << "  #{line}" }
     lines
   end
 
@@ -23,7 +23,7 @@ class ToolCallDecorator < EventDecorator
   # Formats tool input for display, with tool-specific formatting for
   # known tools and generic JSON fallback for others.
   # @return [String] formatted input preview
-  def formatted_input
+  def format_input
     input = payload["tool_input"]
     case payload["tool_name"]
     when "bash"

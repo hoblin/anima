@@ -6,7 +6,7 @@ module TUI
   # TUI, with no dependency on Rails or the Events module.
   #
   # Accepts Action Cable event payloads and stores typed entries:
-  # - `{type: :rendered, lines:}` for events with pre-rendered decorator output
+  # - `{type: :rendered, lines:, event_type:}` for events with pre-rendered decorator output
   # - `{type: :message, role:, content:}` for user/agent messages (fallback)
   # - `{type: :tool_counter, calls:, responses:}` for tool activity
   #

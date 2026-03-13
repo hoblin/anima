@@ -15,7 +15,7 @@ class ToolResponseDecorator < EventDecorator
   # @return [Array<String>] indented output lines
   def render_verbose
     lines = truncate_lines(content, max_lines: 3).split("\n")
-    prefix = (payload["success"] == false) ? "\u274C " : "\u21A9 "
+    prefix = (payload["success"] == false) ? "#{ERROR_ICON} " : "#{RETURN_ARROW} "
     ["  #{prefix}#{lines.first}"].concat(lines.drop(1).map { |line| "    #{line}" })
   end
 end

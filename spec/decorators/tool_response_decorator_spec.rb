@@ -103,6 +103,17 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       expect(decorator.render_verbose).to eq(["  \u21A9 "])
     end
 
+    it "shows return arrow when success field is missing" do
+      event = session.events.create!(
+        event_type: "tool_response",
+        payload: {"content" => "output", "tool_name" => "bash"},
+        timestamp: 1
+      )
+      decorator = EventDecorator.for(event)
+
+      expect(decorator.render_verbose).to eq(["  \u21A9 output"])
+    end
+
     it "works with hash payloads" do
       decorator = EventDecorator.for(
         type: "tool_response",

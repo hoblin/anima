@@ -24,6 +24,10 @@
 class EventDecorator < ApplicationDecorator
   delegate_all
 
+  TOOL_ICON = "\u{1F527}"
+  RETURN_ARROW = "\u21A9"
+  ERROR_ICON = "\u274C"
+
   DECORATOR_MAP = {
     "user_message" => "UserMessageDecorator",
     "agent_message" => "AgentMessageDecorator",
@@ -112,7 +116,7 @@ class EventDecorator < ApplicationDecorator
   end
 
   # Truncates multi-line text, appending "..." when lines exceed the limit.
-  # @param text [String, nil] text to truncate
+  # @param text [String, nil] text to truncate (nil is coerced to empty string)
   # @param max_lines [Integer] maximum number of lines to keep
   # @return [String] truncated text
   def truncate_lines(text, max_lines:)

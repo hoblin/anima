@@ -308,9 +308,9 @@ module TUI
       # Determines text color based on the line's role prefix.
       # Handles both basic ("You: ...") and verbose ("[HH:MM:SS] You: ...") formats.
       def rendered_line_style(tui, text)
-        if text.start_with?("You: ") || text =~ /\A\[[\d:]+\] You: /
+        if text.start_with?("You: ") || text =~ /\A\[\d{2}:\d{2}:\d{2}\] You: /
           tui.style(fg: "green")
-        elsif text.start_with?("Anima: ") || text =~ /\A\[[\d:]+\] Anima: /
+        elsif text.start_with?("Anima: ") || text =~ /\A\[\d{2}:\d{2}:\d{2}\] Anima: /
           tui.style(fg: "cyan")
         else
           tui.style(fg: "white")
