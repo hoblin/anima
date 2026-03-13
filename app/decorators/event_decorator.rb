@@ -103,6 +103,26 @@ class EventDecorator < ApplicationDecorator
     payload["content"]
   end
 
+  # Converts nanosecond-precision timestamp to human-readable HH:MM:SS.
+  # @return [String] formatted time, or "--:--:--" when timestamp is nil
+  def format_timestamp
+    return "--:--:--" unless timestamp
+
+    Time.at(timestamp / 1_000_000_000.0).strftime("%H:%M:%S")
+  end
+
+  # Truncates multi-line text, appending "..." when lines exceed the limit.
+  # @param text [String, nil] text to truncate
+  # @param max_lines [Integer] maximum number of lines to keep
+  # @return [String] truncated text
+  def truncate_lines(text, max_lines:)
+    str = text.to_s
+    lines = str.split("\n")
+    return str unless lines.size > max_lines
+
+    lines.first(max_lines).push("...").join("\n")
+  end
+
   # Normalizes input to something Draper can wrap.
   # Event AR models pass through; hashes become EventPayload structs
   # with string-normalized keys.

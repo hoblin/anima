@@ -136,10 +136,12 @@ RSpec.describe Events::Subscribers::ActionCableBridge do
 
     it "decorates in the session's view_mode" do
       Session.create!(id: 42, view_mode: "verbose")
+      event = Events::UserMessage.new(content: "hello", session_id: 42)
+      expected_time = Time.at(event.timestamp / 1_000_000_000.0).strftime("%H:%M:%S")
       expect {
-        bridge.emit(event_hash(Events::UserMessage.new(content: "hello", session_id: 42)))
+        bridge.emit(event_hash(event))
       }.to have_broadcasted_to("session_42")
-        .with(a_hash_including("rendered" => {"verbose" => ["You: hello"]}))
+        .with(a_hash_including("rendered" => {"verbose" => ["[#{expected_time}] You: hello"]}))
     end
 
     it "falls back to basic when session is not found" do

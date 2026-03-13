@@ -46,7 +46,7 @@ module TUI
       rendered = extract_rendered(event_data)
 
       if rendered
-        record_rendered(rendered)
+        record_rendered(rendered, event_type: event_data["type"])
       else
         case event_data["type"]
         when "tool_call" then record_tool_call
@@ -76,9 +76,9 @@ module TUI
       event_data.dig("rendered")&.values&.compact&.first
     end
 
-    def record_rendered(lines)
+    def record_rendered(lines, event_type: nil)
       @mutex.synchronize do
-        @entries << {type: :rendered, lines: lines}
+        @entries << {type: :rendered, lines: lines, event_type: event_type}
       end
       true
     end
