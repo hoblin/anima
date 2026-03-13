@@ -6,8 +6,8 @@ module TUI
   # TUI, with no dependency on Rails or the Events module.
   #
   # Accepts Action Cable event payloads and stores typed entries:
-  # - `{type: :rendered, data:, event_type:}` for events with structured decorator output
-  # - `{type: :message, role:, content:}` for user/agent messages (fallback)
+  # - `{type: :rendered, data:, event_type:, id:}` for events with structured decorator output
+  # - `{type: :message, role:, content:, id:}` for user/agent messages (fallback)
   # - `{type: :tool_counter, calls:, responses:}` for tool activity
   #
   # Structured data takes priority when available. Events with nil
@@ -17,6 +17,9 @@ module TUI
   # Tool counters aggregate per agent turn: a new counter starts when a
   # tool_call arrives after a message entry. Consecutive tool events
   # increment the same counter until the next message breaks the chain.
+  #
+  # When an event arrives with `"action" => "update"` and a known `"id"`,
+  # the existing entry is replaced in-place, preserving display order.
   class MessageStore
     MESSAGE_TYPES = %w[user_message agent_message].freeze
 
@@ -27,6 +30,7 @@ module TUI
 
     def initialize
       @entries = []
+      @entries_by_id = {}
       @mutex = Mutex.new
     end
 
@@ -39,14 +43,23 @@ module TUI
     # Uses structured decorator data when available; falls back to
     # role/content extraction for messages and tool counter aggregation.
     #
+    # Events with `"action" => "update"` and a matching `"id"` replace
+    # the existing entry's data in-place rather than appending.
+    #
     # @param event_data [Hash] Action Cable event payload with "type", "content",
-    #   and optionally "rendered" (hash of mode => lines)
+    #   and optionally "rendered" (hash of mode => lines), "id", "action"
     # @return [Boolean] true if the event type was recognized and handled
     def process_event(event_data)
+      event_id = event_data["id"]
+
+      if event_data["action"] == "update" && event_id
+        return update_existing(event_data, event_id)
+      end
+
       rendered = extract_rendered(event_data)
 
       if rendered
-        record_rendered(rendered, event_type: event_data["type"])
+        record_rendered(rendered, event_type: event_data["type"], id: event_id)
       else
         case event_data["type"]
         when "tool_call" then record_tool_call
@@ -61,10 +74,31 @@ module TUI
     # to prepare for re-decorated viewport events from the server.
     # @return [void]
     def clear
-      @mutex.synchronize { @entries = [] }
+      @mutex.synchronize do
+        @entries = []
+        @entries_by_id = {}
+      end
     end
 
     private
+
+    # Replaces data on an existing entry matched by event ID.
+    # Only updates rendered entries — tool counters and plain messages
+    # are not individually addressable by ID.
+    #
+    # @return [Boolean] true if the entry was found and updated
+    def update_existing(event_data, event_id)
+      rendered = extract_rendered(event_data)
+      return false unless rendered
+
+      @mutex.synchronize do
+        entry = @entries_by_id[event_id]
+        return false unless entry
+
+        entry[:data] = rendered
+        true
+      end
+    end
 
     # Extracts the first non-nil structured data hash from the rendered payload.
     # The "rendered" hash is keyed by view mode — the server includes only the
@@ -76,9 +110,11 @@ module TUI
       event_data.dig("rendered")&.values&.compact&.first
     end
 
-    def record_rendered(data, event_type: nil)
+    def record_rendered(data, event_type: nil, id: nil)
       @mutex.synchronize do
-        @entries << {type: :rendered, data: data, event_type: event_type}
+        entry = {type: :rendered, data: data, event_type: event_type, id: id}
+        @entries << entry
+        @entries_by_id[id] = entry if id
       end
       true
     end
@@ -107,8 +143,12 @@ module TUI
       content = event_data["content"]
       return false if content.nil?
 
+      event_id = event_data["id"]
+
       @mutex.synchronize do
-        @entries << {type: :message, role: ROLE_MAP.fetch(event_data["type"]), content: content}
+        entry = {type: :message, role: ROLE_MAP.fetch(event_data["type"]), content: content, id: event_id}
+        @entries << entry
+        @entries_by_id[event_id] = entry if event_id
       end
       true
     end

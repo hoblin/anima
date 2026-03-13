@@ -166,8 +166,16 @@ class SessionChannel < ApplicationCable::Channel
     end
   end
 
+  # Decorates an event for transmission to clients. Merges the event's
+  # database ID and structured decorator output into the payload.
+  # Used by {#transmit_history} and {#broadcast_viewport} for historical
+  # and viewport re-broadcast — live broadcasts use {Event::Broadcasting}.
+  #
+  # @param event [Event] persisted event record
+  # @param mode [String] view mode for decoration (default: "basic")
+  # @return [Hash] payload with "id" and optional "rendered" key
   def decorate_event_payload(event, mode = "basic")
-    payload = event.payload
+    payload = event.payload.merge("id" => event.id)
     decorator = EventDecorator.for(event)
     return payload unless decorator
 

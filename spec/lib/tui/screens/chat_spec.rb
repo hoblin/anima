@@ -226,9 +226,9 @@ RSpec.describe TUI::Screens::Chat do
 
         screen.send(:process_incoming_messages)
 
-        expect(screen.messages).to eq([
-          {type: :rendered, data: {"role" => "user", "content" => "hello"}, event_type: "user_message"},
-          {type: :rendered, data: {"role" => "assistant", "content" => "hi"}, event_type: "agent_message"}
+        expect(screen.messages).to match([
+          a_hash_including(type: :rendered, data: {"role" => "user", "content" => "hello"}, event_type: "user_message"),
+          a_hash_including(type: :rendered, data: {"role" => "assistant", "content" => "hi"}, event_type: "agent_message")
         ])
       end
 
@@ -242,11 +242,35 @@ RSpec.describe TUI::Screens::Chat do
 
         screen.send(:process_incoming_messages)
 
-        expect(screen.messages).to eq([
-          {type: :message, role: "user", content: "hi"},
+        expect(screen.messages).to match([
+          a_hash_including(type: :message, role: "user", content: "hi"),
           {type: :tool_counter, calls: 1, responses: 1},
-          {type: :message, role: "assistant", content: "done"}
+          a_hash_including(type: :message, role: "assistant", content: "done")
         ])
+      end
+
+      it "does not increment message_count or set loading on user_message update" do
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "user_message", "content" => "hi", "id" => 1, "action" => "create"},
+          {"type" => "user_message", "content" => "hi", "id" => 1, "action" => "update"}
+        ])
+
+        screen.send(:process_incoming_messages)
+
+        expect(screen.session_info[:message_count]).to eq(1)
+        expect(screen.loading?).to be true
+      end
+
+      it "does not change loading state on agent_message update" do
+        screen.instance_variable_set(:@loading, true)
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "agent_message", "content" => "done", "id" => 2, "action" => "update"}
+        ])
+
+        screen.send(:process_incoming_messages)
+
+        expect(screen.loading?).to be true
+        expect(screen.session_info[:message_count]).to eq(0)
       end
 
       it "does not increment message_count for tool events" do
@@ -352,9 +376,9 @@ RSpec.describe TUI::Screens::Chat do
         ])
         screen.send(:process_incoming_messages)
 
-        expect(screen.messages).to eq([
-          {type: :message, role: "user", content: "restored"},
-          {type: :message, role: "assistant", content: "response"}
+        expect(screen.messages).to match([
+          a_hash_including(type: :message, role: "user", content: "restored"),
+          a_hash_including(type: :message, role: "assistant", content: "response")
         ])
       end
 
@@ -370,10 +394,10 @@ RSpec.describe TUI::Screens::Chat do
         ])
         screen.send(:process_incoming_messages)
 
-        expect(screen.messages).to eq([
-          {type: :message, role: "user", content: "hi"},
+        expect(screen.messages).to match([
+          a_hash_including(type: :message, role: "user", content: "hi"),
           {type: :tool_counter, calls: 2, responses: 2},
-          {type: :message, role: "assistant", content: "done"}
+          a_hash_including(type: :message, role: "assistant", content: "done")
         ])
       end
     end
@@ -1036,8 +1060,8 @@ RSpec.describe TUI::Screens::Chat do
 
       screen.send(:process_incoming_messages)
 
-      expect(screen.messages).to eq([
-        {type: :rendered, data: {"role" => "system_prompt", "content" => "You are Anima.", "tokens" => 4, "estimated" => true}, event_type: "system_prompt"}
+      expect(screen.messages).to match([
+        a_hash_including(type: :rendered, data: {"role" => "system_prompt", "content" => "You are Anima.", "tokens" => 4, "estimated" => true}, event_type: "system_prompt")
       ])
     end
   end

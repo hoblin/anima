@@ -14,7 +14,6 @@ RSpec.describe TUI::App do
   before do
     allow(cable_client).to receive(:drain_messages).and_return([])
     allow(cable_client).to receive(:speak)
-    allow(cable_client).to receive(:resubscribe)
   end
 
   describe "#initialize" do

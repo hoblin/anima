@@ -48,6 +48,7 @@ module TUI
     def initialize(host:, session_id:)
       @host = host
       @session_id = session_id
+      @subscribed_session_id = session_id
       @status = :disconnected
       @message_queue = Thread::Queue.new
       @mutex = Mutex.new
@@ -129,17 +130,6 @@ module TUI
         break
       end
       messages
-    end
-
-    # Unsubscribes from the current session and subscribes to a new one.
-    #
-    # @deprecated Use {#create_session} or {#switch_session} instead.
-    #   The server now handles stream switching via the session protocol.
-    # @param new_session_id [Integer] session to switch to
-    def resubscribe(new_session_id)
-      unsubscribe_current
-      @mutex.synchronize { @session_id = new_session_id }
-      subscribe
     end
 
     # Closes the WebSocket connection and cleans up the background thread.
@@ -357,24 +347,28 @@ module TUI
     end
 
     def subscribe
-      identifier = {channel: "SessionChannel", session_id: @session_id}.to_json
+      sid = @mutex.synchronize { @session_id }
+      @mutex.synchronize { @subscribed_session_id = sid }
+      identifier = {channel: "SessionChannel", session_id: sid}.to_json
       send_command("subscribe", identifier)
     end
 
-    def unsubscribe_current
-      identifier = {channel: "SessionChannel", session_id: @session_id}.to_json
-      send_command("unsubscribe", identifier)
-    end
-
     def send_action(action, data = {})
-      identifier = {channel: "SessionChannel", session_id: @session_id}.to_json
       payload = data.merge("action" => action).to_json
 
       @ws&.send({
         command: "message",
-        identifier: identifier,
+        identifier: subscription_identifier,
         data: payload
       }.to_json)
+    end
+
+    # Returns the identifier matching the active ActionCable subscription.
+    # After session switches, @session_id changes but the subscription
+    # identifier must match the one used during subscribe.
+    def subscription_identifier
+      sid = @mutex.synchronize { @subscribed_session_id }
+      {channel: "SessionChannel", session_id: sid}.to_json
     end
 
     def send_command(command, identifier)

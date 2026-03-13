@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+### Added
+- Real-time event broadcasting via `Event::Broadcasting` concern — `after_create_commit` and `after_update_commit` callbacks broadcast decorated payloads with database ID and action type to the session's ActionCable stream (#91)
+- TUI `MessageStore` ID-indexed updates — events with `action: "update"` replace existing entries in-place (O(1) lookup) without changing display order
+- `CountEventTokensJob` triggers broadcast — uses `update!` so token count updates push to connected clients in real time
+
+### Changed
+- `ActionCableBridge` removed — broadcasting moved from EventBus subscriber to AR callbacks, eliminating the timing gap where events were broadcast before persistence
+- `SessionChannel` history includes event IDs for client-side correlation
+
 ## [0.2.1] - 2026-03-13
 
 ### Added

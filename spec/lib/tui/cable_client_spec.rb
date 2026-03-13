@@ -135,32 +135,6 @@ RSpec.describe TUI::CableClient do
     end
   end
 
-  describe "#resubscribe" do
-    let(:ws) { double("WebSocket", send: nil, close: nil) }
-
-    before do
-      client.instance_variable_set(:@ws, ws)
-    end
-
-    it "updates session_id" do
-      client.resubscribe(99)
-      expect(client.session_id).to eq(99)
-    end
-
-    it "sends unsubscribe for old session and subscribe for new" do
-      sent_messages = []
-      allow(ws).to receive(:send) { |msg| sent_messages << JSON.parse(msg) }
-
-      client.resubscribe(99)
-
-      expect(sent_messages.size).to eq(2)
-      expect(sent_messages[0]["command"]).to eq("unsubscribe")
-      expect(JSON.parse(sent_messages[0]["identifier"])["session_id"]).to eq(42)
-      expect(sent_messages[1]["command"]).to eq("subscribe")
-      expect(JSON.parse(sent_messages[1]["identifier"])["session_id"]).to eq(99)
-    end
-  end
-
   describe "#speak" do
     let(:ws) { double("WebSocket") }
 

@@ -7,5 +7,4 @@ Rails.application.config.after_initialize do
   # Global persister handles events from all sessions (brain server, background jobs).
   # Skipped in test — specs manage their own persisters for isolation.
   Events::Bus.subscribe(Events::Subscribers::Persister.new) unless Rails.env.test?
-  Events::Bus.subscribe(Events::Subscribers::ActionCableBridge.instance)
 end
