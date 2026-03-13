@@ -207,6 +207,7 @@ module TUI
 
         @view_mode = new_mode
         @message_store.clear
+        @loading = false
         @scroll_offset = 0
         @auto_scroll = true
       end
@@ -332,15 +333,17 @@ module TUI
       def render_conversation_entry(tui, data, role)
         color = ROLE_COLORS.fetch(role, "white")
         prefix = ROLE_LABELS.fetch(role, role)
-        body = data["content"]
+        style = tui.style(fg: color)
 
-        parts = []
-        parts << "[#{format_ns_timestamp(data["timestamp"])}]" if data["timestamp"]
-        parts << format_token_label(data["tokens"], data["estimated"]) if data["tokens"]
-        parts << "#{prefix}: #{body}"
+        meta = []
+        meta << "[#{format_ns_timestamp(data["timestamp"])}]" if data["timestamp"]
+        meta << format_token_label(data["tokens"], data["estimated"]) if data["tokens"]
+        header = meta.empty? ? "#{prefix}:" : "#{meta.join(" ")} #{prefix}:"
 
-        text = parts.join(" ")
-        [tui.line(spans: [tui.span(content: text, style: tui.style(fg: color))])]
+        content_lines = data["content"].to_s.split("\n", -1)
+        lines = [tui.line(spans: [tui.span(content: "#{header} #{content_lines.first}", style: style)])]
+        content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: line, style: style)]) }
+        lines
       end
 
       # Renders a tool invocation with tool name, optional tool_use_id, and indented input.
@@ -384,10 +387,14 @@ module TUI
       # @param data [Hash] structured data with "content" and optional "timestamp"
       # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_system_entry(tui, data)
-        body = data["content"]
         ts = data["timestamp"]
-        text = ts ? "[#{format_ns_timestamp(ts)}] [system] #{body}" : "[system] #{body}"
-        [tui.line(spans: [tui.span(content: text, style: tui.style(fg: "white"))])]
+        header = ts ? "[#{format_ns_timestamp(ts)}] [system]" : "[system]"
+        style = tui.style(fg: "white")
+
+        content_lines = data["content"].to_s.split("\n", -1)
+        lines = [tui.line(spans: [tui.span(content: "#{header} #{content_lines.first}", style: style)])]
+        content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)]) }
+        lines
       end
 
       # Renders the assembled system prompt block in debug mode.
