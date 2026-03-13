@@ -311,6 +311,8 @@ module TUI
           render_tool_response_entry(tui, data)
         when "system"
           render_system_entry(tui, data)
+        when "system_prompt"
+          render_system_prompt_entry(tui, data)
         else
           [tui.line(spans: [tui.span(content: data["content"].to_s, style: tui.style(fg: "white"))])]
         end
@@ -321,42 +323,58 @@ module TUI
         lines
       end
 
-      # Renders a user or assistant message with optional timestamp prefix.
+      # Renders a user or assistant message with optional timestamp and token count.
       # @param tui [RatatuiRuby] TUI rendering API
-      # @param data [Hash] structured data with "role", "content", and optional "timestamp"
+      # @param data [Hash] structured data with "role", "content", and optional
+      #   "timestamp", "tokens", "estimated"
       # @param role [String] "user" or "assistant"
       # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_conversation_entry(tui, data, role)
         color = ROLE_COLORS.fetch(role, "white")
         prefix = ROLE_LABELS.fetch(role, role)
         body = data["content"]
-        ts = data["timestamp"]
-        text = ts ? "[#{format_ns_timestamp(ts)}] #{prefix}: #{body}" : "#{prefix}: #{body}"
+
+        parts = []
+        parts << "[#{format_ns_timestamp(data["timestamp"])}]" if data["timestamp"]
+        parts << format_token_label(data["tokens"], data["estimated"]) if data["tokens"]
+        parts << "#{prefix}: #{body}"
+
+        text = parts.join(" ")
         [tui.line(spans: [tui.span(content: text, style: tui.style(fg: color))])]
       end
 
-      # Renders a tool invocation with tool name and indented input preview.
+      # Renders a tool invocation with tool name, optional tool_use_id, and indented input.
       # @param tui [RatatuiRuby] TUI rendering API
-      # @param data [Hash] structured data with "tool" and "input"
+      # @param data [Hash] structured data with "tool", "input", and optional "tool_use_id"
       # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_tool_call_entry(tui, data)
         style = tui.style(fg: "white")
-        lines = [tui.line(spans: [tui.span(content: "#{TOOL_ICON} #{data["tool"]}", style: style)])]
+        header = "#{TOOL_ICON} #{data["tool"]}"
+        header += " [#{data["tool_use_id"]}]" if data["tool_use_id"]
+
+        lines = [tui.line(spans: [tui.span(content: header, style: style)])]
         data["input"].to_s.split("\n").each do |line|
           lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)])
         end
         lines
       end
 
-      # Renders tool output with success/failure indicator prefix.
+      # Renders tool output with success/failure indicator, optional tool_use_id and token count.
       # @param tui [RatatuiRuby] TUI rendering API
-      # @param data [Hash] structured data with "content" and "success"
+      # @param data [Hash] structured data with "content", "success", and optional
+      #   "tool_use_id", "tokens", "estimated"
       # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_tool_response_entry(tui, data)
-        prefix = (data["success"] == false) ? "#{ERROR_ICON} " : "#{RETURN_ARROW} "
+        indicator = (data["success"] == false) ? ERROR_ICON : CHECKMARK
+        meta_parts = []
+        meta_parts << "[#{data["tool_use_id"]}]" if data["tool_use_id"]
+        meta_parts << indicator
+        meta_parts << format_token_label(data["tokens"], data["estimated"]) if data["tokens"]
+        prefix = "  #{RETURN_ARROW} #{meta_parts.join(" ")} "
+
         content_lines = data["content"].to_s.split("\n")
         style = tui.style(fg: "white")
-        lines = [tui.line(spans: [tui.span(content: "  #{prefix}#{content_lines.first}", style: style)])]
+        lines = [tui.line(spans: [tui.span(content: "#{prefix}#{content_lines.first}", style: style)])]
         content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: "    #{line}", style: style)]) }
         lines
       end
@@ -370,6 +388,34 @@ module TUI
         ts = data["timestamp"]
         text = ts ? "[#{format_ns_timestamp(ts)}] [system] #{body}" : "[system] #{body}"
         [tui.line(spans: [tui.span(content: text, style: tui.style(fg: "white"))])]
+      end
+
+      # Renders the assembled system prompt block in debug mode.
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param data [Hash] structured data with "content", "tokens", "estimated"
+      # @return [Array<RatatuiRuby::Widgets::Line>]
+      def render_system_prompt_entry(tui, data)
+        token_label = format_token_label(data["tokens"], data["estimated"])
+        header = "[SYSTEM] (#{token_label})"
+        style = tui.style(fg: "magenta")
+        bold_style = tui.style(fg: "magenta", modifiers: [:bold])
+
+        lines = [tui.line(spans: [tui.span(content: header, style: bold_style)])]
+        data["content"].to_s.split("\n").each do |line|
+          lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)])
+        end
+        lines
+      end
+
+      # Formats a token count for display, with tilde prefix for estimates.
+      # @param tokens [Integer, nil] token count
+      # @param estimated [Boolean] whether the count is an estimate
+      # @return [String] formatted label, e.g. "[42 tok]" or "[~28 tok]"
+      def format_token_label(tokens, estimated)
+        return "" unless tokens
+
+        label = estimated ? "~#{tokens}" : tokens.to_s
+        "[#{label} tok]"
       end
 
       # Converts nanosecond-precision timestamp to human-readable HH:MM:SS.

@@ -50,4 +50,41 @@ RSpec.describe AgentMessageDecorator, type: :decorator do
       expect(decorator.render_verbose).to eq({role: :assistant, content: "no timestamp", timestamp: nil})
     end
   end
+
+  describe "#render_debug" do
+    it "includes exact token count when available" do
+      ts = 1_709_312_325_000_000_000
+      event = session.events.create!(
+        event_type: "agent_message", payload: {"content" => "I can help"}, timestamp: ts, token_count: 156
+      )
+      decorator = EventDecorator.for(event)
+
+      expect(decorator.render_debug).to eq({
+        role: :assistant, content: "I can help", timestamp: ts, tokens: 156, estimated: false
+      })
+    end
+
+    it "includes estimated token count when not yet counted" do
+      ts = 1_709_312_325_000_000_000
+      event = session.events.create!(
+        event_type: "agent_message", payload: {"content" => "I can help"}, timestamp: ts
+      )
+      decorator = EventDecorator.for(event)
+      result = decorator.render_debug
+
+      expect(result[:role]).to eq(:assistant)
+      expect(result[:content]).to eq("I can help")
+      expect(result[:tokens]).to be_positive
+      expect(result[:estimated]).to be true
+    end
+
+    it "works with hash payloads" do
+      decorator = EventDecorator.for(type: "agent_message", content: "from hash")
+      result = decorator.render_debug
+
+      expect(result[:role]).to eq(:assistant)
+      expect(result[:tokens]).to be_positive
+      expect(result[:estimated]).to be true
+    end
+  end
 end

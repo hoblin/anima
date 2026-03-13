@@ -123,4 +123,86 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       })
     end
   end
+
+  describe "#render_debug" do
+    it "returns full untruncated content" do
+      long_output = "line1\nline2\nline3\nline4\nline5"
+      event = session.events.create!(
+        event_type: "tool_response",
+        payload: {
+          "content" => long_output, "tool_name" => "bash",
+          "success" => true, "tool_use_id" => "toolu_01abc123"
+        },
+        timestamp: 1,
+        tool_use_id: "toolu_01abc123"
+      )
+      decorator = EventDecorator.for(event)
+      result = decorator.render_debug
+
+      expect(result[:content]).to eq(long_output)
+      expect(result[:content]).not_to include("...")
+    end
+
+    it "includes tool_use_id and success indicator" do
+      event = session.events.create!(
+        event_type: "tool_response",
+        payload: {
+          "content" => "output", "tool_name" => "bash",
+          "success" => true, "tool_use_id" => "toolu_xyz"
+        },
+        timestamp: 1,
+        tool_use_id: "toolu_xyz"
+      )
+      decorator = EventDecorator.for(event)
+      result = decorator.render_debug
+
+      expect(result[:tool_use_id]).to eq("toolu_xyz")
+      expect(result[:success]).to be true
+    end
+
+    it "shows failure status" do
+      event = session.events.create!(
+        event_type: "tool_response",
+        payload: {
+          "content" => "command not found", "tool_name" => "bash",
+          "success" => false, "tool_use_id" => "toolu_fail"
+        },
+        timestamp: 1,
+        tool_use_id: "toolu_fail"
+      )
+      decorator = EventDecorator.for(event)
+      result = decorator.render_debug
+
+      expect(result[:success]).to be false
+    end
+
+    it "includes estimated token count" do
+      event = session.events.create!(
+        event_type: "tool_response",
+        payload: {"content" => "some output", "tool_name" => "bash", "success" => true},
+        timestamp: 1
+      )
+      decorator = EventDecorator.for(event)
+      result = decorator.render_debug
+
+      expect(result[:tokens]).to be_positive
+      expect(result[:estimated]).to be true
+    end
+
+    it "works with hash payloads" do
+      decorator = EventDecorator.for(
+        type: "tool_response",
+        content: "output text",
+        tool_name: "bash",
+        success: true,
+        tool_use_id: "toolu_hash"
+      )
+      result = decorator.render_debug
+
+      expect(result[:role]).to eq(:tool_response)
+      expect(result[:content]).to eq("output text")
+      expect(result[:tool_use_id]).to eq("toolu_hash")
+      expect(result[:tokens]).to be_positive
+    end
+  end
 end

@@ -47,6 +47,15 @@ class Session < ApplicationRecord
     selected.reverse
   end
 
+  # Returns the assembled system prompt for this session.
+  # The system prompt includes system instructions, goals, and memories.
+  # Currently a placeholder — these subsystems are not yet implemented.
+  #
+  # @return [String, nil] the system prompt text, or nil if not configured
+  def system_prompt
+    nil
+  end
+
   # Builds the message array expected by the Anthropic Messages API.
   # Includes user/agent messages and tool call/response events in
   # Anthropic's wire format. Consecutive tool_call events are grouped
@@ -109,18 +118,12 @@ class Session < ApplicationRecord
     }
   end
 
-  # Rough estimate for events not yet counted by the background job.
-  # For tool events, estimates from the full payload since tool_input
-  # and tool metadata contribute to token count.
+  # Delegates to {Event#estimate_tokens} for events not yet counted
+  # by the background job.
   #
   # @param event [Event]
   # @return [Integer] at least 1
   def estimate_tokens(event)
-    text = if event.event_type.in?(%w[tool_call tool_response])
-      event.payload.to_json
-    else
-      event.payload["content"].to_s
-    end
-    [(text.bytesize / BYTES_PER_TOKEN.to_f).ceil, 1].max
+    event.estimate_tokens
   end
 end

@@ -22,6 +22,9 @@ class Event < ApplicationRecord
 
   ROLE_MAP = {"user_message" => "user", "agent_message" => "assistant"}.freeze
 
+  # Heuristic: average bytes per token for English prose.
+  BYTES_PER_TOKEN = 4
+
   belongs_to :session
 
   validates :event_type, presence: true, inclusion: {in: TYPES}
@@ -54,6 +57,20 @@ class Event < ApplicationRecord
   # @return [Boolean] true if this event is part of the LLM context window
   def context_event?
     event_type.in?(CONTEXT_TYPES)
+  end
+
+  # Heuristic token estimate: ~4 bytes per token for English prose.
+  # Tool events are estimated from the full payload JSON since tool_input
+  # and tool metadata contribute to token count. Messages use content only.
+  #
+  # @return [Integer] estimated token count (at least 1)
+  def estimate_tokens
+    text = if event_type.in?(%w[tool_call tool_response])
+      payload.to_json
+    else
+      payload["content"].to_s
+    end
+    [(text.bytesize / BYTES_PER_TOKEN.to_f).ceil, 1].max
   end
 
   private

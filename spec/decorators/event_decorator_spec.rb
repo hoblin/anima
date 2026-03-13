@@ -89,8 +89,11 @@ RSpec.describe EventDecorator, type: :decorator do
       event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       decorator = described_class.for(event)
 
-      # Debug still delegates to basic until #77 implements it
-      expect(decorator.render("debug")).to eq({role: :user, content: "hi"})
+      result = decorator.render("debug")
+      expect(result[:role]).to eq(:user)
+      expect(result[:content]).to eq("hi")
+      expect(result).to have_key(:tokens)
+      expect(result).to have_key(:estimated)
     end
 
     it "raises ArgumentError for invalid mode" do
@@ -124,11 +127,46 @@ RSpec.describe EventDecorator, type: :decorator do
   end
 
   describe "#render_debug" do
-    it "delegates to render_basic by default" do
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+    it "delegates to render_basic by default in base class" do
+      stub_decorator = Class.new(described_class) do
+        def render_basic
+          {role: :stub, content: "stub output"}
+        end
+      end
+      source = described_class.send(:wrap_source, {type: "user_message", content: "hi"})
+      decorator = stub_decorator.new(source)
+
+      expect(decorator.render_debug).to eq({role: :stub, content: "stub output"})
+    end
+  end
+
+  describe "#token_info (private)" do
+    it "returns exact count when token_count is positive" do
+      event = session.events.create!(
+        event_type: "user_message", payload: {"content" => "hello"}, timestamp: 1, token_count: 42
+      )
       decorator = described_class.for(event)
 
-      expect(decorator.render_debug).to eq(decorator.render_basic)
+      expect(decorator.send(:token_info)).to eq({tokens: 42, estimated: false})
+    end
+
+    it "returns estimated count when token_count is zero" do
+      event = session.events.create!(
+        event_type: "user_message", payload: {"content" => "hello"}, timestamp: 1
+      )
+      decorator = described_class.for(event)
+      result = decorator.send(:token_info)
+
+      expect(result[:estimated]).to be true
+      expect(result[:tokens]).to be_positive
+    end
+
+    it "works with EventPayload structs (hash payloads)" do
+      decorator = described_class.for(type: "user_message", content: "hello world")
+      result = decorator.send(:token_info)
+
+      expect(result[:estimated]).to be true
+      expect(result[:tokens]).to be_positive
     end
   end
 

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Decorates system_message events for display in the TUI.
-# Hidden in basic mode. Verbose mode returns timestamped system info.
+# Hidden in basic mode. Verbose and debug modes return timestamped system info.
 class SystemMessageDecorator < EventDecorator
   # @return [nil] system messages are hidden in basic mode
   def render_basic
@@ -12,5 +12,10 @@ class SystemMessageDecorator < EventDecorator
   #   `{role: :system, content: String, timestamp: Integer|nil}`
   def render_verbose
     {role: :system, content: content, timestamp: timestamp}
+  end
+
+  # @return [Hash] same as verbose — system messages have no additional debug data
+  def render_debug
+    render_verbose
   end
 end
