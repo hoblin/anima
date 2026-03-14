@@ -114,11 +114,13 @@ RSpec.describe Mcp::Config do
         ENV.delete("TEST_MCP_TOKEN")
       end
 
-      it "raises KeyError for missing environment variables" do
+      it "skips servers with missing env vars and logs a warning" do
         ENV.delete("TEST_MCP_HOST")
         ENV.delete("TEST_MCP_TOKEN")
 
-        expect { config.http_servers }.to raise_error(KeyError, /TEST_MCP_HOST/)
+        expect(Rails.logger).to receive(:warn).with(/api.*unset env var.*TEST_MCP_HOST/)
+
+        expect(config.http_servers).to eq([])
       end
     end
 
@@ -254,10 +256,12 @@ RSpec.describe Mcp::Config do
         ENV.delete("TEST_API_KEY")
       end
 
-      it "raises KeyError for missing environment variables" do
+      it "skips servers with missing env vars and logs a warning" do
         ENV.delete("TEST_TOOL_PATH")
 
-        expect { config.stdio_servers }.to raise_error(KeyError, /TEST_TOOL_PATH/)
+        expect(Rails.logger).to receive(:warn).with(/tool.*unset env var.*TEST_TOOL_PATH/)
+
+        expect(config.stdio_servers).to eq([])
       end
     end
 

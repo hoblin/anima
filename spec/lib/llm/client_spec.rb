@@ -493,6 +493,80 @@ RSpec.describe LLM::Client do
       end
     end
 
+    context "when the tool raises an unexpected exception" do
+      let(:exploding_tool_class) do
+        Class.new(Tools::Base) do
+          def self.tool_name = "web_get"
+          def self.description = "Fetch URL"
+          def self.input_schema = {type: "object", properties: {url: {type: "string"}}, required: ["url"]}
+
+          def execute(_input)
+            raise "something went terribly wrong"
+          end
+        end
+      end
+
+      let(:tool_use_response) do
+        {
+          id: "msg_tool",
+          type: "message",
+          role: "assistant",
+          content: [
+            {type: "tool_use", id: "toolu_boom", name: "web_get", input: {url: "https://boom.com"}}
+          ],
+          model: "claude-sonnet-4-20250514",
+          stop_reason: "tool_use",
+          usage: {input_tokens: 20, output_tokens: 30}
+        }
+      end
+
+      let(:final_response) do
+        {
+          id: "msg_final",
+          type: "message",
+          role: "assistant",
+          content: [{type: "text", text: "That tool failed, sorry."}],
+          model: "claude-sonnet-4-20250514",
+          stop_reason: "end_turn",
+          usage: {input_tokens: 50, output_tokens: 20}
+        }
+      end
+
+      before do
+        exploding_registry = Tools::Registry.new
+        exploding_registry.register(exploding_tool_class)
+        @exploding_registry = exploding_registry
+
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return(
+            {status: 200, body: tool_use_response.to_json, headers: {"content-type" => "application/json"}},
+            {status: 200, body: final_response.to_json, headers: {"content-type" => "application/json"}}
+          )
+      end
+
+      it "catches the exception and returns an error tool_result to the LLM" do
+        result = client.chat_with_tools(messages, registry: @exploding_registry, session_id: session.id)
+
+        expect(result).to eq("That tool failed, sorry.")
+      end
+
+      it "emits ToolResponse with success: false" do
+        events = []
+        subscriber = double("sub")
+        allow(subscriber).to receive(:emit) { |e| events << e }
+        Events::Bus.subscribe(subscriber)
+
+        client.chat_with_tools(messages, registry: @exploding_registry, session_id: session.id)
+
+        tool_response = events.find { |e| e[:payload][:type] == "tool_response" }
+        expect(tool_response[:payload][:success]).to be false
+        expect(tool_response[:payload][:content]).to include("RuntimeError")
+        expect(tool_response[:payload][:content]).to include("something went terribly wrong")
+      ensure
+        Events::Bus.unsubscribe(subscriber)
+      end
+    end
+
     context "when the tool loop exceeds MAX_TOOL_ROUNDS" do
       let(:tool_use_response) do
         {

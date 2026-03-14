@@ -36,7 +36,6 @@ module Mcp
     # Returns HTTP server configurations from the config file.
     #
     # @return [Array<Hash>] server configs with +:name+, +:url+, +:headers+ keys
-    # @raise [KeyError] if a referenced environment variable is not set
     def http_servers
       servers_by_transport("http") do |name, settings|
         url = settings["url"]
@@ -56,7 +55,6 @@ module Mcp
     # Returns stdio server configurations from the config file.
     #
     # @return [Array<Hash>] server configs with +:name+, +:command+, +:args+, +:env+ keys
-    # @raise [KeyError] if a referenced environment variable is not set
     def stdio_servers
       servers_by_transport("stdio") do |name, settings|
         command = settings["command"]
@@ -78,7 +76,9 @@ module Mcp
 
     # Iterates servers matching a given transport type, yielding each
     # for transport-specific parsing. Returns an empty array if the
-    # config file is missing or empty.
+    # config file is missing or empty. Servers referencing unset
+    # environment variables are skipped with a warning — one bad
+    # server config must not prevent others from loading.
     #
     # @param transport [String] transport type to filter by ("http", "stdio")
     # @yield [name, settings] block that returns a parsed server hash or nil
@@ -93,6 +93,9 @@ module Mcp
         next unless settings["transport"] == transport
 
         yield(name, settings)
+      rescue KeyError => error
+        Rails.logger.warn("MCP: server '#{name}' references unset env var #{error.message} — skipping")
+        nil
       end
     end
 
