@@ -169,7 +169,11 @@ RSpec.describe TUI::App do
         allow(chat).to receive(:switch_session)
       end
 
-      it "closes on Escape" do
+      it "requests sessions with limit 50" do
+        expect(cable_client).to have_received(:list_sessions).with(limit: 50)
+      end
+
+      it "closes on Escape in root mode" do
         app.send(:handle_event, key_event(code: "esc", esc?: true))
         expect(app.session_picker_active).to be false
       end
@@ -190,7 +194,7 @@ RSpec.describe TUI::App do
         expect(app.instance_variable_get(:@session_picker_index)).to eq(0)
       end
 
-      it "clamps selection at bottom" do
+      it "clamps selection at bottom of page" do
         5.times { app.send(:handle_event, key_event(code: "down")) }
         expect(app.instance_variable_get(:@session_picker_index)).to eq(2)
       end
@@ -250,100 +254,208 @@ RSpec.describe TUI::App do
         expect(chat).not_to have_received(:handle_event)
       end
 
-      describe "tree navigation" do
-        it "expands children on right arrow for session with children" do
-          # Move to session #8 (index 1) which has children
-          app.send(:handle_event, key_event(code: "down"))
+      describe "drill-down navigation" do
+        it "drills into children on right arrow for session with children" do
+          app.send(:handle_event, key_event(code: "down")) # session #8
           app.send(:handle_event, key_event(code: "right"))
 
-          expanded = app.instance_variable_get(:@expanded_sessions)
-          expect(expanded[8]).to be true
+          expect(app.instance_variable_get(:@session_picker_mode)).to eq(:children)
+          expect(app.instance_variable_get(:@session_picker_parent_id)).to eq(8)
+          expect(app.instance_variable_get(:@session_picker_index)).to eq(0)
         end
 
-        it "does not expand on right arrow for session without children" do
-          # Session #10 (index 0) has no children
-          app.send(:handle_event, key_event(code: "right"))
-
-          expanded = app.instance_variable_get(:@expanded_sessions)
-          expect(expanded[10]).to be_nil
+        it "does not drill on right arrow for session without children" do
+          app.send(:handle_event, key_event(code: "right")) # session #10
+          expect(app.instance_variable_get(:@session_picker_mode)).to eq(:root)
         end
 
-        it "shows children in visible items after expansion" do
+        it "shows children as visible items in children mode" do
           app.send(:handle_event, key_event(code: "down"))
           app.send(:handle_event, key_event(code: "right"))
 
           visible = app.send(:session_picker_visible_items)
-          types = visible.map { |i| i[:type] }
-          # root, root(expanded), child, child, root
-          expect(types).to eq([:root, :root, :child, :child, :root])
+          expect(visible.size).to eq(2)
+          expect(visible.map { |i| i[:type] }).to eq([:child, :child])
+          expect(visible[0][:data]["id"]).to eq(81)
+          expect(visible[1][:data]["id"]).to eq(82)
         end
 
-        it "navigates into expanded children" do
-          app.send(:handle_event, key_event(code: "down"))
-          app.send(:handle_event, key_event(code: "right"))
-          app.send(:handle_event, key_event(code: "down"))
-
-          # Should now be on the first child (codebase-analyzer)
-          visible = app.send(:session_picker_visible_items)
-          idx = app.instance_variable_get(:@session_picker_index)
-          expect(visible[idx][:type]).to eq(:child)
-          expect(visible[idx][:data]["id"]).to eq(81)
-        end
-
-        it "switches to child session on Enter" do
+        it "switches to child session on Enter in children mode" do
           chat = app.instance_variable_get(:@screens)[:chat]
           app.send(:handle_event, key_event(code: "down"))
           app.send(:handle_event, key_event(code: "right"))
-          app.send(:handle_event, key_event(code: "down"))
           app.send(:handle_event, key_event(code: "enter"))
 
           expect(chat).to have_received(:switch_session).with(81)
         end
 
-        it "collapses on left arrow from parent" do
-          app.send(:handle_event, key_event(code: "down"))
-          app.send(:handle_event, key_event(code: "right"))
-          app.send(:handle_event, key_event(code: "left"))
-
-          expanded = app.instance_variable_get(:@expanded_sessions)
-          expect(expanded).not_to have_key(8)
-        end
-
-        it "collapses parent and moves to parent on left arrow from child" do
-          app.send(:handle_event, key_event(code: "down"))
-          app.send(:handle_event, key_event(code: "right"))
-          app.send(:handle_event, key_event(code: "down")) # on first child
-          app.send(:handle_event, key_event(code: "left"))
-
-          expanded = app.instance_variable_get(:@expanded_sessions)
-          expect(expanded).not_to have_key(8)
-
-          idx = app.instance_variable_get(:@session_picker_index)
-          visible = app.send(:session_picker_visible_items)
-          expect(visible[idx][:data]["id"]).to eq(8)
-        end
-
-        it "switches to unnamed child session on Enter" do
+        it "switches to second child on hotkey 2 in children mode" do
           chat = app.instance_variable_get(:@screens)[:chat]
           app.send(:handle_event, key_event(code: "down"))
           app.send(:handle_event, key_event(code: "right"))
-          # Move to second child (unnamed, id 82)
-          2.times { app.send(:handle_event, key_event(code: "down")) }
-          app.send(:handle_event, key_event(code: "enter"))
+          app.send(:handle_event, key_event(code: "2"))
 
           expect(chat).to have_received(:switch_session).with(82)
         end
 
-        it "clamps selection at bottom of expanded list" do
+        it "returns to root mode on left arrow from children" do
           app.send(:handle_event, key_event(code: "down"))
           app.send(:handle_event, key_event(code: "right"))
-          # Now 5 items visible, try moving past end
-          10.times { app.send(:handle_event, key_event(code: "down")) }
+          app.send(:handle_event, key_event(code: "left"))
+
+          expect(app.instance_variable_get(:@session_picker_mode)).to eq(:root)
+          expect(app.instance_variable_get(:@session_picker_parent_id)).to be_nil
+          expect(app.instance_variable_get(:@session_picker_index)).to eq(0)
+        end
+
+        it "returns to root mode on Escape from children" do
+          app.send(:handle_event, key_event(code: "down"))
+          app.send(:handle_event, key_event(code: "right"))
+          app.send(:handle_event, key_event(code: "esc", esc?: true))
+
+          expect(app.instance_variable_get(:@session_picker_mode)).to eq(:root)
+          expect(app.session_picker_active).to be true
+        end
+
+        it "left arrow is a no-op in root mode" do
+          app.send(:handle_event, key_event(code: "left"))
+          expect(app.instance_variable_get(:@session_picker_mode)).to eq(:root)
+        end
+      end
+
+      describe "pagination" do
+        let(:many_sessions) do
+          (1..15).map do |i|
+            {"id" => i, "message_count" => i, "updated_at" => Time.now.iso8601}
+          end
+        end
+
+        before do
+          chat = app.instance_variable_get(:@screens)[:chat]
+          chat.instance_variable_set(:@sessions_list, many_sessions)
+        end
+
+        it "shows first 9 sessions on page 0" do
+          visible = app.send(:session_picker_visible_items)
+          expect(visible.size).to eq(9)
+          expect(visible.first[:data]["id"]).to eq(1)
+          expect(visible.last[:data]["id"]).to eq(9)
+        end
+
+        it "reports has_more when more sessions exist" do
+          expect(app.send(:session_picker_has_more?)).to be true
+        end
+
+        it "reports remaining count" do
+          expect(app.send(:session_picker_remaining_count)).to eq(6)
+        end
+
+        it "advances to next page on key 0" do
+          app.send(:handle_event, key_event(code: "0"))
+
+          expect(app.instance_variable_get(:@session_picker_page)).to eq(1)
+          expect(app.instance_variable_get(:@session_picker_index)).to eq(0)
+        end
+
+        it "shows next 6 sessions on page 1" do
+          app.send(:handle_event, key_event(code: "0"))
 
           visible = app.send(:session_picker_visible_items)
-          idx = app.instance_variable_get(:@session_picker_index)
-          expect(idx).to eq(visible.size - 1)
+          expect(visible.size).to eq(6)
+          expect(visible.first[:data]["id"]).to eq(10)
+          expect(visible.last[:data]["id"]).to eq(15)
         end
+
+        it "does not report has_more on last page" do
+          app.send(:handle_event, key_event(code: "0"))
+          expect(app.send(:session_picker_has_more?)).to be false
+        end
+
+        it "ignores key 0 when no more pages" do
+          app.send(:handle_event, key_event(code: "0")) # page 1
+          app.send(:handle_event, key_event(code: "0")) # should be ignored
+
+          expect(app.instance_variable_get(:@session_picker_page)).to eq(1)
+        end
+
+        it "resets page when drilling into children" do
+          sessions_with_children = many_sessions.dup
+          sessions_with_children[0]["children"] = [
+            {"id" => 100, "name" => "child", "processing" => false, "message_count" => 0, "created_at" => Time.now.iso8601}
+          ]
+          chat = app.instance_variable_get(:@screens)[:chat]
+          chat.instance_variable_set(:@sessions_list, sessions_with_children)
+
+          app.send(:handle_event, key_event(code: "0")) # page 1
+          # Go back to page 0 to find the session with children
+          app.instance_variable_set(:@session_picker_page, 0)
+          app.instance_variable_set(:@session_picker_index, 0)
+
+          app.send(:handle_event, key_event(code: "right"))
+
+          expect(app.instance_variable_get(:@session_picker_page)).to eq(0)
+          expect(app.instance_variable_get(:@session_picker_mode)).to eq(:children)
+        end
+
+        it "resets page when returning to root from children" do
+          sessions_with_children = [
+            {"id" => 1, "message_count" => 0, "updated_at" => Time.now.iso8601,
+             "children" => (1..15).map { |i|
+               {"id" => 100 + i, "name" => "child-#{i}", "processing" => false, "message_count" => 0, "created_at" => Time.now.iso8601}
+             }}
+          ]
+          chat = app.instance_variable_get(:@screens)[:chat]
+          chat.instance_variable_set(:@sessions_list, sessions_with_children)
+
+          app.send(:handle_event, key_event(code: "right")) # drill in
+          app.send(:handle_event, key_event(code: "0"))      # page 1 of children
+          app.send(:handle_event, key_event(code: "left"))   # back to root
+
+          expect(app.instance_variable_get(:@session_picker_page)).to eq(0)
+          expect(app.instance_variable_get(:@session_picker_mode)).to eq(:root)
+        end
+
+        it "paginates children separately" do
+          sessions_with_many_children = [
+            {"id" => 1, "message_count" => 0, "updated_at" => Time.now.iso8601,
+             "children" => (1..12).map { |i|
+               {"id" => 100 + i, "name" => "child-#{i}", "processing" => false, "message_count" => 0, "created_at" => Time.now.iso8601}
+             }}
+          ]
+          chat = app.instance_variable_get(:@screens)[:chat]
+          chat.instance_variable_set(:@sessions_list, sessions_with_many_children)
+
+          app.send(:handle_event, key_event(code: "right")) # drill in
+          visible = app.send(:session_picker_visible_items)
+          expect(visible.size).to eq(9) # first page of children
+
+          app.send(:handle_event, key_event(code: "0")) # next page
+          visible = app.send(:session_picker_visible_items)
+          expect(visible.size).to eq(3) # remaining children
+          expect(visible.first[:data]["id"]).to eq(110)
+        end
+      end
+    end
+
+    describe "Escape to parent session" do
+      it "switches to parent session on Escape when viewing a child" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.instance_variable_set(:@parent_session_id, 42)
+        allow(chat).to receive(:switch_session)
+
+        app.send(:handle_event, key_event(code: "esc", esc?: true))
+
+        expect(chat).to have_received(:switch_session).with(42)
+      end
+
+      it "is a no-op on Escape when viewing a root session" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.instance_variable_set(:@parent_session_id, nil)
+        allow(chat).to receive(:switch_session)
+
+        app.send(:handle_event, key_event(code: "esc", esc?: true))
+
+        expect(chat).not_to have_received(:switch_session)
       end
     end
 
@@ -897,8 +1009,8 @@ RSpec.describe TUI::App do
         end
       end
 
-      it "maps 0 to index 9" do
-        expect(app.send(:hotkey_to_index, "0")).to eq(9)
+      it "returns nil for key 0 (reserved for Load More)" do
+        expect(app.send(:hotkey_to_index, "0")).to be_nil
       end
 
       it "returns nil for non-digit keys" do
@@ -914,11 +1026,8 @@ RSpec.describe TUI::App do
         end
       end
 
-      it "returns 0 for position 9" do
-        expect(app.send(:picker_hotkey, 9)).to eq("0")
-      end
-
-      it "returns nil for positions beyond 9" do
+      it "returns nil for position 9 and beyond" do
+        expect(app.send(:picker_hotkey, 9)).to be_nil
         expect(app.send(:picker_hotkey, 10)).to be_nil
       end
     end

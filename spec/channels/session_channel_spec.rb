@@ -70,8 +70,19 @@ RSpec.describe SessionChannel, type: :channel do
       changed = transmissions.find { |t| t["action"] == "session_changed" }
       expect(changed).to be_present
       expect(changed["session_id"]).to eq(session_id)
+      expect(changed["parent_session_id"]).to be_nil
       expect(changed["message_count"]).to eq(1)
       expect(changed["view_mode"]).to eq("basic")
+    end
+
+    it "includes parent_session_id for child sessions" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent)
+
+      subscribe(session_id: child.id)
+
+      changed = transmissions.find { |t| t["action"] == "session_changed" }
+      expect(changed["parent_session_id"]).to eq(parent.id)
     end
 
     it "transmits chat history including tool events for existing session" do

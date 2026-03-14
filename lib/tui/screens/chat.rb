@@ -28,7 +28,7 @@ module TUI
       VIEW_MODES = %w[basic verbose debug].freeze
 
       attr_reader :message_store, :scroll_offset, :session_info, :view_mode, :sessions_list,
-        :authentication_required, :token_save_result
+        :authentication_required, :token_save_result, :parent_session_id
 
       # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
       # @param message_store [TUI::MessageStore, nil] injectable for testing
@@ -45,6 +45,7 @@ module TUI
         @view_mode = "basic"
         @session_info = {id: cable_client.session_id || 0, message_count: 0}
         @sessions_list = nil
+        @parent_session_id = nil
         @authentication_required = false
         @token_save_result = nil
       end
@@ -240,6 +241,7 @@ module TUI
         @message_store.clear
         @view_mode = msg["view_mode"] if msg["view_mode"]
         @session_info = {id: new_id, message_count: msg["message_count"] || 0}
+        @parent_session_id = msg["parent_session_id"]
         @input_buffer.clear
         @loading = false
         @scroll_offset = 0
