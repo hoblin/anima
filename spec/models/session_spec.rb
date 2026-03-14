@@ -107,6 +107,19 @@ RSpec.describe Session do
       session = Session.create!
       expect(session.name).to be_nil
     end
+
+    it "rejects names longer than 255 characters" do
+      parent = Session.create!
+      child = Session.new(parent_session: parent, prompt: "prompt", name: "a" * 256)
+      expect(child).not_to be_valid
+      expect(child.errors[:name]).to be_present
+    end
+
+    it "accepts names up to 255 characters" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "prompt", name: "a" * 255)
+      expect(child).to be_valid
+    end
   end
 
   describe "#granted_tools" do

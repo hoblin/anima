@@ -396,6 +396,8 @@ module TUI
     CHILD_STATUS_DONE = "\u2713"      # ✓
     EXPAND_ARROW_COLLAPSED = "\u25B8" # ▸
     EXPAND_ARROW_EXPANDED = "\u25BE"  # ▾
+    UNNAMED_SUBAGENT_LABEL = "sub-agent"
+    CHILD_INDENT = "     "
 
     # Requests the session list from the brain and opens the picker overlay.
     # @return [void]
@@ -463,6 +465,9 @@ module TUI
     end
 
     # Toggles expansion on the selected root session.
+    #
+    # @param visible [Array<Hash>] flattened visible items from {#session_picker_visible_items}
+    # @return [void]
     def expand_selected_session(visible)
       item = visible[@session_picker_index]
       return unless item&.dig(:type) == :root
@@ -475,6 +480,9 @@ module TUI
 
     # Collapses the selected session or its parent. If on a child item,
     # collapses the parent and moves selection to the parent row.
+    #
+    # @param visible [Array<Hash>] flattened visible items from {#session_picker_visible_items}
+    # @return [void]
     def collapse_selected_session(visible)
       item = visible[@session_picker_index]
       return unless item
@@ -492,6 +500,9 @@ module TUI
     end
 
     # Switches to the session selected in the tree picker.
+    #
+    # @param visible [Array<Hash>] flattened visible items from {#session_picker_visible_items}
+    # @return [void]
     def pick_session_from_tree(visible)
       item = visible[@session_picker_index]
       return unless item
@@ -548,6 +559,10 @@ module TUI
 
     # Formats a root session entry with expand arrow and child count.
     #
+    # @param tui [RatatuiRuby] TUI rendering API
+    # @param session [Hash] serialized session from the brain
+    # @param idx [Integer] position in the flattened visible items list
+    # @param current_id [Integer] ID of the currently active session
     # @return [Array<RatatuiRuby::Widgets::Line>]
     def format_root_session_entry(tui, session, idx, current_id)
       selected = idx == @session_picker_index
@@ -584,15 +599,18 @@ module TUI
 
     # Formats a child session entry with status indicator and agent name.
     #
+    # @param tui [RatatuiRuby] TUI rendering API
+    # @param child [Hash] serialized child session from the brain
+    # @param idx [Integer] position in the flattened visible items list
     # @return [Array<RatatuiRuby::Widgets::Line>]
     def format_child_session_entry(tui, child, idx)
       selected = idx == @session_picker_index
 
       status = child["processing"] ? CHILD_STATUS_RUNNING : CHILD_STATUS_DONE
       status_color = child["processing"] ? "yellow" : "green"
-      display_name = child["name"] || "sub-agent"
+      display_name = child["name"] || UNNAMED_SUBAGENT_LABEL
 
-      label = "     #{status} #{display_name}"
+      label = "#{CHILD_INDENT}#{status} #{display_name}"
 
       style = if selected
         tui.style(fg: "black", bg: "cyan")

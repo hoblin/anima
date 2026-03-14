@@ -323,6 +323,17 @@ RSpec.describe TUI::App do
           expect(visible[idx][:data]["id"]).to eq(8)
         end
 
+        it "switches to unnamed child session on Enter" do
+          chat = app.instance_variable_get(:@screens)[:chat]
+          app.send(:handle_event, key_event(code: "down"))
+          app.send(:handle_event, key_event(code: "right"))
+          # Move to second child (unnamed, id 82)
+          2.times { app.send(:handle_event, key_event(code: "down")) }
+          app.send(:handle_event, key_event(code: "enter"))
+
+          expect(chat).to have_received(:switch_session).with(82)
+        end
+
         it "clamps selection at bottom of expanded list" do
           app.send(:handle_event, key_event(code: "down"))
           app.send(:handle_event, key_event(code: "right"))

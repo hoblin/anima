@@ -343,6 +343,18 @@ RSpec.describe SessionChannel, type: :channel do
       expect(child_entry["processing"]).to eq(false)
     end
 
+    it "sorts children by created_at" do
+      parent = Session.create!
+      older = Session.create!(parent_session: parent, prompt: "first", name: "alpha", created_at: 2.minutes.ago)
+      newer = Session.create!(parent_session: parent, prompt: "second", name: "beta", created_at: 1.minute.ago)
+
+      perform(:list_sessions, {"limit" => 10})
+
+      response = transmissions.last
+      children = response["sessions"].first["children"]
+      expect(children.map { |c| c["id"] }).to eq([older.id, newer.id])
+    end
+
     it "includes processing status for child sessions" do
       parent = Session.create!
       Session.create!(parent_session: parent, prompt: "task", processing: true)

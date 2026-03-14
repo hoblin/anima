@@ -311,10 +311,11 @@ class SessionChannel < ApplicationCable::Channel
   end
 
   # Serializes a root session with its children for the sessions_list response.
+  # Includes a :children key only when the session has child sessions.
   #
   # @param session [Session] root session to serialize
   # @param counts [Hash<Integer, Integer>] session_id => llm_message count
-  # @return [Hash] serialized session entry
+  # @return [Hash] with :id, :created_at, :updated_at, :message_count, and optional :children
   def serialize_session_with_children(session, counts)
     entry = {
       id: session.id,

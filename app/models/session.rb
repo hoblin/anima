@@ -20,6 +20,7 @@ class Session < ApplicationRecord
   has_many :child_sessions, class_name: "Session", foreign_key: :parent_session_id, dependent: :destroy
 
   validates :view_mode, inclusion: {in: VIEW_MODES}
+  validates :name, length: {maximum: 255}, allow_nil: true
 
   scope :recent, ->(limit = 10) { order(updated_at: :desc).limit(limit) }
   scope :root_sessions, -> { where(parent_session_id: nil) }
