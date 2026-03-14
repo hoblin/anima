@@ -14,7 +14,6 @@ module TUI
 
       SCROLL_STEP = 1
       MOUSE_SCROLL_STEP = 2
-      MAX_HISTORY_SIZE = 100
 
       TOOL_ICON = "\u{1F527}"
       CLOCK_ICON = "\u{1F552}"
@@ -827,14 +826,12 @@ module TUI
       end
 
       # Appends a message to input history, skipping consecutive duplicates.
-      # Oldest entries are evicted when the history exceeds {MAX_HISTORY_SIZE}.
       #
       # @param text [String] submitted message text
       # @return [void]
       def save_to_history(text)
         return if @input_history.last == text
 
-        @input_history.shift if @input_history.size >= MAX_HISTORY_SIZE
         @input_history << text
       end
 
