@@ -10,7 +10,7 @@ module Agents
     # @return [Hash{String => Definition}] loaded definitions keyed by name
     attr_reader :agents
 
-    BUILTIN_DIR = Anima.gem_root.join("agents").to_s.freeze
+    BUILTIN_DIR = File.expand_path("../../agents", __dir__).freeze
     USER_DIR = File.expand_path("~/.anima/agents").freeze
 
     def initialize
