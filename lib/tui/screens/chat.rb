@@ -28,7 +28,8 @@ module TUI
       VIEW_MODES = %w[basic verbose debug].freeze
 
       attr_reader :message_store, :scroll_offset, :session_info, :view_mode, :sessions_list,
-        :authentication_required, :token_save_result, :parent_session_id
+        :authentication_required, :token_save_result, :parent_session_id,
+        :chat_focused
 
       # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
       # @param message_store [TUI::MessageStore, nil] injectable for testing
@@ -48,6 +49,10 @@ module TUI
         @parent_session_id = nil
         @authentication_required = false
         @token_save_result = nil
+        @chat_focused = false
+        @input_history = []
+        @history_index = nil
+        @saved_input = nil
       end
 
       def messages
@@ -82,28 +87,40 @@ module TUI
         render_input(frame, input_area, tui)
       end
 
-      # Input is always active — users can type and send messages even while
-      # the agent is processing. Messages sent during processing are queued
-      # as "pending" on the server and delivered after the current loop.
-      # Arrow-up recalls the last pending message for editing.
+      # Dispatches keyboard, mouse, and paste events. Supports two focus
+      # modes: input mode (default) where arrows navigate the input buffer
+      # with bash-style history overflow, and chat-focused mode where arrows
+      # scroll the chat pane.
+      #
+      # Page Up/Down and mouse scroll always control the chat pane
+      # regardless of focus mode.
       def handle_event(event)
         return handle_mouse_event(event) if event.mouse?
         return handle_paste_event(event) if event.paste?
         return handle_scroll_key(event) if event.page_up? || event.page_down?
 
+        return handle_chat_focused_event(event) if @chat_focused
+
         if event.up?
+          return true if @input_buffer.move_up
           return true if @input_buffer.text.empty? && recall_pending_message
-          return handle_scroll_key(event)
+          return navigate_history_back
         end
-        return handle_scroll_key(event) if event.down?
+
+        if event.down?
+          return true if @input_buffer.move_down
+          return navigate_history_forward
+        end
 
         if event.enter?
           submit_message
           true
         elsif event.backspace?
+          reset_history_browsing
           @input_buffer.backspace
           true
         elsif event.delete?
+          reset_history_browsing
           @input_buffer.delete
           true
         elsif event.left?
@@ -115,6 +132,7 @@ module TUI
         elsif event.end?
           @input_buffer.move_end
         elsif printable_char?(event) && !@input_buffer.full?
+          reset_history_browsing
           @input_buffer.insert(event.code)
         else
           false
@@ -166,6 +184,18 @@ module TUI
 
       def loading?
         @loading
+      end
+
+      # Switches focus to the chat pane for keyboard scrolling.
+      # @return [void]
+      def focus_chat
+        @chat_focused = true
+      end
+
+      # Returns focus from the chat pane to the input field.
+      # @return [void]
+      def unfocus_chat
+        @chat_focused = false
       end
 
       private
@@ -263,6 +293,8 @@ module TUI
         @scroll_offset = 0
         @auto_scroll = true
         @input_scroll_offset = 0
+        @chat_focused = false
+        reset_history_browsing
       end
 
       # Updates the session name when a background job generates one.
@@ -311,15 +343,19 @@ module TUI
         @scroll_offset = @max_scroll if @auto_scroll
         @scroll_offset = @scroll_offset.clamp(0, @max_scroll)
 
-        widget = base_widget.with(
-          scroll: [@scroll_offset, 0],
-          block: tui.block(
-            title: "Chat",
-            borders: [:all],
-            border_type: :rounded,
-            border_style: {fg: "cyan"}
-          )
-        )
+        chat_block = {
+          title: "Chat",
+          borders: [:all],
+          border_type: :rounded,
+          border_style: @chat_focused ? {fg: "yellow"} : {fg: "cyan"}
+        }
+        if @chat_focused
+          chat_block[:titles] = [
+            {content: "\u2191\u2193 scroll  Esc return", position: :bottom, alignment: :center}
+          ]
+        end
+
+        widget = base_widget.with(scroll: [@scroll_offset, 0], block: tui.block(**chat_block))
         frame.render_widget(widget, area)
 
         return unless @max_scroll > 0
@@ -565,7 +601,7 @@ module TUI
         )
         frame.render_widget(widget, area)
 
-        return if disabled
+        return if disabled || @chat_focused
 
         cursor_x = area.x + 1 + @cursor_visual_col
         cursor_y = area.y + 1 + @cursor_visual_row - input_scroll
@@ -576,9 +612,15 @@ module TUI
       end
 
       def input_styles(tui, disabled)
+        border_color = if disabled || @chat_focused
+          "dark_gray"
+        else
+          "green"
+        end
+
         {
           text: disabled ? tui.style(fg: "dark_gray") : tui.style(fg: "white"),
-          border: disabled ? {fg: "dark_gray"} : {fg: "green"}
+          border: {fg: border_color}
         }
       end
 
@@ -687,6 +729,8 @@ module TUI
         return unless connected?
 
         text = @input_buffer.consume
+        save_to_history(text)
+        reset_history_browsing
         @input_scroll_offset = 0
         @cable_client.speak(text)
       end
@@ -705,6 +749,90 @@ module TUI
         @input_buffer.insert(pending[:content])
         @cable_client.recall_pending(pending[:id])
         true
+      end
+
+      # Handles keyboard events when the chat pane has focus.
+      # Up/Down scroll the chat; all other keys are ignored.
+      #
+      # @return [Boolean] true if the event was handled
+      def handle_chat_focused_event(event)
+        if event.up?
+          scroll_up(SCROLL_STEP)
+          true
+        elsif event.down?
+          scroll_down(SCROLL_STEP)
+          true
+        else
+          false
+        end
+      end
+
+      # Navigates backward through input history (older entries).
+      # On first invocation, saves the current input buffer so it can be
+      # restored when the user navigates past the newest entry.
+      #
+      # @return [Boolean] true if a history entry was loaded
+      def navigate_history_back
+        return false if @input_history.empty?
+
+        if @history_index.nil?
+          @saved_input = @input_buffer.text
+          @history_index = @input_history.size - 1
+        elsif @history_index > 0
+          @history_index -= 1
+        else
+          return false
+        end
+
+        load_history_entry(@input_history[@history_index])
+        true
+      end
+
+      # Navigates forward through input history (newer entries).
+      # When navigating past the newest entry, restores the text that was
+      # in the input buffer before history browsing started.
+      #
+      # @return [Boolean] true if navigated, false if not browsing history
+      def navigate_history_forward
+        return false if @history_index.nil?
+
+        @history_index += 1
+
+        if @history_index >= @input_history.size
+          load_history_entry(@saved_input)
+          reset_history_browsing
+        else
+          load_history_entry(@input_history[@history_index])
+        end
+
+        true
+      end
+
+      # Replaces the input buffer content with a history entry.
+      # Cursor is placed at the end of the text.
+      #
+      # @param text [String] history entry or saved input to load
+      # @return [void]
+      def load_history_entry(text)
+        @input_buffer.clear
+        @input_buffer.insert(text)
+      end
+
+      # Exits history browsing mode without changing the input buffer.
+      # @return [void]
+      def reset_history_browsing
+        @history_index = nil
+        @saved_input = nil
+      end
+
+      # Appends a message to input history, skipping consecutive duplicates.
+      #
+      # @param text [String] submitted message text
+      # @return [void]
+      def save_to_history(text)
+        return if @input_history.last == text
+
+        @input_history << text
       end
 
       # Dispatches arrow and page keys to {#scroll_up} or {#scroll_down}.
@@ -763,6 +891,7 @@ module TUI
       def handle_paste_event(event)
         return false if @input_buffer.full?
 
+        reset_history_browsing
         @input_buffer.insert(event.content)
       end
 

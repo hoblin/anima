@@ -18,7 +18,8 @@ module TUI
       "q" => :quit
     }.freeze
 
-    MENU_LABELS = COMMAND_KEYS.map { |key, action| "[#{key}] #{action.to_s.tr("_", " ").capitalize}" }.freeze
+    MENU_LABELS = (COMMAND_KEYS.map { |key, action| "[#{key}] #{action.to_s.tr("_", " ").capitalize}" } +
+      ["[\u2191] Scroll chat", "[\u2193] Return to input"]).freeze
 
     SIDEBAR_WIDTH = 28
 
@@ -230,9 +231,13 @@ module TUI
     end
 
     # Builds the interaction state line for the info panel.
-    # Shows "Thinking..." during LLM processing.
+    # Shows "Scrolling" when chat pane is focused, or "Thinking..." during LLM processing.
     def interaction_state_line(tui)
-      if chat_loading?
+      if @screens[:chat].chat_focused
+        tui.line(spans: [
+          tui.span(content: "Scrolling", style: tui.style(fg: "yellow", modifiers: [:bold]))
+        ])
+      elsif chat_loading?
         tui.line(spans: [
           tui.span(content: "Thinking...", style: tui.style(fg: "magenta", modifiers: [:bold]))
         ])
@@ -289,6 +294,16 @@ module TUI
 
       return nil unless event.key?
 
+      if event.up?
+        @screens[:chat].focus_chat
+        return nil
+      end
+
+      if event.down?
+        @screens[:chat].unfocus_chat
+        return nil
+      end
+
       action = COMMAND_KEYS[event.code]
       case action
       when :quit
@@ -323,7 +338,11 @@ module TUI
       end
 
       if event.esc?
-        return_to_parent_session
+        if @screens[:chat].chat_focused
+          @screens[:chat].unfocus_chat
+        else
+          return_to_parent_session
+        end
         return nil
       end
 

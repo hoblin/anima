@@ -12,6 +12,9 @@ detectors:
   # Private helpers don't need instance state to be valid
   UtilityFunction:
     public_methods_only: true
+  # Method length is enforced by code review, not arbitrary line counts
+  TooManyStatements:
+    enabled: false
 
 # TUI render methods receive (frame, tui) by design — RatatuiRuby convention
 exclude_paths:

@@ -1,6 +1,8 @@
 ## [Unreleased]
 
 ### Added
+- Tmux-style focus switching — `Ctrl+A ↑` enters chat scrolling mode with yellow border, `Escape` returns to input; arrow keys and Page Up/Down scroll chat, mouse scroll works in both modes (#87)
+- Bash-style input history — press ↑ at top of input to recall previous messages, ↓ to navigate forward; original draft restored when exiting history (#87)
 - Real-time event broadcasting via `Event::Broadcasting` concern — `after_create_commit` and `after_update_commit` callbacks broadcast decorated payloads with database ID and action type to the session's ActionCable stream (#91)
 - TUI `MessageStore` ID-indexed updates — events with `action: "update"` replace existing entries in-place (O(1) lookup) without changing display order
 - `CountEventTokensJob` triggers broadcast — uses `update!` so token count updates push to connected clients in real time
