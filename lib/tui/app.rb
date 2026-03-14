@@ -311,8 +311,24 @@ module TUI
         return nil
       end
 
+      if event.esc?
+        return_to_parent_session
+        return nil
+      end
+
       delegate_to_screen(event)
       nil
+    end
+
+    # Switches to the parent session when viewing a child (sub-agent) session.
+    # No-op if the current session is a root session.
+    #
+    # @return [void]
+    def return_to_parent_session
+      parent_id = @screens[:chat].parent_session_id
+      return unless parent_id
+
+      @screens[:chat].switch_session(parent_id)
     end
 
     # Forwards an event to the active screen for handling
@@ -365,28 +381,23 @@ module TUI
     end
 
     # Maps digit key codes to picker list indices.
-    # Keys 1-9 map to indices 0-8, key 0 maps to index 9.
+    # Keys 1-9 map to indices 0-8. Key 0 is reserved for Load More in paginated pickers.
     #
     # @param code [String] the key code
     # @return [Integer, nil] list index, or nil for non-digit keys
     def hotkey_to_index(code)
       return nil unless code.length == 1
 
-      case code
-      when "1".."9" then code.to_i - 1
-      when "0" then 9
-      end
+      code.to_i - 1 if ("1".."9").cover?(code)
     end
 
     # Returns the hotkey character for a given picker list position.
-    # Positions 0-8 get keys "1"-"9", position 9 gets "0".
+    # Positions 0-8 get keys "1"-"9". Positions beyond 8 get no hotkey.
     #
     # @param idx [Integer] zero-based list position
-    # @return [String, nil] hotkey character, or nil for positions beyond 9
+    # @return [String, nil] hotkey character, or nil for positions beyond 8
     def picker_hotkey(idx)
-      return (idx + 1).to_s if idx < 9
-      return "0" if idx == 9
-      nil
+      (idx + 1).to_s if idx >= 0 && idx < 9
     end
 
     # -- Session picker ------------------------------------------------
@@ -394,23 +405,27 @@ module TUI
     # Status indicators for child session state.
     CHILD_STATUS_RUNNING = "\u27F3"   # ⟳
     CHILD_STATUS_DONE = "\u2713"      # ✓
-    EXPAND_ARROW_COLLAPSED = "\u25B8" # ▸
-    EXPAND_ARROW_EXPANDED = "\u25BE"  # ▾
+    CHILDREN_ARROW = "\u25B8"         # ▸ indicates drill-in with →
     UNNAMED_SUBAGENT_LABEL = "sub-agent"
-    CHILD_INDENT = "     "
+    SESSION_PICKER_PAGE_SIZE = 9
+    SESSION_PICKER_FETCH_LIMIT = 50
+    BACK_ARROW = "\u2190"             # ←
 
     # Requests the session list from the brain and opens the picker overlay.
+    # Fetches up to MAX_LIST_LIMIT sessions for client-side pagination.
     # @return [void]
     def activate_session_picker
       @session_picker_active = true
       @session_picker_index = 0
-      @expanded_sessions = {}
-      @cable_client.list_sessions
+      @session_picker_page = 0
+      @session_picker_mode = :root
+      @session_picker_parent_id = nil
+      @cable_client.list_sessions(limit: SESSION_PICKER_FETCH_LIMIT)
     end
 
     # Dispatches keyboard events while the session picker overlay is open.
-    # Handles tree navigation: `→` expands, `←` collapses, up/down moves
-    # through the flattened visible item list.
+    # Supports drill-down navigation: root sessions → children, with
+    # pagination via key 0 (Load More) at both levels.
     #
     # @param event [RatatuiRuby::Event] keyboard event
     # @return [nil]
@@ -418,7 +433,7 @@ module TUI
       return nil unless event.key?
 
       if event.esc?
-        @session_picker_active = false
+        handle_session_picker_escape
         return nil
       end
 
@@ -426,84 +441,128 @@ module TUI
       return nil if visible.empty?
 
       if event.up?
-        @session_picker_index = [(@session_picker_index || 0) - 1, 0].max
+        @session_picker_index = [@session_picker_index - 1, 0].max
       elsif event.down?
-        @session_picker_index = [(@session_picker_index || 0) + 1, visible.size - 1].min
+        @session_picker_index = [@session_picker_index + 1, visible.size - 1].min
       elsif event.right?
-        expand_selected_session(visible)
+        drill_into_children(visible)
       elsif event.left?
-        collapse_selected_session(visible)
+        return_to_root_sessions
       elsif event.enter?
-        pick_session_from_tree(visible)
+        select_session_picker_item(visible)
+      elsif event.code == "0" && session_picker_has_more?
+        load_more_sessions
       else
         idx = hotkey_to_index(event.code)
         if idx && idx < visible.size
           @session_picker_index = idx
-          pick_session_from_tree(visible)
+          select_session_picker_item(visible)
         end
       end
 
       nil
     end
 
-    # Builds the flat list of visible items from root sessions and expanded children.
-    # Each item is a Hash with :type (:root or :child), :data, and :parent_id (for children).
+    # Returns the raw items for the current picker mode (root sessions or children).
     #
-    # @return [Array<Hash>] visible items in display order
-    def session_picker_visible_items
+    # @return [Array<Hash>] session or child hashes from the sessions list
+    def session_picker_all_items_for_mode
       sessions = @screens[:chat].sessions_list || []
 
-      sessions.flat_map do |session|
-        items = [{type: :root, data: session}]
-        if @expanded_sessions[session["id"]] && session["children"]
-          session["children"].each do |child|
-            items << {type: :child, data: child, parent_id: session["id"]}
-          end
-        end
-        items
+      case @session_picker_mode
+      when :root
+        sessions
+      when :children
+        parent = sessions.find { |s| s["id"] == @session_picker_parent_id }
+        parent&.dig("children") || []
       end
     end
 
-    # Toggles expansion on the selected root session.
+    # Returns the visible items for the current page of the current mode.
+    # Each item is a Hash with :type (:root or :child), :data, and :parent_id (for children).
     #
-    # @param visible [Array<Hash>] flattened visible items from {#session_picker_visible_items}
+    # @return [Array<Hash>] visible items for the current page
+    def session_picker_visible_items
+      all = session_picker_all_items_for_mode
+      start = @session_picker_page * SESSION_PICKER_PAGE_SIZE
+      page = all[start, SESSION_PICKER_PAGE_SIZE] || []
+
+      page.map do |item|
+        case @session_picker_mode
+        when :root
+          {type: :root, data: item}
+        when :children
+          {type: :child, data: item, parent_id: @session_picker_parent_id}
+        end
+      end
+    end
+
+    # @return [Boolean] true when more items exist beyond the current page
+    def session_picker_has_more?
+      total = session_picker_all_items_for_mode.size
+      ((@session_picker_page + 1) * SESSION_PICKER_PAGE_SIZE) < total
+    end
+
+    # @return [Integer] number of items beyond the current page
+    def session_picker_remaining_count
+      total = session_picker_all_items_for_mode.size
+      [total - ((@session_picker_page + 1) * SESSION_PICKER_PAGE_SIZE), 0].max
+    end
+
+    # Handles Escape in the session picker. In children mode, returns to root.
+    # In root mode, closes the picker.
     # @return [void]
-    def expand_selected_session(visible)
+    def handle_session_picker_escape
+      if @session_picker_mode == :children
+        return_to_root_sessions
+      else
+        @session_picker_active = false
+      end
+    end
+
+    # Drills into the children of the selected root session.
+    # Only available in root mode on sessions with children.
+    #
+    # @param visible [Array<Hash>] current page items from {#session_picker_visible_items}
+    # @return [void]
+    def drill_into_children(visible)
+      return unless @session_picker_mode == :root
+
       item = visible[@session_picker_index]
       return unless item&.dig(:type) == :root
 
       session = item[:data]
       return unless session["children"]&.any?
 
-      @expanded_sessions[session["id"]] = true
+      @session_picker_mode = :children
+      @session_picker_parent_id = session["id"]
+      @session_picker_page = 0
+      @session_picker_index = 0
     end
 
-    # Collapses the selected session or its parent. If on a child item,
-    # collapses the parent and moves selection to the parent row.
-    #
-    # @param visible [Array<Hash>] flattened visible items from {#session_picker_visible_items}
+    # Returns from children mode to root sessions view.
     # @return [void]
-    def collapse_selected_session(visible)
-      item = visible[@session_picker_index]
-      return unless item
+    def return_to_root_sessions
+      return unless @session_picker_mode == :children
 
-      if item[:type] == :child
-        parent_id = item[:parent_id]
-        @expanded_sessions.delete(parent_id)
-        # Move selection to the parent row
-        new_visible = session_picker_visible_items
-        parent_idx = new_visible.index { |i| i[:type] == :root && i[:data]["id"] == parent_id }
-        @session_picker_index = parent_idx || 0
-      elsif item[:type] == :root
-        @expanded_sessions.delete(item[:data]["id"])
-      end
+      @session_picker_mode = :root
+      @session_picker_parent_id = nil
+      @session_picker_page = 0
+      @session_picker_index = 0
     end
 
-    # Switches to the session selected in the tree picker.
-    #
-    # @param visible [Array<Hash>] flattened visible items from {#session_picker_visible_items}
+    # Advances to the next page of sessions in the current mode.
     # @return [void]
-    def pick_session_from_tree(visible)
+    def load_more_sessions
+      @session_picker_page += 1
+      @session_picker_index = 0
+    end
+
+    # Switches to the session selected in the picker and closes the overlay.
+    #
+    # @param visible [Array<Hash>] current page items from {#session_picker_visible_items}
+    # @return [void]
+    def select_session_picker_item(visible)
       item = visible[@session_picker_index]
       return unless item
 
@@ -512,7 +571,7 @@ module TUI
     end
 
     # Renders the session picker overlay in the sidebar.
-    # Shows a hierarchical tree of root sessions with expandable children.
+    # Shows paginated root sessions or children with drill-down navigation.
     #
     # @param frame [RatatuiRuby::Frame] terminal frame for widget rendering
     # @param area [RatatuiRuby::Rect] sidebar area to render into
@@ -534,9 +593,11 @@ module TUI
           if item[:type] == :root
             format_root_session_entry(tui, item[:data], idx, current_id)
           else
-            format_child_session_entry(tui, item[:data], idx)
+            format_child_session_entry(tui, item[:data], idx, current_id)
           end
         end
+
+        lines.concat(format_load_more_entry(tui)) if session_picker_has_more?
 
         if lines.empty?
           lines = [tui.line(spans: [
@@ -548,7 +609,7 @@ module TUI
       picker = tui.paragraph(
         text: lines,
         block: tui.block(
-          title: "Sessions",
+          title: session_picker_title,
           borders: [:all],
           border_type: :rounded,
           border_style: {fg: "cyan"}
@@ -557,11 +618,21 @@ module TUI
       frame.render_widget(picker, area)
     end
 
-    # Formats a root session entry with expand arrow and child count.
+    # Returns the picker title based on the current navigation mode.
+    #
+    # @return [String] "Sessions" for root mode, "← #N" for children mode
+    def session_picker_title
+      case @session_picker_mode
+      when :root then "Sessions"
+      when :children then "#{BACK_ARROW} ##{@session_picker_parent_id}"
+      end
+    end
+
+    # Formats a root session entry with drill-in arrow and child count.
     #
     # @param tui [RatatuiRuby] TUI rendering API
     # @param session [Hash] serialized session from the brain
-    # @param idx [Integer] position in the flattened visible items list
+    # @param idx [Integer] position in the current page
     # @param current_id [Integer] ID of the currently active session
     # @return [Array<RatatuiRuby::Widgets::Line>]
     def format_root_session_entry(tui, session, idx, current_id)
@@ -572,12 +643,7 @@ module TUI
       hotkey = picker_hotkey(idx)
       prefix = hotkey ? "[#{hotkey}]" : "   "
       marker = is_current ? "*" : " "
-
-      arrow = if children.any?
-        @expanded_sessions[session["id"]] ? EXPAND_ARROW_EXPANDED : EXPAND_ARROW_COLLAPSED
-      else
-        " "
-      end
+      arrow = children.any? ? CHILDREN_ARROW : " "
 
       id_label = "##{session["id"]}"
       count = "#{session["message_count"]}msg"
@@ -597,28 +663,45 @@ module TUI
       [tui.line(spans: [tui.span(content: label, style: style)])]
     end
 
-    # Formats a child session entry with status indicator and agent name.
+    # Formats a child session entry with hotkey, status indicator, and agent name.
     #
     # @param tui [RatatuiRuby] TUI rendering API
     # @param child [Hash] serialized child session from the brain
-    # @param idx [Integer] position in the flattened visible items list
+    # @param idx [Integer] position in the current page
+    # @param current_id [Integer] ID of the currently active session
     # @return [Array<RatatuiRuby::Widgets::Line>]
-    def format_child_session_entry(tui, child, idx)
+    def format_child_session_entry(tui, child, idx, current_id)
       selected = idx == @session_picker_index
+      is_current = child["id"] == current_id
 
+      hotkey = picker_hotkey(idx)
+      prefix = hotkey ? "[#{hotkey}]" : "   "
+      marker = is_current ? "*" : " "
       status = child["processing"] ? CHILD_STATUS_RUNNING : CHILD_STATUS_DONE
       status_color = child["processing"] ? "yellow" : "green"
       display_name = child["name"] || UNNAMED_SUBAGENT_LABEL
 
-      label = "#{CHILD_INDENT}#{status} #{display_name}"
+      label = "#{prefix}#{marker}#{status} #{display_name}"
 
       style = if selected
         tui.style(fg: "black", bg: "cyan")
+      elsif is_current
+        tui.style(fg: "cyan", modifiers: [:bold])
       else
         tui.style(fg: status_color)
       end
 
       [tui.line(spans: [tui.span(content: label, style: style)])]
+    end
+
+    # Formats the "Load more" entry shown when additional pages exist.
+    #
+    # @param tui [RatatuiRuby] TUI rendering API
+    # @return [Array<RatatuiRuby::Widgets::Line>]
+    def format_load_more_entry(tui)
+      remaining = session_picker_remaining_count
+      label = "[0]  Load more (#{remaining})"
+      [tui.line(spans: [tui.span(content: label, style: tui.style(fg: "dark_gray"))])]
     end
 
     # -- View mode picker ----------------------------------------------

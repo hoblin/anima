@@ -179,6 +179,7 @@ class SessionChannel < ApplicationCable::Channel
     transmit({
       "action" => "session_changed",
       "session_id" => session.id,
+      "parent_session_id" => session.parent_session_id,
       "message_count" => session.events.llm_messages.count,
       "view_mode" => session.view_mode
     })
