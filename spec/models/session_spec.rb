@@ -464,8 +464,13 @@ RSpec.describe Session do
     it "excludes parent events created after the child session" do
       child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 10)
 
-      # Parent event created after child — should not be inherited
-      parent.events.create!(event_type: "agent_message", payload: {"content" => "parent continues"}, timestamp: 4, token_count: 10)
+      # Parent event with created_at well after child — should not be inherited
+      parent.events.create!(
+        event_type: "agent_message",
+        payload: {"content" => "parent continues"},
+        timestamp: 4, token_count: 10,
+        created_at: child.created_at + 1.second
+      )
 
       events = child.viewport_events
       contents = events.map { |e| e.payload["content"] }

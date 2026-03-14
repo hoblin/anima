@@ -11,6 +11,8 @@ module Tools
       Do not ask follow-up questions — work with the context you have.
     PROMPT
 
+    EXPECTED_DELIVERABLE_PREFIX = "Expected deliverable: "
+
     def self.tool_name = "spawn_subagent"
 
     def self.description = "Spawn a sub-agent to work on a task in parallel. " \
@@ -68,7 +70,7 @@ module Tools
     end
 
     def build_prompt(expected_output)
-      "#{SUBAGENT_PROMPT}\nExpected deliverable: #{expected_output}"
+      "#{SUBAGENT_PROMPT}\n#{EXPECTED_DELIVERABLE_PREFIX}#{expected_output}"
     end
 
     def emit_task(child, task)

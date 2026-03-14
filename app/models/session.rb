@@ -39,8 +39,9 @@ class Session < ApplicationRecord
   # is exhausted. Events are full-size or excluded entirely.
   #
   # Sub-agent sessions inherit parent context via virtual viewport:
-  # own events fill first, then parent events from before the fork point
-  # fill the remaining budget. Parent events appear first chronologically.
+  # child events are prioritized and fill the budget first (newest-first),
+  # then parent events from before the fork point fill the remaining budget.
+  # The final array is chronological: parent events first, then child events.
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @param include_pending [Boolean] whether to include pending messages (true for
@@ -200,7 +201,7 @@ class Session < ApplicationRecord
   def subagent_completed_text(payload)
     parts = ["[Sub-agent completed]"]
     parts << "Task: #{payload["task"]}" if payload["task"].present?
-    parts << "Result:\n#{payload["content"]}"
+    parts << "Result:\n#{payload["content"]}" if payload["content"].present?
     parts.join("\n")
   end
 

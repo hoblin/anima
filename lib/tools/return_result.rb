@@ -33,8 +33,7 @@ module Tools
     # Emits a {Events::SubagentCompleted} event in the parent session.
     #
     # @param input [Hash<String, Object>] with "result" key
-    # @return [String] confirmation message
-    # @return [Hash] with :error key on failure
+    # @return [String, Hash] confirmation message, or Hash with :error key on failure
     def execute(input)
       result = input["result"].to_s.strip
       return {error: "Result cannot be blank"} if result.empty?
@@ -73,7 +72,7 @@ module Tools
     # @return [String]
     def extract_expected_output
       @session.prompt.to_s
-        .split("Expected deliverable: ", 2)
+        .split(Tools::SpawnSubagent::EXPECTED_DELIVERABLE_PREFIX, 2)
         .last.to_s.strip
     end
   end
