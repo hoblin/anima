@@ -88,6 +88,9 @@ module TUI
       @command_mode = false
       @session_picker_active = false
       @session_picker_index = 0
+      @session_picker_page = 0
+      @session_picker_mode = :root
+      @session_picker_parent_id = nil
       @view_mode_picker_active = false
       @view_mode_picker_index = 0
       @token_setup_active = false
@@ -405,14 +408,14 @@ module TUI
     # Status indicators for child session state.
     CHILD_STATUS_RUNNING = "\u27F3"   # ⟳
     CHILD_STATUS_DONE = "\u2713"      # ✓
-    CHILDREN_ARROW = "\u25B8"         # ▸ indicates drill-in with →
+    CHILDREN_ARROW = "\u25B8"         # ▸ shown next to sessions with children
     UNNAMED_SUBAGENT_LABEL = "sub-agent"
     SESSION_PICKER_PAGE_SIZE = 9
     SESSION_PICKER_FETCH_LIMIT = 50
     BACK_ARROW = "\u2190"             # ←
 
     # Requests the session list from the brain and opens the picker overlay.
-    # Fetches up to MAX_LIST_LIMIT sessions for client-side pagination.
+    # Fetches up to SESSION_PICKER_FETCH_LIMIT sessions for client-side pagination.
     # @return [void]
     def activate_session_picker
       @session_picker_active = true
