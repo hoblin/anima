@@ -391,45 +391,128 @@ module TUI
 
     # -- Session picker ------------------------------------------------
 
+    # Status indicators for child session state.
+    CHILD_STATUS_RUNNING = "\u27F3"   # ⟳
+    CHILD_STATUS_DONE = "\u2713"      # ✓
+    EXPAND_ARROW_COLLAPSED = "\u25B8" # ▸
+    EXPAND_ARROW_EXPANDED = "\u25BE"  # ▾
+    UNNAMED_SUBAGENT_LABEL = "sub-agent"
+    CHILD_INDENT = "     "
+
     # Requests the session list from the brain and opens the picker overlay.
     # @return [void]
     def activate_session_picker
       @session_picker_active = true
       @session_picker_index = 0
+      @expanded_sessions = {}
       @cable_client.list_sessions
     end
 
     # Dispatches keyboard events while the session picker overlay is open.
+    # Handles tree navigation: `→` expands, `←` collapses, up/down moves
+    # through the flattened visible item list.
     #
     # @param event [RatatuiRuby::Event] keyboard event
     # @return [nil]
     def handle_session_picker(event)
-      sessions = @screens[:chat].sessions_list || []
-      result = navigate_picker(event, items: sessions, index_ivar: :@session_picker_index)
+      return nil unless event.key?
 
-      case result
-      when :close
+      if event.esc?
         @session_picker_active = false
-      when Hash
-        pick_session(result)
+        return nil
+      end
+
+      visible = session_picker_visible_items
+      return nil if visible.empty?
+
+      if event.up?
+        @session_picker_index = [(@session_picker_index || 0) - 1, 0].max
+      elsif event.down?
+        @session_picker_index = [(@session_picker_index || 0) + 1, visible.size - 1].min
+      elsif event.right?
+        expand_selected_session(visible)
+      elsif event.left?
+        collapse_selected_session(visible)
+      elsif event.enter?
+        pick_session_from_tree(visible)
+      else
+        idx = hotkey_to_index(event.code)
+        if idx && idx < visible.size
+          @session_picker_index = idx
+          pick_session_from_tree(visible)
+        end
       end
 
       nil
     end
 
-    # Switches to the selected session and closes the picker.
+    # Builds the flat list of visible items from root sessions and expanded children.
+    # Each item is a Hash with :type (:root or :child), :data, and :parent_id (for children).
     #
-    # @param session [Hash] session entry from sessions_list
+    # @return [Array<Hash>] visible items in display order
+    def session_picker_visible_items
+      sessions = @screens[:chat].sessions_list || []
+
+      sessions.flat_map do |session|
+        items = [{type: :root, data: session}]
+        if @expanded_sessions[session["id"]] && session["children"]
+          session["children"].each do |child|
+            items << {type: :child, data: child, parent_id: session["id"]}
+          end
+        end
+        items
+      end
+    end
+
+    # Toggles expansion on the selected root session.
+    #
+    # @param visible [Array<Hash>] flattened visible items from {#session_picker_visible_items}
     # @return [void]
-    def pick_session(session)
-      return unless session
+    def expand_selected_session(visible)
+      item = visible[@session_picker_index]
+      return unless item&.dig(:type) == :root
+
+      session = item[:data]
+      return unless session["children"]&.any?
+
+      @expanded_sessions[session["id"]] = true
+    end
+
+    # Collapses the selected session or its parent. If on a child item,
+    # collapses the parent and moves selection to the parent row.
+    #
+    # @param visible [Array<Hash>] flattened visible items from {#session_picker_visible_items}
+    # @return [void]
+    def collapse_selected_session(visible)
+      item = visible[@session_picker_index]
+      return unless item
+
+      if item[:type] == :child
+        parent_id = item[:parent_id]
+        @expanded_sessions.delete(parent_id)
+        # Move selection to the parent row
+        new_visible = session_picker_visible_items
+        parent_idx = new_visible.index { |i| i[:type] == :root && i[:data]["id"] == parent_id }
+        @session_picker_index = parent_idx || 0
+      elsif item[:type] == :root
+        @expanded_sessions.delete(item[:data]["id"])
+      end
+    end
+
+    # Switches to the session selected in the tree picker.
+    #
+    # @param visible [Array<Hash>] flattened visible items from {#session_picker_visible_items}
+    # @return [void]
+    def pick_session_from_tree(visible)
+      item = visible[@session_picker_index]
+      return unless item
 
       @session_picker_active = false
-      @screens[:chat].switch_session(session["id"])
+      @screens[:chat].switch_session(item[:data]["id"])
     end
 
     # Renders the session picker overlay in the sidebar.
-    # Shows a loading indicator until the sessions_list arrives from the brain.
+    # Shows a hierarchical tree of root sessions with expandable children.
     #
     # @param frame [RatatuiRuby::Frame] terminal frame for widget rendering
     # @param area [RatatuiRuby::Rect] sidebar area to render into
@@ -444,8 +527,15 @@ module TUI
           tui.span(content: "Loading...", style: tui.style(fg: "yellow"))
         ])]
       else
-        lines = sessions.each_with_index.flat_map do |session, idx|
-          format_session_picker_entry(tui, session, idx, current_id)
+        visible = session_picker_visible_items
+        @session_picker_index = @session_picker_index.clamp(0, [visible.size - 1, 0].max)
+
+        lines = visible.each_with_index.flat_map do |item, idx|
+          if item[:type] == :root
+            format_root_session_entry(tui, item[:data], idx, current_id)
+          else
+            format_child_session_entry(tui, item[:data], idx)
+          end
         end
 
         if lines.empty?
@@ -467,26 +557,34 @@ module TUI
       frame.render_widget(picker, area)
     end
 
-    # Formats a single session entry for the picker. Highlights the selected
-    # entry and marks the currently active session.
+    # Formats a root session entry with expand arrow and child count.
     #
     # @param tui [RatatuiRuby] TUI rendering API
-    # @param session [Hash] session data with "id", "message_count", "updated_at"
-    # @param idx [Integer] position in the list (determines hotkey)
-    # @param current_id [Integer] the active session's ID
-    # @return [Array<RatatuiRuby::Widgets::Line>] single line for this entry
-    def format_session_picker_entry(tui, session, idx, current_id)
+    # @param session [Hash] serialized session from the brain
+    # @param idx [Integer] position in the flattened visible items list
+    # @param current_id [Integer] ID of the currently active session
+    # @return [Array<RatatuiRuby::Widgets::Line>]
+    def format_root_session_entry(tui, session, idx, current_id)
       selected = idx == @session_picker_index
       is_current = session["id"] == current_id
+      children = session["children"] || []
 
       hotkey = picker_hotkey(idx)
       prefix = hotkey ? "[#{hotkey}]" : "   "
       marker = is_current ? "*" : " "
+
+      arrow = if children.any?
+        @expanded_sessions[session["id"]] ? EXPAND_ARROW_EXPANDED : EXPAND_ARROW_COLLAPSED
+      else
+        " "
+      end
+
       id_label = "##{session["id"]}"
       count = "#{session["message_count"]}msg"
       time = format_relative_time(session["updated_at"])
+      child_info = children.any? ? " (#{children.size})" : ""
 
-      label = "#{prefix}#{marker}#{id_label} #{count} #{time}"
+      label = "#{prefix}#{marker}#{arrow}#{id_label} #{count}#{child_info} #{time}"
 
       style = if selected
         tui.style(fg: "black", bg: "cyan")
@@ -494,6 +592,30 @@ module TUI
         tui.style(fg: "cyan", modifiers: [:bold])
       else
         tui.style(fg: "white")
+      end
+
+      [tui.line(spans: [tui.span(content: label, style: style)])]
+    end
+
+    # Formats a child session entry with status indicator and agent name.
+    #
+    # @param tui [RatatuiRuby] TUI rendering API
+    # @param child [Hash] serialized child session from the brain
+    # @param idx [Integer] position in the flattened visible items list
+    # @return [Array<RatatuiRuby::Widgets::Line>]
+    def format_child_session_entry(tui, child, idx)
+      selected = idx == @session_picker_index
+
+      status = child["processing"] ? CHILD_STATUS_RUNNING : CHILD_STATUS_DONE
+      status_color = child["processing"] ? "yellow" : "green"
+      display_name = child["name"] || UNNAMED_SUBAGENT_LABEL
+
+      label = "#{CHILD_INDENT}#{status} #{display_name}"
+
+      style = if selected
+        tui.style(fg: "black", bg: "cyan")
+      else
+        tui.style(fg: status_color)
       end
 
       [tui.line(spans: [tui.span(content: label, style: style)])]

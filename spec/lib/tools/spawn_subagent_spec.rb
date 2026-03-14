@@ -123,6 +123,13 @@ RSpec.describe Tools::SpawnSubagent do
         expect(result).to include("session #{child.id}")
       end
 
+      it "does not store a name on the child session" do
+        tool.execute(input)
+
+        child = Session.last
+        expect(child.name).to be_nil
+      end
+
       it "returns immediately (non-blocking)" do
         result = tool.execute(input)
         expect(result).to be_a(String)
@@ -266,6 +273,13 @@ RSpec.describe Tools::SpawnSubagent do
 
         child = Session.last
         expect(child.prompt).to include("Expected deliverable: A summary of how tools are dispatched")
+      end
+
+      it "stores the agent name on the child session" do
+        tool.execute(input.merge("name" => "analyzer"))
+
+        child = Session.last
+        expect(child.name).to eq("analyzer")
       end
 
       it "returns confirmation including the agent name" do
