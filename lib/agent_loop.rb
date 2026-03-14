@@ -98,9 +98,9 @@ class AgentLoop
   private
 
   # Builds the tool registry appropriate for this session type.
-  # Main sessions get standard tools + spawn_subagent.
-  # Sub-agent sessions get granted standard tools + return_result (not spawn_subagent).
-  # Sub-agents cannot spawn sub-agents (no recursive nesting).
+  # Main sessions get standard tools + spawn_subagent + spawn_specialist.
+  # Sub-agent sessions get granted standard tools + return_result (no spawning).
+  # Sub-agents cannot spawn further sub-agents (no recursive nesting).
   # When {Session#granted_tools} is nil, all standard tools are granted.
   #
   # @return [Tools::Registry] registry with available tools
@@ -114,6 +114,7 @@ class AgentLoop
       registry.register(Tools::ReturnResult)
     else
       registry.register(Tools::SpawnSubagent)
+      registry.register(Tools::SpawnSpecialist)
     end
 
     registry
