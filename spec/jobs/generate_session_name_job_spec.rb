@@ -96,20 +96,19 @@ RSpec.describe GenerateSessionNameJob do
         )
       end
 
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(
-          status: 200,
-          body: {content: [{type: "text", text: "📝 Long Chat"}], stop_reason: "end_turn"}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
+      captured_messages = nil
+      allow(LLM::Client).to receive(:new).and_wrap_original do |original, **args|
+        client = original.call(**args)
+        allow(client).to receive(:chat) do |messages|
+          captured_messages = messages
+          "📝 Long Chat"
+        end
+        client
+      end
 
       described_class.perform_now(session.id)
 
-      request = WebMock::RequestRegistry.instance.requested_signatures.hash.keys.first
-      body = JSON.parse(request.body)
-      context = body["messages"].first["content"]
-
-      # Should contain exactly MAX_CONTEXT_EVENTS events in the context
+      context = captured_messages.first[:content]
       event_count = context.scan(/(?:User|Assistant):/).length
       expect(event_count).to eq(GenerateSessionNameJob::MAX_CONTEXT_EVENTS)
     end
@@ -123,19 +122,19 @@ RSpec.describe GenerateSessionNameJob do
       )
       session.events.create!(event_type: "agent_message", payload: {"content" => "Done!"}, timestamp: 3)
 
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(
-          status: 200,
-          body: {content: [{type: "text", text: "🔨 Task Done"}], stop_reason: "end_turn"}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
+      captured_messages = nil
+      allow(LLM::Client).to receive(:new).and_wrap_original do |original, **args|
+        client = original.call(**args)
+        allow(client).to receive(:chat) do |messages|
+          captured_messages = messages
+          "🔨 Task Done"
+        end
+        client
+      end
 
       described_class.perform_now(session.id)
 
-      request = WebMock::RequestRegistry.instance.requested_signatures.hash.keys.first
-      body = JSON.parse(request.body)
-      context = body["messages"].first["content"]
-
+      context = captured_messages.first[:content]
       expect(context).not_to include("Calling bash")
       expect(context).to include("Do something")
       expect(context).to include("Done!")

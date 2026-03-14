@@ -54,6 +54,7 @@ class Session < ApplicationRecord
 
     count = events.llm_messages.count
     return if count < 2
+    # Already named — only regenerate at interval boundaries (30, 60, 90, …)
     return if name.present? && (count % NAME_GENERATION_INTERVAL != 0)
 
     GenerateSessionNameJob.perform_later(id)

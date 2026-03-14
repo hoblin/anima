@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
 # Generates a short, descriptive name for a session using a fast LLM.
-# Enqueued after the first agent response in a root session so the user
-# sees a meaningful label instead of "Session #N" in the picker and header.
+# Enqueued by {Session#schedule_name_generation!} after the first exchange
+# and again every {Session::NAME_GENERATION_INTERVAL} messages so the name
+# stays relevant as the conversation evolves.
 #
-# Idempotent: skips sessions that already have a name.
+# Always overwrites the existing name — scheduling guards in the model
+# control when regeneration is appropriate.
 #
 # @example
 #   GenerateSessionNameJob.perform_later(session.id)
@@ -44,7 +46,8 @@ class GenerateSessionNameJob < ApplicationJob
 
   private
 
-  # Builds a condensed transcript from the first few messages.
+  # Builds a condensed transcript from the earliest LLM messages.
+  # Each message is truncated to 200 chars to keep the naming prompt cheap.
   #
   # @param session [Session]
   # @return [String] "User: ...\nAssistant: ..." transcript
