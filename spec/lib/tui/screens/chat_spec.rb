@@ -523,14 +523,14 @@ RSpec.describe TUI::Screens::Chat do
         screen.instance_variable_set(:@auto_scroll, false)
       end
 
-      it "scrolls up one line on arrow up" do
+      it "does not scroll on arrow up in input mode" do
         screen.handle_event(key_event(code: "up"))
-        expect(screen.scroll_offset).to eq(9)
+        expect(screen.scroll_offset).to eq(10)
       end
 
-      it "scrolls down one line on arrow down" do
+      it "does not scroll on arrow down in input mode" do
         screen.handle_event(key_event(code: "down"))
-        expect(screen.scroll_offset).to eq(11)
+        expect(screen.scroll_offset).to eq(10)
       end
 
       it "scrolls up by visible height on page up" do
@@ -543,41 +543,39 @@ RSpec.describe TUI::Screens::Chat do
         expect(screen.scroll_offset).to eq(20)
       end
 
-      it "clamps scroll offset to zero" do
-        screen.instance_variable_set(:@scroll_offset, 0)
-        screen.handle_event(key_event(code: "up"))
+      it "clamps scroll offset to zero on page up" do
+        screen.instance_variable_set(:@scroll_offset, 3)
+        screen.handle_event(key_event(code: "page_up"))
         expect(screen.scroll_offset).to eq(0)
       end
 
-      it "clamps scroll offset to max_scroll" do
-        screen.instance_variable_set(:@scroll_offset, 20)
-        screen.handle_event(key_event(code: "down"))
+      it "clamps scroll offset to max_scroll on page down" do
+        screen.instance_variable_set(:@scroll_offset, 18)
+        screen.handle_event(key_event(code: "page_down"))
         expect(screen.scroll_offset).to eq(20)
       end
 
-      it "returns true for scroll key events" do
-        expect(screen.handle_event(key_event(code: "up"))).to be true
-        expect(screen.handle_event(key_event(code: "down"))).to be true
+      it "returns true for page up/down events" do
         expect(screen.handle_event(key_event(code: "page_up"))).to be true
         expect(screen.handle_event(key_event(code: "page_down"))).to be true
       end
 
-      it "works during loading" do
+      it "page up/down works during loading" do
         screen.instance_variable_set(:@loading, true)
-        screen.handle_event(key_event(code: "up"))
-        expect(screen.scroll_offset).to eq(9)
+        screen.handle_event(key_event(code: "page_up"))
+        expect(screen.scroll_offset).to eq(0)
       end
 
-      it "disables auto-scroll when scrolling up from bottom" do
+      it "disables auto-scroll when scrolling up from bottom with page up" do
         screen.instance_variable_set(:@scroll_offset, 20)
         screen.instance_variable_set(:@auto_scroll, true)
-        screen.handle_event(key_event(code: "up"))
+        screen.handle_event(key_event(code: "page_up"))
         expect(screen.instance_variable_get(:@auto_scroll)).to be false
       end
 
-      it "re-enables auto-scroll when scrolling down to bottom" do
-        screen.instance_variable_set(:@scroll_offset, 19)
-        screen.handle_event(key_event(code: "down"))
+      it "re-enables auto-scroll when scrolling down to bottom with page down" do
+        screen.instance_variable_set(:@scroll_offset, 15)
+        screen.handle_event(key_event(code: "page_down"))
         expect(screen.scroll_offset).to eq(20)
         expect(screen.instance_variable_get(:@auto_scroll)).to be true
       end
@@ -742,26 +740,298 @@ RSpec.describe TUI::Screens::Chat do
         expect(screen.messages).to be_empty
       end
 
-      it "scrolls when no pending message to recall" do
+      it "returns false when no pending message and no history" do
+        expect(screen.handle_event(key_event(code: "up"))).to be false
+      end
+
+      it "does not scroll when input is not empty and no pending message" do
+        screen.instance_variable_set(:@visible_height, 10)
+        screen.instance_variable_set(:@max_scroll, 20)
+        screen.instance_variable_set(:@scroll_offset, 10)
+
+        set_input("some text")
+        screen.handle_event(key_event(code: "up"))
+        expect(screen.scroll_offset).to eq(10)
+        expect(screen.input).to eq("some text")
+      end
+    end
+
+    context "chat focused mode" do
+      before do
         screen.instance_variable_set(:@visible_height, 10)
         screen.instance_variable_set(:@max_scroll, 20)
         screen.instance_variable_set(:@scroll_offset, 10)
         screen.instance_variable_set(:@auto_scroll, false)
+        screen.focus_chat
+      end
 
+      it "scrolls up on arrow up" do
         screen.handle_event(key_event(code: "up"))
         expect(screen.scroll_offset).to eq(9)
       end
 
-      it "scrolls when input buffer is not empty" do
-        screen.instance_variable_set(:@visible_height, 10)
-        screen.instance_variable_set(:@max_scroll, 20)
-        screen.instance_variable_set(:@scroll_offset, 10)
-        screen.instance_variable_set(:@auto_scroll, false)
+      it "scrolls down on arrow down" do
+        screen.handle_event(key_event(code: "down"))
+        expect(screen.scroll_offset).to eq(11)
+      end
 
-        set_input("some text")
+      it "returns true for arrow keys" do
+        expect(screen.handle_event(key_event(code: "up"))).to be true
+        expect(screen.handle_event(key_event(code: "down"))).to be true
+      end
+
+      it "returns false for other keys" do
+        expect(screen.handle_event(key_event(code: "a"))).to be false
+      end
+
+      it "does not insert characters into input buffer" do
+        screen.handle_event(key_event(code: "a"))
+        expect(screen.input).to eq("")
+      end
+
+      it "page up/down still scrolls chat" do
+        screen.handle_event(key_event(code: "page_up"))
+        expect(screen.scroll_offset).to eq(0)
+      end
+
+      it "mouse scroll still works" do
+        screen.handle_event(mouse_event(kind: "scroll_up"))
+        expect(screen.scroll_offset).to eq(10 - TUI::Screens::Chat::MOUSE_SCROLL_STEP)
+      end
+    end
+
+    context "focus switching" do
+      it "starts in input mode by default" do
+        expect(screen.chat_focused).to be false
+      end
+
+      it "focus_chat enables chat focused mode" do
+        screen.focus_chat
+        expect(screen.chat_focused).to be true
+      end
+
+      it "unfocus_chat disables chat focused mode" do
+        screen.focus_chat
+        screen.unfocus_chat
+        expect(screen.chat_focused).to be false
+      end
+
+      it "session_changed resets chat focus" do
+        screen.focus_chat
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "session_changed", "session_id" => 99, "message_count" => 0}
+        ])
+        screen.send(:process_incoming_messages)
+        expect(screen.chat_focused).to be false
+      end
+    end
+
+    context "input history" do
+      before do
+        allow(cable_client).to receive(:recall_pending)
+      end
+
+      it "saves submitted messages to history" do
+        screen.handle_event(key_event(code: "h"))
+        screen.handle_event(key_event(code: "i"))
+        screen.handle_event(key_event(code: "enter"))
+
+        history = screen.instance_variable_get(:@input_history)
+        expect(history).to eq(["hi"])
+      end
+
+      it "skips consecutive duplicates" do
+        2.times do
+          set_input("hello")
+          screen.handle_event(key_event(code: "enter"))
+        end
+
+        history = screen.instance_variable_get(:@input_history)
+        expect(history).to eq(["hello"])
+      end
+
+      it "navigates back through history on arrow up with empty input" do
+        set_input("first")
+        screen.handle_event(key_event(code: "enter"))
+        set_input("second")
+        screen.handle_event(key_event(code: "enter"))
+
+        expect(screen.handle_event(key_event(code: "up"))).to be true
+        expect(screen.input).to eq("second")
+      end
+
+      it "navigates to older entries on repeated arrow up" do
+        set_input("first")
+        screen.handle_event(key_event(code: "enter"))
+        set_input("second")
+        screen.handle_event(key_event(code: "enter"))
+
         screen.handle_event(key_event(code: "up"))
-        expect(screen.scroll_offset).to eq(9)
-        expect(screen.input).to eq("some text")
+        screen.handle_event(key_event(code: "up"))
+        expect(screen.input).to eq("first")
+      end
+
+      it "returns false at the oldest history entry" do
+        set_input("only")
+        screen.handle_event(key_event(code: "enter"))
+
+        screen.handle_event(key_event(code: "up"))
+        expect(screen.handle_event(key_event(code: "up"))).to be false
+      end
+
+      it "returns false when history is empty" do
+        expect(screen.handle_event(key_event(code: "up"))).to be false
+      end
+
+      it "navigates forward through history on arrow down" do
+        set_input("first")
+        screen.handle_event(key_event(code: "enter"))
+        set_input("second")
+        screen.handle_event(key_event(code: "enter"))
+
+        screen.handle_event(key_event(code: "up")) # second
+        screen.handle_event(key_event(code: "up")) # first
+        screen.handle_event(key_event(code: "down")) # second
+        expect(screen.input).to eq("second")
+      end
+
+      it "restores saved input when navigating past newest entry" do
+        set_input("first")
+        screen.handle_event(key_event(code: "enter"))
+
+        set_input("work in progress")
+        screen.handle_event(key_event(code: "up")) # first
+        screen.handle_event(key_event(code: "down")) # restore
+        expect(screen.input).to eq("work in progress")
+      end
+
+      it "returns false for arrow down when not browsing history" do
+        expect(screen.handle_event(key_event(code: "down"))).to be false
+      end
+
+      it "saves original input before browsing" do
+        set_input("first")
+        screen.handle_event(key_event(code: "enter"))
+
+        set_input("unsent draft")
+        screen.handle_event(key_event(code: "up"))
+
+        saved = screen.instance_variable_get(:@saved_input)
+        expect(saved).to eq("unsent draft")
+      end
+
+      it "resets history browsing on character insert" do
+        set_input("msg")
+        screen.handle_event(key_event(code: "enter"))
+
+        screen.handle_event(key_event(code: "up"))
+        screen.handle_event(key_event(code: "x"))
+
+        expect(screen.instance_variable_get(:@history_index)).to be_nil
+      end
+
+      it "resets history browsing on backspace" do
+        set_input("msg")
+        screen.handle_event(key_event(code: "enter"))
+
+        screen.handle_event(key_event(code: "up"))
+        screen.handle_event(key_event(code: "backspace"))
+
+        expect(screen.instance_variable_get(:@history_index)).to be_nil
+      end
+
+      it "resets history browsing on delete" do
+        set_input("msg")
+        screen.handle_event(key_event(code: "enter"))
+
+        screen.handle_event(key_event(code: "up"))
+        # Move cursor to start so delete has something to delete
+        screen.handle_event(key_event(code: "home"))
+        screen.handle_event(key_event(code: "delete"))
+
+        expect(screen.instance_variable_get(:@history_index)).to be_nil
+      end
+
+      it "resets history browsing on paste" do
+        set_input("msg")
+        screen.handle_event(key_event(code: "enter"))
+
+        screen.handle_event(key_event(code: "up"))
+        screen.handle_event(paste_event(content: "pasted"))
+
+        expect(screen.instance_variable_get(:@history_index)).to be_nil
+      end
+
+      it "does not reset history browsing on cursor movement" do
+        set_input("msg")
+        screen.handle_event(key_event(code: "enter"))
+
+        screen.handle_event(key_event(code: "up"))
+        screen.handle_event(key_event(code: "left"))
+
+        expect(screen.instance_variable_get(:@history_index)).not_to be_nil
+      end
+
+      it "resets history browsing on submit" do
+        set_input("msg")
+        screen.handle_event(key_event(code: "enter"))
+
+        screen.handle_event(key_event(code: "up"))
+        screen.handle_event(key_event(code: "enter"))
+
+        expect(screen.instance_variable_get(:@history_index)).to be_nil
+      end
+
+      it "pending recall takes priority when input is empty" do
+        set_input("sent")
+        screen.handle_event(key_event(code: "enter"))
+
+        message_store.process_event({"type" => "user_message", "id" => 42,
+                                     "rendered" => {"basic" => {"role" => "user", "content" => "pending msg", "status" => "pending"}}})
+
+        screen.handle_event(key_event(code: "up"))
+        expect(screen.input).to eq("pending msg")
+        expect(cable_client).to have_received(:recall_pending).with(42)
+      end
+    end
+
+    context "multiline input with history overflow" do
+      before do
+        allow(cable_client).to receive(:recall_pending)
+      end
+
+      it "tries move_up within multiline text before history" do
+        set_input("sent")
+        screen.handle_event(key_event(code: "enter"))
+
+        set_input("line1\nline2", cursor_pos: 8) # cursor on line2
+        expect(screen.handle_event(key_event(code: "up"))).to be true
+        # Should have moved up within the input, not into history
+        expect(screen.instance_variable_get(:@history_index)).to be_nil
+      end
+
+      it "overflows to history when at top line of multiline input" do
+        set_input("sent")
+        screen.handle_event(key_event(code: "enter"))
+
+        set_input("line1\nline2", cursor_pos: 2) # cursor on line1
+        screen.handle_event(key_event(code: "up"))
+        expect(screen.input).to eq("sent")
+      end
+
+      it "tries move_down within multiline text before history forward" do
+        set_input("sent")
+        screen.handle_event(key_event(code: "enter"))
+
+        # Start browsing history, get "sent" back, then make it multiline
+        screen.handle_event(key_event(code: "up")) # load "sent"
+
+        # Manually set multiline content to simulate user making edits
+        set_input("sent\nextra", cursor_pos: 2) # cursor on line1
+
+        expect(screen.handle_event(key_event(code: "down"))).to be true
+        # Cursor should have moved down within input
+        expect(screen.cursor_pos).to be > 2
       end
     end
 

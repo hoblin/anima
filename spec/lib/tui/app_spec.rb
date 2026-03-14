@@ -124,6 +124,25 @@ RSpec.describe TUI::App do
         expect(result).to eq(:quit)
       end
 
+      it "focuses chat pane on arrow up" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        event = key_event(code: "up")
+        app.send(:handle_event, event)
+
+        expect(chat.chat_focused).to be true
+        expect(app.command_mode).to be false
+      end
+
+      it "unfocuses chat pane on arrow down" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.focus_chat
+        event = key_event(code: "down")
+        app.send(:handle_event, event)
+
+        expect(chat.chat_focused).to be false
+        expect(app.command_mode).to be false
+      end
+
       it "exits command mode on any unrecognized key" do
         event = key_event(code: "x")
         app.send(:handle_event, event)
@@ -437,8 +456,19 @@ RSpec.describe TUI::App do
       end
     end
 
-    describe "Escape to parent session" do
-      it "switches to parent session on Escape when viewing a child" do
+    describe "Escape routing" do
+      it "unfocuses chat pane on Escape when chat is focused" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.focus_chat
+        allow(chat).to receive(:switch_session)
+
+        app.send(:handle_event, key_event(code: "esc", esc?: true))
+
+        expect(chat.chat_focused).to be false
+        expect(chat).not_to have_received(:switch_session)
+      end
+
+      it "switches to parent session on Escape when chat is not focused" do
         chat = app.instance_variable_get(:@screens)[:chat]
         chat.instance_variable_set(:@parent_session_id, 42)
         allow(chat).to receive(:switch_session)
@@ -448,7 +478,7 @@ RSpec.describe TUI::App do
         expect(chat).to have_received(:switch_session).with(42)
       end
 
-      it "is a no-op on Escape when viewing a root session" do
+      it "is a no-op on Escape when not focused and no parent session" do
         chat = app.instance_variable_get(:@screens)[:chat]
         chat.instance_variable_set(:@parent_session_id, nil)
         allow(chat).to receive(:switch_session)
@@ -456,6 +486,18 @@ RSpec.describe TUI::App do
         app.send(:handle_event, key_event(code: "esc", esc?: true))
 
         expect(chat).not_to have_received(:switch_session)
+      end
+
+      it "does not return to parent session while chat is focused" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.focus_chat
+        chat.instance_variable_set(:@parent_session_id, 42)
+        allow(chat).to receive(:switch_session)
+
+        app.send(:handle_event, key_event(code: "esc", esc?: true))
+
+        expect(chat).not_to have_received(:switch_session)
+        expect(chat.chat_focused).to be false
       end
     end
 
