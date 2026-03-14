@@ -6,8 +6,11 @@ RSpec.describe AgentLoop do
   let(:session) { Session.create! }
   let(:shell_session) { ShellSession.new(session_id: session.id) }
   let(:client) { double("LLM::Client") }
+  let(:mcp_manager) { instance_double(Mcp::ClientManager, register_tools: nil) }
 
   subject(:agent_loop) { described_class.new(session: session, shell_session: shell_session, client: client) }
+
+  before { allow(Mcp::ClientManager).to receive(:new).and_return(mcp_manager) }
 
   after { agent_loop.finalize }
 
@@ -386,6 +389,31 @@ RSpec.describe AgentLoop do
 
       loop.run
       loop.finalize
+    end
+  end
+
+  describe "MCP tool registration" do
+    it "calls Mcp::ClientManager to register MCP tools" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      allow(client).to receive(:chat_with_tools).and_return("ok")
+
+      agent_loop.run
+
+      expect(mcp_manager).to have_received(:register_tools).with(a_kind_of(Tools::Registry))
+    end
+
+    it "registers MCP tools for sub-agent sessions" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "sub-agent")
+      child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
+
+      sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
+      allow(client).to receive(:chat_with_tools).and_return("done")
+
+      sub_loop.run
+
+      expect(mcp_manager).to have_received(:register_tools)
+      sub_loop.finalize
     end
   end
 end

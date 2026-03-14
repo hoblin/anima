@@ -28,6 +28,7 @@ module Anima
       say "Installing Anima to #{anima_home}..."
       create_directories
       create_config_file
+      create_mcp_config
       generate_credentials
       create_systemd_service
       say "Installation complete. Brain is running. Connect with 'anima tui'."
@@ -51,6 +52,23 @@ module Anima
         # Anima configuration
         # See https://github.com/hoblin/anima for documentation
       YAML
+      say "  created #{config_path}"
+    end
+
+    def create_mcp_config
+      config_path = anima_home.join("mcp.toml")
+      return if config_path.exist?
+
+      config_path.write(<<~TOML)
+        # MCP server configuration
+        # Declare HTTP MCP servers here. Anima connects on startup and
+        # registers their tools alongside built-in ones.
+        #
+        # [servers.example]
+        # transport = "http"
+        # url = "http://localhost:3000/mcp/v2"
+        # headers = { Authorization = "Bearer ${API_KEY}" }
+      TOML
       say "  created #{config_path}"
     end
 

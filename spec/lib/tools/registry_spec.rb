@@ -92,6 +92,31 @@ RSpec.describe Tools::Registry do
     end
   end
 
+  describe "instance-based tools" do
+    let(:tool_instance) do
+      instance_double(Tools::McpTool,
+        tool_name: "server__tool",
+        schema: {name: "server__tool", description: "Test", input_schema: {}})
+    end
+
+    it "registers and looks up instance-based tools" do
+      registry.register(tool_instance)
+
+      expect(registry.registered?("server__tool")).to be true
+      expect(registry.schemas.first[:name]).to eq("server__tool")
+    end
+
+    it "executes instance-based tools directly without calling .new" do
+      allow(tool_instance).to receive(:execute).with({"key" => "val"}).and_return("result")
+
+      registry.register(tool_instance)
+      result = registry.execute("server__tool", {"key" => "val"})
+
+      expect(result).to eq("result")
+      expect(tool_instance).not_to respond_to(:new)
+    end
+  end
+
   describe "#registered?" do
     it "returns false for unregistered tools" do
       expect(registry.registered?("echo")).to be false

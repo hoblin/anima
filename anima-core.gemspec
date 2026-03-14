@@ -29,13 +29,16 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "draper", "~> 4.0"
+  spec.add_dependency "faraday", "~> 2.0"
   spec.add_dependency "foreman", "~> 0.88"
   spec.add_dependency "httparty", "~> 0.24"
+  spec.add_dependency "mcp", "~> 0.8"
   spec.add_dependency "puma", "~> 6.0"
   spec.add_dependency "rails", "~> 8.1"
   spec.add_dependency "ratatui_ruby", "~> 1.4"
   spec.add_dependency "solid_cable", "~> 3.0"
   spec.add_dependency "solid_queue", "~> 1.1"
   spec.add_dependency "sqlite3", "~> 2.0"
+  spec.add_dependency "toml-rb", "~> 4.0"
   spec.add_dependency "websocket-client-simple", "~> 0.8"
 end

@@ -69,6 +69,14 @@ RSpec.describe Anima::Installer do
       end
     end
 
+    it "creates mcp.toml config file" do
+      installer.run
+
+      mcp_path = tmp_home.join("mcp.toml")
+      expect(mcp_path).to exist
+      expect(mcp_path.read).to include("[servers.example]")
+    end
+
     it "is idempotent" do
       installer.run
       expect { installer.run }.not_to raise_error

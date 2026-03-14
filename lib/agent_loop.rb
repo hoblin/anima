@@ -102,6 +102,7 @@ class AgentLoop
   # Sub-agent sessions get granted standard tools + return_result (no spawning).
   # Sub-agents cannot spawn further sub-agents (no recursive nesting).
   # When {Session#granted_tools} is nil, all standard tools are granted.
+  # MCP tools from configured servers are registered for all session types.
   #
   # @return [Tools::Registry] registry with available tools
   def build_tool_registry
@@ -117,7 +118,19 @@ class AgentLoop
       registry.register(Tools::SpawnSpecialist)
     end
 
+    register_mcp_tools(registry)
+
     registry
+  end
+
+  # Loads tools from configured MCP servers and adds them to the registry.
+  # Connection failures are logged and skipped — they never prevent
+  # the session from starting.
+  #
+  # @param registry [Tools::Registry] the registry to add MCP tools to
+  # @return [void]
+  def register_mcp_tools(registry)
+    Mcp::ClientManager.new.register_tools(registry)
   end
 
   # Standard tools available to this session.

@@ -10,6 +10,8 @@ RSpec.describe AgentRequestJob do
     allow(Rails.application.credentials).to receive(:dig)
       .with(:anthropic, :subscription_token)
       .and_return(valid_token)
+    allow(Mcp::ClientManager).to receive(:new)
+      .and_return(instance_double(Mcp::ClientManager, register_tools: nil))
   end
 
   describe "retry configuration" do
