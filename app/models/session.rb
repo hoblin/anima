@@ -163,8 +163,6 @@ class Session < ApplicationRecord
         append_grouped_block(messages, "assistant", tool_use_block(event.payload))
       when "tool_response"
         append_grouped_block(messages, "user", tool_result_block(event.payload))
-      when "subagent_completed"
-        messages << {role: "user", content: subagent_completed_text(event.payload)}
       end
     end
   end
@@ -194,15 +192,6 @@ class Session < ApplicationRecord
       tool_use_id: payload["tool_use_id"],
       content: payload["content"].to_s
     }
-  end
-
-  # Formats a sub-agent completion event for the LLM context.
-  # Presented as a user message so the parent agent sees the result.
-  def subagent_completed_text(payload)
-    parts = ["[Sub-agent completed]"]
-    parts << "Task: #{payload["task"]}" if payload["task"].present?
-    parts << "Result:\n#{payload["content"]}" if payload["content"].present?
-    parts.join("\n")
   end
 
   # Delegates to {Event#estimate_tokens} for events not yet counted

@@ -2,8 +2,8 @@
 
 module Tools
   # Sub-agent-only tool that delivers a completed result back to the
-  # parent session. Emits a {Events::SubagentCompleted} event in the
-  # parent's event stream, then the sub-agent session ends.
+  # parent session as a tool_call/tool_response pair. The parent agent
+  # sees it as if it called a tool itself — no custom event types needed.
   #
   # Never registered for main sessions — only sub-agents see this tool.
   class ReturnResult < Base
@@ -30,7 +30,8 @@ module Tools
       @session = session
     end
 
-    # Emits a {Events::SubagentCompleted} event in the parent session.
+    # Emits a tool_call/tool_response pair in the parent session so the
+    # parent agent sees the sub-agent result as a regular tool interaction.
     #
     # @param input [Hash<String, Object>] with "result" key
     # @return [String, Hash] confirmation message, or Hash with :error key on failure
@@ -41,14 +42,21 @@ module Tools
       parent = @session.parent_session
       return {error: "No parent session — only sub-agents can return results"} unless parent
 
+      tool_use_id = "toolu_subagent_#{@session.id}"
       task = extract_task
-      expected_output = extract_expected_output
 
-      Events::Bus.emit(Events::SubagentCompleted.new(
+      Events::Bus.emit(Events::ToolCall.new(
+        content: "Sub-agent result (session #{@session.id})",
+        tool_name: SpawnSubagent.tool_name,
+        tool_input: {"task" => task, "session_id" => @session.id},
+        tool_use_id: tool_use_id,
+        session_id: parent.id
+      ))
+
+      Events::Bus.emit(Events::ToolResponse.new(
         content: result,
-        child_session_id: @session.id,
-        task: task,
-        expected_output: expected_output,
+        tool_name: SpawnSubagent.tool_name,
+        tool_use_id: tool_use_id,
         session_id: parent.id
       ))
 
@@ -66,14 +74,6 @@ module Tools
         .pick(:payload)
         &.dig("content")
         .to_s
-    end
-
-    # Extracts the expected output from the sub-agent's system prompt.
-    # @return [String]
-    def extract_expected_output
-      @session.prompt.to_s
-        .split(Tools::SpawnSubagent::EXPECTED_DELIVERABLE_PREFIX, 2)
-        .last.to_s.strip
     end
   end
 end

@@ -59,33 +59,33 @@ RSpec.describe Tools::ReturnResult do
   describe "#execute" do
     let(:input) { {"result" => "The tool execution flow works as follows: ..."} }
 
-    it "creates a subagent_completed event in the parent session" do
+    it "creates a tool_call event in the parent session" do
       tool.execute(input)
 
-      event = parent_session.events.find_by(event_type: "subagent_completed")
+      event = parent_session.events.find_by(event_type: "tool_call")
+      expect(event).to be_present
+      expect(event.payload["tool_name"]).to eq("spawn_subagent")
+      expect(event.payload["tool_input"]["task"]).to eq("Read lib/agent_loop.rb and summarize the tool execution flow")
+      expect(event.payload["tool_input"]["session_id"]).to eq(child_session.id)
+    end
+
+    it "creates a tool_response event in the parent session with the result" do
+      tool.execute(input)
+
+      event = parent_session.events.find_by(event_type: "tool_response")
       expect(event).to be_present
       expect(event.payload["content"]).to eq("The tool execution flow works as follows: ...")
+      expect(event.payload["tool_name"]).to eq("spawn_subagent")
     end
 
-    it "includes the child session ID in the event payload" do
+    it "correlates tool_call and tool_response with matching tool_use_id" do
       tool.execute(input)
 
-      event = parent_session.events.find_by(event_type: "subagent_completed")
-      expect(event.payload["child_session_id"]).to eq(child_session.id)
-    end
+      call = parent_session.events.find_by(event_type: "tool_call")
+      response = parent_session.events.find_by(event_type: "tool_response")
 
-    it "includes the original task in the event payload" do
-      tool.execute(input)
-
-      event = parent_session.events.find_by(event_type: "subagent_completed")
-      expect(event.payload["task"]).to eq("Read lib/agent_loop.rb and summarize the tool execution flow")
-    end
-
-    it "includes the expected output in the event payload" do
-      tool.execute(input)
-
-      event = parent_session.events.find_by(event_type: "subagent_completed")
-      expect(event.payload["expected_output"]).to eq("A summary of tool dispatch")
+      expect(call.payload["tool_use_id"]).to eq(response.payload["tool_use_id"])
+      expect(call.payload["tool_use_id"]).to eq("toolu_subagent_#{child_session.id}")
     end
 
     it "returns confirmation message" do
@@ -99,9 +99,9 @@ RSpec.describe Tools::ReturnResult do
         expect(result).to eq({error: "Result cannot be blank"})
       end
 
-      it "does not create a subagent_completed event" do
+      it "does not create events in the parent session" do
         tool.execute("result" => "")
-        expect(parent_session.events.where(event_type: "subagent_completed")).to be_empty
+        expect(parent_session.events.where(event_type: %w[tool_call tool_response])).to be_empty
       end
     end
 

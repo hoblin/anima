@@ -17,7 +17,7 @@ module Tools
 
     def self.description = "Spawn a sub-agent to work on a task in parallel. " \
       "The sub-agent inherits your conversation context, works independently, " \
-      "and returns results via a subagent_completed event when done."
+      "and returns results as a tool response when done."
 
     def self.input_schema
       {
@@ -57,7 +57,7 @@ module Tools
       emit_task(child, task)
       AgentRequestJob.perform_later(child.id)
 
-      "Sub-agent spawned (session #{child.id}). Result will arrive as a subagent_completed event."
+      "Sub-agent spawned (session #{child.id}). Result will arrive as a tool response."
     end
 
     private

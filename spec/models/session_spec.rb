@@ -235,28 +235,6 @@ RSpec.describe Session do
       end
     end
 
-    context "with subagent_completed events" do
-      it "assembles as user message with task and result" do
-        session.events.create!(
-          event_type: "subagent_completed",
-          payload: {
-            "content" => "The API supports pagination via cursor parameters.",
-            "task" => "Research the pagination API",
-            "child_session_id" => 99,
-            "expected_output" => "Summary of pagination"
-          },
-          timestamp: 1
-        )
-
-        result = session.messages_for_llm
-        expect(result.length).to eq(1)
-        expect(result.first[:role]).to eq("user")
-        expect(result.first[:content]).to include("[Sub-agent completed]")
-        expect(result.first[:content]).to include("Task: Research the pagination API")
-        expect(result.first[:content]).to include("The API supports pagination via cursor parameters.")
-      end
-    end
-
     it "preserves event order" do
       session.events.create!(event_type: "user_message", payload: {"content" => "first"}, timestamp: 1)
       session.events.create!(event_type: "agent_message", payload: {"content" => "second"}, timestamp: 2)
