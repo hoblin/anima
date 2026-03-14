@@ -106,7 +106,12 @@ module Tools
       definition = @agent_registry.get(name)
       return {error: "Unknown agent: #{name}"} unless definition
 
-      child = spawn_child(prompt: build_named_prompt(definition, expected_output), granted_tools: definition.tools, task: task)
+      child = spawn_child(
+        prompt: build_named_prompt(definition, expected_output),
+        granted_tools: definition.tools,
+        task: task,
+        name: name
+      )
       "Sub-agent '#{name}' spawned (session #{child.id}). Result will arrive as a tool response."
     end
 
@@ -120,8 +125,8 @@ module Tools
       "Sub-agent spawned (session #{child.id}). Result will arrive as a tool response."
     end
 
-    def spawn_child(prompt:, granted_tools:, task:)
-      child = create_child_session(prompt: prompt, granted_tools: granted_tools)
+    def spawn_child(prompt:, granted_tools:, task:, name: nil)
+      child = create_child_session(prompt: prompt, granted_tools: granted_tools, name: name)
       emit_task(child, task)
       AgentRequestJob.perform_later(child.id)
       child
@@ -151,11 +156,12 @@ module Tools
       nil
     end
 
-    def create_child_session(prompt:, granted_tools: nil)
+    def create_child_session(prompt:, granted_tools: nil, name: nil)
       Session.create!(
         parent_session_id: @session.id,
         prompt: prompt,
-        granted_tools: granted_tools
+        granted_tools: granted_tools,
+        name: name
       )
     end
 

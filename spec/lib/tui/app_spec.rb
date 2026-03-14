@@ -150,7 +150,11 @@ RSpec.describe TUI::App do
       let(:sessions) do
         [
           {"id" => 10, "message_count" => 5, "updated_at" => Time.now.iso8601},
-          {"id" => 8, "message_count" => 3, "updated_at" => Time.now.iso8601},
+          {"id" => 8, "message_count" => 3, "updated_at" => Time.now.iso8601,
+           "children" => [
+             {"id" => 81, "name" => "codebase-analyzer", "processing" => false, "message_count" => 2, "created_at" => Time.now.iso8601},
+             {"id" => 82, "name" => nil, "processing" => true, "message_count" => 1, "created_at" => Time.now.iso8601}
+           ]},
           {"id" => 5, "message_count" => 0, "updated_at" => Time.now.iso8601}
         ]
       end
@@ -187,7 +191,7 @@ RSpec.describe TUI::App do
       end
 
       it "clamps selection at bottom" do
-        3.times { app.send(:handle_event, key_event(code: "down")) }
+        5.times { app.send(:handle_event, key_event(code: "down")) }
         expect(app.instance_variable_get(:@session_picker_index)).to eq(2)
       end
 
@@ -244,6 +248,91 @@ RSpec.describe TUI::App do
         app.send(:handle_event, key_event(code: "a"))
 
         expect(chat).not_to have_received(:handle_event)
+      end
+
+      describe "tree navigation" do
+        it "expands children on right arrow for session with children" do
+          # Move to session #8 (index 1) which has children
+          app.send(:handle_event, key_event(code: "down"))
+          app.send(:handle_event, key_event(code: "right"))
+
+          expanded = app.instance_variable_get(:@expanded_sessions)
+          expect(expanded[8]).to be true
+        end
+
+        it "does not expand on right arrow for session without children" do
+          # Session #10 (index 0) has no children
+          app.send(:handle_event, key_event(code: "right"))
+
+          expanded = app.instance_variable_get(:@expanded_sessions)
+          expect(expanded[10]).to be_nil
+        end
+
+        it "shows children in visible items after expansion" do
+          app.send(:handle_event, key_event(code: "down"))
+          app.send(:handle_event, key_event(code: "right"))
+
+          visible = app.send(:session_picker_visible_items)
+          types = visible.map { |i| i[:type] }
+          # root, root(expanded), child, child, root
+          expect(types).to eq([:root, :root, :child, :child, :root])
+        end
+
+        it "navigates into expanded children" do
+          app.send(:handle_event, key_event(code: "down"))
+          app.send(:handle_event, key_event(code: "right"))
+          app.send(:handle_event, key_event(code: "down"))
+
+          # Should now be on the first child (codebase-analyzer)
+          visible = app.send(:session_picker_visible_items)
+          idx = app.instance_variable_get(:@session_picker_index)
+          expect(visible[idx][:type]).to eq(:child)
+          expect(visible[idx][:data]["id"]).to eq(81)
+        end
+
+        it "switches to child session on Enter" do
+          chat = app.instance_variable_get(:@screens)[:chat]
+          app.send(:handle_event, key_event(code: "down"))
+          app.send(:handle_event, key_event(code: "right"))
+          app.send(:handle_event, key_event(code: "down"))
+          app.send(:handle_event, key_event(code: "enter"))
+
+          expect(chat).to have_received(:switch_session).with(81)
+        end
+
+        it "collapses on left arrow from parent" do
+          app.send(:handle_event, key_event(code: "down"))
+          app.send(:handle_event, key_event(code: "right"))
+          app.send(:handle_event, key_event(code: "left"))
+
+          expanded = app.instance_variable_get(:@expanded_sessions)
+          expect(expanded).not_to have_key(8)
+        end
+
+        it "collapses parent and moves to parent on left arrow from child" do
+          app.send(:handle_event, key_event(code: "down"))
+          app.send(:handle_event, key_event(code: "right"))
+          app.send(:handle_event, key_event(code: "down")) # on first child
+          app.send(:handle_event, key_event(code: "left"))
+
+          expanded = app.instance_variable_get(:@expanded_sessions)
+          expect(expanded).not_to have_key(8)
+
+          idx = app.instance_variable_get(:@session_picker_index)
+          visible = app.send(:session_picker_visible_items)
+          expect(visible[idx][:data]["id"]).to eq(8)
+        end
+
+        it "clamps selection at bottom of expanded list" do
+          app.send(:handle_event, key_event(code: "down"))
+          app.send(:handle_event, key_event(code: "right"))
+          # Now 5 items visible, try moving past end
+          10.times { app.send(:handle_event, key_event(code: "down")) }
+
+          visible = app.send(:session_picker_visible_items)
+          idx = app.instance_variable_get(:@session_picker_index)
+          expect(idx).to eq(visible.size - 1)
+        end
       end
     end
 

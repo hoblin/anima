@@ -82,22 +82,18 @@ class SessionChannel < ApplicationCable::Channel
     ActionCable.server.broadcast(stream_name, {"action" => "user_message_recalled", "event_id" => event_id})
   end
 
-  # Returns recent sessions with metadata for session picker UI.
+  # Returns recent root sessions with nested child metadata for session picker UI.
+  # Filters to root sessions only (no parent_session_id). Child sessions are
+  # nested under their parent with name and status information.
   #
   # @param data [Hash] optional "limit" (default 10, max 50)
   def list_sessions(data)
     limit = (data["limit"] || DEFAULT_LIST_LIMIT).to_i.clamp(1, MAX_LIST_LIMIT)
-    sessions = Session.recent(limit)
-    counts = Event.where(session_id: sessions.select(:id)).llm_messages.group(:session_id).count
+    sessions = Session.root_sessions.recent(limit).includes(:child_sessions)
+    all_ids = sessions.flat_map { |session| [session.id] + session.child_sessions.map(&:id) }
+    counts = Event.where(session_id: all_ids).llm_messages.group(:session_id).count
 
-    result = sessions.map do |session|
-      {
-        id: session.id,
-        created_at: session.created_at.iso8601,
-        updated_at: session.updated_at.iso8601,
-        message_count: counts[session.id] || 0
-      }
-    end
+    result = sessions.map { |session| serialize_session_with_children(session, counts) }
     transmit({"action" => "sessions_list", "sessions" => result})
   end
 
@@ -312,6 +308,35 @@ class SessionChannel < ApplicationCable::Channel
     # subsequent credential reads return stale data. No public API exists
     # for cache invalidation as of Rails 8.1.
     creds.instance_variable_set(:@config, nil)
+  end
+
+  # Serializes a root session with its children for the sessions_list response.
+  #
+  # @param session [Session] root session to serialize
+  # @param counts [Hash<Integer, Integer>] session_id => llm_message count
+  # @return [Hash] serialized session entry
+  def serialize_session_with_children(session, counts)
+    entry = {
+      id: session.id,
+      created_at: session.created_at.iso8601,
+      updated_at: session.updated_at.iso8601,
+      message_count: counts[session.id] || 0
+    }
+
+    children = session.child_sessions.sort_by(&:created_at)
+    return entry unless children.any?
+
+    entry[:children] = children.map do |child|
+      {
+        id: child.id,
+        name: child.name,
+        processing: child.processing?,
+        message_count: counts[child.id] || 0,
+        created_at: child.created_at.iso8601
+      }
+    end
+
+    entry
   end
 
   def transmit_error(message)

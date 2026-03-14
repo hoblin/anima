@@ -22,6 +22,7 @@ class Session < ApplicationRecord
   validates :view_mode, inclusion: {in: VIEW_MODES}
 
   scope :recent, ->(limit = 10) { order(updated_at: :desc).limit(limit) }
+  scope :root_sessions, -> { where(parent_session_id: nil) }
 
   # Cycles to the next view mode: basic → verbose → debug → basic.
   #

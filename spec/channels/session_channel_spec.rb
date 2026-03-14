@@ -291,7 +291,7 @@ RSpec.describe SessionChannel, type: :channel do
       subscribe(session_id: session_id)
     end
 
-    it "returns recent sessions with metadata" do
+    it "returns recent root sessions with metadata" do
       s1 = Session.create!
       s1.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
       s1.events.create!(event_type: "agent_message", payload: {"type" => "agent_message", "content" => "hello"}, timestamp: 2)
@@ -312,6 +312,68 @@ RSpec.describe SessionChannel, type: :channel do
       oldest = sessions.last
       expect(oldest["id"]).to eq(s1.id)
       expect(oldest["message_count"]).to eq(2)
+    end
+
+    it "excludes child sessions from the top level" do
+      parent = Session.create!
+      Session.create!(parent_session: parent, prompt: "sub-agent task")
+
+      perform(:list_sessions, {"limit" => 10})
+
+      response = transmissions.last
+      ids = response["sessions"].map { |s| s["id"] }
+      expect(ids).to include(parent.id)
+      expect(ids.size).to eq(1)
+    end
+
+    it "nests child sessions under their parent" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "research", name: "codebase-analyzer")
+
+      perform(:list_sessions, {"limit" => 10})
+
+      response = transmissions.last
+      parent_entry = response["sessions"].find { |s| s["id"] == parent.id }
+      expect(parent_entry["children"]).to be_present
+      expect(parent_entry["children"].size).to eq(1)
+
+      child_entry = parent_entry["children"].first
+      expect(child_entry["id"]).to eq(child.id)
+      expect(child_entry["name"]).to eq("codebase-analyzer")
+      expect(child_entry["processing"]).to eq(false)
+    end
+
+    it "includes processing status for child sessions" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "task", processing: true)
+
+      perform(:list_sessions, {"limit" => 10})
+
+      response = transmissions.last
+      child_entry = response["sessions"].first["children"].first
+      expect(child_entry["processing"]).to eq(true)
+    end
+
+    it "includes message counts for child sessions" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "task")
+      child.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+      child.events.create!(event_type: "agent_message", payload: {"type" => "agent_message", "content" => "ok"}, timestamp: 2)
+
+      perform(:list_sessions, {"limit" => 10})
+
+      response = transmissions.last
+      child_entry = response["sessions"].first["children"].first
+      expect(child_entry["message_count"]).to eq(2)
+    end
+
+    it "omits children key when session has no children" do
+      Session.create!
+
+      perform(:list_sessions, {"limit" => 10})
+
+      response = transmissions.last
+      expect(response["sessions"].first).not_to have_key("children")
     end
 
     it "respects the limit parameter" do

@@ -85,6 +85,30 @@ RSpec.describe Session do
     end
   end
 
+  describe ".root_sessions" do
+    it "returns only sessions without a parent" do
+      root = Session.create!
+      parent = Session.create!
+      Session.create!(parent_session: parent, prompt: "child")
+
+      expect(Session.root_sessions).to contain_exactly(root, parent)
+    end
+  end
+
+  describe "#name" do
+    it "stores agent name for named sub-agents" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "prompt", name: "codebase-analyzer")
+
+      expect(child.reload.name).to eq("codebase-analyzer")
+    end
+
+    it "returns nil for unnamed sessions" do
+      session = Session.create!
+      expect(session.name).to be_nil
+    end
+  end
+
   describe "#granted_tools" do
     it "returns nil when not set" do
       session = Session.create!
