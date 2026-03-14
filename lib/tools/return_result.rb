@@ -1,0 +1,80 @@
+# frozen_string_literal: true
+
+module Tools
+  # Sub-agent-only tool that delivers a completed result back to the
+  # parent session. Emits a {Events::SubagentCompleted} event in the
+  # parent's event stream, then the sub-agent session ends.
+  #
+  # Never registered for main sessions — only sub-agents see this tool.
+  class ReturnResult < Base
+    def self.tool_name = "return_result"
+
+    def self.description = "Return your completed result to the parent agent. " \
+      "Call this when you have fulfilled the assigned task."
+
+    def self.input_schema
+      {
+        type: "object",
+        properties: {
+          result: {
+            type: "string",
+            description: "The completed deliverable to send back to the parent agent"
+          }
+        },
+        required: ["result"]
+      }
+    end
+
+    # @param session [Session] the sub-agent session returning a result
+    def initialize(session:, **)
+      @session = session
+    end
+
+    # Emits a {Events::SubagentCompleted} event in the parent session.
+    #
+    # @param input [Hash<String, Object>] with "result" key
+    # @return [String] confirmation message
+    # @return [Hash] with :error key on failure
+    def execute(input)
+      result = input["result"].to_s.strip
+      return {error: "Result cannot be blank"} if result.empty?
+
+      parent = @session.parent_session
+      return {error: "No parent session — only sub-agents can return results"} unless parent
+
+      task = extract_task
+      expected_output = extract_expected_output
+
+      Events::Bus.emit(Events::SubagentCompleted.new(
+        content: result,
+        child_session_id: @session.id,
+        task: task,
+        expected_output: expected_output,
+        session_id: parent.id
+      ))
+
+      "Result delivered to parent session #{parent.id}."
+    end
+
+    private
+
+    # Extracts the original task from the sub-agent's first user message.
+    # @return [String]
+    def extract_task
+      @session.events
+        .where(event_type: "user_message")
+        .order(:id)
+        .pick(:payload)
+        &.dig("content")
+        .to_s
+    end
+
+    # Extracts the expected output from the sub-agent's system prompt.
+    # @return [String]
+    def extract_expected_output
+      @session.prompt.to_s
+        .split("Expected deliverable: ", 2)
+        .last.to_s.strip
+    end
+  end
+end

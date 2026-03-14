@@ -35,7 +35,8 @@ class EventDecorator < ApplicationDecorator
     "agent_message" => "AgentMessageDecorator",
     "tool_call" => "ToolCallDecorator",
     "tool_response" => "ToolResponseDecorator",
-    "system_message" => "SystemMessageDecorator"
+    "system_message" => "SystemMessageDecorator",
+    "subagent_completed" => "SubagentCompletedDecorator"
   }.freeze
   private_constant :DECORATOR_MAP
 

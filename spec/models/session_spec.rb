@@ -56,6 +56,61 @@ RSpec.describe Session do
 
       expect { session.destroy }.to change(Event, :count).by(-1)
     end
+
+    it "belongs to parent_session (optional)" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "test prompt")
+
+      expect(child.parent_session).to eq(parent)
+    end
+
+    it "allows sessions without a parent" do
+      session = Session.create!
+      expect(session.parent_session).to be_nil
+    end
+
+    it "has many child_sessions" do
+      parent = Session.create!
+      child_a = Session.create!(parent_session: parent, prompt: "agent A")
+      child_b = Session.create!(parent_session: parent, prompt: "agent B")
+
+      expect(parent.child_sessions).to contain_exactly(child_a, child_b)
+    end
+
+    it "destroys child sessions when parent is destroyed" do
+      parent = Session.create!
+      Session.create!(parent_session: parent, prompt: "child")
+
+      expect { parent.destroy }.to change(Session, :count).by(-2)
+    end
+  end
+
+  describe "#sub_agent?" do
+    it "returns true for child sessions" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "task")
+
+      expect(child).to be_sub_agent
+    end
+
+    it "returns false for main sessions" do
+      session = Session.create!
+      expect(session).not_to be_sub_agent
+    end
+  end
+
+  describe "#system_prompt" do
+    it "returns prompt for sub-agent sessions" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "You are a research assistant.")
+
+      expect(child.system_prompt).to eq("You are a research assistant.")
+    end
+
+    it "returns nil for main sessions" do
+      session = Session.create!
+      expect(session.system_prompt).to be_nil
+    end
   end
 
   describe "#messages_for_llm" do
@@ -177,6 +232,28 @@ RSpec.describe Session do
           ]},
           {role: "assistant", content: "The page says Example Domain."}
         ])
+      end
+    end
+
+    context "with subagent_completed events" do
+      it "assembles as user message with task and result" do
+        session.events.create!(
+          event_type: "subagent_completed",
+          payload: {
+            "content" => "The API supports pagination via cursor parameters.",
+            "task" => "Research the pagination API",
+            "child_session_id" => 99,
+            "expected_output" => "Summary of pagination"
+          },
+          timestamp: 1
+        )
+
+        result = session.messages_for_llm
+        expect(result.length).to eq(1)
+        expect(result.first[:role]).to eq("user")
+        expect(result.first[:content]).to include("[Sub-agent completed]")
+        expect(result.first[:content]).to include("Task: Research the pagination API")
+        expect(result.first[:content]).to include("The API supports pagination via cursor parameters.")
       end
     end
 
@@ -316,6 +393,101 @@ RSpec.describe Session do
 
       events = session.viewport_events(include_pending: false)
       expect(events.map { |e| e.payload["content"] }).to eq(%w[delivered])
+    end
+  end
+
+  describe "virtual viewport inheritance" do
+    let(:parent) { Session.create! }
+    let(:child) do
+      # Ensure parent events have earlier created_at
+      Session.create!(parent_session: parent, prompt: "sub-agent prompt")
+    end
+
+    before do
+      # Parent conversation history (created before child session)
+      parent.events.create!(event_type: "user_message", payload: {"content" => "parent msg 1"}, timestamp: 1, token_count: 10)
+      parent.events.create!(event_type: "agent_message", payload: {"content" => "parent reply 1"}, timestamp: 2, token_count: 10)
+    end
+
+    it "includes parent events before child events for sub-agent sessions" do
+      child.events.create!(event_type: "user_message", payload: {"content" => "child task"}, timestamp: 3, token_count: 10)
+
+      events = child.viewport_events
+      contents = events.map { |e| e.payload["content"] }
+
+      expect(contents).to eq(["parent msg 1", "parent reply 1", "child task"])
+    end
+
+    it "shows parent events first chronologically, then child events" do
+      child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 10)
+      child.events.create!(event_type: "agent_message", payload: {"content" => "working..."}, timestamp: 4, token_count: 10)
+
+      events = child.viewport_events
+      sessions = events.map(&:session_id)
+
+      # Parent events come first, then child events
+      parent_indices = sessions.each_index.select { |i| sessions[i] == parent.id }
+      child_indices = sessions.each_index.select { |i| sessions[i] == child.id }
+      expect(parent_indices.max).to be < child_indices.min
+    end
+
+    it "respects token budget for combined viewport" do
+      child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 50)
+
+      # Budget of 60: child event (50) + one parent event (10), but not both parent events (20)
+      events = child.viewport_events(token_budget: 60)
+      contents = events.map { |e| e.payload["content"] }
+
+      expect(contents).to include("task")
+      expect(contents.length).to eq(2) # child + 1 parent event
+    end
+
+    it "prioritizes child events over parent events" do
+      child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 50)
+
+      # Budget only fits the child event
+      events = child.viewport_events(token_budget: 50)
+      contents = events.map { |e| e.payload["content"] }
+
+      expect(contents).to eq(["task"])
+    end
+
+    it "does not inherit events from parent for main sessions" do
+      main = Session.create!
+      main.events.create!(event_type: "user_message", payload: {"content" => "only mine"}, timestamp: 1, token_count: 10)
+
+      events = main.viewport_events
+      expect(events.length).to eq(1)
+      expect(events.first.payload["content"]).to eq("only mine")
+    end
+
+    it "excludes parent events created after the child session" do
+      child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 10)
+
+      # Parent event created after child — should not be inherited
+      parent.events.create!(event_type: "agent_message", payload: {"content" => "parent continues"}, timestamp: 4, token_count: 10)
+
+      events = child.viewport_events
+      contents = events.map { |e| e.payload["content"] }
+
+      expect(contents).not_to include("parent continues")
+    end
+
+    it "trims trailing tool_call events from parent viewport" do
+      parent.events.create!(
+        event_type: "tool_call",
+        payload: {"content" => "Calling spawn_subagent", "tool_name" => "spawn_subagent",
+                  "tool_input" => {"task" => "research"}, "tool_use_id" => "toolu_orphan"},
+        timestamp: 3, token_count: 10
+      )
+
+      child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 4, token_count: 10)
+
+      events = child.viewport_events
+      types = events.map(&:event_type)
+
+      # The orphaned tool_call at the end of parent events should be trimmed
+      expect(types).not_to include("tool_call")
     end
   end
 

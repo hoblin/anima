@@ -3,6 +3,9 @@
 # A conversation session — the fundamental unit of agent interaction.
 # Owns an ordered stream of {Event} records representing everything
 # that happened: user messages, agent responses, tool calls, etc.
+#
+# Sessions form a hierarchy: a main session can spawn child sessions
+# (sub-agents) that inherit the parent's viewport context at fork time.
 class Session < ApplicationRecord
   # Claude Sonnet 4 context window minus system prompt reserve.
   DEFAULT_TOKEN_BUDGET = 190_000
@@ -10,6 +13,9 @@ class Session < ApplicationRecord
   VIEW_MODES = %w[basic verbose debug].freeze
 
   has_many :events, -> { order(:id) }, dependent: :destroy
+
+  belongs_to :parent_session, class_name: "Session", optional: true
+  has_many :child_sessions, class_name: "Session", foreign_key: :parent_session_id, dependent: :destroy
 
   validates :view_mode, inclusion: {in: VIEW_MODES}
 
@@ -23,39 +29,42 @@ class Session < ApplicationRecord
     VIEW_MODES[(current_index + 1) % VIEW_MODES.size]
   end
 
+  # @return [Boolean] true if this session is a sub-agent (has a parent)
+  def sub_agent?
+    parent_session_id.present?
+  end
+
   # Returns the events currently visible in the LLM context window.
   # Walks events newest-first and includes them until the token budget
   # is exhausted. Events are full-size or excluded entirely.
+  #
+  # Sub-agent sessions inherit parent context via virtual viewport:
+  # own events fill first, then parent events from before the fork point
+  # fill the remaining budget. Parent events appear first chronologically.
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @param include_pending [Boolean] whether to include pending messages (true for
   #   display, false for LLM context assembly)
   # @return [Array<Event>] chronologically ordered
   def viewport_events(token_budget: DEFAULT_TOKEN_BUDGET, include_pending: true)
-    scope = events.context_events
-    scope = scope.deliverable unless include_pending
+    own_events = select_events(own_event_scope(include_pending), budget: token_budget)
+    remaining = token_budget - own_events.sum { |e| event_token_cost(e) }
 
-    selected = []
-    remaining = token_budget
-
-    scope.reorder(id: :desc).each do |event|
-      cost = (event.token_count > 0) ? event.token_count : estimate_tokens(event)
-      break if cost > remaining && selected.any?
-
-      selected << event
-      remaining -= cost
+    if sub_agent? && remaining > 0
+      parent_events = select_events(parent_event_scope(include_pending), budget: remaining)
+      trim_trailing_tool_calls(parent_events) + own_events
+    else
+      own_events
     end
-
-    selected.reverse
   end
 
-  # Returns the assembled system prompt for this session.
-  # The system prompt includes system instructions, goals, and memories.
-  # Currently a placeholder — these subsystems are not yet implemented.
+  # Returns the system prompt for this session.
+  # Sub-agent sessions use their stored prompt. Main sessions return nil
+  # (system prompt assembly by Soul/Identity is not yet implemented).
   #
-  # @return [String, nil] the system prompt text, or nil if not configured
+  # @return [String, nil] the system prompt text, or nil for main sessions
   def system_prompt
-    nil
+    prompt
   end
 
   # Builds the message array expected by the Anthropic Messages API.
@@ -87,6 +96,55 @@ class Session < ApplicationRecord
 
   private
 
+  # Scopes own events for viewport assembly.
+  # @return [ActiveRecord::Relation]
+  def own_event_scope(include_pending)
+    scope = events.context_events
+    include_pending ? scope : scope.deliverable
+  end
+
+  # Scopes parent events created before this session's fork point.
+  # @return [ActiveRecord::Relation]
+  def parent_event_scope(include_pending)
+    scope = parent_session.events.context_events.where(created_at: ...created_at)
+    include_pending ? scope : scope.deliverable
+  end
+
+  # Walks events newest-first, selecting until the token budget is exhausted.
+  # Always includes at least the newest event even if it exceeds budget.
+  #
+  # @param scope [ActiveRecord::Relation] event scope to select from
+  # @param budget [Integer] maximum tokens to include
+  # @return [Array<Event>] chronologically ordered
+  def select_events(scope, budget:)
+    selected = []
+    remaining = budget
+
+    scope.reorder(id: :desc).each do |event|
+      cost = event_token_cost(event)
+      break if cost > remaining && selected.any?
+
+      selected << event
+      remaining -= cost
+    end
+
+    selected.reverse
+  end
+
+  # @return [Integer] token cost, using cached count or heuristic estimate
+  def event_token_cost(event)
+    (event.token_count > 0) ? event.token_count : estimate_tokens(event)
+  end
+
+  # Removes trailing tool_call events that lack matching tool_response.
+  # Prevents orphaned tool_use blocks at the parent/child viewport boundary
+  # (the spawn_subagent tool_call is emitted before the child session exists,
+  # but its tool_response comes after — so the cutoff can split them).
+  def trim_trailing_tool_calls(event_list)
+    event_list.pop while event_list.last&.event_type == "tool_call"
+    event_list
+  end
+
   # Converts a chronological list of events into Anthropic wire-format messages.
   # Groups consecutive tool_call events into one assistant message and
   # consecutive tool_response events into one user message.
@@ -104,6 +162,8 @@ class Session < ApplicationRecord
         append_grouped_block(messages, "assistant", tool_use_block(event.payload))
       when "tool_response"
         append_grouped_block(messages, "user", tool_result_block(event.payload))
+      when "subagent_completed"
+        messages << {role: "user", content: subagent_completed_text(event.payload)}
       end
     end
   end
@@ -133,6 +193,15 @@ class Session < ApplicationRecord
       tool_use_id: payload["tool_use_id"],
       content: payload["content"].to_s
     }
+  end
+
+  # Formats a sub-agent completion event for the LLM context.
+  # Presented as a user message so the parent agent sees the result.
+  def subagent_completed_text(payload)
+    parts = ["[Sub-agent completed]"]
+    parts << "Task: #{payload["task"]}" if payload["task"].present?
+    parts << "Result:\n#{payload["content"]}"
+    parts.join("\n")
   end
 
   # Delegates to {Event#estimate_tokens} for events not yet counted
