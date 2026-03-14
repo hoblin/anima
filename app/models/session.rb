@@ -63,6 +63,32 @@ class Session < ApplicationRecord
     end
   end
 
+  # Recalculates the viewport and returns IDs of events evicted since the
+  # last snapshot. Updates the stored viewport_event_ids atomically.
+  # Piggybacks on event broadcasts to notify clients which messages left
+  # the LLM's context window.
+  #
+  # @return [Array<Integer>] IDs of events no longer in the viewport
+  def recalculate_viewport!
+    new_ids = viewport_events.map(&:id)
+    old_ids = viewport_event_ids
+
+    evicted = old_ids - new_ids
+    update_column(:viewport_event_ids, new_ids) if old_ids != new_ids
+    evicted
+  end
+
+  # Overwrites the viewport snapshot without computing evictions.
+  # Used when transmitting or broadcasting a full viewport refresh,
+  # where eviction notifications are unnecessary (clients clear their
+  # store first).
+  #
+  # @param ids [Array<Integer>] event IDs now in the viewport
+  # @return [void]
+  def snapshot_viewport!(ids)
+    update_column(:viewport_event_ids, ids)
+  end
+
   # Returns the system prompt for this session.
   # Sub-agent sessions use their stored prompt. Main sessions return nil
   # (system prompt assembly by Soul/Identity is not yet implemented).

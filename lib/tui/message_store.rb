@@ -115,6 +115,26 @@ module TUI
       end
     end
 
+    # Removes entries by their event IDs. Used when the brain reports
+    # that events have left the LLM's viewport (context window eviction).
+    # Acquires the mutex once for the entire batch.
+    #
+    # @param event_ids [Array<Integer>] database IDs of events to remove
+    # @return [Integer] count of entries actually removed
+    def remove_by_ids(event_ids)
+      @mutex.synchronize do
+        removed = 0
+        event_ids.each do |event_id|
+          entry = @entries_by_id.delete(event_id)
+          next unless entry
+
+          @entries.delete(entry)
+          removed += 1
+        end
+        removed
+      end
+    end
+
     private
 
     # Replaces data on an existing entry matched by event ID.

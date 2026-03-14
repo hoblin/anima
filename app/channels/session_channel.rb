@@ -214,11 +214,17 @@ class SessionChannel < ApplicationCable::Channel
   # reconstruct tool call counters on reconnect.
   # In debug mode, prepends the assembled system prompt as a special block.
   #
+  # Snapshots the viewport so subsequent event broadcasts can compute
+  # eviction diffs accurately.
+  #
   # @param session [Session] the session whose history to transmit
   def transmit_history(session)
     transmit_system_prompt(session) if session.view_mode == "debug"
 
-    session.viewport_events.each do |event|
+    viewport = session.viewport_events
+    session.snapshot_viewport!(viewport.map(&:id))
+
+    viewport.each do |event|
       transmit(decorate_event_payload(event, session.view_mode))
     end
   end
@@ -226,12 +232,19 @@ class SessionChannel < ApplicationCable::Channel
   # Broadcasts the re-decorated viewport to all clients on the session stream.
   # Used after a view mode change to refresh all connected clients.
   # In debug mode, prepends the assembled system prompt as a special block.
+  #
+  # Snapshots the viewport so subsequent event broadcasts can compute
+  # eviction diffs accurately.
+  #
   # @param session [Session] the session whose viewport to broadcast
   # @return [void]
   def broadcast_viewport(session)
     broadcast_system_prompt(session) if session.view_mode == "debug"
 
-    session.viewport_events.each do |event|
+    viewport = session.viewport_events
+    session.snapshot_viewport!(viewport.map(&:id))
+
+    viewport.each do |event|
       ActionCable.server.broadcast(stream_name, decorate_event_payload(event, session.view_mode))
     end
   end

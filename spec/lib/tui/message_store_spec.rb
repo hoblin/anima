@@ -340,6 +340,44 @@ RSpec.describe TUI::MessageStore do
     end
   end
 
+  describe "#remove_by_ids" do
+    it "removes multiple entries in one call" do
+      store.process_event({"type" => "user_message", "id" => 1,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "first"}}})
+      store.process_event({"type" => "agent_message", "id" => 2,
+                           "rendered" => {"basic" => {"role" => "assistant", "content" => "second"}}})
+      store.process_event({"type" => "user_message", "id" => 3,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "third"}}})
+
+      expect(store.remove_by_ids([1, 2])).to eq(2)
+      expect(store.messages.size).to eq(1)
+      expect(store.messages.first[:id]).to eq(3)
+    end
+
+    it "returns zero when none of the IDs match" do
+      store.process_event({"type" => "user_message", "id" => 1,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
+
+      expect(store.remove_by_ids([99, 100])).to eq(0)
+      expect(store.messages.size).to eq(1)
+    end
+
+    it "handles empty array" do
+      expect(store.remove_by_ids([])).to eq(0)
+    end
+
+    it "clears ID index so updates to removed entries are ignored" do
+      store.process_event({"type" => "user_message", "id" => 1,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
+      store.remove_by_ids([1])
+
+      result = store.process_event({"type" => "user_message", "id" => 1, "action" => "update",
+                                    "rendered" => {"basic" => {"role" => "user", "content" => "updated"}}})
+      expect(result).to be false
+      expect(store.messages).to be_empty
+    end
+  end
+
   describe "thread safety" do
     it "handles concurrent writes without errors" do
       threads = 10.times.map do |i|

@@ -539,6 +539,59 @@ RSpec.describe Session do
     end
   end
 
+  describe "#recalculate_viewport!" do
+    let(:session) { Session.create! }
+
+    it "returns empty array when viewport has not changed" do
+      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
+      session.snapshot_viewport!([event.id])
+
+      expect(session.recalculate_viewport!).to eq([])
+    end
+
+    it "returns evicted event IDs when viewport shrinks" do
+      old = session.events.create!(event_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 100_000)
+      new_event = session.events.create!(event_type: "agent_message", payload: {"content" => "new"}, timestamp: 2, token_count: 100_000)
+      session.update_column(:viewport_event_ids, [old.id, new_event.id])
+
+      # Add a large event that pushes 'old' out of the viewport
+      session.events.create!(event_type: "user_message", payload: {"content" => "big"}, timestamp: 3, token_count: 100_000)
+
+      evicted = session.recalculate_viewport!
+      expect(evicted).to include(old.id)
+    end
+
+    it "updates the stored viewport snapshot" do
+      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
+      session.recalculate_viewport!
+
+      expect(session.reload.viewport_event_ids).to eq([event.id])
+    end
+
+    it "does not write to the database when viewport is unchanged" do
+      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
+      session.snapshot_viewport!([event.id])
+
+      expect(session).not_to receive(:update_column)
+      session.recalculate_viewport!
+    end
+  end
+
+  describe "#snapshot_viewport!" do
+    let(:session) { Session.create! }
+
+    it "stores the given event IDs" do
+      session.snapshot_viewport!([1, 2, 3])
+      expect(session.reload.viewport_event_ids).to eq([1, 2, 3])
+    end
+
+    it "overwrites previous snapshot" do
+      session.snapshot_viewport!([1, 2])
+      session.snapshot_viewport!([3, 4, 5])
+      expect(session.reload.viewport_event_ids).to eq([3, 4, 5])
+    end
+  end
+
   describe "#estimate_tokens (private)" do
     let(:session) { Session.create! }
 

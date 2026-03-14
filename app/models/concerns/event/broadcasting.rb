@@ -9,11 +9,22 @@
 # maintain an ID-indexed store for efficient in-place updates (e.g. when
 # token counts arrive asynchronously from {CountEventTokensJob}).
 #
+# When a new event pushes old events out of the LLM's context window,
+# the broadcast includes `evicted_event_ids` so clients can remove
+# phantom messages that the agent no longer knows about.
+#
 # @example Create broadcast payload
 #   {
 #     "type" => "user_message", "content" => "hello", ...,
 #     "id" => 42, "action" => "create",
 #     "rendered" => { "basic" => { "role" => "user", "content" => "hello" } }
+#   }
+#
+# @example Broadcast with viewport evictions
+#   {
+#     "type" => "agent_message", "content" => "...", ...,
+#     "id" => 99, "action" => "create",
+#     "evicted_event_ids" => [101, 102, 103]
 #   }
 #
 # @example Update broadcast payload (e.g. token count arrives)
@@ -44,19 +55,26 @@ module Event::Broadcasting
   end
 
   # Decorates the event for the session's current view mode and broadcasts
-  # the payload to the session's ActionCable stream.
+  # the payload to the session's ActionCable stream. Includes viewport
+  # eviction metadata so clients can remove messages the LLM has forgotten.
   #
   # @param action [String] ACTION_CREATE or ACTION_UPDATE — tells clients how to handle the event
   def broadcast_event(action:)
     return unless session_id
 
-    mode = Session.where(id: session_id).pick(:view_mode) || "basic"
+    session = Session.find_by(id: session_id)
+    return unless session
+
+    mode = session.view_mode
     decorator = EventDecorator.for(self)
     broadcast_payload = payload.merge("id" => id, "action" => action)
 
     if decorator
       broadcast_payload["rendered"] = {mode => decorator.render(mode)}
     end
+
+    evicted_ids = session.recalculate_viewport!
+    broadcast_payload["evicted_event_ids"] = evicted_ids if evicted_ids.any?
 
     ActionCable.server.broadcast("session_#{session_id}", broadcast_payload)
   end
