@@ -87,21 +87,25 @@ class AgentLoop
     @shell_session&.finalize
   end
 
-  private
-
+  # Tool classes available to all sessions by default.
   STANDARD_TOOLS = [Tools::Bash, Tools::Read, Tools::Write, Tools::Edit, Tools::WebGet].freeze
-  private_constant :STANDARD_TOOLS
+
+  # Name-to-class mapping for tool restriction lookups.
+  STANDARD_TOOLS_BY_NAME = STANDARD_TOOLS.index_by(&:tool_name).freeze
+
+  private
 
   # Builds the tool registry appropriate for this session type.
   # Main sessions get standard tools + spawn_subagent.
-  # Sub-agent sessions get standard tools + return_result (no nesting).
+  # Sub-agent sessions get granted standard tools + return_result (no nesting).
+  # When {Session#granted_tools} is nil, all standard tools are granted.
   #
   # @return [Tools::Registry] registry with available tools
   def build_tool_registry
     context = {shell_session: @shell_session, session: @session}
     registry = Tools::Registry.new(context: context)
 
-    STANDARD_TOOLS.each { |tool| registry.register(tool) }
+    granted_standard_tools.each { |tool| registry.register(tool) }
 
     if @session.sub_agent?
       registry.register(Tools::ReturnResult)
@@ -110,5 +114,16 @@ class AgentLoop
     end
 
     registry
+  end
+
+  # Standard tools available to this session.
+  # Returns all when {Session#granted_tools} is nil (no restriction).
+  # Returns only matching tools when granted_tools is an array.
+  #
+  # @return [Array<Class<Tools::Base>>] tool classes to register
+  def granted_standard_tools
+    return STANDARD_TOOLS unless @session.granted_tools
+
+    @session.granted_tools.filter_map { |name| STANDARD_TOOLS_BY_NAME[name] }
   end
 end

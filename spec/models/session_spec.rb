@@ -85,6 +85,27 @@ RSpec.describe Session do
     end
   end
 
+  describe "#granted_tools" do
+    it "returns nil when not set" do
+      session = Session.create!
+      expect(session.granted_tools).to be_nil
+    end
+
+    it "round-trips an array of tool names through JSON serialization" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "agent", granted_tools: ["read", "web_get"])
+
+      expect(child.reload.granted_tools).to eq(["read", "web_get"])
+    end
+
+    it "round-trips an empty array (pure reasoning)" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "thinker", granted_tools: [])
+
+      expect(child.reload.granted_tools).to eq([])
+    end
+  end
+
   describe "#sub_agent?" do
     it "returns true for child sessions" do
       parent = Session.create!

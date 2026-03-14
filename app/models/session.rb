@@ -12,6 +12,8 @@ class Session < ApplicationRecord
 
   VIEW_MODES = %w[basic verbose debug].freeze
 
+  serialize :granted_tools, coder: JSON
+
   has_many :events, -> { order(:id) }, dependent: :destroy
 
   belongs_to :parent_session, class_name: "Session", optional: true

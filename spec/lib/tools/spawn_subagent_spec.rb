@@ -28,6 +28,23 @@ RSpec.describe Tools::SpawnSubagent do
       expect(schema[:properties][:expected_output][:type]).to eq("string")
       expect(schema[:required]).to contain_exactly("task", "expected_output")
     end
+
+    it "defines tools as an optional array property" do
+      schema = described_class.input_schema
+      tools_prop = schema[:properties][:tools]
+
+      expect(tools_prop[:type]).to eq("array")
+      expect(tools_prop[:items]).to eq({type: "string"})
+      expect(schema[:required]).not_to include("tools")
+    end
+
+    it "lists valid tool names in the tools description" do
+      description = described_class.input_schema[:properties][:tools][:description]
+
+      AgentLoop::STANDARD_TOOLS_BY_NAME.each_key do |name|
+        expect(description).to include(name)
+      end
+    end
   end
 
   describe ".schema" do
@@ -89,7 +106,6 @@ RSpec.describe Tools::SpawnSubagent do
     end
 
     it "returns immediately (non-blocking)" do
-      # Verify the tool returns a string, not an LLM response
       result = tool.execute(input)
       expect(result).to be_a(String)
     end
@@ -110,6 +126,54 @@ RSpec.describe Tools::SpawnSubagent do
       it "returns error" do
         result = tool.execute("task" => "do something", "expected_output" => "  ")
         expect(result).to eq({error: "Expected output cannot be blank"})
+      end
+    end
+
+    context "tool restriction" do
+      it "stores granted_tools as nil when tools parameter is omitted" do
+        tool.execute(input)
+
+        child = Session.last
+        expect(child.granted_tools).to be_nil
+      end
+
+      it "stores granted_tools when tools parameter is provided" do
+        tool.execute(input.merge("tools" => ["read", "web_get"]))
+
+        child = Session.last
+        expect(child.granted_tools).to eq(["read", "web_get"])
+      end
+
+      it "stores empty granted_tools for pure reasoning tasks" do
+        tool.execute(input.merge("tools" => []))
+
+        child = Session.last
+        expect(child.granted_tools).to eq([])
+      end
+
+      it "returns error for unknown tool names" do
+        result = tool.execute(input.merge("tools" => ["read", "teleport"]))
+
+        expect(result).to eq({error: "Unknown tool: teleport"})
+      end
+
+      it "does not create a child session for unknown tools" do
+        expect { tool.execute(input.merge("tools" => ["fake"])) }
+          .not_to change(Session, :count)
+      end
+
+      it "returns error when tools is not an array" do
+        result = tool.execute(input.merge("tools" => "read"))
+
+        expect(result).to eq({error: "tools must be an array"})
+      end
+
+      it "accepts all valid standard tool names" do
+        valid_names = AgentLoop::STANDARD_TOOLS_BY_NAME.keys
+        result = tool.execute(input.merge("tools" => valid_names))
+
+        expect(result).to be_a(String)
+        expect(result).to include("Sub-agent spawned")
       end
     end
   end
