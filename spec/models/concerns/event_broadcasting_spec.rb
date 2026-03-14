@@ -65,6 +65,38 @@ RSpec.describe Event::Broadcasting do
     end
   end
 
+  describe "viewport eviction" do
+    it "includes evicted_event_ids when old events leave the viewport" do
+      # Fill the viewport with two large events
+      old = create_event(token_count: 100_000, timestamp: 1)
+      session.snapshot_viewport!([old.id])
+
+      # Create another large event — old event should be evicted
+      expect {
+        create_event(token_count: 100_000, timestamp: 2)
+      }.to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("evicted_event_ids" => [old.id]))
+    end
+
+    it "omits evicted_event_ids when no events are evicted" do
+      session.snapshot_viewport!([])
+
+      expect {
+        create_event(token_count: 10, timestamp: 1)
+      }.to have_broadcasted_to("session_#{session.id}")
+        .with(satisfy { |payload| !payload.key?("evicted_event_ids") })
+    end
+
+    it "updates the viewport snapshot after broadcasting" do
+      event = nil
+      expect {
+        event = create_event(token_count: 10, timestamp: 1)
+      }.to have_broadcasted_to("session_#{session.id}")
+
+      expect(session.reload.viewport_event_ids).to include(event.id)
+    end
+  end
+
   describe "after_update_commit" do
     it "broadcasts with action update when event is updated" do
       event = create_event

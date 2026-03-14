@@ -216,7 +216,21 @@ module TUI
               @message_store.process_event(msg)
             end
           end
+
+          handle_viewport_evictions(msg)
         end
+      end
+
+      # Removes messages that left the LLM's context window. Event broadcasts
+      # include `evicted_event_ids` when old events are pushed out of the
+      # viewport by new ones.
+      #
+      # @param msg [Hash] incoming WebSocket message
+      def handle_viewport_evictions(msg)
+        evicted_ids = msg["evicted_event_ids"]
+        return unless evicted_ids.is_a?(Array) && evicted_ids.any?
+
+        @message_store.remove_by_ids(evicted_ids)
       end
 
       # Reacts to connection lifecycle changes from the WebSocket client.

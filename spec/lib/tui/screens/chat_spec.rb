@@ -299,6 +299,39 @@ RSpec.describe TUI::Screens::Chat do
         expect(screen.messages).to be_empty
       end
 
+      it "removes evicted events from message store" do
+        message_store.process_event({"type" => "user_message", "id" => 1,
+                                     "rendered" => {"basic" => {"role" => "user", "content" => "old msg"}}})
+        message_store.process_event({"type" => "agent_message", "id" => 2,
+                                     "rendered" => {"basic" => {"role" => "assistant", "content" => "old reply"}}})
+        message_store.process_event({"type" => "user_message", "id" => 3,
+                                     "rendered" => {"basic" => {"role" => "user", "content" => "recent"}}})
+
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "agent_message", "id" => 4, "action" => "create",
+           "rendered" => {"basic" => {"role" => "assistant", "content" => "new reply"}},
+           "evicted_event_ids" => [1, 2]}
+        ])
+        screen.send(:process_incoming_messages)
+
+        ids = screen.messages.map { |m| m[:id] }
+        expect(ids).to eq([3, 4])
+      end
+
+      it "ignores evicted_event_ids when not an array" do
+        message_store.process_event({"type" => "user_message", "id" => 1,
+                                     "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
+
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"type" => "agent_message", "id" => 2, "action" => "create",
+           "rendered" => {"basic" => {"role" => "assistant", "content" => "reply"}},
+           "evicted_event_ids" => "not-an-array"}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.messages.size).to eq(2)
+      end
+
       it "does not store connection status messages as chat messages" do
         allow(cable_client).to receive(:drain_messages).and_return([
           {"type" => "connection", "status" => "subscribing"}
