@@ -186,7 +186,7 @@ View modes are implemented via Draper decorators that operate at the transport l
 
 ### Brain as Microservices on a Shared Event Bus
 
-The human brain isn't a single process — it's dozens of specialized subsystems running in parallel, communicating through shared chemical and electrical signals. The prefrontal cortex doesn't "call" the amygdala. They both react to the same event independently, and their outputs combine.
+The human brain isn't a single process — it's dozens of specialized subsystems communicating through shared chemical and electrical signals. The prefrontal cortex doesn't "call" the amygdala. They both react to the same event independently, and their outputs combine.
 
 Anima mirrors this with an event-driven architecture:
 

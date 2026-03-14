@@ -35,11 +35,20 @@ RSpec.describe Tools::SpawnSpecialist do
 
   describe ".description" do
     it "includes available specialists when agents are registered" do
+      allow(Agents::Registry).to receive(:instance).and_return(agent_registry)
       expect(described_class.description).to include("Available specialists")
+      expect(described_class.description).to include("analyzer")
+    end
+
+    it "returns base description when no agents are registered" do
+      allow(Agents::Registry).to receive(:instance).and_return(Agents::Registry.new)
+      expect(described_class.description).not_to include("Available specialists")
     end
   end
 
   describe ".input_schema" do
+    before { allow(Agents::Registry).to receive(:instance).and_return(agent_registry) }
+
     it "requires name, task, and expected_output" do
       schema = described_class.input_schema
       expect(schema[:type]).to eq("object")
@@ -56,7 +65,7 @@ RSpec.describe Tools::SpawnSpecialist do
 
     it "includes name enum when agents are registered" do
       schema = described_class.input_schema
-      expect(schema[:properties][:name][:enum]).to be_a(Array)
+      expect(schema[:properties][:name][:enum]).to contain_exactly("analyzer")
     end
   end
 
@@ -162,12 +171,22 @@ RSpec.describe Tools::SpawnSpecialist do
         result = tool.execute(input.merge("task" => "  "))
         expect(result).to eq({error: "Task cannot be blank"})
       end
+
+      it "does not create a child session" do
+        expect { tool.execute(input.merge("task" => "  ")) }
+          .not_to change(Session, :count)
+      end
     end
 
     context "with blank expected_output" do
       it "returns error" do
         result = tool.execute(input.merge("expected_output" => "  "))
         expect(result).to eq({error: "Expected output cannot be blank"})
+      end
+
+      it "does not create a child session" do
+        expect { tool.execute(input.merge("expected_output" => "  ")) }
+          .not_to change(Session, :count)
       end
     end
 

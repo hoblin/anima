@@ -1,24 +1,21 @@
 # frozen_string_literal: true
 
 module Tools
-  # Spawns a generic child session that works on a task in parallel.
+  # Spawns a generic child session that works on a task autonomously.
   # The sub-agent inherits the parent's viewport context at fork time,
-  # runs autonomously via {AgentRequestJob}, and delivers results back
+  # runs via {AgentRequestJob}, and delivers results back
   # through {Tools::ReturnResult}.
   #
   # For named specialists with predefined prompts and tools, see {SpawnSpecialist}.
   class SpawnSubagent < Base
-    RETURN_INSTRUCTION = "Complete the assigned task, then call the return_result tool with your deliverable. " \
-      "Do not ask follow-up questions — work with the context you have."
+    include SubagentPrompts
 
     GENERIC_PROMPT = "You are a focused sub-agent. #{RETURN_INSTRUCTION}\n"
-
-    EXPECTED_DELIVERABLE_PREFIX = "Expected deliverable: "
 
     def self.tool_name = "spawn_subagent"
 
     def self.description
-      "Spawn a generic sub-agent to work on a task in parallel. " \
+      "Spawn a generic sub-agent to work on a task autonomously. " \
         "The sub-agent inherits your conversation context, works independently, " \
         "and returns results as a tool response when done."
     end

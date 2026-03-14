@@ -10,16 +10,13 @@ module Tools
   # @see Agents::Registry
   # @see Agents::Definition
   class SpawnSpecialist < Base
-    RETURN_INSTRUCTION = "Complete the assigned task, then call the return_result tool with your deliverable. " \
-      "Do not ask follow-up questions — work with the context you have."
-
-    EXPECTED_DELIVERABLE_PREFIX = "Expected deliverable: "
+    include SubagentPrompts
 
     def self.tool_name = "spawn_specialist"
 
     # Builds description dynamically to include available specialists.
     def self.description
-      base = "Spawn a named specialist sub-agent to work on a task in parallel. " \
+      base = "Spawn a named specialist sub-agent to work on a task autonomously. " \
         "The specialist has a predefined role, system prompt, and tool set."
 
       registry = Agents::Registry.instance

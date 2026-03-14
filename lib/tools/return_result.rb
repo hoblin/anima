@@ -44,6 +44,7 @@ module Tools
 
       tool_use_id = "toolu_subagent_#{@session.id}"
       task = extract_task
+      # Specialists are spawned with a name from the registry; generic sub-agents have nil name.
       origin_tool = @session.name ? SpawnSpecialist.tool_name : SpawnSubagent.tool_name
 
       Events::Bus.emit(Events::ToolCall.new(
