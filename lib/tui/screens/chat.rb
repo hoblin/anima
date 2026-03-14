@@ -21,6 +21,8 @@ module TUI
       RETURN_ARROW = "\u21A9"
       ERROR_ICON = "\u274C"
 
+      SUBAGENT_ICON = "\u{1F916}"
+
       ROLE_COLORS = {"user" => "green", "assistant" => "cyan"}.freeze
 
       # Intentionally duplicated from Session::VIEW_MODES to keep the TUI
@@ -355,6 +357,8 @@ module TUI
           render_tool_call_entry(tui, data)
         when "tool_response"
           render_tool_response_entry(tui, data)
+        when "subagent"
+          render_subagent_entry(tui, data)
         when "system"
           render_system_entry(tui, data)
         when "system_prompt"
@@ -428,6 +432,28 @@ module TUI
         style = tui.style(fg: "white")
         lines = [tui.line(spans: [tui.span(content: "#{prefix}#{content_lines.first}", style: style)])]
         content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: "    #{line}", style: style)]) }
+        lines
+      end
+
+      # Renders a sub-agent completion result with task context.
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param data [Hash] structured data with "content", optional "task" and "timestamp"
+      # @return [Array<RatatuiRuby::Widgets::Line>]
+      def render_subagent_entry(tui, data)
+        style = tui.style(fg: "magenta")
+        bold_style = tui.style(fg: "magenta", modifiers: [:bold])
+
+        meta = []
+        meta << "[#{format_ns_timestamp(data["timestamp"])}]" if data["timestamp"]
+        header = "#{meta.join(" ")} #{SUBAGENT_ICON} Sub-agent result:".strip
+
+        lines = [tui.line(spans: [tui.span(content: header, style: bold_style)])]
+        if data["task"]
+          lines << tui.line(spans: [tui.span(content: "  Task: #{data["task"]}", style: style)])
+        end
+        data["content"].to_s.split("\n").each do |line|
+          lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)])
+        end
         lines
       end
 
