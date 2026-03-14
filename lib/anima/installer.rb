@@ -7,6 +7,7 @@ require "pathname"
 module Anima
   class Installer
     DIRECTORIES = %w[
+      agents
       db
       config/credentials
       log
