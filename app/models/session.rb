@@ -160,7 +160,8 @@ class Session < ApplicationRecord
     events.each_with_object([]) do |event, messages|
       case event.event_type
       when "user_message"
-        messages << {role: "user", content: event.payload["content"].to_s}
+        content = "#{format_event_time(event.timestamp)}\n#{event.payload["content"]}"
+        messages << {role: "user", content: content}
       when "agent_message"
         messages << {role: "assistant", content: event.payload["content"].to_s}
       when "tool_call"
@@ -196,6 +197,15 @@ class Session < ApplicationRecord
       tool_use_id: payload["tool_use_id"],
       content: payload["content"].to_s
     }
+  end
+
+  # Formats an event's nanosecond timestamp as a compact time prefix for LLM context.
+  # Gives the agent awareness of time of day, day of week, and pauses between messages.
+  #
+  # @param timestamp_ns [Integer] nanoseconds since epoch
+  # @return [String] e.g. "Sat Mar 14 09:51"
+  def format_event_time(timestamp_ns)
+    Time.at(timestamp_ns / 1_000_000_000.0).strftime("%a %b %-d %H:%M")
   end
 
   # Delegates to {Event#estimate_tokens} for events not yet counted
