@@ -278,17 +278,14 @@ module TUI
         inner_width = [area.width - 2, 1].max
         @visible_height = [area.height - 2, 0].max
 
-        content_widget = tui.paragraph(text: lines, wrap: true, style: tui.style(fg: "white"))
-        content_height = content_widget.line_count(inner_width)
+        base_widget = tui.paragraph(text: lines, wrap: true, style: tui.style(fg: "white"))
+        content_height = base_widget.line_count(inner_width)
 
         @max_scroll = [content_height - @visible_height, 0].max
         @scroll_offset = @max_scroll if @auto_scroll
         @scroll_offset = @scroll_offset.clamp(0, @max_scroll)
 
-        widget = tui.paragraph(
-          text: lines,
-          wrap: true,
-          style: tui.style(fg: "white"),
+        widget = base_widget.with(
           scroll: [@scroll_offset, 0],
           block: tui.block(
             title: "Chat",
