@@ -253,6 +253,62 @@ RSpec.describe AgentLoop do
     end
   end
 
+  describe "tool registry switching" do
+    it "registers spawn_subagent for main sessions" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
+        expect(registry.registered?("spawn_subagent")).to be true
+        expect(registry.registered?("return_result")).to be false
+        "ok"
+      end
+
+      agent_loop.run
+    end
+
+    it "registers return_result for sub-agent sessions" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "sub-agent prompt")
+      child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
+
+      sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
+      allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
+        expect(registry.registered?("return_result")).to be true
+        expect(registry.registered?("spawn_subagent")).to be false
+        "done"
+      end
+
+      sub_loop.run
+      sub_loop.finalize
+    end
+  end
+
+  describe "system prompt" do
+    it "passes system_prompt to the LLM client for sub-agent sessions" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "You are a research agent.")
+      child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
+
+      sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
+      allow(client).to receive(:chat_with_tools) do |_msgs, system:, **_|
+        expect(system).to eq("You are a research agent.")
+        "done"
+      end
+
+      sub_loop.run
+      sub_loop.finalize
+    end
+
+    it "does not pass system option for main sessions" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      allow(client).to receive(:chat_with_tools) do |_msgs, **opts|
+        expect(opts).not_to have_key(:system)
+        "ok"
+      end
+
+      agent_loop.run
+    end
+  end
+
   describe "registry injection" do
     it "accepts a custom registry" do
       registry = Tools::Registry.new(context: {shell_session: shell_session})

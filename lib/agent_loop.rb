@@ -73,7 +73,10 @@ class AgentLoop
     @registry ||= build_tool_registry
 
     messages = @session.messages_for_llm
-    response = @client.chat_with_tools(messages, registry: @registry, session_id: @session.id)
+    options = {}
+    options[:system] = @session.system_prompt if @session.system_prompt
+
+    response = @client.chat_with_tools(messages, registry: @registry, session_id: @session.id, **options)
     Events::Bus.emit(Events::AgentMessage.new(content: response, session_id: @session.id))
     response
   end
@@ -86,15 +89,26 @@ class AgentLoop
 
   private
 
-  # Builds the default tool registry with all available tools.
-  # @return [Tools::Registry] registry with all available tools
+  STANDARD_TOOLS = [Tools::Bash, Tools::Read, Tools::Write, Tools::Edit, Tools::WebGet].freeze
+  private_constant :STANDARD_TOOLS
+
+  # Builds the tool registry appropriate for this session type.
+  # Main sessions get standard tools + spawn_subagent.
+  # Sub-agent sessions get standard tools + return_result (no nesting).
+  #
+  # @return [Tools::Registry] registry with available tools
   def build_tool_registry
-    registry = Tools::Registry.new(context: {shell_session: @shell_session})
-    registry.register(Tools::Bash)
-    registry.register(Tools::Read)
-    registry.register(Tools::Write)
-    registry.register(Tools::Edit)
-    registry.register(Tools::WebGet)
+    context = {shell_session: @shell_session, session: @session}
+    registry = Tools::Registry.new(context: context)
+
+    STANDARD_TOOLS.each { |tool| registry.register(tool) }
+
+    if @session.sub_agent?
+      registry.register(Tools::ReturnResult)
+    else
+      registry.register(Tools::SpawnSubagent)
+    end
+
     registry
   end
 end
