@@ -308,7 +308,7 @@ RSpec.describe Tools::SpawnSubagent do
       end
 
       context "with invalid tools in agent definition" do
-        before do
+        it "rejects the agent at load time (never reaches spawn)" do
           File.write(File.join(tmp_dir, "bad-tools.md"), <<~MD)
             ---
             name: bad-tools
@@ -319,18 +319,10 @@ RSpec.describe Tools::SpawnSubagent do
             Bad agent prompt.
           MD
 
-          agent_registry.load_directory(tmp_dir)
-        end
+          expect { agent_registry.load_directory(tmp_dir) }
+            .to output(/Unknown tools in 'bad-tools': teleport/).to_stderr
 
-        it "returns error when agent definition has unknown tools" do
-          result = tool.execute(input.merge("name" => "bad-tools"))
-
-          expect(result).to eq({error: "Unknown tool: teleport"})
-        end
-
-        it "does not create a child session" do
-          expect { tool.execute(input.merge("name" => "bad-tools")) }
-            .not_to change(Session, :count)
+          expect(agent_registry.get("bad-tools")).to be_nil
         end
       end
     end

@@ -50,9 +50,10 @@ module Agents
 
       Dir.glob(File.join(dir, "*.md")).sort.each do |path|
         definition = Definition.from_file(path)
+        validate_tools!(definition.name, definition.tools)
         @agents[definition.name] = definition
       rescue InvalidDefinitionError => error
-        warn "Skipping invalid agent definition: #{error.message}"
+        warn "Skipping invalid agent definition #{path}: #{error.message}"
       end
     end
 
@@ -84,6 +85,22 @@ module Agents
     # @return [Integer]
     def size
       @agents.size
+    end
+
+    private
+
+    # Validates that all declared tool names are recognized standard tools.
+    #
+    # @param agent_name [String] agent name for error messages
+    # @param tools [Array<String>] declared tool names
+    # @raise [InvalidDefinitionError] if any tool name is unknown
+    def validate_tools!(agent_name, tools)
+      return if tools.empty?
+
+      unknown = tools - AgentLoop::STANDARD_TOOLS_BY_NAME.keys
+      return if unknown.empty?
+
+      raise InvalidDefinitionError, "Unknown tools in '#{agent_name}': #{unknown.join(", ")}"
     end
   end
 end

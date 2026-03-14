@@ -57,6 +57,18 @@ RSpec.describe Agents::Registry do
       expect(registry.get("good")).to be_a(Agents::Definition)
     end
 
+    it "skips agents with unknown tool names" do
+      write_agent(tmp_dir, "bad.md", name: "bad", description: "Bad agent", tools: "read, teleport")
+      write_agent(tmp_dir, "good.md", name: "good", description: "Valid agent")
+
+      expect { registry.load_directory(tmp_dir) }
+        .to output(/Unknown tools in 'bad': teleport/).to_stderr
+
+      expect(registry.size).to eq(1)
+      expect(registry.get("good")).to be_a(Agents::Definition)
+      expect(registry.get("bad")).to be_nil
+    end
+
     it "skips non-.md files" do
       File.write(File.join(tmp_dir, "notes.txt"), "Not an agent")
       write_agent(tmp_dir, "real.md", name: "real", description: "Real agent")

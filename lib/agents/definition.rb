@@ -30,13 +30,13 @@ module Agents
     # @return [String] system prompt (Markdown body of the definition file)
     attr_reader :prompt
 
-    # @return [String, nil] LLM model override (parsed, not yet implemented)
+    # @return [String, nil] LLM model override (reserved for future use)
     attr_reader :model
 
-    # @return [String, nil] TUI display color (parsed, not yet implemented)
+    # @return [String, nil] TUI display color (reserved for future use)
     attr_reader :color
 
-    # @return [Integer, nil] maximum conversation turns (parsed, not yet implemented)
+    # @return [Integer, nil] maximum conversation turns (reserved for future use)
     attr_reader :max_turns
 
     # @return [String] file path this definition was loaded from

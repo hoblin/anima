@@ -11,13 +11,10 @@ module Tools
   #   with predefined system prompt and tools.
   # - **Generic** — omit `name` to spawn an ad-hoc sub-agent with custom tools.
   class SpawnSubagent < Base
-    GENERIC_PROMPT = <<~PROMPT
-      You are a focused sub-agent. Complete the assigned task, then call the return_result tool with your deliverable.
-      Do not ask follow-up questions — work with the context you have.
-    PROMPT
-
     RETURN_INSTRUCTION = "Complete the assigned task, then call the return_result tool with your deliverable. " \
       "Do not ask follow-up questions — work with the context you have."
+
+    GENERIC_PROMPT = "You are a focused sub-agent. #{RETURN_INSTRUCTION}\n"
 
     EXPECTED_DELIVERABLE_PREFIX = "Expected deliverable: "
 
@@ -109,11 +106,7 @@ module Tools
       definition = @agent_registry.get(name)
       return {error: "Unknown agent: #{name}"} unless definition
 
-      granted = definition.tools
-      error = validate_tools(granted)
-      return error if error
-
-      child = spawn_child(prompt: build_named_prompt(definition, expected_output), granted_tools: granted, task: task)
+      child = spawn_child(prompt: build_named_prompt(definition, expected_output), granted_tools: definition.tools, task: task)
       "Sub-agent '#{name}' spawned (session #{child.id}). Result will arrive as a tool response."
     end
 
