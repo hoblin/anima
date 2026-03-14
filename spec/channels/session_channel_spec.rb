@@ -345,7 +345,7 @@ RSpec.describe SessionChannel, type: :channel do
 
     it "includes processing status for child sessions" do
       parent = Session.create!
-      child = Session.create!(parent_session: parent, prompt: "task", processing: true)
+      Session.create!(parent_session: parent, prompt: "task", processing: true)
 
       perform(:list_sessions, {"limit" => 10})
 
