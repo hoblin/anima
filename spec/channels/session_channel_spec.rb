@@ -92,7 +92,7 @@ RSpec.describe SessionChannel, type: :channel do
 
       subscribe(session_id: session_id)
 
-      expect(session.reload.viewport_event_ids).to contain_exactly(e1.id, e2.id)
+      expect(session.reload.viewport_event_ids).to eq([e1.id, e2.id])
     end
 
     it "transmits chat history including tool events for existing session" do
@@ -565,7 +565,7 @@ RSpec.describe SessionChannel, type: :channel do
       perform(:change_view_mode, {"view_mode" => "verbose"})
 
       event_ids = session.events.pluck(:id)
-      expect(session.reload.viewport_event_ids).to match_array(event_ids)
+      expect(session.reload.viewport_event_ids).to eq(event_ids)
     end
 
     it "transmits error for invalid view mode" do

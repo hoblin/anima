@@ -221,11 +221,8 @@ class SessionChannel < ApplicationCable::Channel
   def transmit_history(session)
     transmit_system_prompt(session) if session.view_mode == "debug"
 
-    viewport = session.viewport_events
-    session.snapshot_viewport!(viewport.map(&:id))
-
-    viewport.each do |event|
-      transmit(decorate_event_payload(event, session.view_mode))
+    each_viewport_event(session) do |event, payload|
+      transmit(payload)
     end
   end
 
@@ -241,11 +238,26 @@ class SessionChannel < ApplicationCable::Channel
   def broadcast_viewport(session)
     broadcast_system_prompt(session) if session.view_mode == "debug"
 
+    each_viewport_event(session) do |event, payload|
+      ActionCable.server.broadcast(stream_name, payload)
+    end
+  end
+
+  # Loads the viewport, snapshots it for eviction tracking, and yields
+  # each event with its decorated payload. Snapshot uses snapshot_viewport!
+  # (not recalculate_viewport!) because full viewport refreshes don't need
+  # eviction diffs — clients clear their store before rendering.
+  #
+  # @param session [Session] the session whose viewport to iterate
+  # @yieldparam event [Event] the persisted event record
+  # @yieldparam payload [Hash] decorated payload ready for transmission
+  # @return [void]
+  def each_viewport_event(session)
     viewport = session.viewport_events
     session.snapshot_viewport!(viewport.map(&:id))
 
     viewport.each do |event|
-      ActionCable.server.broadcast(stream_name, decorate_event_payload(event, session.view_mode))
+      yield event, decorate_event_payload(event, session.view_mode)
     end
   end
 
