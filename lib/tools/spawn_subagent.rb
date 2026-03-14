@@ -53,11 +53,11 @@ module Tools
     #
     # @param input [Hash<String, Object>] with "task", "expected_output", and optional "tools" keys
     # @return [String] confirmation with child session ID
-    # @return [Hash] with :error key on validation failure
+    # @return [Hash{Symbol => String}] with :error key on validation failure
     def execute(input)
       task = input["task"].to_s.strip
       expected_output = input["expected_output"].to_s.strip
-      tools = input["tools"]
+      tools = normalize_tools(input["tools"])
       return {error: "Task cannot be blank"} if task.empty?
       return {error: "Expected output cannot be blank"} if expected_output.empty?
 
@@ -73,13 +73,28 @@ module Tools
 
     private
 
-    # @return [Hash, nil] error hash if tools parameter is invalid, nil if valid
+    # Normalizes tool names to lowercase and removes duplicates.
+    # Returns non-array values unchanged for {#validate_tools} to catch.
+    #
+    # @param tools [Array, nil, Object] raw tools parameter from LLM
+    # @return [Array<String>, nil, Object] normalized tools
+    def normalize_tools(tools)
+      return nil unless tools
+      return tools unless tools.is_a?(Array)
+
+      tools.map { |t| t.to_s.downcase }.uniq
+    end
+
+    # @param tools [Array<String>, nil, Object] normalized tools parameter
+    # @return [Hash{Symbol => String}, nil] error hash if invalid, nil if valid
     def validate_tools(tools)
-      return unless tools
+      return nil unless tools
       return {error: "tools must be an array"} unless tools.is_a?(Array)
 
       unknown = tools - AgentLoop::STANDARD_TOOLS_BY_NAME.keys
-      {error: "Unknown tool: #{unknown.first}"} if unknown.any?
+      return {error: "Unknown tool: #{unknown.first}"} if unknown.any?
+
+      nil
     end
 
     def create_child_session(expected_output, granted_tools: nil)

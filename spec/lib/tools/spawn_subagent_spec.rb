@@ -162,10 +162,30 @@ RSpec.describe Tools::SpawnSubagent do
           .not_to change(Session, :count)
       end
 
-      it "returns error when tools is not an array" do
+      it "returns error when tools is not an array (string)" do
         result = tool.execute(input.merge("tools" => "read"))
 
         expect(result).to eq({error: "tools must be an array"})
+      end
+
+      it "returns error when tools is not an array (hash)" do
+        result = tool.execute(input.merge("tools" => {"read" => true}))
+
+        expect(result).to eq({error: "tools must be an array"})
+      end
+
+      it "normalizes tool names to lowercase" do
+        tool.execute(input.merge("tools" => ["Read", "WEB_GET"]))
+
+        child = Session.last
+        expect(child.granted_tools).to eq(["read", "web_get"])
+      end
+
+      it "deduplicates tool names" do
+        tool.execute(input.merge("tools" => ["read", "read", "bash"]))
+
+        child = Session.last
+        expect(child.granted_tools).to eq(["read", "bash"])
       end
 
       it "accepts all valid standard tool names" do

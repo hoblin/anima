@@ -88,16 +88,19 @@ class AgentLoop
   end
 
   # Tool classes available to all sessions by default.
+  # @return [Array<Class<Tools::Base>>]
   STANDARD_TOOLS = [Tools::Bash, Tools::Read, Tools::Write, Tools::Edit, Tools::WebGet].freeze
 
-  # Name-to-class mapping for tool restriction lookups.
+  # Name-to-class mapping for tool restriction validation and registry building.
+  # @return [Hash{String => Class<Tools::Base>}]
   STANDARD_TOOLS_BY_NAME = STANDARD_TOOLS.index_by(&:tool_name).freeze
 
   private
 
   # Builds the tool registry appropriate for this session type.
   # Main sessions get standard tools + spawn_subagent.
-  # Sub-agent sessions get granted standard tools + return_result (no nesting).
+  # Sub-agent sessions get granted standard tools + return_result (not spawn_subagent).
+  # Sub-agents cannot spawn sub-agents (no recursive nesting).
   # When {Session#granted_tools} is nil, all standard tools are granted.
   #
   # @return [Tools::Registry] registry with available tools
