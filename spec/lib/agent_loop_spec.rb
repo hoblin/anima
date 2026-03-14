@@ -127,11 +127,12 @@ RSpec.describe AgentLoop do
         }
         agent_loop.process("second message")
 
-        expect(received_messages).to eq([
-          {role: "user", content: "first message"},
-          {role: "assistant", content: "First response"},
-          {role: "user", content: "second message"}
-        ])
+        expect(received_messages.length).to eq(3)
+        expect(received_messages[0][:role]).to eq("user")
+        expect(received_messages[0][:content]).to end_with("first message")
+        expect(received_messages[1]).to eq({role: "assistant", content: "First response"})
+        expect(received_messages[2][:role]).to eq("user")
+        expect(received_messages[2][:content]).to end_with("second message")
       end
     end
   end
@@ -151,7 +152,8 @@ RSpec.describe AgentLoop do
 
       agent_loop.run
 
-      expect(received_messages).to include({role: "user", content: "hi"})
+      expect(received_messages.first[:role]).to eq("user")
+      expect(received_messages.first[:content]).to end_with("hi")
     end
 
     it "emits an agent_message event with the response" do

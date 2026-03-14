@@ -151,6 +151,7 @@ class Session < ApplicationRecord
   end
 
   # Converts a chronological list of events into Anthropic wire-format messages.
+  # Prepends a compact timestamp to each user message for LLM time awareness.
   # Groups consecutive tool_call events into one assistant message and
   # consecutive tool_response events into one user message.
   #
@@ -160,7 +161,8 @@ class Session < ApplicationRecord
     events.each_with_object([]) do |event, messages|
       case event.event_type
       when "user_message"
-        messages << {role: "user", content: event.payload["content"].to_s}
+        content = "#{format_event_time(event.timestamp)}\n#{event.payload["content"]}"
+        messages << {role: "user", content: content}
       when "agent_message"
         messages << {role: "assistant", content: event.payload["content"].to_s}
       when "tool_call"
@@ -196,6 +198,17 @@ class Session < ApplicationRecord
       tool_use_id: payload["tool_use_id"],
       content: payload["content"].to_s
     }
+  end
+
+  # Formats an event's nanosecond timestamp as a compact time prefix for LLM context.
+  # Gives the agent awareness of time of day, day of week, and pauses between messages.
+  #
+  # @param timestamp_ns [Integer] nanoseconds since epoch
+  # @return [String] e.g. "Sat Mar 14 09:51"
+  # @example
+  #   format_event_time(1_710_406_260_000_000_000) #=> "Thu Mar 14 09:51"
+  def format_event_time(timestamp_ns)
+    Time.at(timestamp_ns / 1_000_000_000.0).strftime("%a %b %-d %H:%M")
   end
 
   # Delegates to {Event#estimate_tokens} for events not yet counted

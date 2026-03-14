@@ -3,6 +3,13 @@
 require "rails_helper"
 
 RSpec.describe Session do
+  # Computes the expected LLM content for a user message with timestamp prefix.
+  # Must stay in sync with Session#format_event_time.
+  def timestamped(content, timestamp_ns)
+    time = Time.at(timestamp_ns / 1_000_000_000.0)
+    "#{time.strftime("%a %b %-d %H:%M")}\n#{content}"
+  end
+
   describe "validations" do
     it "accepts valid view modes" do
       session = Session.new
@@ -174,10 +181,10 @@ RSpec.describe Session do
   describe "#messages_for_llm" do
     let(:session) { Session.create! }
 
-    it "returns user_message events with user role" do
+    it "returns user_message events with user role and timestamp prefix" do
       session.events.create!(event_type: "user_message", payload: {"content" => "hello"}, timestamp: 1)
 
-      expect(session.messages_for_llm).to eq([{role: "user", content: "hello"}])
+      expect(session.messages_for_llm).to eq([{role: "user", content: timestamped("hello", 1)}])
     end
 
     it "returns agent_message events with assistant role" do
@@ -281,7 +288,7 @@ RSpec.describe Session do
 
         result = session.messages_for_llm
         expect(result).to eq([
-          {role: "user", content: "what is on example.com?"},
+          {role: "user", content: timestamped("what is on example.com?", 1)},
           {role: "assistant", content: [
             {type: "tool_use", id: "toolu_abc", name: "web_get", input: {"url" => "https://example.com"}}
           ]},
@@ -299,9 +306,9 @@ RSpec.describe Session do
       session.events.create!(event_type: "user_message", payload: {"content" => "third"}, timestamp: 3)
 
       expect(session.messages_for_llm).to eq([
-        {role: "user", content: "first"},
+        {role: "user", content: timestamped("first", 1)},
         {role: "assistant", content: "second"},
-        {role: "user", content: "third"}
+        {role: "user", content: timestamped("third", 3)}
       ])
     end
 
@@ -311,7 +318,7 @@ RSpec.describe Session do
         session.events.create!(event_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2, token_count: 10)
 
         expect(session.messages_for_llm(token_budget: 100)).to eq([
-          {role: "user", content: "hi"},
+          {role: "user", content: timestamped("hi", 1)},
           {role: "assistant", content: "hello"}
         ])
       end
@@ -325,7 +332,7 @@ RSpec.describe Session do
         result = session.messages_for_llm(token_budget: 100)
 
         expect(result).to eq([
-          {role: "user", content: "recent"},
+          {role: "user", content: timestamped("recent", 3)},
           {role: "assistant", content: "recent reply"}
         ])
       end
@@ -335,7 +342,7 @@ RSpec.describe Session do
 
         result = session.messages_for_llm(token_budget: 100)
 
-        expect(result).to eq([{role: "user", content: "big message"}])
+        expect(result).to eq([{role: "user", content: timestamped("big message", 1)}])
       end
 
       it "uses heuristic estimate for events with zero token_count" do
@@ -354,7 +361,7 @@ RSpec.describe Session do
 
         result = session.messages_for_llm(token_budget: 30)
 
-        expect(result.map { |m| m[:content] }).to eq(%w[first second third])
+        expect(result.map { |m| m[:content] }).to eq([timestamped("first", 1), "second", timestamped("third", 3)])
       end
     end
   end
@@ -408,7 +415,7 @@ RSpec.describe Session do
       session.events.create!(event_type: "user_message", payload: {"content" => "queued", "status" => "pending"}, timestamp: 2, status: "pending")
 
       result = session.messages_for_llm
-      expect(result).to eq([{role: "user", content: "delivered"}])
+      expect(result).to eq([{role: "user", content: timestamped("delivered", 1)}])
     end
   end
 
