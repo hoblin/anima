@@ -22,6 +22,8 @@ class Session < ApplicationRecord
   validates :view_mode, inclusion: {in: VIEW_MODES}
   validates :name, length: {maximum: 255}, allow_nil: true
 
+  after_update_commit :broadcast_name_update, if: :saved_change_to_name?
+
   scope :recent, ->(limit = 10) { order(updated_at: :desc).limit(limit) }
   scope :root_sessions, -> { where(parent_session_id: nil) }
 
@@ -36,6 +38,19 @@ class Session < ApplicationRecord
   # @return [Boolean] true if this session is a sub-agent (has a parent)
   def sub_agent?
     parent_session_id.present?
+  end
+
+  # Enqueues a background job to auto-generate a session name if one
+  # hasn't been set yet. Only applies to root sessions with at least
+  # one complete exchange (user + agent message).
+  #
+  # @return [void]
+  def schedule_name_generation!
+    return if sub_agent?
+    return if name.present?
+    return unless events.llm_messages.count >= 2
+
+    GenerateSessionNameJob.perform_later(id)
   end
 
   # Returns the events currently visible in the LLM context window.
@@ -126,6 +141,18 @@ class Session < ApplicationRecord
   end
 
   private
+
+  # Broadcasts a name change to all clients subscribed to this session.
+  # Triggered by after_update_commit so clients see name updates in real time.
+  #
+  # @return [void]
+  def broadcast_name_update
+    ActionCable.server.broadcast("session_#{id}", {
+      "action" => "session_name_updated",
+      "session_id" => id,
+      "name" => name
+    })
+  end
 
   # Scopes own events for viewport assembly.
   # @return [ActiveRecord::Relation]

@@ -129,6 +129,68 @@ RSpec.describe Session do
     end
   end
 
+  describe "#schedule_name_generation!" do
+    it "enqueues GenerateSessionNameJob for unnamed root sessions with messages" do
+      session = Session.create!
+      session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      session.events.create!(event_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
+
+      expect { session.schedule_name_generation! }
+        .to have_enqueued_job(GenerateSessionNameJob).with(session.id)
+    end
+
+    it "does not enqueue for sub-agent sessions" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "task")
+      child.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      child.events.create!(event_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
+
+      expect { child.schedule_name_generation! }
+        .not_to have_enqueued_job(GenerateSessionNameJob)
+    end
+
+    it "does not enqueue for sessions that already have a name" do
+      session = Session.create!(name: "Existing")
+      session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      session.events.create!(event_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
+
+      expect { session.schedule_name_generation! }
+        .not_to have_enqueued_job(GenerateSessionNameJob)
+    end
+
+    it "does not enqueue for sessions with fewer than 2 messages" do
+      session = Session.create!
+      session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+
+      expect { session.schedule_name_generation! }
+        .not_to have_enqueued_job(GenerateSessionNameJob)
+    end
+  end
+
+  describe "#broadcast_name_update" do
+    it "broadcasts name change to the session stream" do
+      session = Session.create!
+
+      expect {
+        session.update!(name: "🎉 New Name")
+      }.to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including(
+          "action" => "session_name_updated",
+          "session_id" => session.id,
+          "name" => "🎉 New Name"
+        ))
+    end
+
+    it "does not broadcast when name is unchanged" do
+      session = Session.create!(name: "Same Name")
+
+      expect {
+        session.update!(view_mode: "verbose")
+      }.not_to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("action" => "session_name_updated"))
+    end
+  end
+
   describe "#granted_tools" do
     it "returns nil when not set" do
       session = Session.create!

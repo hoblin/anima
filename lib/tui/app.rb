@@ -181,6 +181,8 @@ module TUI
       else "cyan"
       end
 
+      session_label = session[:name] || "##{session[:id]}"
+
       lines = [
         tui.line(spans: [
           tui.span(content: "Anima v#{Anima::VERSION}", style: tui.style(fg: "white"))
@@ -188,7 +190,7 @@ module TUI
         tui.line(spans: [tui.span(content: "")]),
         tui.line(spans: [
           tui.span(content: "Session ", style: tui.style(fg: "dark_gray")),
-          tui.span(content: "##{session[:id]}", style: tui.style(fg: "cyan", modifiers: [:bold]))
+          tui.span(content: session_label, style: tui.style(fg: "cyan", modifiers: [:bold]))
         ]),
         tui.line(spans: [
           tui.span(content: "Messages ", style: tui.style(fg: "dark_gray")),
@@ -648,12 +650,12 @@ module TUI
       marker = is_current ? "*" : " "
       arrow = children.any? ? CHILDREN_ARROW : " "
 
-      id_label = "##{session["id"]}"
+      display_name = session["name"] || "##{session["id"]}"
       count = "#{session["message_count"]}msg"
       time = format_relative_time(session["updated_at"])
       child_info = children.any? ? " (#{children.size})" : ""
 
-      label = "#{prefix}#{marker}#{arrow}#{id_label} #{count}#{child_info} #{time}"
+      label = "#{prefix}#{marker}#{arrow}#{display_name} #{count}#{child_info} #{time}"
 
       style = if selected
         tui.style(fg: "black", bg: "cyan")

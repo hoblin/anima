@@ -183,6 +183,8 @@ module TUI
             handle_view_mode_changed(msg)
           when "view_mode"
             @view_mode = msg["view_mode"] if msg["view_mode"]
+          when "session_name_updated"
+            handle_session_name_updated(msg)
           when "sessions_list"
             @sessions_list = msg["sessions"]
           when "user_message_recalled"
@@ -254,13 +256,21 @@ module TUI
         @cable_client.update_session_id(new_id)
         @message_store.clear
         @view_mode = msg["view_mode"] if msg["view_mode"]
-        @session_info = {id: new_id, message_count: msg["message_count"] || 0}
+        @session_info = {id: new_id, name: msg["name"], message_count: msg["message_count"] || 0}
         @parent_session_id = msg["parent_session_id"]
         @input_buffer.clear
         @loading = false
         @scroll_offset = 0
         @auto_scroll = true
         @input_scroll_offset = 0
+      end
+
+      # Updates the session name when a background job generates one.
+      # Only applies to the current session.
+      def handle_session_name_updated(msg)
+        return unless msg["session_id"] == @session_info[:id]
+
+        @session_info[:name] = msg["name"]
       end
 
       # Handles server broadcast of view mode change. Clears the message store

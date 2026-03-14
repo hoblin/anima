@@ -54,6 +54,8 @@ class AgentRequestJob < ApplicationJob
       promoted = session.promote_pending_messages!
       break if promoted == 0
     end
+
+    session.schedule_name_generation!
   ensure
     release_processing(session_id)
     agent_loop&.finalize
