@@ -310,7 +310,7 @@ class SessionChannel < ApplicationCable::Channel
     creds.write(existing.to_yaml)
     # Rails memoizes the decrypted config in @config. Without clearing it,
     # subsequent credential reads return stale data. No public API exists
-    # for cache invalidation as of Rails 7.2.
+    # for cache invalidation as of Rails 8.1.
     creds.instance_variable_set(:@config, nil)
   end
 

@@ -851,10 +851,85 @@ RSpec.describe TUI::App do
   end
 
   describe "connection status" do
-    it "defines styles for all connection states including reconnecting" do
-      expect(TUI::App::STATUS_STYLES).to include(
+    it "defines styles for all connection states" do
+      expect(TUI::App::STATUS_STYLES.keys).to contain_exactly(
         :disconnected, :connecting, :connected, :subscribed, :reconnecting
       )
+    end
+
+    it "uses emoji-only label for subscribed (normal) state" do
+      expect(TUI::App::STATUS_STYLES[:subscribed][:label]).to eq("🟢")
+    end
+
+    it "uses red emoji with text for disconnected state" do
+      style = TUI::App::STATUS_STYLES[:disconnected]
+      expect(style[:label]).to eq("🔴 Disconnected")
+      expect(style[:color]).to eq("red")
+    end
+
+    it "uses yellow emoji with text for connecting states" do
+      %i[connecting connected].each do |state|
+        style = TUI::App::STATUS_STYLES[state]
+        expect(style[:label]).to eq("🟡 Connecting")
+        expect(style[:color]).to eq("yellow")
+      end
+    end
+
+    it "uses yellow emoji with text for reconnecting state" do
+      style = TUI::App::STATUS_STYLES[:reconnecting]
+      expect(style[:label]).to eq("🟡 Reconnecting")
+      expect(style[:color]).to eq("yellow")
+    end
+
+    describe "#connection_status_line" do
+      let(:tui) do
+        tui = double("tui")
+        allow(tui).to receive(:style) { |**kwargs| kwargs }
+        allow(tui).to receive(:span) { |**kwargs| kwargs }
+        allow(tui).to receive(:line) { |**kwargs| kwargs }
+        tui
+      end
+
+      it "renders emoji-only for subscribed state" do
+        allow(cable_client).to receive(:status).and_return(:subscribed)
+        result = app.send(:connection_status_line, tui)
+        span = result[:spans].first
+        expect(span[:content]).to eq("🟢")
+        expect(span[:style][:fg]).to eq("green")
+      end
+
+      it "renders emoji with text for disconnected state" do
+        allow(cable_client).to receive(:status).and_return(:disconnected)
+        result = app.send(:connection_status_line, tui)
+        span = result[:spans].first
+        expect(span[:content]).to eq("🔴 Disconnected")
+        expect(span[:style][:fg]).to eq("red")
+      end
+
+      it "renders emoji with text for connecting state" do
+        allow(cable_client).to receive(:status).and_return(:connecting)
+        result = app.send(:connection_status_line, tui)
+        span = result[:spans].first
+        expect(span[:content]).to eq("🟡 Connecting")
+        expect(span[:style][:fg]).to eq("yellow")
+      end
+
+      it "appends attempt counter for reconnecting state" do
+        allow(cable_client).to receive(:status).and_return(:reconnecting)
+        allow(cable_client).to receive(:reconnect_attempt).and_return(3)
+        result = app.send(:connection_status_line, tui)
+        span = result[:spans].first
+        expect(span[:content]).to eq("🟡 Reconnecting (3/10)")
+        expect(span[:style][:fg]).to eq("yellow")
+      end
+
+      it "falls back to disconnected style for unknown status" do
+        allow(cable_client).to receive(:status).and_return(:unknown_state)
+        result = app.send(:connection_status_line, tui)
+        span = result[:spans].first
+        expect(span[:content]).to eq("🔴 Disconnected")
+        expect(span[:style][:fg]).to eq("red")
+      end
     end
   end
 end

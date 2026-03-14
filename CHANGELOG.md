@@ -7,6 +7,8 @@
 - Connection status constants in `CableClient` — replaces magic strings with named constants for protocol message types
 
 ### Changed
+- Connection status indicator simplified — emoji-only `🟢` for normal state, descriptive text only for abnormal states (#80)
+- `STATUS_STYLES` structure simplified from `{label, fg, bg}` to `{label, color}` (#80)
 - `ActionCableBridge` removed — broadcasting moved from EventBus subscriber to AR callbacks, eliminating the timing gap where events were broadcast before persistence
 - `SessionChannel` history includes event IDs for client-side correlation
 
