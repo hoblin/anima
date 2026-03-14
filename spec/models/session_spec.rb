@@ -149,18 +149,31 @@ RSpec.describe Session do
         .not_to have_enqueued_job(GenerateSessionNameJob)
     end
 
-    it "does not enqueue for sessions that already have a name" do
-      session = Session.create!(name: "Existing")
+    it "does not enqueue for sessions with fewer than 2 messages" do
+      session = Session.create!
       session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      session.events.create!(event_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
 
       expect { session.schedule_name_generation! }
         .not_to have_enqueued_job(GenerateSessionNameJob)
     end
 
-    it "does not enqueue for sessions with fewer than 2 messages" do
-      session = Session.create!
-      session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+    it "enqueues at NAME_GENERATION_INTERVAL for named sessions" do
+      session = Session.create!(name: "Old Name")
+      Session::NAME_GENERATION_INTERVAL.times do |i|
+        type = i.even? ? "user_message" : "agent_message"
+        session.events.create!(event_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
+      end
+
+      expect { session.schedule_name_generation! }
+        .to have_enqueued_job(GenerateSessionNameJob).with(session.id)
+    end
+
+    it "does not enqueue for named sessions between intervals" do
+      session = Session.create!(name: "Existing")
+      3.times do |i|
+        type = i.even? ? "user_message" : "agent_message"
+        session.events.create!(event_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
+      end
 
       expect { session.schedule_name_generation! }
         .not_to have_enqueued_job(GenerateSessionNameJob)

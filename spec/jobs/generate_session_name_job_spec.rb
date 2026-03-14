@@ -33,13 +33,20 @@ RSpec.describe GenerateSessionNameJob do
       expect(session.reload.name).to eq("💎 Ruby Basics")
     end
 
-    it "skips sessions that already have a name" do
-      session.update!(name: "Existing Name")
+    it "overwrites existing names with a fresh one" do
+      session.update!(name: "Old Name")
+      session.events.create!(event_type: "user_message", payload: {"content" => "New topic"}, timestamp: 1)
+
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return(
+          status: 200,
+          body: {content: [{type: "text", text: "🆕 New Topic"}], stop_reason: "end_turn"}.to_json,
+          headers: {"content-type" => "application/json"}
+        )
 
       described_class.perform_now(session.id)
 
-      expect(WebMock).not_to have_requested(:post, "https://api.anthropic.com/v1/messages")
-      expect(session.reload.name).to eq("Existing Name")
+      expect(session.reload.name).to eq("🆕 New Topic")
     end
 
     it "skips sessions with no conversation events" do

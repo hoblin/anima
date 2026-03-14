@@ -32,7 +32,6 @@ class GenerateSessionNameJob < ApplicationJob
   # @param session_id [Integer] the Session to name
   def perform(session_id)
     session = Session.find(session_id)
-    return if session.name.present?
 
     context = build_context(session)
     return if context.blank?

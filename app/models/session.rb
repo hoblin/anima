@@ -40,15 +40,21 @@ class Session < ApplicationRecord
     parent_session_id.present?
   end
 
-  # Enqueues a background job to auto-generate a session name if one
-  # hasn't been set yet. Only applies to root sessions with at least
-  # one complete exchange (user + agent message).
+  # How often to regenerate session names (in LLM messages).
+  # First generation at 2 messages, then every 30 messages after that.
+  NAME_GENERATION_INTERVAL = 30
+
+  # Enqueues a background job to auto-generate a session name.
+  # Runs after the first exchange and periodically as the conversation
+  # evolves, so the name stays relevant to the current topic.
   #
   # @return [void]
   def schedule_name_generation!
     return if sub_agent?
-    return if name.present?
-    return unless events.llm_messages.count >= 2
+
+    count = events.llm_messages.count
+    return if count < 2
+    return if name.present? && (count % NAME_GENERATION_INTERVAL != 0)
 
     GenerateSessionNameJob.perform_later(id)
   end
