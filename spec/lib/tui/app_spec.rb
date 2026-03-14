@@ -143,6 +143,17 @@ RSpec.describe TUI::App do
         expect(app.command_mode).to be false
       end
 
+      it "is idempotent when unfocusing already-unfocused chat" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        expect(chat.chat_focused).to be false
+
+        event = key_event(code: "down")
+        app.send(:handle_event, event)
+
+        expect(chat.chat_focused).to be false
+        expect(app.command_mode).to be false
+      end
+
       it "exits command mode on any unrecognized key" do
         event = key_event(code: "x")
         app.send(:handle_event, event)

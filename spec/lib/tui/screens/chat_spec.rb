@@ -850,6 +850,22 @@ RSpec.describe TUI::Screens::Chat do
         expect(history).to eq(["hello"])
       end
 
+      it "evicts oldest entries when exceeding MAX_HISTORY_SIZE" do
+        history = screen.instance_variable_get(:@input_history)
+        described_class::MAX_HISTORY_SIZE.times do |i|
+          set_input("msg#{i}")
+          screen.handle_event(key_event(code: "enter"))
+        end
+        expect(history.size).to eq(described_class::MAX_HISTORY_SIZE)
+
+        set_input("overflow")
+        screen.handle_event(key_event(code: "enter"))
+
+        expect(history.size).to eq(described_class::MAX_HISTORY_SIZE)
+        expect(history.first).to eq("msg1")
+        expect(history.last).to eq("overflow")
+      end
+
       it "navigates back through history on arrow up with empty input" do
         set_input("first")
         screen.handle_event(key_event(code: "enter"))

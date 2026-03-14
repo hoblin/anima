@@ -19,7 +19,7 @@ module TUI
     }.freeze
 
     MENU_LABELS = (COMMAND_KEYS.map { |key, action| "[#{key}] #{action.to_s.tr("_", " ").capitalize}" } +
-      ["[\u2191] Scroll chat", "[\u2193] Input focus"]).freeze
+      ["[\u2191] Scroll chat", "[\u2193] Return to input"]).freeze
 
     SIDEBAR_WIDTH = 28
 
@@ -231,7 +231,7 @@ module TUI
     end
 
     # Builds the interaction state line for the info panel.
-    # Shows focus mode or "Thinking..." during LLM processing.
+    # Shows "Scrolling" when chat pane is focused, or "Thinking..." during LLM processing.
     def interaction_state_line(tui)
       if @screens[:chat].chat_focused
         tui.line(spans: [
