@@ -863,10 +863,17 @@ RSpec.describe TUI::Screens::Chat do
       expect(screen.messages).to eq([])
     end
 
-    it "updates session info" do
+    it "updates session info including name" do
       allow(cable_client).to receive(:drain_messages).and_return([session_changed_msg])
       screen.send(:process_incoming_messages)
-      expect(screen.session_info).to eq({id: 99, message_count: 5})
+      expect(screen.session_info).to eq({id: 99, name: nil, message_count: 5})
+    end
+
+    it "stores session name from session_changed payload" do
+      msg = session_changed_msg.merge("name" => "🔧 Debug Session")
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_info[:name]).to eq("🔧 Debug Session")
     end
 
     it "clears input and resets cursor" do
@@ -887,6 +894,24 @@ RSpec.describe TUI::Screens::Chat do
       screen.send(:process_incoming_messages)
       expect(screen.scroll_offset).to eq(0)
       expect(screen.instance_variable_get(:@auto_scroll)).to be true
+    end
+  end
+
+  describe "session_name_updated protocol message" do
+    it "updates session name for the current session" do
+      msg = {"action" => "session_name_updated", "session_id" => 42, "name" => "🎉 Chat Fun"}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.session_info[:name]).to eq("🎉 Chat Fun")
+    end
+
+    it "ignores name updates for other sessions" do
+      msg = {"action" => "session_name_updated", "session_id" => 999, "name" => "Other Session"}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.session_info[:name]).to be_nil
     end
   end
 

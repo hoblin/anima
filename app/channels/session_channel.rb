@@ -179,6 +179,7 @@ class SessionChannel < ApplicationCable::Channel
     transmit({
       "action" => "session_changed",
       "session_id" => session.id,
+      "name" => session.name,
       "parent_session_id" => session.parent_session_id,
       "message_count" => session.events.llm_messages.count,
       "view_mode" => session.view_mode
@@ -345,6 +346,7 @@ class SessionChannel < ApplicationCable::Channel
   def serialize_session_with_children(session, counts)
     entry = {
       id: session.id,
+      name: session.name,
       created_at: session.created_at.iso8601,
       updated_at: session.updated_at.iso8601,
       message_count: counts[session.id] || 0

@@ -75,6 +75,24 @@ RSpec.describe SessionChannel, type: :channel do
       expect(changed["view_mode"]).to eq("basic")
     end
 
+    it "includes name in session_changed" do
+      Session.create!(id: session_id, name: "🔧 Debug Session")
+
+      subscribe(session_id: session_id)
+
+      changed = transmissions.find { |t| t["action"] == "session_changed" }
+      expect(changed["name"]).to eq("🔧 Debug Session")
+    end
+
+    it "includes nil name in session_changed for unnamed sessions" do
+      Session.create!(id: session_id)
+
+      subscribe(session_id: session_id)
+
+      changed = transmissions.find { |t| t["action"] == "session_changed" }
+      expect(changed["name"]).to be_nil
+    end
+
     it "includes parent_session_id for child sessions" do
       parent = Session.create!
       child = Session.create!(parent_session: parent)
@@ -333,6 +351,22 @@ RSpec.describe SessionChannel, type: :channel do
       oldest = sessions.last
       expect(oldest["id"]).to eq(s1.id)
       expect(oldest["message_count"]).to eq(2)
+    end
+
+    it "includes name for root sessions in the list" do
+      named = Session.create!(name: "🧠 Brainstorm")
+      unnamed = Session.create!
+
+      perform(:list_sessions, {"limit" => 10})
+
+      response = transmissions.last
+      sessions = response["sessions"]
+
+      named_entry = sessions.find { |s| s["id"] == named.id }
+      unnamed_entry = sessions.find { |s| s["id"] == unnamed.id }
+
+      expect(named_entry["name"]).to eq("🧠 Brainstorm")
+      expect(unnamed_entry["name"]).to be_nil
     end
 
     it "excludes child sessions from the top level" do
