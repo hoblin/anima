@@ -20,9 +20,8 @@ class GenerateSessionNameJob < ApplicationJob
   discard_on Providers::Anthropic::AuthenticationError
 
   NAMING_PROMPT = <<~PROMPT
-    Generate a short name for this chat session: one emoji followed by 1-3 words.
-    Respond with ONLY the name, nothing else.
-    Examples: 🔧 File Tools, 🐭 Photo Session, 🧠 Brainstorm Night, ☕ Morning Chat
+    Generate a fun name for this chat session: one emoji followed by 1-3 words.
+    Be creative and playful. Respond with ONLY the name, nothing else.
   PROMPT
 
   # How many conversation events to feed as context for naming.

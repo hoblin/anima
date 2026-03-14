@@ -188,10 +188,16 @@ module TUI
           tui.span(content: "Anima v#{Anima::VERSION}", style: tui.style(fg: "white"))
         ]),
         tui.line(spans: [tui.span(content: "")]),
-        tui.line(spans: [
-          tui.span(content: "Session ", style: tui.style(fg: "dark_gray")),
-          tui.span(content: session_label, style: tui.style(fg: "cyan", modifiers: [:bold]))
-        ]),
+        if session[:name]
+          tui.line(spans: [
+            tui.span(content: session_label, style: tui.style(fg: "cyan", modifiers: [:bold]))
+          ])
+        else
+          tui.line(spans: [
+            tui.span(content: "Session ", style: tui.style(fg: "dark_gray")),
+            tui.span(content: session_label, style: tui.style(fg: "cyan", modifiers: [:bold]))
+          ])
+        end,
         tui.line(spans: [
           tui.span(content: "Messages ", style: tui.style(fg: "dark_gray")),
           tui.span(content: session[:message_count].to_s, style: tui.style(fg: "cyan"))
