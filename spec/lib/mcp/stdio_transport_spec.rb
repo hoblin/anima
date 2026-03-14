@@ -51,6 +51,14 @@ RSpec.describe Mcp::StdioTransport do
     RUBY
   end
 
+  # Server that returns a JSON array instead of a JSON object.
+  def non_object_json_server_script
+    ["-e", <<~RUBY]
+      $stdout.sync = true
+      $stdin.each_line { |_| $stdout.puts("[1, 2, 3]") }
+    RUBY
+  end
+
   # Server that echoes back env vars as the result.
   def env_echo_server_script
     ["-e", <<~RUBY]
@@ -179,6 +187,18 @@ RSpec.describe Mcp::StdioTransport do
 
     context "when server returns invalid JSON" do
       subject(:transport) { described_class.new(command: "ruby", args: invalid_json_server_script) }
+
+      after { transport.shutdown }
+
+      it "raises RequestHandlerError" do
+        expect {
+          transport.send_request(request: json_rpc_request)
+        }.to raise_error(MCP::Client::RequestHandlerError, /Invalid JSON/)
+      end
+    end
+
+    context "when server returns a non-object JSON response" do
+      subject(:transport) { described_class.new(command: "ruby", args: non_object_json_server_script) }
 
       after { transport.shutdown }
 

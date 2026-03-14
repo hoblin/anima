@@ -149,6 +149,7 @@ module LLM
       result = begin
         registry.execute(name, input)
       rescue => error
+        Rails.logger.error("Tool #{name} raised #{error.class}: #{error.message}")
         {error: "#{error.class}: #{error.message}"}
       end
 

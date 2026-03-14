@@ -25,6 +25,9 @@ module Mcp
     # Maximum seconds to wait for a JSON-RPC response from the server.
     RESPONSE_TIMEOUT = 60
 
+    # Seconds to wait for graceful SIGTERM shutdown before escalating to SIGKILL.
+    GRACEFUL_SHUTDOWN_TIMEOUT = 2
+
     # @param command [String] executable to spawn (resolved via $PATH)
     # @param args [Array<String>] command-line arguments for the server process
     # @param env [Hash<String, String>] environment variables merged into
@@ -134,7 +137,7 @@ module Mcp
     # are silently skipped — the MCP protocol allows servers to emit
     # them at any time.
     def read_response(request)
-      request_id = request[:id] || request["id"]
+      request_id = (request[:id] || request["id"]).to_s
 
       Timeout.timeout(RESPONSE_TIMEOUT) do
         loop do
@@ -142,7 +145,11 @@ module Mcp
           raise IOError, "Server process closed stdout" if line.nil?
 
           parsed = JSON.parse(line)
-          return parsed if parsed["id"].to_s == request_id.to_s
+          unless parsed.is_a?(Hash)
+            raise JSON::ParserError, "Expected JSON object, got #{parsed.class}"
+          end
+
+          return parsed if parsed["id"].to_s == request_id
         end
       end
     end
@@ -172,7 +179,7 @@ module Mcp
         return
       end
 
-      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 2
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + GRACEFUL_SHUTDOWN_TIMEOUT
       loop do
         _, status = Process.wait2(pid, Process::WNOHANG)
         break if status
