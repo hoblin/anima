@@ -366,14 +366,16 @@ RSpec.describe AgentRequestJob do
     end
 
     context "authentication failure (HTTP 401)" do
-      it "fails immediately without retrying" do
+      before do
         stub_request(:post, "https://api.anthropic.com/v1/messages")
           .to_return(
             status: 401,
             body: {error: {message: "invalid api key"}}.to_json,
             headers: {"content-type" => "application/json"}
           )
+      end
 
+      it "fails immediately without retrying" do
         emitted_events = []
         allow(Events::Bus).to receive(:emit).and_wrap_original do |method, event|
           emitted_events << event
@@ -384,6 +386,13 @@ RSpec.describe AgentRequestJob do
 
         system_messages = emitted_events.select { |e| e.is_a?(Events::SystemMessage) }
         expect(system_messages.last.to_h[:content]).to include("Authentication failed")
+      end
+
+      it "broadcasts authentication_required signal via ActionCable" do
+        expect {
+          described_class.perform_now(session.id)
+        }.to have_broadcasted_to("session_#{session.id}")
+          .with(a_hash_including("action" => "authentication_required"))
       end
     end
 

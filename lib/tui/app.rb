@@ -2,6 +2,7 @@
 
 require "time"
 require_relative "cable_client"
+require_relative "input_buffer"
 require_relative "message_store"
 require_relative "screens/chat"
 
@@ -10,6 +11,7 @@ module TUI
     SCREENS = %i[chat].freeze
 
     COMMAND_KEYS = {
+      "a" => :anthropic_token,
       "n" => :new_session,
       "s" => :session_picker,
       "v" => :view_mode,
@@ -39,6 +41,24 @@ module TUI
       reconnecting: {label: " RECONNECTING ", fg: "black", bg: "yellow"}
     }.freeze
 
+    # Number of leading characters to show unmasked in the token input.
+    # Matches the "sk-ant-oat01-" prefix (13 chars) plus one character of the
+    # secret portion so the user can verify both the token type and start of key.
+    TOKEN_MASK_VISIBLE = 14
+
+    # Maximum stars to show in the masked portion of the token.
+    # Keeps the masked display compact regardless of actual token length.
+    TOKEN_MASK_STARS = 4
+
+    # Token setup popup dimensions. Height accommodates: status line, blank,
+    # 2 instruction lines, blank, "Token:" label, input line, blank,
+    # error/success line, blank, hint line, plus top/bottom borders.
+    POPUP_HEIGHT = 14
+    POPUP_MIN_WIDTH = 44
+
+    # Matches a single printable Unicode character (no control codes).
+    PRINTABLE_CHAR = /\A[[:print:]]\z/
+
     # Signals that trigger graceful shutdown when received from the OS.
     SHUTDOWN_SIGNALS = %w[HUP TERM INT].freeze
 
@@ -53,7 +73,10 @@ module TUI
     # Grace period for watchdog thread to exit before force-killing it.
     WATCHDOG_SHUTDOWN_TIMEOUT = 1
 
-    attr_reader :current_screen, :command_mode, :session_picker_active, :view_mode_picker_active
+    attr_reader :current_screen, :command_mode, :session_picker_active,
+      :view_mode_picker_active
+    # @return [Boolean] true when the token setup popup overlay is visible
+    attr_reader :token_setup_active
     # @return [Boolean] true when graceful shutdown has been requested via signal
     attr_reader :shutdown_requested
 
@@ -66,6 +89,10 @@ module TUI
       @session_picker_index = 0
       @view_mode_picker_active = false
       @view_mode_picker_index = 0
+      @token_setup_active = false
+      @token_input_buffer = InputBuffer.new
+      @token_setup_error = nil
+      @token_setup_status = :idle
       @shutdown_requested = false
       @previous_signal_handlers = {}
       @watchdog_thread = nil
@@ -109,6 +136,9 @@ module TUI
 
       @screens[@current_screen].render(frame, content_area, tui)
       render_sidebar(frame, sidebar, tui)
+
+      check_token_setup_signals
+      render_token_setup_popup(frame, frame.area, tui) if @token_setup_active
     end
 
     def render_sidebar(frame, area, tui)
@@ -227,7 +257,9 @@ module TUI
       return nil if event.none?
       return :quit if event.ctrl_c?
 
-      if @session_picker_active
+      if @token_setup_active
+        handle_token_setup(event)
+      elsif @session_picker_active
         handle_session_picker(event)
       elsif @view_mode_picker_active
         handle_view_mode_picker(event)
@@ -247,6 +279,9 @@ module TUI
       case action
       when :quit
         :quit
+      when :anthropic_token
+        activate_token_setup
+        nil
       when :new_session
         @screens[:chat].new_session
         @current_screen = :chat
@@ -553,6 +588,319 @@ module TUI
         tui.line(spans: [tui.span(content: "#{prefix}#{marker}#{mode.capitalize}", style: name_style)]),
         tui.line(spans: [tui.span(content: "#{" " * PICKER_PREFIX_WIDTH}#{VIEW_MODE_LABELS[mode]}", style: desc_style)])
       ]
+    end
+
+    # -- Token setup popup -----------------------------------------------
+
+    # Opens the token setup popup and resets all input state.
+    # Can be triggered manually via Ctrl+a > a or automatically when the
+    # brain broadcasts authentication_required.
+    # @return [void]
+    def activate_token_setup
+      @token_setup_active = true
+      @token_input_buffer.clear
+      @token_setup_error = nil
+      @token_setup_status = :idle
+    end
+
+    # Closes the token setup popup and resets all state.
+    # @return [void]
+    def close_token_setup
+      @token_setup_active = false
+      @token_input_buffer.clear
+      @token_setup_error = nil
+      @token_setup_status = :idle
+    end
+
+    # Polls the chat screen for authentication signals and token save results.
+    # Called every render frame so the popup reacts to server responses.
+    #
+    # State transitions:
+    #   authentication_required signal → activates popup (if not already open)
+    #   token_saved result             → @token_setup_status becomes :success
+    #   token_error result             → @token_setup_status becomes :error
+    #
+    # @return [void]
+    def check_token_setup_signals
+      chat = @screens[:chat]
+
+      if chat.authentication_required && !@token_setup_active
+        activate_token_setup
+        chat.clear_authentication_required
+      end
+
+      result = chat.consume_token_save_result
+      return unless result
+
+      if result[:success]
+        @token_setup_status = :success
+        @token_setup_error = nil
+      else
+        @token_setup_status = :error
+        @token_setup_error = result[:message]
+      end
+    end
+
+    # Dispatches keyboard and paste events while the token setup popup is open.
+    #
+    # @param event [RatatuiRuby::Event] input event
+    # @return [nil]
+    def handle_token_setup(event)
+      # In success state, any key closes the popup
+      if @token_setup_status == :success
+        close_token_setup if event.key? || event.paste?
+        return nil
+      end
+
+      # During validation, ignore all input
+      return nil if @token_setup_status == :validating
+
+      if event.paste?
+        @token_input_buffer.insert(event.content)
+        @token_setup_error = nil
+        @token_setup_status = :idle
+        return nil
+      end
+
+      return nil unless event.key?
+
+      if event.esc?
+        close_token_setup
+      elsif event.enter?
+        submit_token
+      elsif event.backspace?
+        @token_input_buffer.backspace
+        @token_setup_error = nil
+        @token_setup_status = :idle
+      elsif event.delete?
+        @token_input_buffer.delete
+      elsif event.left?
+        @token_input_buffer.move_left
+      elsif event.right?
+        @token_input_buffer.move_right
+      elsif event.home?
+        @token_input_buffer.move_home
+      elsif event.end?
+        @token_input_buffer.move_end
+      elsif printable_token_char?(event)
+        @token_input_buffer.insert(event.code)
+        @token_setup_error = nil
+        @token_setup_status = :idle
+      end
+
+      nil
+    end
+
+    # Sends the entered token to the brain for validation and storage.
+    # @return [void]
+    def submit_token
+      token = @token_input_buffer.text.strip
+      return if token.empty?
+
+      @token_setup_status = :validating
+      @token_setup_error = nil
+      @cable_client.save_token(token)
+    end
+
+    # @param event [RatatuiRuby::Event] keyboard event
+    # @return [Boolean] true if the key is a printable character without ctrl
+    def printable_token_char?(event)
+      return false if event.modifiers&.include?("ctrl")
+
+      event.code.length == 1 && event.code.match?(PRINTABLE_CHAR)
+    end
+
+    # Renders the token setup popup as a centered overlay on the full terminal area.
+    # Uses the Clear widget to prevent background content from bleeding through.
+    #
+    # @param frame [RatatuiRuby::Frame] terminal frame
+    # @param area [RatatuiRuby::Rect] full terminal area
+    # @param tui [RatatuiRuby] TUI rendering API
+    # @return [void]
+    def render_token_setup_popup(frame, area, tui)
+      popup_area = centered_popup_area(tui, area)
+
+      frame.render_widget(tui.clear, popup_area)
+
+      border_color = case @token_setup_status
+      when :success then "green"
+      when :error then "red"
+      else "yellow"
+      end
+
+      lines = build_token_setup_lines(tui)
+
+      popup = tui.paragraph(
+        text: lines,
+        wrap: true,
+        block: tui.block(
+          title: "Anthropic Token Setup",
+          borders: [:all],
+          border_type: :rounded,
+          border_style: {fg: border_color}
+        )
+      )
+      frame.render_widget(popup, popup_area)
+
+      set_token_input_cursor(frame, popup_area) if token_cursor_visible?
+    end
+
+    # Builds the text lines for the token setup popup.
+    # @param tui [RatatuiRuby] TUI rendering API
+    # @return [Array<RatatuiRuby::Widgets::Line>]
+    def build_token_setup_lines(tui)
+      lines = []
+
+      # Status
+      status_text, status_color = token_status_display
+      lines << tui.line(spans: [
+        tui.span(content: "Status: ", style: tui.style(fg: "dark_gray")),
+        tui.span(content: status_text, style: tui.style(fg: status_color, modifiers: [:bold]))
+      ])
+      lines << tui.line(spans: [tui.span(content: "")])
+
+      # Instructions
+      lines << tui.line(spans: [
+        tui.span(content: "Run ", style: tui.style(fg: "white")),
+        tui.span(content: "claude setup-token", style: tui.style(fg: "cyan", modifiers: [:bold])),
+        tui.span(content: " to get", style: tui.style(fg: "white"))
+      ])
+      lines << tui.line(spans: [
+        tui.span(content: "your token, then paste it here.", style: tui.style(fg: "white"))
+      ])
+      lines << tui.line(spans: [tui.span(content: "")])
+
+      # Token input
+      masked = mask_token(@token_input_buffer.text)
+      lines << tui.line(spans: [
+        tui.span(content: "Token:", style: tui.style(fg: "white", modifiers: [:bold]))
+      ])
+      lines << tui.line(spans: [
+        tui.span(content: "> #{masked}", style: tui.style(fg: "white"))
+      ])
+      lines << tui.line(spans: [tui.span(content: "")])
+
+      # Error or success message
+      if @token_setup_error
+        lines << tui.line(spans: [
+          tui.span(content: @token_setup_error, style: tui.style(fg: "red"))
+        ])
+        lines << tui.line(spans: [tui.span(content: "")])
+      end
+
+      if @token_setup_status == :success
+        lines << tui.line(spans: [
+          tui.span(content: "Token saved and validated!", style: tui.style(fg: "green", modifiers: [:bold]))
+        ])
+        lines << tui.line(spans: [tui.span(content: "")])
+      end
+
+      # Hints
+      hint = case @token_setup_status
+      when :success then "[any key] Close"
+      when :validating then "Validating..."
+      else "[Enter] Save  [Esc] Cancel"
+      end
+      lines << tui.line(spans: [
+        tui.span(content: hint, style: tui.style(fg: "dark_gray"))
+      ])
+
+      lines
+    end
+
+    # @return [Array(String, String)] [status_text, color] for the current token setup state
+    def token_status_display
+      case @token_setup_status
+      when :success
+        ["Valid", "green"]
+      when :validating
+        ["Validating...", "yellow"]
+      when :error
+        ["Invalid", "red"]
+      else
+        if @token_input_buffer.text.empty?
+          ["Not configured", "dark_gray"]
+        else
+          ["Ready to save", "cyan"]
+        end
+      end
+    end
+
+    # Masks an Anthropic token for display: shows the first TOKEN_MASK_VISIBLE
+    # characters (the prefix) and replaces the rest with stars.
+    #
+    # @param token [String] raw token text
+    # @return [String] masked display text
+    def mask_token(token)
+      return "" if token.empty?
+      return token if token.length <= TOKEN_MASK_VISIBLE
+
+      visible = token[0...TOKEN_MASK_VISIBLE]
+      hidden_count = [token.length - TOKEN_MASK_VISIBLE, TOKEN_MASK_STARS].min
+      "#{visible}#{"*" * hidden_count}..."
+    end
+
+    # @return [Boolean] true when the blinking cursor should be shown in the input field
+    def token_cursor_visible?
+      @token_setup_status == :idle || @token_setup_status == :error
+    end
+
+    # Positions the terminal cursor on the token input line inside the popup.
+    # The input ">" line is at a fixed offset from the popup top.
+    #
+    # @param frame [RatatuiRuby::Frame] terminal frame
+    # @param popup_area [RatatuiRuby::Rect] popup rectangle
+    # @return [void]
+    def set_token_input_cursor(frame, popup_area)
+      # Content line offsets within the popup (after top border):
+      # 0: Status  1: blank  2: Instructions L1  3: Instructions L2
+      # 4: blank   5: Token:  6: > (input)
+      input_line_offset = 7 # border (1) + 6 content lines
+
+      masked = mask_token(@token_input_buffer.text)
+      prompt_width = 2 # "> " prefix before the masked token text
+      cursor_x = popup_area.x + 1 + prompt_width + masked.length # border + prompt + text
+      cursor_y = popup_area.y + input_line_offset
+
+      return unless cursor_x < popup_area.x + popup_area.width - 1 &&
+        cursor_y < popup_area.y + popup_area.height - 1
+
+      frame.set_cursor_position(cursor_x, cursor_y)
+    end
+
+    # Calculates a centered rectangle for the popup overlay.
+    #
+    # @param tui [RatatuiRuby] TUI rendering API
+    # @param area [RatatuiRuby::Rect] full terminal area
+    # @return [RatatuiRuby::Rect] centered popup area
+    def centered_popup_area(tui, area)
+      popup_height = [POPUP_HEIGHT, area.height - 2].min
+      v_margin = [(area.height - popup_height) / 2, 0].max
+
+      _, center_v, _ = tui.split(
+        area,
+        direction: :vertical,
+        constraints: [
+          tui.constraint_length(v_margin),
+          tui.constraint_length(popup_height),
+          tui.constraint_fill(1)
+        ]
+      )
+
+      popup_width = (area.width * 60 / 100).clamp(POPUP_MIN_WIDTH, area.width - 2)
+      h_margin = [(area.width - popup_width) / 2, 0].max
+
+      _, center, _ = tui.split(
+        center_v,
+        direction: :horizontal,
+        constraints: [
+          tui.constraint_length(h_margin),
+          tui.constraint_length(popup_width),
+          tui.constraint_fill(1)
+        ]
+      )
+
+      center
     end
 
     # Formats an ISO8601 timestamp as a human-readable relative time.

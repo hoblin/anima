@@ -252,6 +252,23 @@ RSpec.describe TUI::CableClient do
     end
   end
 
+  describe "#save_token" do
+    let(:ws) { double("WebSocket") }
+
+    before { client.instance_variable_set(:@ws, ws) }
+
+    it "sends a save_token action with the token" do
+      sent = nil
+      allow(ws).to receive(:send) { |msg| sent = JSON.parse(msg) }
+
+      client.save_token("sk-ant-oat01-test-token-value")
+
+      data = JSON.parse(sent["data"])
+      expect(data["action"]).to eq("save_token")
+      expect(data["token"]).to eq("sk-ant-oat01-test-token-value")
+    end
+  end
+
   describe "#update_session_id" do
     it "updates the session_id" do
       client.update_session_id(99)

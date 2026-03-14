@@ -25,21 +25,11 @@ module Providers
     class ServerError < TransientError; end
 
     class << self
-      def validate!
-        token = fetch_token
-        validate_token_format!(token)
-        validate_token_api!(token)
-        true
-      end
-
       def fetch_token
         token = Rails.application.credentials.dig(:anthropic, :subscription_token)
         raise AuthenticationError, <<~MSG.strip if token.blank?
           No Anthropic subscription token found in credentials.
-          Run: bin/rails credentials:edit
-          Add:
-            anthropic:
-              subscription_token: sk-ant-oat01-YOUR_TOKEN_HERE
+          Use the TUI token setup (Ctrl+a → a) to configure your token.
         MSG
         token
       end
@@ -123,7 +113,7 @@ module Providers
         true
       when 401
         raise AuthenticationError,
-          "Token rejected by Anthropic API (401). Re-run `claude setup-token` and update credentials."
+          "Token rejected by Anthropic API (401). Re-run `claude setup-token` and use the TUI token setup (Ctrl+a → a)."
       when 403
         raise AuthenticationError,
           "Token not authorized for API access (403). This credential may be restricted to Claude Code only."
@@ -151,7 +141,7 @@ module Providers
         raise Error, "Bad request: #{error_message(response)}"
       when 401
         raise AuthenticationError,
-          "Authentication failed (401): #{error_message(response)}. Re-run `claude setup-token` and update credentials."
+          "Authentication failed (401): #{error_message(response)}. Re-run `claude setup-token` and use the TUI token setup (Ctrl+a → a)."
       when 403
         raise AuthenticationError,
           "Forbidden (403): #{error_message(response)}"

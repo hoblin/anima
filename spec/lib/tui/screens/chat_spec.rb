@@ -1118,6 +1118,59 @@ RSpec.describe TUI::Screens::Chat do
     end
   end
 
+  describe "authentication signals" do
+    it "sets authentication_required on authentication_required action" do
+      allow(cable_client).to receive(:drain_messages).and_return([
+        {"action" => "authentication_required", "message" => "No token"}
+      ])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.authentication_required).to be true
+    end
+
+    it "clears authentication_required and sets success result on token_saved" do
+      screen.instance_variable_set(:@authentication_required, true)
+      allow(cable_client).to receive(:drain_messages).and_return([
+        {"action" => "token_saved"}
+      ])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.authentication_required).to be false
+      expect(screen.token_save_result).to eq({success: true})
+    end
+
+    it "sets error result on token_error" do
+      allow(cable_client).to receive(:drain_messages).and_return([
+        {"action" => "token_error", "message" => "Invalid format"}
+      ])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.token_save_result).to eq({success: false, message: "Invalid format"})
+    end
+
+    describe "#clear_authentication_required" do
+      it "clears the flag" do
+        screen.instance_variable_set(:@authentication_required, true)
+        screen.clear_authentication_required
+        expect(screen.authentication_required).to be false
+      end
+    end
+
+    describe "#consume_token_save_result" do
+      it "returns and clears the result" do
+        screen.instance_variable_set(:@token_save_result, {success: true})
+
+        result = screen.consume_token_save_result
+        expect(result).to eq({success: true})
+        expect(screen.token_save_result).to be_nil
+      end
+
+      it "returns nil when no result" do
+        expect(screen.consume_token_save_result).to be_nil
+      end
+    end
+  end
+
   describe "system_prompt message processing" do
     it "stores system_prompt as rendered entry" do
       allow(cable_client).to receive(:drain_messages).and_return([

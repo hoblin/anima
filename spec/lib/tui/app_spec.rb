@@ -17,6 +17,7 @@ RSpec.describe TUI::App do
     allow(cable_client).to receive(:list_sessions)
     allow(cable_client).to receive(:switch_session)
     allow(cable_client).to receive(:change_view_mode)
+    allow(cable_client).to receive(:save_token)
   end
 
   describe "#initialize" do
@@ -34,6 +35,10 @@ RSpec.describe TUI::App do
 
     it "starts with view mode picker inactive" do
       expect(app.view_mode_picker_active).to be false
+    end
+
+    it "starts with token setup inactive" do
+      expect(app.token_setup_active).to be false
     end
 
     it "starts with shutdown not requested" do
@@ -94,6 +99,14 @@ RSpec.describe TUI::App do
 
         expect(chat).to have_received(:new_session)
         expect(app.current_screen).to eq(:chat)
+        expect(app.command_mode).to be false
+      end
+
+      it "opens token setup on 'a'" do
+        event = key_event(code: "a")
+        app.send(:handle_event, event)
+
+        expect(app.token_setup_active).to be true
         expect(app.command_mode).to be false
       end
 
@@ -348,6 +361,187 @@ RSpec.describe TUI::App do
         app.send(:handle_event, key_event(code: "a"))
 
         expect(chat).not_to have_received(:handle_event)
+      end
+    end
+
+    describe "token setup popup" do
+      before do
+        app.instance_variable_set(:@command_mode, true)
+        app.send(:handle_event, key_event(code: "a"))
+      end
+
+      it "activates on Ctrl+a > a" do
+        expect(app.token_setup_active).to be true
+      end
+
+      it "closes on Escape" do
+        app.send(:handle_event, key_event(code: "esc", esc?: true))
+        expect(app.token_setup_active).to be false
+      end
+
+      it "accepts character input" do
+        app.send(:handle_event, key_event(code: "s"))
+        app.send(:handle_event, key_event(code: "k"))
+
+        buf = app.instance_variable_get(:@token_input_buffer)
+        expect(buf.text).to eq("sk")
+      end
+
+      it "accepts paste input" do
+        token = "sk-ant-oat01-#{"a" * 67}"
+        event = double("PasteEvent", none?: false, ctrl_c?: false, paste?: true, key?: false, mouse?: false, content: token)
+        app.send(:handle_event, event)
+
+        buf = app.instance_variable_get(:@token_input_buffer)
+        expect(buf.text).to eq(token)
+      end
+
+      it "submits token on Enter" do
+        buf = app.instance_variable_get(:@token_input_buffer)
+        buf.insert("sk-ant-oat01-#{"a" * 67}")
+
+        app.send(:handle_event, key_event(code: "enter"))
+
+        expect(cable_client).to have_received(:save_token).with("sk-ant-oat01-#{"a" * 67}")
+        expect(app.instance_variable_get(:@token_setup_status)).to eq(:validating)
+      end
+
+      it "does not submit empty token" do
+        app.send(:handle_event, key_event(code: "enter"))
+
+        expect(cable_client).not_to have_received(:save_token)
+      end
+
+      it "supports backspace" do
+        app.send(:handle_event, key_event(code: "a"))
+        app.send(:handle_event, key_event(code: "b"))
+        app.send(:handle_event, key_event(code: "backspace"))
+
+        buf = app.instance_variable_get(:@token_input_buffer)
+        expect(buf.text).to eq("a")
+      end
+
+      it "clears error on new input" do
+        app.instance_variable_set(:@token_setup_error, "some error")
+        app.instance_variable_set(:@token_setup_status, :error)
+
+        app.send(:handle_event, key_event(code: "x"))
+
+        expect(app.instance_variable_get(:@token_setup_error)).to be_nil
+        expect(app.instance_variable_get(:@token_setup_status)).to eq(:idle)
+      end
+
+      it "ignores input during validation" do
+        app.instance_variable_set(:@token_setup_status, :validating)
+
+        app.send(:handle_event, key_event(code: "x"))
+
+        buf = app.instance_variable_get(:@token_input_buffer)
+        expect(buf.text).to eq("")
+      end
+
+      it "closes on any key in success state" do
+        app.instance_variable_set(:@token_setup_status, :success)
+
+        app.send(:handle_event, key_event(code: "enter"))
+
+        expect(app.token_setup_active).to be false
+      end
+
+      it "does not delegate events to chat screen while active" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        allow(chat).to receive(:handle_event)
+
+        app.send(:handle_event, key_event(code: "h"))
+
+        expect(chat).not_to have_received(:handle_event)
+      end
+
+      it "ignores ctrl-modified keys" do
+        key_event(code: "c", modifiers: ["ctrl"])
+        # Should not insert 'c', but ctrl_c? check happens before token_setup
+        # So we test a non-ctrl_c ctrl key
+        event2 = key_event(code: "x", modifiers: ["ctrl"], ctrl_c?: false)
+        app.send(:handle_event, event2)
+
+        buf = app.instance_variable_get(:@token_input_buffer)
+        expect(buf.text).to eq("")
+      end
+    end
+
+    describe "token setup auto-activation" do
+      it "activates when chat signals authentication_required" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.instance_variable_set(:@authentication_required, true)
+
+        app.send(:check_token_setup_signals)
+
+        expect(app.token_setup_active).to be true
+        expect(chat.authentication_required).to be false
+      end
+
+      it "does not re-activate when already active" do
+        app.instance_variable_set(:@token_setup_active, true)
+        app.instance_variable_set(:@token_setup_status, :validating)
+
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.instance_variable_set(:@authentication_required, true)
+
+        app.send(:check_token_setup_signals)
+
+        # Should not reset status to :idle
+        expect(app.instance_variable_get(:@token_setup_status)).to eq(:validating)
+      end
+
+      it "updates status to success on token_saved result" do
+        app.instance_variable_set(:@token_setup_active, true)
+
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.instance_variable_set(:@token_save_result, {success: true})
+
+        app.send(:check_token_setup_signals)
+
+        expect(app.instance_variable_get(:@token_setup_status)).to eq(:success)
+      end
+
+      it "updates status to error on token_error result" do
+        app.instance_variable_set(:@token_setup_active, true)
+
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.instance_variable_set(:@token_save_result, {success: false, message: "bad token"})
+
+        app.send(:check_token_setup_signals)
+
+        expect(app.instance_variable_get(:@token_setup_status)).to eq(:error)
+        expect(app.instance_variable_get(:@token_setup_error)).to eq("bad token")
+      end
+    end
+
+    describe "token masking" do
+      it "returns empty string for empty input" do
+        expect(app.send(:mask_token, "")).to eq("")
+      end
+
+      it "returns short text unmasked" do
+        expect(app.send(:mask_token, "short")).to eq("short")
+      end
+
+      it "masks characters beyond the visible prefix" do
+        token = "sk-ant-oat01-abcdefghijklmnop"
+        masked = app.send(:mask_token, token)
+        expect(masked).to start_with("sk-ant-oat01-a")
+        expect(masked).to include("****...")
+      end
+
+      it "returns unmasked text when exactly TOKEN_MASK_VISIBLE length" do
+        token = "x" * TUI::App::TOKEN_MASK_VISIBLE
+        expect(app.send(:mask_token, token)).to eq(token)
+      end
+
+      it "shows exactly TOKEN_MASK_VISIBLE characters unmasked" do
+        token = "sk-ant-oat01-#{"x" * 67}"
+        masked = app.send(:mask_token, token)
+        expect(masked[0...TUI::App::TOKEN_MASK_VISIBLE]).to eq(token[0...TUI::App::TOKEN_MASK_VISIBLE])
       end
     end
 
