@@ -130,37 +130,13 @@ Updates: `gem update anima-core` — next launch runs pending migrations automat
 
 ### Authentication Setup
 
-Anima uses your Claude Pro/Max subscription for API access. You need a setup-token from Claude Code CLI.
+Anima uses your Claude Pro/Max subscription for API access. You need a setup-token from [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code).
 
-**1. Get a setup-token:**
+1. Run `claude setup-token` in a terminal to get your token
+2. In the TUI, press `Ctrl+a → a` to open the token setup popup
+3. Paste the token and press Enter — Anima validates it against the Anthropic API and saves it to encrypted credentials
 
-```bash
-claude setup-token
-```
-
-This requires [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and a Claude Pro or Max subscription.
-
-**2. Store the token in Anima credentials:**
-
-```bash
-cd $(gem contents anima-core | head -1 | xargs dirname | xargs dirname)
-bin/rails credentials:edit
-```
-
-Add your token:
-
-```yaml
-anthropic:
-  subscription_token: sk-ant-oat01-YOUR_TOKEN_HERE
-```
-
-**3. Verify the token works:**
-
-```bash
-bin/rails runner "Providers::Anthropic.validate!"
-```
-
-If the token expires or is revoked, repeat steps 1-2 with a new token.
+The popup also activates automatically when Anima detects a missing or invalid token. If the token expires, repeat the process with a new one.
 
 ### Three Layers (mirroring biology)
 
