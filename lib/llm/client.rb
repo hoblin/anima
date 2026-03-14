@@ -16,7 +16,7 @@ module LLM
   #   client.chat_with_tools(messages, registry: registry, session_id: session.id)
   class Client
     DEFAULT_MODEL = "claude-sonnet-4-20250514"
-    FAST_MODEL = "claude-haiku-3-5-20241022"
+    FAST_MODEL = "claude-haiku-4-5"
     DEFAULT_MAX_TOKENS = 8192
     MAX_TOOL_ROUNDS = 25
 
