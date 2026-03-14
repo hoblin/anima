@@ -76,7 +76,7 @@ RSpec.describe SessionChannel, type: :channel do
     end
 
     it "includes name in session_changed" do
-      session = Session.create!(id: session_id, name: "🔧 Debug Session")
+      Session.create!(id: session_id, name: "🔧 Debug Session")
 
       subscribe(session_id: session_id)
 
