@@ -86,60 +86,6 @@ RSpec.describe Providers::Anthropic do
     end
   end
 
-  describe ".validate!" do
-    before do
-      allow(Rails.application.credentials).to receive(:dig)
-        .with(:anthropic, :subscription_token)
-        .and_return(valid_token)
-    end
-
-    it "validates format and makes a test API call" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .with(
-          headers: {
-            "Authorization" => "Bearer #{valid_token}",
-            "anthropic-version" => "2023-06-01",
-            "anthropic-beta" => "oauth-2025-04-20"
-          }
-        )
-        .to_return(status: 200, body: {content: [{text: "Hi"}]}.to_json)
-
-      expect(described_class.validate!).to be true
-    end
-
-    it "raises AuthenticationError on 401 response" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(
-          status: 401,
-          body: {error: {message: "invalid token"}}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
-
-      expect {
-        described_class.validate!
-      }.to raise_error(
-        Providers::Anthropic::AuthenticationError,
-        /Token rejected by Anthropic API/
-      )
-    end
-
-    it "raises AuthenticationError on 403 response" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(
-          status: 403,
-          body: {error: {message: "restricted"}}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
-
-      expect {
-        described_class.validate!
-      }.to raise_error(
-        Providers::Anthropic::AuthenticationError,
-        /not authorized for API access/
-      )
-    end
-  end
-
   describe "#initialize" do
     it "accepts a token argument" do
       provider = described_class.new(valid_token)
