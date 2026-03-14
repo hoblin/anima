@@ -4,6 +4,7 @@ require "rails_helper"
 
 RSpec.describe Session do
   # Computes the expected LLM content for a user message with timestamp prefix.
+  # Must stay in sync with Session#format_event_time.
   def timestamped(content, timestamp_ns)
     time = Time.at(timestamp_ns / 1_000_000_000.0)
     "#{time.strftime("%a %b %-d %H:%M")}\n#{content}"
