@@ -7,12 +7,15 @@ RSpec.describe Mcp::ClientManager do
 
   subject(:manager) { described_class.new(config: config) }
 
+  before do
+    allow(config).to receive(:http_servers).and_return([])
+    allow(config).to receive(:stdio_servers).and_return([])
+  end
+
   describe "#register_tools" do
     let(:registry) { Tools::Registry.new }
 
     context "with no configured servers" do
-      before { allow(config).to receive(:http_servers).and_return([]) }
-
       it "registers no additional tools" do
         manager.register_tools(registry)
 
@@ -73,33 +76,80 @@ RSpec.describe Mcp::ClientManager do
       end
     end
 
-    context "with multiple servers" do
-      let(:tool_a) do
-        MCP::Client::Tool.new(name: "tool_a", description: "Tool A", input_schema: {})
+    context "with a configured stdio server" do
+      let(:mcp_tool) do
+        MCP::Client::Tool.new(
+          name: "list_issues",
+          description: "List Linear issues",
+          input_schema: {"type" => "object", "properties" => {}}
+        )
       end
 
-      let(:tool_b) do
-        MCP::Client::Tool.new(name: "tool_b", description: "Tool B", input_schema: {})
+      let(:mcp_client) { instance_double(MCP::Client, tools: [mcp_tool]) }
+      let(:transport) { instance_double(Mcp::StdioTransport) }
+
+      before do
+        allow(config).to receive(:stdio_servers).and_return([
+          {name: "linear_toon", command: "linear-toon-mcp", args: [], env: {}}
+        ])
+        allow(Mcp::StdioTransport).to receive(:new).and_return(transport)
+        allow(MCP::Client).to receive(:new).and_return(mcp_client)
       end
 
-      let(:client_a) { instance_double(MCP::Client, tools: [tool_a]) }
-      let(:client_b) { instance_double(MCP::Client, tools: [tool_b]) }
+      it "registers MCP tools with namespaced names" do
+        manager.register_tools(registry)
+
+        expect(registry.registered?("linear_toon__list_issues")).to be true
+      end
+
+      it "creates stdio transport with command, args, and env" do
+        manager.register_tools(registry)
+
+        expect(Mcp::StdioTransport).to have_received(:new).with(
+          command: "linear-toon-mcp",
+          args: [],
+          env: {}
+        )
+      end
+
+      it "creates MCP client with the stdio transport" do
+        manager.register_tools(registry)
+
+        expect(MCP::Client).to have_received(:new).with(transport: transport)
+      end
+    end
+
+    context "with multiple servers across transports" do
+      let(:http_tool) do
+        MCP::Client::Tool.new(name: "http_tool", description: "HTTP tool", input_schema: {})
+      end
+
+      let(:stdio_tool) do
+        MCP::Client::Tool.new(name: "stdio_tool", description: "Stdio tool", input_schema: {})
+      end
+
+      let(:http_client) { instance_double(MCP::Client, tools: [http_tool]) }
+      let(:stdio_client) { instance_double(MCP::Client, tools: [stdio_tool]) }
 
       before do
         allow(config).to receive(:http_servers).and_return([
-          {name: "server_a", url: "http://a.test/mcp", headers: {}},
-          {name: "server_b", url: "http://b.test/mcp", headers: {}}
+          {name: "web_server", url: "http://web.test/mcp", headers: {}}
+        ])
+        allow(config).to receive(:stdio_servers).and_return([
+          {name: "local_server", command: "local-mcp", args: [], env: {}}
         ])
         allow(MCP::Client::HTTP).to receive(:new)
           .and_return(instance_double(MCP::Client::HTTP))
-        allow(MCP::Client).to receive(:new).and_return(client_a, client_b)
+        allow(Mcp::StdioTransport).to receive(:new)
+          .and_return(instance_double(Mcp::StdioTransport))
+        allow(MCP::Client).to receive(:new).and_return(http_client, stdio_client)
       end
 
-      it "registers tools from all servers with proper namespacing" do
+      it "registers tools from both HTTP and stdio servers" do
         manager.register_tools(registry)
 
-        expect(registry.registered?("server_a__tool_a")).to be true
-        expect(registry.registered?("server_b__tool_b")).to be true
+        expect(registry.registered?("web_server__http_tool")).to be true
+        expect(registry.registered?("local_server__stdio_tool")).to be true
       end
 
       it "keeps tools from different servers isolated" do
@@ -148,6 +198,37 @@ RSpec.describe Mcp::ClientManager do
         manager.register_tools(registry)
 
         expect(registry.registered?("working__working_tool")).to be true
+      end
+    end
+
+    context "when a stdio server fails to spawn" do
+      let(:working_tool) do
+        MCP::Client::Tool.new(name: "works", description: "Works", input_schema: {})
+      end
+
+      before do
+        allow(config).to receive(:stdio_servers).and_return([
+          {name: "bad_cmd", command: "nonexistent", args: [], env: {}},
+          {name: "good_cmd", command: "echo", args: [], env: {}}
+        ])
+
+        broken_transport = Mcp::StdioTransport.new(command: "nonexistent", args: [], env: {})
+        allow(Mcp::StdioTransport).to receive(:new)
+          .and_return(broken_transport, instance_double(Mcp::StdioTransport))
+
+        broken_client = MCP::Client.new(transport: broken_transport)
+        working_client = instance_double(MCP::Client, tools: [working_tool])
+
+        allow(MCP::Client).to receive(:new).and_return(broken_client, working_client)
+      end
+
+      it "logs a warning and continues to the next server" do
+        expect(Rails.logger).to receive(:warn).with(/bad_cmd/)
+        allow(Rails.logger).to receive(:info)
+
+        manager.register_tools(registry)
+
+        expect(registry.registered?("good_cmd__works")).to be true
       end
     end
 

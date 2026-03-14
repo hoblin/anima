@@ -4,10 +4,10 @@ require "mcp"
 
 module Mcp
   # Manages MCP client connections and registers their tools with
-  # {Tools::Registry}. Each configured HTTP server gets a dedicated
-  # {MCP::Client} instance. Tool lists are fetched once during
-  # registration and cached in the registry — subsequent LLM turns
-  # reuse the same tool set without re-querying servers.
+  # {Tools::Registry}. Each configured server (HTTP or stdio) gets
+  # a dedicated {MCP::Client} instance. Tool lists are fetched once
+  # during registration and cached in the registry — subsequent LLM
+  # turns reuse the same tool set without re-querying servers.
   #
   # Connection failures are logged and skipped — a misconfigured or
   # unavailable server does not prevent other servers or built-in
@@ -22,56 +22,58 @@ module Mcp
       @config = config
     end
 
-    # Connects to all configured HTTP MCP servers and registers
+    # Connects to all configured MCP servers and registers
     # their tools in the given registry.
     #
     # @param registry [Tools::Registry] the registry to add tools to
     # @return [void]
     def register_tools(registry)
-      @config.http_servers.each do |server|
-        register_server_tools(server, registry)
-      rescue => error
-        Rails.logger.warn("MCP: failed to load tools from #{server[:name]} " \
-                          "(#{server[:url]}): #{error.message}")
-      end
+      register_transport_tools(@config.http_servers, registry) { |server| build_http_client(server) }
+      register_transport_tools(@config.stdio_servers, registry) { |server| build_stdio_client(server) }
     end
 
     private
 
-    # Connects to a single MCP server and registers all its tools.
+    # Iterates server configs, builds a client for each via the block,
+    # and registers the server's tools. Failures are logged and skipped.
     #
-    # @param server [Hash] server config with :name, :url, :headers
+    # @param servers [Array<Hash>] server configs from {Mcp::Config}
     # @param registry [Tools::Registry] registry to register tools in
-    def register_server_tools(server, registry)
-      server_name = server[:name]
-      count = fetch_and_wrap_tools(server_name, server)
-        .each { |wrapper| registry.register(wrapper) }
-        .size
+    # @yield [server] block that builds an {MCP::Client} for the server
+    def register_transport_tools(servers, registry)
+      servers.each do |server|
+        client = yield(server)
+        register_server_tools(server[:name], client, registry)
+      rescue => error
+        Rails.logger.warn("MCP: failed to load tools from #{server[:name]}: #{error.message}")
+      end
+    end
+
+    # Fetches tools from an MCP client and registers them with
+    # namespaced names in the registry.
+    #
+    # @param server_name [String] server name for tool namespacing
+    # @param client [MCP::Client] connected MCP client
+    # @param registry [Tools::Registry] registry to register tools in
+    def register_server_tools(server_name, client, registry)
+      count = client.tools.map { |mcp_tool|
+        Tools::McpTool.new(server_name: server_name, mcp_client: client, mcp_tool: mcp_tool)
+      }.each { |wrapper| registry.register(wrapper) }.size
 
       Rails.logger.info("MCP: registered #{count} tools from #{server_name}")
     end
 
-    # Fetches tools from an MCP server and wraps them for registry use.
-    #
-    # @param server_name [String] server name for tool namespacing
-    # @param server [Hash] server config with :url and :headers
-    # @return [Array<Tools::McpTool>] wrapped tools ready for registration
-    def fetch_and_wrap_tools(server_name, server)
-      client = build_client(server)
-
-      client.tools.map do |mcp_tool|
-        Tools::McpTool.new(server_name: server_name, mcp_client: client, mcp_tool: mcp_tool)
-      end
+    # @param server [Hash] server config with +:url+ and +:headers+
+    # @return [MCP::Client]
+    def build_http_client(server)
+      transport = MCP::Client::HTTP.new(url: server[:url], headers: server[:headers])
+      MCP::Client.new(transport: transport)
     end
 
-    # Creates an MCP client with HTTP transport for the given server.
-    # The MCP gem's HTTP transport does not yet support timeout configuration —
-    # Faraday defaults apply. A hanging server will block until Faraday times out.
-    #
-    # @param server [Hash] server config with :url and :headers
+    # @param server [Hash] server config with +:command+, +:args+, +:env+
     # @return [MCP::Client]
-    def build_client(server)
-      transport = MCP::Client::HTTP.new(url: server[:url], headers: server[:headers])
+    def build_stdio_client(server)
+      transport = StdioTransport.new(command: server[:command], args: server[:args], env: server[:env])
       MCP::Client.new(transport: transport)
     end
   end

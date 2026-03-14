@@ -4,9 +4,8 @@ require "toml-rb"
 
 module Mcp
   # Parses MCP server configuration from a TOML file at {DEFAULT_PATH}.
-  # Supports environment variable interpolation via `${VAR_NAME}` syntax
-  # in any string value. Only HTTP transport servers are returned;
-  # other transports (e.g. stdio) are silently skipped for future phases.
+  # Supports HTTP and stdio transports. Environment variable interpolation
+  # via +${VAR_NAME}+ syntax works in any string value.
   #
   # @example Config file format (~/.anima/mcp.toml)
   #   [servers.mythonix]
@@ -17,6 +16,12 @@ module Mcp
   #   transport = "http"
   #   url = "https://mcp.linear.app/mcp"
   #   headers = { Authorization = "Bearer ${LINEAR_API_KEY}" }
+  #
+  #   [servers.filesystem]
+  #   transport = "stdio"
+  #   command = "mcp-server-filesystem"
+  #   args = ["--root", "/workspace"]
+  #   env = { DEBUG = "true" }
   class Config
     DEFAULT_PATH = File.expand_path("~/.anima/mcp.toml")
 
@@ -29,20 +34,11 @@ module Mcp
     end
 
     # Returns HTTP server configurations from the config file.
-    # Non-HTTP transports are silently skipped. Missing or empty config
-    # file returns an empty array without error.
     #
-    # @return [Array<Hash>] server configs with :name, :url, :headers keys
+    # @return [Array<Hash>] server configs with +:name+, +:url+, +:headers+ keys
     # @raise [KeyError] if a referenced environment variable is not set
     def http_servers
-      return [] unless File.exist?(@path)
-
-      config = TomlRB.load_file(@path)
-      servers = config["servers"] || {}
-
-      servers.filter_map do |name, settings|
-        next unless settings["transport"] == "http"
-
+      servers_by_transport("http") do |name, settings|
         url = settings["url"]
         unless url
           Rails.logger.warn("MCP: server '#{name}' has transport=http but no url — skipping")
@@ -52,14 +48,55 @@ module Mcp
         {
           name: name,
           url: interpolate_env(url),
-          headers: interpolate_headers(settings["headers"] || {})
+          headers: interpolate_hash_values(settings["headers"] || {})
+        }
+      end
+    end
+
+    # Returns stdio server configurations from the config file.
+    #
+    # @return [Array<Hash>] server configs with +:name+, +:command+, +:args+, +:env+ keys
+    # @raise [KeyError] if a referenced environment variable is not set
+    def stdio_servers
+      servers_by_transport("stdio") do |name, settings|
+        command = settings["command"]
+        unless command
+          Rails.logger.warn("MCP: server '#{name}' has transport=stdio but no command — skipping")
+          next
+        end
+
+        {
+          name: name,
+          command: interpolate_env(command),
+          args: (settings["args"] || []).map { |arg| interpolate_env(arg) },
+          env: interpolate_hash_values(settings["env"] || {})
         }
       end
     end
 
     private
 
-    # Replaces `${VAR_NAME}` placeholders with environment variable values.
+    # Iterates servers matching a given transport type, yielding each
+    # for transport-specific parsing. Returns an empty array if the
+    # config file is missing or empty.
+    #
+    # @param transport [String] transport type to filter by ("http", "stdio")
+    # @yield [name, settings] block that returns a parsed server hash or nil
+    # @return [Array<Hash>] parsed server configs
+    def servers_by_transport(transport)
+      return [] unless File.exist?(@path)
+
+      config = TomlRB.load_file(@path)
+      servers = config["servers"] || {}
+
+      servers.filter_map do |name, settings|
+        next unless settings["transport"] == transport
+
+        yield(name, settings)
+      end
+    end
+
+    # Replaces +${VAR_NAME}+ placeholders with environment variable values.
     #
     # @param value [String] string potentially containing placeholders
     # @return [String] interpolated string
@@ -68,12 +105,12 @@ module Mcp
       value.gsub(ENV_VAR_PATTERN) { ENV.fetch(::Regexp.last_match(1)) }
     end
 
-    # Interpolates environment variables in all header values.
+    # Interpolates environment variables in all values of a string hash.
     #
-    # @param headers [Hash<String, String>] header name-value pairs
-    # @return [Hash<String, String>] headers with interpolated values
-    def interpolate_headers(headers)
-      headers.transform_values { |value| interpolate_env(value) }
+    # @param hash [Hash<String, String>] key-value pairs with potential placeholders
+    # @return [Hash<String, String>] hash with interpolated values
+    def interpolate_hash_values(hash)
+      hash.transform_values { |value| interpolate_env(value) }
     end
   end
 end
