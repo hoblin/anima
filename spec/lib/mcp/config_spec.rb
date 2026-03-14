@@ -130,7 +130,9 @@ RSpec.describe Mcp::Config do
         TOML
       end
 
-      it "skips servers without a url" do
+      it "skips servers without a url and logs a warning" do
+        expect(Rails.logger).to receive(:warn).with(/incomplete.*no url/)
+
         expect(config.http_servers).to eq([])
       end
     end

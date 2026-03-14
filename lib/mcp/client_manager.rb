@@ -65,6 +65,8 @@ module Mcp
     end
 
     # Creates an MCP client with HTTP transport for the given server.
+    # The MCP gem's HTTP transport does not yet support timeout configuration —
+    # Faraday defaults apply. A hanging server will block until Faraday times out.
     #
     # @param server [Hash] server config with :url and :headers
     # @return [MCP::Client]

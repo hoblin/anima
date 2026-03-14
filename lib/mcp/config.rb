@@ -44,7 +44,10 @@ module Mcp
         next unless settings["transport"] == "http"
 
         url = settings["url"]
-        next unless url
+        unless url
+          Rails.logger.warn("MCP: server '#{name}' has transport=http but no url — skipping")
+          next
+        end
 
         {
           name: name,

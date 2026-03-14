@@ -57,12 +57,6 @@ RSpec.describe Tools::McpTool do
     end
   end
 
-  describe "#new" do
-    it "returns self since MCP tools are stateless wrappers" do
-      expect(tool.new(shell_session: double, session: double)).to be(tool)
-    end
-  end
-
   describe "#execute" do
     context "with successful text response" do
       before do
@@ -151,7 +145,54 @@ RSpec.describe Tools::McpTool do
       end
     end
 
-    context "when MCP client raises an exception" do
+    context "with unknown content block type" do
+      before do
+        allow(mcp_client).to receive(:call_tool).and_return({
+          "result" => {
+            "content" => [
+              {"type" => "resource", "uri" => "file:///tmp/data.csv"}
+            ]
+          }
+        })
+      end
+
+      it "serializes unknown blocks as JSON" do
+        result = tool.execute({})
+
+        expect(result).to eq('{"type":"resource","uri":"file:///tmp/data.csv"}')
+      end
+    end
+
+    context "when response has no content key" do
+      before do
+        allow(mcp_client).to receive(:call_tool).and_return({
+          "result" => {"status" => "completed", "value" => 42}
+        })
+      end
+
+      it "returns the raw result as JSON" do
+        result = tool.execute({})
+
+        parsed = JSON.parse(result)
+        expect(parsed).to eq({"status" => "completed", "value" => 42})
+      end
+    end
+
+    context "when content is a plain string" do
+      before do
+        allow(mcp_client).to receive(:call_tool).and_return({
+          "result" => {"content" => "plain text response"}
+        })
+      end
+
+      it "returns the string directly" do
+        result = tool.execute({})
+
+        expect(result).to eq("plain text response")
+      end
+    end
+
+    context "when MCP client raises a RequestHandlerError" do
       before do
         allow(mcp_client).to receive(:call_tool)
           .and_raise(MCP::Client::RequestHandlerError.new(
@@ -168,17 +209,15 @@ RSpec.describe Tools::McpTool do
       end
     end
 
-    context "when a network error occurs" do
+    context "when an unexpected error occurs" do
       before do
         allow(mcp_client).to receive(:call_tool)
           .and_raise(Faraday::ConnectionFailed, "Connection refused")
       end
 
-      it "returns an error hash" do
-        result = tool.execute({"prompt" => "test"})
-
-        expect(result).to be_a(Hash)
-        expect(result[:error]).to include("mythonix__create_image")
+      it "lets the exception propagate" do
+        expect { tool.execute({"prompt" => "test"}) }
+          .to raise_error(Faraday::ConnectionFailed)
       end
     end
   end
@@ -201,14 +240,14 @@ RSpec.describe Tools::McpTool do
       expect(schemas.first[:description]).to eq("Generate an image from a text prompt")
     end
 
-    it "can be executed through the registry" do
+    it "executes the instance directly without instantiation" do
       allow(mcp_client).to receive(:call_tool).and_return({
         "result" => {
           "content" => [{"type" => "text", "text" => "ok"}]
         }
       })
 
-      registry = Tools::Registry.new
+      registry = Tools::Registry.new(context: {shell_session: double})
       registry.register(tool)
 
       result = registry.execute("mythonix__create_image", {"prompt" => "test"})
