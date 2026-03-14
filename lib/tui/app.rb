@@ -233,6 +233,8 @@ module TUI
     # Builds the connection status line for the info panel.
     # Shows a single emoji for the normal (subscribed) state; adds descriptive
     # text only when something requires attention.
+    # @param tui [RatatuiRuby] TUI rendering context
+    # @return [RatatuiRuby::Widgets::Line] styled status line with emoji indicator
     def connection_status_line(tui)
       cable_status = @cable_client.status
       style = STATUS_STYLES.fetch(cable_status, STATUS_STYLES[:disconnected])
