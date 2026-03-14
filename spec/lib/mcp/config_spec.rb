@@ -114,13 +114,14 @@ RSpec.describe Mcp::Config do
         ENV.delete("TEST_MCP_TOKEN")
       end
 
-      it "skips servers with missing env vars and logs a warning" do
+      it "skips servers with missing env vars and collects a warning" do
         ENV.delete("TEST_MCP_HOST")
         ENV.delete("TEST_MCP_TOKEN")
 
-        expect(Rails.logger).to receive(:warn).with(/api.*unset env var.*TEST_MCP_HOST/)
+        allow(Rails.logger).to receive(:warn)
 
         expect(config.http_servers).to eq([])
+        expect(config.warnings).to include(match(/api.*unset env var.*TEST_MCP_HOST/))
       end
     end
 
@@ -132,10 +133,11 @@ RSpec.describe Mcp::Config do
         TOML
       end
 
-      it "skips servers without a url and logs a warning" do
-        expect(Rails.logger).to receive(:warn).with(/incomplete.*no url/)
+      it "skips servers without a url and collects a warning" do
+        allow(Rails.logger).to receive(:warn)
 
         expect(config.http_servers).to eq([])
+        expect(config.warnings).to include(match(/incomplete.*no url/))
       end
     end
 
@@ -256,12 +258,13 @@ RSpec.describe Mcp::Config do
         ENV.delete("TEST_API_KEY")
       end
 
-      it "skips servers with missing env vars and logs a warning" do
+      it "skips servers with missing env vars and collects a warning" do
         ENV.delete("TEST_TOOL_PATH")
 
-        expect(Rails.logger).to receive(:warn).with(/tool.*unset env var.*TEST_TOOL_PATH/)
+        allow(Rails.logger).to receive(:warn)
 
         expect(config.stdio_servers).to eq([])
+        expect(config.warnings).to include(match(/tool.*unset env var.*TEST_TOOL_PATH/))
       end
     end
 
@@ -273,10 +276,11 @@ RSpec.describe Mcp::Config do
         TOML
       end
 
-      it "skips servers without a command and logs a warning" do
-        expect(Rails.logger).to receive(:warn).with(/incomplete.*no command/)
+      it "skips servers without a command and collects a warning" do
+        allow(Rails.logger).to receive(:warn)
 
         expect(config.stdio_servers).to eq([])
+        expect(config.warnings).to include(match(/incomplete.*no command/))
       end
     end
   end

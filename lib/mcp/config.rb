@@ -28,9 +28,14 @@ module Mcp
     # Pattern matching `${VAR_NAME}` for environment variable interpolation.
     ENV_VAR_PATTERN = /\$\{(\w+)\}/
 
+    # Warnings accumulated during parsing (missing env vars, invalid entries).
+    # @return [Array<String>]
+    attr_reader :warnings
+
     # @param path [String] path to the TOML config file
     def initialize(path: DEFAULT_PATH)
       @path = path
+      @warnings = []
     end
 
     # Returns HTTP server configurations from the config file.
@@ -40,7 +45,7 @@ module Mcp
       servers_by_transport("http") do |name, settings|
         url = settings["url"]
         unless url
-          Rails.logger.warn("MCP: server '#{name}' has transport=http but no url — skipping")
+          warn_and_skip("server '#{name}' has transport=http but no url")
           next
         end
 
@@ -59,7 +64,7 @@ module Mcp
       servers_by_transport("stdio") do |name, settings|
         command = settings["command"]
         unless command
-          Rails.logger.warn("MCP: server '#{name}' has transport=stdio but no command — skipping")
+          warn_and_skip("server '#{name}' has transport=stdio but no command")
           next
         end
 
@@ -94,9 +99,16 @@ module Mcp
 
         yield(name, settings)
       rescue KeyError => error
-        Rails.logger.warn("MCP: server '#{name}' references unset env var #{error.message} — skipping")
+        warn_and_skip("server '#{name}' references unset env var #{error.message}")
         nil
       end
+    end
+
+    # Logs a warning and collects it for the caller to surface.
+    def warn_and_skip(detail)
+      message = "MCP: #{detail} — skipping"
+      Rails.logger.warn(message)
+      @warnings << message
     end
 
     # Replaces +${VAR_NAME}+ placeholders with environment variable values.

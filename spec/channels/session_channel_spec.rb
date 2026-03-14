@@ -166,16 +166,17 @@ RSpec.describe SessionChannel, type: :channel do
       expect(history[0]["rendered"]).to eq("verbose" => {"role" => :user, "content" => "hello", "timestamp" => 1})
     end
 
-    it "excludes system_message events from history" do
+    it "includes system_message events in history" do
       session = Session.create!(id: session_id)
       session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
-      session.events.create!(event_type: "system_message", payload: {"type" => "system_message", "content" => "internal"}, timestamp: 2)
+      session.events.create!(event_type: "system_message", payload: {"type" => "system_message", "content" => "MCP: server failed"}, timestamp: 2)
 
       subscribe(session_id: session_id)
 
       history = transmissions.reject { |t| t["action"] }
-      expect(history.size).to eq(1)
-      expect(history[0]).to include("type" => "user_message")
+      expect(history.size).to eq(2)
+      types = history.map { |h| h["type"] }
+      expect(types).to include("system_message")
     end
 
     it "transmits session_changed and view_mode for a session with no messages" do

@@ -268,10 +268,13 @@ RSpec.describe Session do
       expect(session.messages_for_llm).to eq([{role: "assistant", content: "hi there"}])
     end
 
-    it "excludes system_message events" do
-      session.events.create!(event_type: "system_message", payload: {"content" => "boot"}, timestamp: 1)
+    it "includes system_message events as user role with [system] prefix" do
+      session.events.create!(event_type: "system_message", payload: {"content" => "MCP: server failed"}, timestamp: 1)
 
-      expect(session.messages_for_llm).to be_empty
+      messages = session.messages_for_llm
+      expect(messages.size).to eq(1)
+      expect(messages.first[:role]).to eq("user")
+      expect(messages.first[:content]).to eq("[system] MCP: server failed")
     end
 
     context "with tool events" do

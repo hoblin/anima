@@ -6,7 +6,7 @@ RSpec.describe AgentLoop do
   let(:session) { Session.create! }
   let(:shell_session) { ShellSession.new(session_id: session.id) }
   let(:client) { double("LLM::Client") }
-  let(:mcp_manager) { instance_double(Mcp::ClientManager, register_tools: nil) }
+  let(:mcp_manager) { instance_double(Mcp::ClientManager, register_tools: []) }
 
   subject(:agent_loop) { described_class.new(session: session, shell_session: shell_session, client: client) }
 
@@ -400,6 +400,26 @@ RSpec.describe AgentLoop do
       agent_loop.run
 
       expect(mcp_manager).to have_received(:register_tools).with(a_kind_of(Tools::Registry))
+    end
+
+    it "emits system messages for MCP servers that failed to load" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      allow(client).to receive(:chat_with_tools).and_return("ok")
+      allow(mcp_manager).to receive(:register_tools)
+        .and_return(["MCP: failed to load tools from broken: Connection refused"])
+
+      events = []
+      subscriber = double("sub")
+      allow(subscriber).to receive(:emit) { |e| events << e }
+      Events::Bus.subscribe(subscriber)
+
+      agent_loop.run
+
+      system_msgs = events.select { |e| e[:payload][:type] == "system_message" }
+      expect(system_msgs.size).to eq(1)
+      expect(system_msgs.first[:payload][:content]).to include("broken")
+    ensure
+      Events::Bus.unsubscribe(subscriber)
     end
 
     it "registers MCP tools for sub-agent sessions" do

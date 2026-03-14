@@ -22,30 +22,36 @@ module Mcp
       @config = config
     end
 
-    # Connects to all configured MCP servers and registers
-    # their tools in the given registry.
+    # Connects to all configured MCP servers and registers their tools
+    # in the given registry. Returns warnings for servers that failed
+    # to load so the caller can surface them to the user.
     #
     # @param registry [Tools::Registry] the registry to add tools to
-    # @return [void]
+    # @return [Array<String>] warning messages for servers that failed
     def register_tools(registry)
-      register_transport_tools(@config.http_servers, registry) { |server| build_http_client(server) }
-      register_transport_tools(@config.stdio_servers, registry) { |server| build_stdio_client(server) }
+      warnings = []
+      register_transport_tools(@config.http_servers, registry, warnings) { |server| build_http_client(server) }
+      register_transport_tools(@config.stdio_servers, registry, warnings) { |server| build_stdio_client(server) }
+      @config.warnings + warnings
     end
 
     private
 
     # Iterates server configs, builds a client for each via the block,
-    # and registers the server's tools. Failures are logged and skipped.
+    # and registers the server's tools. Failures are logged and collected.
     #
     # @param servers [Array<Hash>] server configs from {Mcp::Config}
     # @param registry [Tools::Registry] registry to register tools in
+    # @param warnings [Array<String>] collects failure messages
     # @yield [server] block that builds an {MCP::Client} for the server
-    def register_transport_tools(servers, registry)
+    def register_transport_tools(servers, registry, warnings)
       servers.each do |server|
         client = yield(server)
         register_server_tools(server[:name], client, registry)
       rescue => error
-        Rails.logger.warn("MCP: failed to load tools from #{server[:name]}: #{error.message}")
+        message = "MCP: failed to load tools from #{server[:name]}: #{error.message}"
+        Rails.logger.warn(message)
+        warnings << message
       end
     end
 

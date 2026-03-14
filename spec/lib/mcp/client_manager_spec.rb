@@ -10,6 +10,7 @@ RSpec.describe Mcp::ClientManager do
   before do
     allow(config).to receive(:http_servers).and_return([])
     allow(config).to receive(:stdio_servers).and_return([])
+    allow(config).to receive(:warnings).and_return([])
   end
 
   describe "#register_tools" do
@@ -189,6 +190,15 @@ RSpec.describe Mcp::ClientManager do
         allow(Rails.logger).to receive(:info)
 
         manager.register_tools(registry)
+      end
+
+      it "returns the warning so the caller can surface it" do
+        allow(Rails.logger).to receive(:warn)
+        allow(Rails.logger).to receive(:info)
+
+        warnings = manager.register_tools(registry)
+
+        expect(warnings).to include(match(/broken.*Connection refused/))
       end
 
       it "continues registering tools from remaining servers" do
