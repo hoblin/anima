@@ -105,6 +105,36 @@ RSpec.describe Tools::ReturnResult do
       end
     end
 
+    context "from a named specialist session" do
+      let(:specialist_session) do
+        Session.create!(
+          parent_session: parent_session,
+          prompt: "You are a code analyst.\n\nExpected deliverable: analysis",
+          name: "analyzer"
+        )
+      end
+
+      subject(:tool) { described_class.new(session: specialist_session) }
+
+      before do
+        specialist_session.events.create!(
+          event_type: "user_message",
+          payload: {"content" => "Analyze the codebase"},
+          timestamp: 1
+        )
+      end
+
+      it "uses spawn_specialist as the tool_name in events" do
+        tool.execute(input)
+
+        call = parent_session.events.find_by(event_type: "tool_call")
+        response = parent_session.events.find_by(event_type: "tool_response")
+
+        expect(call.payload["tool_name"]).to eq("spawn_specialist")
+        expect(response.payload["tool_name"]).to eq("spawn_specialist")
+      end
+    end
+
     context "when called from a main session (no parent)" do
       let(:main_session) { Session.create! }
 

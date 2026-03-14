@@ -18,7 +18,7 @@ module Agents
   #
   #   You are a specialist at understanding HOW code works...
   class Definition
-    # @return [String] unique agent identifier used in spawn_subagent(name: "...")
+    # @return [String] unique agent identifier used in spawn_specialist(name: "...")
     attr_reader :name
 
     # @return [String] description shown to the LLM in the tool catalog

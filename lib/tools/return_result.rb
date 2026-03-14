@@ -44,10 +44,11 @@ module Tools
 
       tool_use_id = "toolu_subagent_#{@session.id}"
       task = extract_task
+      origin_tool = @session.name ? SpawnSpecialist.tool_name : SpawnSubagent.tool_name
 
       Events::Bus.emit(Events::ToolCall.new(
         content: "Sub-agent result (session #{@session.id})",
-        tool_name: SpawnSubagent.tool_name,
+        tool_name: origin_tool,
         tool_input: {"task" => task, "session_id" => @session.id},
         tool_use_id: tool_use_id,
         session_id: parent.id
@@ -55,7 +56,7 @@ module Tools
 
       Events::Bus.emit(Events::ToolResponse.new(
         content: result,
-        tool_name: SpawnSubagent.tool_name,
+        tool_name: origin_tool,
         tool_use_id: tool_use_id,
         session_id: parent.id
       ))

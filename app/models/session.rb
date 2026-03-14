@@ -143,7 +143,7 @@ class Session < ApplicationRecord
 
   # Removes trailing tool_call events that lack matching tool_response.
   # Prevents orphaned tool_use blocks at the parent/child viewport boundary
-  # (the spawn_subagent tool_call is emitted before the child session exists,
+  # (the spawn_subagent/spawn_specialist tool_call is emitted before the child exists,
   # but its tool_response comes after — so the cutoff can split them).
   def trim_trailing_tool_calls(event_list)
     event_list.pop while event_list.last&.event_type == "tool_call"
