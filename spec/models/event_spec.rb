@@ -95,14 +95,14 @@ RSpec.describe Event do
       session.events.create!(event_type: "tool_response", payload: {content: "ok", tool_name: "web_get"}, timestamp: 5)
 
       expect(Event.context_events.pluck(:event_type)).to match_array(
-        %w[user_message agent_message tool_call tool_response]
+        %w[system_message user_message agent_message tool_call tool_response]
       )
     end
 
-    it "excludes system_message events" do
+    it "includes system_message events" do
       session.events.create!(event_type: "system_message", payload: {content: "boot"}, timestamp: 1)
 
-      expect(Event.context_events).to be_empty
+      expect(Event.context_events.pluck(:event_type)).to include("system_message")
     end
   end
 
@@ -136,8 +136,8 @@ RSpec.describe Event do
       expect(Event.new(event_type: "tool_response")).to be_context_event
     end
 
-    it "returns false for system_message" do
-      expect(Event.new(event_type: "system_message")).not_to be_context_event
+    it "returns true for system_message" do
+      expect(Event.new(event_type: "system_message")).to be_context_event
     end
   end
 

@@ -124,13 +124,17 @@ class AgentLoop
   end
 
   # Loads tools from configured MCP servers and adds them to the registry.
-  # Connection failures are logged and skipped — they never prevent
-  # the session from starting.
+  # Warnings are emitted as system messages — visible to both the user
+  # (in verbose mode) and the LLM (via CONTEXT_TYPES) so the agent can
+  # explain config issues instead of guessing.
   #
   # @param registry [Tools::Registry] the registry to add MCP tools to
   # @return [void]
   def register_mcp_tools(registry)
-    Mcp::ClientManager.new.register_tools(registry)
+    warnings = Mcp::ClientManager.new.register_tools(registry)
+    warnings.each do |message|
+      Events::Bus.emit(Events::SystemMessage.new(content: message, session_id: @session.id))
+    end
   end
 
   # Standard tools available to this session.

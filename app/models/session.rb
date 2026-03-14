@@ -229,6 +229,9 @@ class Session < ApplicationRecord
         append_grouped_block(messages, "assistant", tool_use_block(event.payload))
       when "tool_response"
         append_grouped_block(messages, "user", tool_result_block(event.payload))
+      when "system_message"
+        # Wrapped as user role with prefix — Claude API has no system role in conversation history
+        messages << {role: "user", content: "[system] #{event.payload["content"]}"}
       end
     end
   end

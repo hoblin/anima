@@ -133,6 +133,9 @@ module LLM
       end
     end
 
+    # Executes a single tool and always returns a tool_result — even if
+    # the tool raises. The LLM requires every tool_use to have a matching
+    # tool_result; a missing result breaks the conversation permanently.
     def execute_single_tool(tool_use, registry, session_id)
       name = tool_use["name"]
       id = tool_use["id"]
@@ -143,7 +146,13 @@ module LLM
         tool_input: input, tool_use_id: id, session_id: session_id
       ))
 
-      result = registry.execute(name, input)
+      result = begin
+        registry.execute(name, input)
+      rescue => error
+        Rails.logger.error("Tool #{name} raised #{error.class}: #{error.message}")
+        {error: "#{error.class}: #{error.message}"}
+      end
+
       result_content = format_tool_result(result)
 
       Events::Bus.emit(Events::ToolResponse.new(

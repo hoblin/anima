@@ -20,7 +20,7 @@ class Event < ApplicationRecord
 
   TYPES = %w[system_message user_message agent_message tool_call tool_response].freeze
   LLM_TYPES = %w[user_message agent_message].freeze
-  CONTEXT_TYPES = %w[user_message agent_message tool_call tool_response].freeze
+  CONTEXT_TYPES = %w[system_message user_message agent_message tool_call tool_response].freeze
   PENDING_STATUS = "pending"
 
   ROLE_MAP = {"user_message" => "user", "agent_message" => "assistant"}.freeze

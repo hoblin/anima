@@ -114,11 +114,14 @@ RSpec.describe Mcp::Config do
         ENV.delete("TEST_MCP_TOKEN")
       end
 
-      it "raises KeyError for missing environment variables" do
+      it "skips servers with missing env vars and collects a warning" do
         ENV.delete("TEST_MCP_HOST")
         ENV.delete("TEST_MCP_TOKEN")
 
-        expect { config.http_servers }.to raise_error(KeyError, /TEST_MCP_HOST/)
+        allow(Rails.logger).to receive(:warn)
+
+        expect(config.http_servers).to eq([])
+        expect(config.warnings).to include(match(/api.*unset env var.*TEST_MCP_HOST/))
       end
     end
 
@@ -130,10 +133,11 @@ RSpec.describe Mcp::Config do
         TOML
       end
 
-      it "skips servers without a url and logs a warning" do
-        expect(Rails.logger).to receive(:warn).with(/incomplete.*no url/)
+      it "skips servers without a url and collects a warning" do
+        allow(Rails.logger).to receive(:warn)
 
         expect(config.http_servers).to eq([])
+        expect(config.warnings).to include(match(/incomplete.*no url/))
       end
     end
 
@@ -158,6 +162,125 @@ RSpec.describe Mcp::Config do
 
         expect(servers.size).to eq(1)
         expect(servers.first[:name]).to eq("valid")
+      end
+    end
+  end
+
+  describe "#stdio_servers" do
+    context "when config file does not exist" do
+      let(:config_path) { File.join(config_dir, "nonexistent.toml") }
+
+      it "returns an empty array" do
+        expect(config.stdio_servers).to eq([])
+      end
+    end
+
+    context "with stdio server entries" do
+      before do
+        File.write(config_path, <<~TOML)
+          [servers.filesystem]
+          transport = "stdio"
+          command = "mcp-server-filesystem"
+          args = ["--root", "/workspace"]
+          env = { DEBUG = "true" }
+
+          [servers.linear_toon]
+          transport = "stdio"
+          command = "linear-toon-mcp"
+        TOML
+      end
+
+      it "returns all stdio server configs" do
+        expect(config.stdio_servers.size).to eq(2)
+      end
+
+      it "parses command, args, and env" do
+        fs = config.stdio_servers.find { |s| s[:name] == "filesystem" }
+
+        expect(fs[:command]).to eq("mcp-server-filesystem")
+        expect(fs[:args]).to eq(["--root", "/workspace"])
+        expect(fs[:env]).to eq({"DEBUG" => "true"})
+      end
+
+      it "defaults args to empty array and env to empty hash" do
+        lt = config.stdio_servers.find { |s| s[:name] == "linear_toon" }
+
+        expect(lt[:args]).to eq([])
+        expect(lt[:env]).to eq({})
+      end
+    end
+
+    context "with non-stdio transports" do
+      before do
+        File.write(config_path, <<~TOML)
+          [servers.web_api]
+          transport = "http"
+          url = "http://localhost:8080/mcp"
+
+          [servers.local_tool]
+          transport = "stdio"
+          command = "my-tool"
+        TOML
+      end
+
+      it "skips non-stdio servers silently" do
+        servers = config.stdio_servers
+
+        expect(servers.size).to eq(1)
+        expect(servers.first[:name]).to eq("local_tool")
+      end
+    end
+
+    context "with environment variable interpolation" do
+      before do
+        File.write(config_path, <<~TOML)
+          [servers.tool]
+          transport = "stdio"
+          command = "${TEST_TOOL_PATH}/my-tool"
+          args = ["--config", "${TEST_CONFIG_DIR}/config.yml"]
+          env = { API_KEY = "${TEST_API_KEY}" }
+        TOML
+      end
+
+      it "interpolates env vars in command, args, and env values" do
+        ENV["TEST_TOOL_PATH"] = "/usr/local/bin"
+        ENV["TEST_CONFIG_DIR"] = "/etc/my-tool"
+        ENV["TEST_API_KEY"] = "secret-abc"
+
+        server = config.stdio_servers.first
+
+        expect(server[:command]).to eq("/usr/local/bin/my-tool")
+        expect(server[:args]).to eq(["--config", "/etc/my-tool/config.yml"])
+        expect(server[:env]).to eq({"API_KEY" => "secret-abc"})
+      ensure
+        ENV.delete("TEST_TOOL_PATH")
+        ENV.delete("TEST_CONFIG_DIR")
+        ENV.delete("TEST_API_KEY")
+      end
+
+      it "skips servers with missing env vars and collects a warning" do
+        ENV.delete("TEST_TOOL_PATH")
+
+        allow(Rails.logger).to receive(:warn)
+
+        expect(config.stdio_servers).to eq([])
+        expect(config.warnings).to include(match(/tool.*unset env var.*TEST_TOOL_PATH/))
+      end
+    end
+
+    context "with server missing command" do
+      before do
+        File.write(config_path, <<~TOML)
+          [servers.incomplete]
+          transport = "stdio"
+        TOML
+      end
+
+      it "skips servers without a command and collects a warning" do
+        allow(Rails.logger).to receive(:warn)
+
+        expect(config.stdio_servers).to eq([])
+        expect(config.warnings).to include(match(/incomplete.*no command/))
       end
     end
   end

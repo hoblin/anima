@@ -11,7 +11,7 @@ RSpec.describe AgentRequestJob do
       .with(:anthropic, :subscription_token)
       .and_return(valid_token)
     allow(Mcp::ClientManager).to receive(:new)
-      .and_return(instance_double(Mcp::ClientManager, register_tools: nil))
+      .and_return(instance_double(Mcp::ClientManager, register_tools: []))
   end
 
   describe "retry configuration" do

@@ -61,13 +61,21 @@ module Anima
 
       config_path.write(<<~TOML)
         # MCP server configuration
-        # Declare HTTP MCP servers here. Anima connects on startup and
+        # Declare MCP servers here. Anima connects on startup and
         # registers their tools alongside built-in ones.
         #
+        # HTTP transport:
         # [servers.example]
         # transport = "http"
         # url = "http://localhost:3000/mcp/v2"
         # headers = { Authorization = "Bearer ${API_KEY}" }
+        #
+        # Stdio transport:
+        # [servers.example]
+        # transport = "stdio"
+        # command = "my-mcp-server"
+        # args = ["--verbose"]
+        # env = { API_KEY = "${API_KEY}" }
       TOML
       say "  created #{config_path}"
     end
