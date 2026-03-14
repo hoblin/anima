@@ -294,8 +294,7 @@ class SessionChannel < ApplicationCable::Channel
   end
 
   # Merges the Anthropic subscription token into encrypted credentials,
-  # preserving existing keys (e.g. secret_key_base). Clears the memoized
-  # config so subsequent reads pick up the new token.
+  # preserving existing keys (e.g. secret_key_base).
   #
   # @param token [String] validated Anthropic subscription token
   # @return [void]
@@ -309,6 +308,9 @@ class SessionChannel < ApplicationCable::Channel
     existing["anthropic"] ||= {}
     existing["anthropic"]["subscription_token"] = token
     creds.write(existing.to_yaml)
+    # Rails memoizes the decrypted config in @config. Without clearing it,
+    # subsequent credential reads return stale data. No public API exists
+    # for cache invalidation as of Rails 7.2.
     creds.instance_variable_set(:@config, nil)
   end
 

@@ -533,6 +533,11 @@ RSpec.describe TUI::App do
         expect(masked).to include("****...")
       end
 
+      it "returns unmasked text when exactly TOKEN_MASK_VISIBLE length" do
+        token = "x" * TUI::App::TOKEN_MASK_VISIBLE
+        expect(app.send(:mask_token, token)).to eq(token)
+      end
+
       it "shows exactly TOKEN_MASK_VISIBLE characters unmasked" do
         token = "sk-ant-oat01-#{"x" * 67}"
         masked = app.send(:mask_token, token)

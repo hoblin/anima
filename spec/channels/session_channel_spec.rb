@@ -489,8 +489,8 @@ RSpec.describe SessionChannel, type: :channel do
 
     context "with valid token" do
       before do
-        allow(Providers::Anthropic).to receive(:validate_token_format!).and_return(true)
-        allow(Providers::Anthropic).to receive(:validate_token_api!).and_return(true)
+        allow(Providers::Anthropic).to receive(:validate_token_format!)
+        allow(Providers::Anthropic).to receive(:validate_token_api!)
 
         creds = double("credentials")
         allow(creds).to receive(:read).and_return("secret_key_base: abc123\n")
@@ -526,6 +526,21 @@ RSpec.describe SessionChannel, type: :channel do
 
         perform(:save_token, {"token" => valid_token})
       end
+
+      it "handles missing credentials file gracefully" do
+        creds = Rails.application.credentials
+        allow(creds).to receive(:read).and_raise(ActiveSupport::EncryptedFile::MissingContentError.new("credentials.yml.enc"))
+
+        expect(creds).to receive(:write) do |yaml_content|
+          parsed = YAML.safe_load(yaml_content)
+          expect(parsed["anthropic"]["subscription_token"]).to eq(valid_token)
+        end
+
+        perform(:save_token, {"token" => valid_token})
+
+        saved = transmissions.find { |t| t["action"] == "token_saved" }
+        expect(saved).to be_present
+      end
     end
 
     context "with invalid format" do
@@ -555,7 +570,7 @@ RSpec.describe SessionChannel, type: :channel do
 
     context "with API validation failure" do
       before do
-        allow(Providers::Anthropic).to receive(:validate_token_format!).and_return(true)
+        allow(Providers::Anthropic).to receive(:validate_token_format!)
         allow(Providers::Anthropic).to receive(:validate_token_api!)
           .and_raise(Providers::Anthropic::AuthenticationError, "Token rejected by Anthropic API (401)")
       end

@@ -42,13 +42,21 @@ module TUI
     }.freeze
 
     # Number of leading characters to show unmasked in the token input.
-    # Covers the "sk-ant-oat01-" prefix so the user can verify the token type.
+    # Matches the "sk-ant-oat01-" prefix (13 chars) plus one character of the
+    # secret portion so the user can verify both the token type and start of key.
     TOKEN_MASK_VISIBLE = 14
 
-    # Token setup popup dimensions
+    # Maximum stars to show in the masked portion of the token.
+    # Keeps the masked display compact regardless of actual token length.
+    TOKEN_MASK_STARS = 4
+
+    # Token setup popup dimensions. Height accommodates: status line, blank,
+    # 2 instruction lines, blank, "Token:" label, input line, blank,
+    # error/success line, blank, hint line, plus top/bottom borders.
     POPUP_HEIGHT = 14
     POPUP_MIN_WIDTH = 44
 
+    # Matches a single printable Unicode character (no control codes).
     PRINTABLE_CHAR = /\A[[:print:]]\z/
 
     # Signals that trigger graceful shutdown when received from the OS.
@@ -66,7 +74,9 @@ module TUI
     WATCHDOG_SHUTDOWN_TIMEOUT = 1
 
     attr_reader :current_screen, :command_mode, :session_picker_active,
-      :view_mode_picker_active, :token_setup_active
+      :view_mode_picker_active
+    # @return [Boolean] true when the token setup popup overlay is visible
+    attr_reader :token_setup_active
     # @return [Boolean] true when graceful shutdown has been requested via signal
     attr_reader :shutdown_requested
 
@@ -582,8 +592,9 @@ module TUI
 
     # -- Token setup popup -----------------------------------------------
 
-    # Opens the token setup popup. Can be triggered manually via Ctrl+a > a
-    # or automatically when the brain broadcasts authentication_required.
+    # Opens the token setup popup and resets all input state.
+    # Can be triggered manually via Ctrl+a > a or automatically when the
+    # brain broadcasts authentication_required.
     # @return [void]
     def activate_token_setup
       @token_setup_active = true
@@ -603,6 +614,12 @@ module TUI
 
     # Polls the chat screen for authentication signals and token save results.
     # Called every render frame so the popup reacts to server responses.
+    #
+    # State transitions:
+    #   authentication_required signal → activates popup (if not already open)
+    #   token_saved result             → @token_setup_status becomes :success
+    #   token_error result             → @token_setup_status becomes :error
+    #
     # @return [void]
     def check_token_setup_signals
       chat = @screens[:chat]
@@ -819,7 +836,7 @@ module TUI
       return token if token.length <= TOKEN_MASK_VISIBLE
 
       visible = token[0...TOKEN_MASK_VISIBLE]
-      hidden_count = [token.length - TOKEN_MASK_VISIBLE, 4].min
+      hidden_count = [token.length - TOKEN_MASK_VISIBLE, TOKEN_MASK_STARS].min
       "#{visible}#{"*" * hidden_count}..."
     end
 
@@ -841,7 +858,8 @@ module TUI
       input_line_offset = 7 # border (1) + 6 content lines
 
       masked = mask_token(@token_input_buffer.text)
-      cursor_x = popup_area.x + 1 + 2 + masked.length # border + "> " + text
+      prompt_width = 2 # "> " prefix before the masked token text
+      cursor_x = popup_area.x + 1 + prompt_width + masked.length # border + prompt + text
       cursor_y = popup_area.y + input_line_offset
 
       return unless cursor_x < popup_area.x + popup_area.width - 1 &&
