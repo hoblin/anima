@@ -4,8 +4,9 @@ require "rails_helper"
 
 RSpec.describe Tools::SpawnSubagent do
   let!(:parent_session) { Session.create! }
+  let(:agent_registry) { Agents::Registry.new }
 
-  subject(:tool) { described_class.new(session: parent_session) }
+  subject(:tool) { described_class.new(session: parent_session, agent_registry: agent_registry) }
 
   describe ".tool_name" do
     it "returns spawn_subagent" do
@@ -17,6 +18,12 @@ RSpec.describe Tools::SpawnSubagent do
     it "returns a non-empty description" do
       expect(described_class.description).to be_a(String)
       expect(described_class.description).not_to be_empty
+    end
+
+    it "includes available specialists when agents are registered" do
+      description = described_class.description
+
+      expect(description).to include("Available specialists")
     end
   end
 
@@ -45,6 +52,16 @@ RSpec.describe Tools::SpawnSubagent do
         expect(description).to include(name)
       end
     end
+
+    it "includes name property with enum when agents are registered" do
+      schema = described_class.input_schema
+      name_prop = schema[:properties][:name]
+
+      expect(name_prop).not_to be_nil
+      expect(name_prop[:type]).to eq("string")
+      expect(name_prop[:enum]).to be_a(Array)
+      expect(name_prop[:enum]).not_to be_empty
+    end
   end
 
   describe ".schema" do
@@ -63,51 +80,53 @@ RSpec.describe Tools::SpawnSubagent do
       }
     end
 
-    it "creates a child session with parent reference" do
-      expect { tool.execute(input) }.to change(Session, :count).by(1)
+    context "generic sub-agent (no name)" do
+      it "creates a child session with parent reference" do
+        expect { tool.execute(input) }.to change(Session, :count).by(1)
 
-      child = Session.last
-      expect(child.parent_session).to eq(parent_session)
-    end
+        child = Session.last
+        expect(child.parent_session).to eq(parent_session)
+      end
 
-    it "sets the child session's system prompt" do
-      tool.execute(input)
+      it "sets the child session's generic system prompt" do
+        tool.execute(input)
 
-      child = Session.last
-      expect(child.prompt).to include("focused sub-agent")
-      expect(child.prompt).to include("Expected deliverable: A summary of how tools are dispatched")
-    end
+        child = Session.last
+        expect(child.prompt).to include("focused sub-agent")
+        expect(child.prompt).to include("Expected deliverable: A summary of how tools are dispatched")
+      end
 
-    it "emits a user_message event in the child session" do
-      collector = Events::Subscribers::MessageCollector.new
-      Events::Bus.subscribe(collector)
+      it "emits a user_message event in the child session" do
+        collector = Events::Subscribers::MessageCollector.new
+        Events::Bus.subscribe(collector)
 
-      tool.execute(input)
+        tool.execute(input)
 
-      user_messages = collector.messages.select { |m| m[:role] == "user" }
-      expect(user_messages.last[:content]).to eq("Read lib/agent_loop.rb and summarize the tool execution flow")
-    ensure
-      Events::Bus.unsubscribe(collector)
-    end
+        user_messages = collector.messages.select { |m| m[:role] == "user" }
+        expect(user_messages.last[:content]).to eq("Read lib/agent_loop.rb and summarize the tool execution flow")
+      ensure
+        Events::Bus.unsubscribe(collector)
+      end
 
-    it "enqueues AgentRequestJob for the child session" do
-      tool.execute(input)
+      it "enqueues AgentRequestJob for the child session" do
+        tool.execute(input)
 
-      child = Session.last
-      expect(AgentRequestJob).to have_been_enqueued.with(child.id)
-    end
+        child = Session.last
+        expect(AgentRequestJob).to have_been_enqueued.with(child.id)
+      end
 
-    it "returns confirmation with child session ID" do
-      result = tool.execute(input)
+      it "returns confirmation with child session ID" do
+        result = tool.execute(input)
 
-      child = Session.last
-      expect(result).to include("Sub-agent spawned")
-      expect(result).to include("session #{child.id}")
-    end
+        child = Session.last
+        expect(result).to include("Sub-agent spawned")
+        expect(result).to include("session #{child.id}")
+      end
 
-    it "returns immediately (non-blocking)" do
-      result = tool.execute(input)
-      expect(result).to be_a(String)
+      it "returns immediately (non-blocking)" do
+        result = tool.execute(input)
+        expect(result).to be_a(String)
+      end
     end
 
     context "with blank task" do
@@ -129,7 +148,7 @@ RSpec.describe Tools::SpawnSubagent do
       end
     end
 
-    context "tool restriction" do
+    context "tool restriction (generic)" do
       it "stores granted_tools as nil when tools parameter is omitted" do
         tool.execute(input)
 
@@ -194,6 +213,117 @@ RSpec.describe Tools::SpawnSubagent do
 
         expect(result).to be_a(String)
         expect(result).to include("Sub-agent spawned")
+      end
+    end
+
+    context "named sub-agent" do
+      let(:tmp_dir) { Dir.mktmpdir }
+
+      let(:agent_registry) do
+        registry = Agents::Registry.new
+        registry.load_directory(tmp_dir)
+        registry
+      end
+
+      after { FileUtils.remove_entry(tmp_dir) }
+
+      before do
+        File.write(File.join(tmp_dir, "analyzer.md"), <<~MD)
+          ---
+          name: analyzer
+          description: Analyzes code
+          tools: read, bash
+          ---
+
+          You are a code analysis specialist. Examine implementation details carefully.
+        MD
+      end
+
+      it "creates a child session with the agent's predefined tools" do
+        tool.execute(input.merge("name" => "analyzer"))
+
+        child = Session.last
+        expect(child.granted_tools).to eq(%w[read bash])
+      end
+
+      it "uses the agent's system prompt instead of the generic prompt" do
+        tool.execute(input.merge("name" => "analyzer"))
+
+        child = Session.last
+        expect(child.prompt).to include("code analysis specialist")
+        expect(child.prompt).not_to include("focused sub-agent")
+      end
+
+      it "appends the return_result instruction to the agent's prompt" do
+        tool.execute(input.merge("name" => "analyzer"))
+
+        child = Session.last
+        expect(child.prompt).to include("call the return_result tool")
+      end
+
+      it "appends the expected deliverable to the prompt" do
+        tool.execute(input.merge("name" => "analyzer"))
+
+        child = Session.last
+        expect(child.prompt).to include("Expected deliverable: A summary of how tools are dispatched")
+      end
+
+      it "returns confirmation including the agent name" do
+        result = tool.execute(input.merge("name" => "analyzer"))
+
+        expect(result).to include("Sub-agent 'analyzer' spawned")
+        expect(result).to include("session #{Session.last.id}")
+      end
+
+      it "enqueues AgentRequestJob for the child session" do
+        tool.execute(input.merge("name" => "analyzer"))
+
+        child = Session.last
+        expect(AgentRequestJob).to have_been_enqueued.with(child.id)
+      end
+
+      it "ignores the tools parameter when name is provided" do
+        tool.execute(input.merge("name" => "analyzer", "tools" => ["web_get", "write"]))
+
+        child = Session.last
+        expect(child.granted_tools).to eq(%w[read bash])
+      end
+
+      it "returns error for unknown agent names" do
+        result = tool.execute(input.merge("name" => "nonexistent"))
+
+        expect(result).to eq({error: "Unknown agent: nonexistent"})
+      end
+
+      it "does not create a child session for unknown agent names" do
+        expect { tool.execute(input.merge("name" => "nonexistent")) }
+          .not_to change(Session, :count)
+      end
+
+      it "treats blank name as generic sub-agent" do
+        tool.execute(input.merge("name" => "  "))
+
+        child = Session.last
+        expect(child.prompt).to include("focused sub-agent")
+      end
+
+      context "with invalid tools in agent definition" do
+        it "rejects the agent at load time (never reaches spawn)" do
+          File.write(File.join(tmp_dir, "bad-tools.md"), <<~MD)
+            ---
+            name: bad-tools
+            description: Agent with invalid tools
+            tools: read, teleport
+            ---
+
+            Bad agent prompt.
+          MD
+
+          expect { agent_registry.load_directory(tmp_dir) }
+            .to output(/Unknown tools in 'bad-tools': teleport/).to_stderr
+
+          expect(agent_registry.get("bad-tools")).to be_nil
+        end
       end
     end
   end
