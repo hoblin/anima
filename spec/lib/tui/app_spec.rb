@@ -851,10 +851,34 @@ RSpec.describe TUI::App do
   end
 
   describe "connection status" do
-    it "defines styles for all connection states including reconnecting" do
-      expect(TUI::App::STATUS_STYLES).to include(
+    it "defines styles for all connection states" do
+      expect(TUI::App::STATUS_STYLES.keys).to contain_exactly(
         :disconnected, :connecting, :connected, :subscribed, :reconnecting
       )
+    end
+
+    it "uses emoji-only label for subscribed (normal) state" do
+      expect(TUI::App::STATUS_STYLES[:subscribed][:label]).to eq("🟢")
+    end
+
+    it "uses red emoji with text for disconnected state" do
+      style = TUI::App::STATUS_STYLES[:disconnected]
+      expect(style[:label]).to eq("🔴 Disconnected")
+      expect(style[:color]).to eq("red")
+    end
+
+    it "uses yellow emoji with text for connecting states" do
+      %i[connecting connected].each do |state|
+        style = TUI::App::STATUS_STYLES[state]
+        expect(style[:label]).to eq("🟡 Connecting")
+        expect(style[:color]).to eq("yellow")
+      end
+    end
+
+    it "uses yellow emoji with text for reconnecting state" do
+      style = TUI::App::STATUS_STYLES[:reconnecting]
+      expect(style[:label]).to eq("🟡 Reconnecting")
+      expect(style[:color]).to eq("yellow")
     end
   end
 end

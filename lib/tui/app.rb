@@ -32,13 +32,14 @@ module TUI
       "debug" => "Full LLM context"
     }.freeze
 
-    # Connection status display styles
+    # Connection status emoji indicators for the info panel.
+    # Subscribed (normal state) shows only the emoji; other states add text.
     STATUS_STYLES = {
-      disconnected: {label: " DISCONNECTED ", fg: "white", bg: "red"},
-      connecting: {label: " CONNECTING ", fg: "black", bg: "yellow"},
-      connected: {label: " CONNECTED ", fg: "black", bg: "yellow"},
-      subscribed: {label: " CONNECTED ", fg: "black", bg: "green"},
-      reconnecting: {label: " RECONNECTING ", fg: "black", bg: "yellow"}
+      disconnected: {label: "🔴 Disconnected", color: "red"},
+      connecting: {label: "🟡 Connecting", color: "yellow"},
+      connected: {label: "🟡 Connecting", color: "yellow"},
+      subscribed: {label: "🟢", color: "green"},
+      reconnecting: {label: "🟡 Reconnecting", color: "yellow"}
     }.freeze
 
     # Number of leading characters to show unmasked in the token input.
@@ -230,22 +231,22 @@ module TUI
     end
 
     # Builds the connection status line for the info panel.
+    # Shows a single emoji for the normal (subscribed) state; adds descriptive
+    # text only when something requires attention.
     def connection_status_line(tui)
       cable_status = @cable_client.status
+      style = STATUS_STYLES.fetch(cable_status, STATUS_STYLES[:disconnected])
 
-      if cable_status == :reconnecting
+      label = if cable_status == :reconnecting
         attempt = @cable_client.reconnect_attempt
         max = CableClient::MAX_RECONNECT_ATTEMPTS
-        label = "Reconnecting (#{attempt}/#{max})"
-        color = "yellow"
+        "#{style[:label]} (#{attempt}/#{max})"
       else
-        style = STATUS_STYLES.fetch(cable_status, STATUS_STYLES[:disconnected])
-        label = style[:label].strip
-        color = style[:bg]
+        style[:label]
       end
 
       tui.line(spans: [
-        tui.span(content: label, style: tui.style(fg: color, modifiers: [:bold]))
+        tui.span(content: label, style: tui.style(fg: style[:color], modifiers: [:bold]))
       ])
     end
 
