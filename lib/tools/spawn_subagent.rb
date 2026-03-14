@@ -30,6 +30,13 @@ module Tools
           expected_output: {
             type: "string",
             description: "Description of the expected deliverable"
+          },
+          tools: {
+            type: "array",
+            items: {type: "string"},
+            description: "Tool names to grant the sub-agent. " \
+              "Omit for all standard tools. Empty array for pure reasoning (return_result only). " \
+              "Valid tools: #{AgentLoop::STANDARD_TOOLS_BY_NAME.keys.join(", ")}"
           }
         },
         required: %w[task expected_output]
@@ -44,16 +51,20 @@ module Tools
     # Creates a child session, emits the task as a user message, and
     # queues background processing. Returns immediately (non-blocking).
     #
-    # @param input [Hash<String, Object>] with "task" and "expected_output" keys
+    # @param input [Hash<String, Object>] with "task", "expected_output", and optional "tools" keys
     # @return [String] confirmation with child session ID
-    # @return [Hash] with :error key on validation failure
+    # @return [Hash{Symbol => String}] with :error key on validation failure
     def execute(input)
       task = input["task"].to_s.strip
       expected_output = input["expected_output"].to_s.strip
+      tools = normalize_tools(input["tools"])
       return {error: "Task cannot be blank"} if task.empty?
       return {error: "Expected output cannot be blank"} if expected_output.empty?
 
-      child = create_child_session(expected_output)
+      error = validate_tools(tools)
+      return error if error
+
+      child = create_child_session(expected_output, granted_tools: tools)
       emit_task(child, task)
       AgentRequestJob.perform_later(child.id)
 
@@ -62,10 +73,35 @@ module Tools
 
     private
 
-    def create_child_session(expected_output)
+    # Normalizes tool names to lowercase and removes duplicates.
+    # Returns non-array values unchanged for {#validate_tools} to catch.
+    #
+    # @param tools [Array, nil, Object] raw tools parameter from LLM
+    # @return [Array<String>, nil, Object] normalized tools
+    def normalize_tools(tools)
+      return nil unless tools
+      return tools unless tools.is_a?(Array)
+
+      tools.map { |t| t.to_s.downcase }.uniq
+    end
+
+    # @param tools [Array<String>, nil, Object] normalized tools parameter
+    # @return [Hash{Symbol => String}, nil] error hash if invalid, nil if valid
+    def validate_tools(tools)
+      return nil unless tools
+      return {error: "tools must be an array"} unless tools.is_a?(Array)
+
+      unknown = tools - AgentLoop::STANDARD_TOOLS_BY_NAME.keys
+      return {error: "Unknown tool: #{unknown.first}"} if unknown.any?
+
+      nil
+    end
+
+    def create_child_session(expected_output, granted_tools: nil)
       Session.create!(
         parent_session_id: @session.id,
-        prompt: build_prompt(expected_output)
+        prompt: build_prompt(expected_output),
+        granted_tools: granted_tools
       )
     end
 

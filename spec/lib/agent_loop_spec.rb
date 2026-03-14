@@ -280,6 +280,64 @@ RSpec.describe AgentLoop do
       sub_loop.run
       sub_loop.finalize
     end
+
+    context "with tool restriction" do
+      it "registers only granted tools for restricted sub-agents" do
+        parent = Session.create!
+        child = Session.create!(parent_session: parent, prompt: "reader agent", granted_tools: ["read", "web_get"])
+        child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
+
+        sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
+        allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
+          expect(registry.registered?("read")).to be true
+          expect(registry.registered?("web_get")).to be true
+          expect(registry.registered?("bash")).to be false
+          expect(registry.registered?("write")).to be false
+          expect(registry.registered?("edit")).to be false
+          expect(registry.registered?("return_result")).to be true
+          "done"
+        end
+
+        sub_loop.run
+        sub_loop.finalize
+      end
+
+      it "registers only return_result for empty tools array (pure reasoning)" do
+        parent = Session.create!
+        child = Session.create!(parent_session: parent, prompt: "thinker agent", granted_tools: [])
+        child.events.create!(event_type: "user_message", payload: {"content" => "think"}, timestamp: 1)
+
+        sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
+        allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
+          expect(registry.registered?("return_result")).to be true
+          AgentLoop::STANDARD_TOOLS_BY_NAME.each_key do |name|
+            expect(registry.registered?(name)).to be false
+          end
+          "done"
+        end
+
+        sub_loop.run
+        sub_loop.finalize
+      end
+
+      it "registers all standard tools when granted_tools is nil (backward compatible)" do
+        parent = Session.create!
+        child = Session.create!(parent_session: parent, prompt: "full agent")
+        child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
+
+        sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
+        allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
+          AgentLoop::STANDARD_TOOLS_BY_NAME.each_key do |name|
+            expect(registry.registered?(name)).to be true
+          end
+          expect(registry.registered?("return_result")).to be true
+          "done"
+        end
+
+        sub_loop.run
+        sub_loop.finalize
+      end
+    end
   end
 
   describe "system prompt" do
