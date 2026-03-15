@@ -19,7 +19,7 @@ RSpec.describe Anima::Settings do
       "session" => {"name_generation_interval" => 30},
       "analytical_brain" => {"max_tokens" => 128, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "event_window" => 20},
       "environment" => {"project_files" => ["CLAUDE.md", "AGENTS.md", "README.md", "CONTRIBUTING.md"], "project_files_max_depth" => 3},
-      "github" => {"repo" => "hoblin/anima"}
+      "github" => {"repo" => "hoblin/anima", "label" => "anima-wants"}
     }
   end
 
@@ -68,6 +68,7 @@ RSpec.describe Anima::Settings do
 
     it "reads GitHub settings" do
       expect(described_class.github_repo).to eq("hoblin/anima")
+      expect(described_class.github_label).to eq("anima-wants")
     end
   end
 

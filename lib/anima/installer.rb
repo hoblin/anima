@@ -158,6 +158,9 @@ module Anima
         # Falls back to parsing git remote origin when unset.
         repo = "hoblin/anima"
 
+        # Label applied to agent-created feature request issues.
+        label = "anima-wants"
+
         # ─── Paths ─────────────────────────────────────────────────────
 
         [paths]

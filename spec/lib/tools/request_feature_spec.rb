@@ -14,7 +14,7 @@ RSpec.describe Tools::RequestFeature do
   describe ".description" do
     it "returns a motivational, non-empty description" do
       expect(described_class.description).to be_a(String)
-      expect(described_class.description).to include("anima-wants")
+      expect(described_class.description).not_to be_empty
     end
   end
 
@@ -41,6 +41,7 @@ RSpec.describe Tools::RequestFeature do
 
     before do
       allow(Anima::Settings).to receive(:github_repo).and_return("hoblin/anima")
+      allow(Anima::Settings).to receive(:github_label).and_return("anima-wants")
     end
 
     context "with valid input" do
@@ -58,6 +59,21 @@ RSpec.describe Tools::RequestFeature do
           "description" => "I tried to inspect a nested data structure but lack a zoom tool."
         )
         expect(result).to eq("https://github.com/hoblin/anima/issues/999")
+      end
+    end
+
+    context "when gh produces both stdout and stderr on success" do
+      before do
+        allow(Open3).to receive(:capture3)
+          .and_return(["https://github.com/hoblin/anima/issues/42\n",
+            "Creating issue in hoblin/anima\n",
+            instance_double(Process::Status, exitstatus: 0)])
+      end
+
+      it "returns both stdout and stderr" do
+        result = tool.execute("title" => "Feature", "description" => "Details")
+        expect(result).to include("https://github.com/hoblin/anima/issues/42")
+        expect(result).to include("Creating issue in hoblin/anima")
       end
     end
 
@@ -89,6 +105,20 @@ RSpec.describe Tools::RequestFeature do
       end
     end
 
+    context "with nil title" do
+      it "returns an error" do
+        result = tool.execute("description" => "details")
+        expect(result).to eq({error: "Title cannot be blank"})
+      end
+    end
+
+    context "with nil description" do
+      it "returns an error" do
+        result = tool.execute("title" => "Feature")
+        expect(result).to eq({error: "Description cannot be blank"})
+      end
+    end
+
     context "repo resolution" do
       context "when config.toml has [github] repo" do
         before do
@@ -101,6 +131,24 @@ RSpec.describe Tools::RequestFeature do
           tool.execute("title" => "Feature", "description" => "Details")
           expect(Open3).to have_received(:capture3)
             .with("gh", "issue", "create", "--repo", "other/repo",
+              "--label", "anima-wants", "--title", "Feature", "--body", "Details")
+        end
+      end
+
+      context "when config.toml repo is an empty string" do
+        before do
+          allow(Anima::Settings).to receive(:github_repo).and_return("  ")
+          allow(Open3).to receive(:capture2)
+            .with("git", "remote", "get-url", "origin")
+            .and_return(["https://github.com/hoblin/anima.git\n", instance_double(Process::Status, exitstatus: 0)])
+          allow(Open3).to receive(:capture3)
+            .and_return([issue_url, "", instance_double(Process::Status, exitstatus: 0)])
+        end
+
+        it "falls back to git remote origin" do
+          tool.execute("title" => "Feature", "description" => "Details")
+          expect(Open3).to have_received(:capture3)
+            .with("gh", "issue", "create", "--repo", "hoblin/anima",
               "--label", "anima-wants", "--title", "Feature", "--body", "Details")
         end
       end
@@ -169,6 +217,21 @@ RSpec.describe Tools::RequestFeature do
           expect(result).to be_a(Hash)
           expect(result[:error]).to include("Cannot determine repository")
         end
+      end
+    end
+
+    context "label from settings" do
+      before do
+        allow(Anima::Settings).to receive(:github_label).and_return("custom-label")
+        allow(Open3).to receive(:capture3)
+          .and_return([issue_url, "", instance_double(Process::Status, exitstatus: 0)])
+      end
+
+      it "uses the configured label" do
+        tool.execute("title" => "Feature", "description" => "Details")
+        expect(Open3).to have_received(:capture3)
+          .with("gh", "issue", "create", "--repo", "hoblin/anima",
+            "--label", "custom-label", "--title", "Feature", "--body", "Details")
       end
     end
   end

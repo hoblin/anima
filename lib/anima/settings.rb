@@ -155,6 +155,10 @@ module Anima
       # @return [String]
       def github_repo = get("github", "repo")
 
+      # Label applied to agent-created feature request issues.
+      # @return [String]
+      def github_label = get("github", "label")
+
       # ─── Analytical Brain ─────────────────────────────────────────
 
       # Maximum tokens per analytical brain response.

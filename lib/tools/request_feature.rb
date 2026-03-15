@@ -5,21 +5,24 @@ require "open3"
 module Tools
   # Creates a GitHub issue via the +gh+ CLI, letting the agent request
   # capabilities it discovers are missing during real work. Every issue
-  # is tagged +anima-wants+ so the developer can filter agent-originated
-  # requests from human ones.
+  # is tagged with the label from +[github] label+ in +config.toml+ so
+  # the developer can filter agent-originated requests from human ones.
   #
   # The repository is read from +[github] repo+ in +config.toml+; when
   # unset, the tool falls back to parsing the +origin+ remote URL.
   #
   # @see https://github.com/hoblin/anima/issues/103
   class RequestFeature < Base
+    # @return [String] tool identifier used in the Anthropic API schema
     def self.tool_name = "request_feature"
 
+    # @return [String] motivational description shown to the LLM
     def self.description
       "Don't have the right tool for this task? Request it! " \
-        "Creates a GitHub issue tagged 'anima-wants' so the developer knows what you need."
+        "Creates a GitHub issue so the developer knows what you need."
     end
 
+    # @return [Hash] JSON Schema for the tool's input parameters
     def self.input_schema
       {
         type: "object",
@@ -32,8 +35,8 @@ module Tools
     end
 
     # @param input [Hash<String, Object>] with +"title"+ and +"description"+ keys
-    # @return [String] raw stdout/stderr from +gh issue create+
-    # @return [Hash] with +:error+ key on input validation failure
+    # @return [String] formatted gh command output (stdout, stderr, and exit code if non-zero)
+    # @return [Hash{Symbol => String}] with +:error+ key on validation or repo resolution failure
     def execute(input)
       title = input["title"].to_s.strip
       description = input["description"].to_s.strip
@@ -50,7 +53,7 @@ module Tools
 
     # Resolves the target repository: config.toml setting first, then git remote origin.
     # @return [String] owner/repo identifier
-    # @return [Hash] error hash when no repository can be determined
+    # @return [Hash{Symbol => String}] error hash when no repository can be determined
     def resolve_repo
       repo = settings_repo || git_remote_repo
       return {error: "Cannot determine repository. Set [github] repo in config.toml or ensure a git remote origin exists."} unless repo
@@ -79,22 +82,32 @@ module Tools
     # @return [String, nil] owner/repo or nil when the URL is not recognizable
     def parse_owner_repo(url)
       case url
-      when %r{github\.com[:/](.+/.+?)(?:\.git)?$}
+      when %r{github\.com[:/]([^/]+/[^/]+?)(?:\.git)?$}
         Regexp.last_match(1)
       end
     end
 
+    # Invokes +gh issue create+ and returns the formatted output.
+    # @param repo [String] owner/repo identifier
+    # @param title [String] issue title
+    # @param description [String] issue body
+    # @return [String] formatted command output
     def run_gh(repo, title, description)
       stdout, stderr, status = Open3.capture3(
         "gh", "issue", "create",
         "--repo", repo,
-        "--label", "anima-wants",
+        "--label", Anima::Settings.github_label,
         "--title", title,
         "--body", description
       )
       format_result(stdout, stderr, status.exitstatus)
     end
 
+    # Combines stdout, stderr, and exit code into a single string response.
+    # @param stdout [String] captured standard output
+    # @param stderr [String] captured standard error
+    # @param exit_code [Integer] process exit status
+    # @return [String] joined non-empty parts separated by blank lines
     def format_result(stdout, stderr, exit_code)
       out = stdout.strip
       err = stderr.strip
