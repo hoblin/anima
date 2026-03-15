@@ -65,7 +65,7 @@ physician = Physician.find(1)
 patient = Patient.find(1)
 
 # Via join model
-appointment = Appointment.create!(
+Appointment.create!(
   physician:,
   patient:,
   scheduled_at: 1.day.from_now

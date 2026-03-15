@@ -2,7 +2,7 @@
 # Prevents faster diagonal movement by normalizing the vector
 
 def tick args
-  args.state.player ||= { x: 640, y: 360, w: 32, h: 32 }
+  args.state.player ||= {x: 640, y: 360, w: 32, h: 32}
 
   speed = 5
 
@@ -25,8 +25,8 @@ def tick args
   args.state.player.y += dy
 
   # Show speed comparison
-  args.outputs.labels << { x: 640, y: 700, text: "Move diagonally - speed stays constant", size_enum: 5, alignment_enum: 1 }
-  args.outputs.labels << { x: 640, y: 670, text: "Current speed: #{Math.sqrt(dx**2 + dy**2).to_sf}", size_enum: 5, alignment_enum: 1 }
+  args.outputs.labels << {x: 640, y: 700, text: "Move diagonally - speed stays constant", size_enum: 5, alignment_enum: 1}
+  args.outputs.labels << {x: 640, y: 670, text: "Current speed: #{Math.sqrt(dx**2 + dy**2).to_sf}", size_enum: 5, alignment_enum: 1}
 
-  args.outputs.sprites << args.state.player.merge(path: 'sprites/square/blue.png')
+  args.outputs.sprites << args.state.player.merge(path: "sprites/square/blue.png")
 end

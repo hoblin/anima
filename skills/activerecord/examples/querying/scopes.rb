@@ -24,7 +24,7 @@ class Article < ApplicationRecord
 
   # Scope with optional argument
   scope :tagged, ->(tag = nil) {
-    tag ? joins(:tags).where(tags: { name: tag }) : all
+    tag ? joins(:tags).where(tags: {name: tag}) : all
   }
 
   # Complex scope
@@ -45,10 +45,10 @@ Article.draft.created_after(1.month.ago)
 # ============================================
 
 # All scopes return Relations - fully chainable
-articles = Article.published
-                  .recent
-                  .by_author(current_user)
-                  .limit(10)
+Article.published
+  .recent
+  .by_author(current_user)
+  .limit(10)
 
 # Scopes work with associations
 author.articles.published.recent
@@ -180,8 +180,8 @@ end
 
 # Merge scopes from different models
 Article.published
-       .joins(:author)
-       .merge(Author.active)
+  .joins(:author)
+  .merge(Author.active)
 # SELECT articles.* FROM articles
 #   INNER JOIN authors ON authors.id = articles.author_id
 #   WHERE articles.published = true
@@ -189,8 +189,8 @@ Article.published
 
 # Merge multiple scopes
 Article.published
-       .joins(:author)
-       .merge(Author.active.verified)
+  .joins(:author)
+  .merge(Author.active.verified)
 
 # Merge with association scope
 class Author < ApplicationRecord

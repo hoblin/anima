@@ -75,7 +75,7 @@ class ReversibleRemoveOperations < ActiveRecord::Migration[7.2]
 
     # With all options for exact recreation
     remove_column :products, :discount, :decimal,
-                  precision: 5, scale: 2, default: 0.0
+      precision: 5, scale: 2, default: 0.0
   end
 end
 
@@ -133,7 +133,7 @@ class ReversibleRemoveForeignKey < ActiveRecord::Migration[7.2]
 
     # With options
     remove_foreign_key :order_items, :products,
-                       on_delete: :cascade, on_update: :cascade
+      on_delete: :cascade, on_update: :cascade
   end
 end
 
@@ -243,7 +243,7 @@ class IrreversibleMigration < ActiveRecord::Migration[7.2]
 
   def down
     raise ActiveRecord::IrreversibleMigration,
-          "Cannot restore deleted audit logs or legacy_data column contents"
+      "Cannot restore deleted audit logs or legacy_data column contents"
   end
 end
 

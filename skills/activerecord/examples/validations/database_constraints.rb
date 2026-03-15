@@ -45,24 +45,24 @@ class User < ApplicationRecord
   # Validations provide user-friendly error messages
   validates :email,
     presence: true,
-    uniqueness: { case_sensitive: false },
-    format: { with: URI::MailTo::EMAIL_REGEXP }
+    uniqueness: {case_sensitive: false},
+    format: {with: URI::MailTo::EMAIL_REGEXP}
 
   validates :username,
     presence: true,
-    uniqueness: { case_sensitive: false },
-    length: { in: 3..30 },
+    uniqueness: {case_sensitive: false},
+    length: {in: 3..30},
     format: {
       with: /\A[a-z0-9_]+\z/,
       message: "only allows lowercase letters, numbers, and underscores"
     }
 
   validates :age,
-    numericality: { greater_than_or_equal_to: 0, only_integer: true },
+    numericality: {greater_than_or_equal_to: 0, only_integer: true},
     allow_nil: true
 
   validates :role,
-    inclusion: { in: %w[admin moderator member] }
+    inclusion: {in: %w[admin moderator member]}
 end
 
 # =============================================================================
@@ -166,7 +166,7 @@ class AppliedCoupon < ApplicationRecord
   belongs_to :account
   belongs_to :coupon
 
-  validates :coupon_id, uniqueness: { scope: :account_id }
+  validates :coupon_id, uniqueness: {scope: :account_id}
 end
 
 class CouponsController < ApplicationController
@@ -174,12 +174,12 @@ class CouponsController < ApplicationController
     @applied = AppliedCoupon.new(account: current_account, coupon: @coupon)
 
     if @applied.save
-      render json: { success: true }
+      render json: {success: true}
     else
-      render json: { errors: @applied.errors }, status: :unprocessable_entity
+      render json: {errors: @applied.errors}, status: :unprocessable_entity
     end
   rescue ActiveRecord::RecordNotUnique
-    render json: { error: "Coupon already applied" }, status: :unprocessable_entity
+    render json: {error: "Coupon already applied"}, status: :unprocessable_entity
   end
 end
 
@@ -191,7 +191,7 @@ class CreateOrders < ActiveRecord::Migration[7.2]
   def change
     create_table :orders do |t|
       t.references :user, null: false, foreign_key: true
-      t.references :shipping_address, foreign_key: { to_table: :addresses }
+      t.references :shipping_address, foreign_key: {to_table: :addresses}
       t.timestamps
     end
   end
@@ -213,7 +213,7 @@ class OrdersController < ApplicationController
     @order = Order.new(order_params)
     @order.save!
     redirect_to @order
-  rescue ActiveRecord::InvalidForeignKey => e
+  rescue ActiveRecord::InvalidForeignKey
     @order.errors.add(:base, "Referenced record no longer exists")
     render :new, status: :unprocessable_entity
   end
@@ -246,9 +246,9 @@ class CreateProducts < ActiveRecord::Migration[7.2]
 end
 
 class Product < ApplicationRecord
-  validates :price, numericality: { greater_than_or_equal_to: 0 }
-  validates :quantity, numericality: { greater_than_or_equal_to: 0 }
-  validates :status, inclusion: { in: %w[draft active discontinued] }
+  validates :price, numericality: {greater_than_or_equal_to: 0}
+  validates :quantity, numericality: {greater_than_or_equal_to: 0}
+  validates :status, inclusion: {in: %w[draft active discontinued]}
 end
 
 # =============================================================================
@@ -297,8 +297,8 @@ class BypassExamples < ApplicationRecord
     User.update_all(email: "invalid")             # Bulk update, no validations
 
     # Bulk inserts skip everything:
-    User.insert_all([{ email: "test@example.com" }])
-    User.upsert_all([{ email: "test@example.com" }])
+    User.insert_all([{email: "test@example.com"}])
+    User.upsert_all([{email: "test@example.com"}])
 
     # delete vs destroy:
     user.delete           # Skips callbacks
@@ -382,13 +382,13 @@ class CriticalUser < ApplicationRecord
   # User-facing validations with friendly messages
   validates :email,
     presence: true,
-    uniqueness: { case_sensitive: false, message: "is already registered" },
-    format: { with: URI::MailTo::EMAIL_REGEXP, message: "must be a valid email" }
+    uniqueness: {case_sensitive: false, message: "is already registered"},
+    format: {with: URI::MailTo::EMAIL_REGEXP, message: "must be a valid email"}
 
   validates :username,
     presence: true,
-    uniqueness: { case_sensitive: false },
-    length: { in: 3..30, message: "must be between 3 and 30 characters" },
+    uniqueness: {case_sensitive: false},
+    length: {in: 3..30, message: "must be between 3 and 30 characters"},
     format: {
       with: /\A[a-z0-9_]+\z/,
       message: "can only contain lowercase letters, numbers, and underscores"

@@ -25,8 +25,8 @@ end
 # have_* - converts to has_*? method call
 RSpec.describe "dynamic have_* matchers" do
   it "calls has_*? methods" do
-    expect({ a: 1 }).to have_key(:a)    # {a: 1}.has_key?(:a)
-    expect({ a: 1 }).to have_value(1)   # {a: 1}.has_value?(1)
+    expect({a: 1}).to have_key(:a)    # {a: 1}.has_key?(:a)
+    expect({a: 1}).to have_value(1)   # {a: 1}.has_value?(1)
   end
 
   it "works with custom has_*? methods" do

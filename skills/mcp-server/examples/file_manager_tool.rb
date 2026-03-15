@@ -14,9 +14,9 @@ class FileManagerTool < MCP::Tool
 
   input_schema(
     properties: {
-      action: { type: "string", enum: %w[read write list delete] },
-      path: { type: "string" },
-      content: { type: "string" }
+      action: {type: "string", enum: %w[read write list delete]},
+      path: {type: "string"},
+      content: {type: "string"}
     },
     required: %w[action path]
   )
@@ -39,9 +39,9 @@ class FileManagerTool < MCP::Tool
       end
 
       case action
-      when "read"  then read_file(full_path)
+      when "read" then read_file(full_path)
       when "write" then write_file(full_path, content)
-      when "list"  then list_directory(full_path)
+      when "list" then list_directory(full_path)
       when "delete" then delete_file(full_path)
       else error_response("Unknown action: #{action}")
       end
@@ -52,13 +52,13 @@ class FileManagerTool < MCP::Tool
     def read_file(path)
       return error_response("File not found") unless File.exist?(path)
 
-      MCP::Tool::Response.new([{ type: "text", text: File.read(path) }])
+      MCP::Tool::Response.new([{type: "text", text: File.read(path)}])
     end
 
     def write_file(path, content)
       FileUtils.mkdir_p(File.dirname(path))
       File.write(path, content)
-      MCP::Tool::Response.new([{ type: "text", text: "Written #{content.bytesize} bytes" }])
+      MCP::Tool::Response.new([{type: "text", text: "Written #{content.bytesize} bytes"}])
     end
 
     def list_directory(path)
@@ -66,7 +66,7 @@ class FileManagerTool < MCP::Tool
 
       files = Dir.entries(path).reject { |f| f.start_with?(".") }
       MCP::Tool::Response.new(
-        [{ type: "text", text: files.join("\n") }],
+        [{type: "text", text: files.join("\n")}],
         structured_content: files
       )
     end
@@ -75,11 +75,11 @@ class FileManagerTool < MCP::Tool
       return error_response("File not found") unless File.exist?(path)
 
       File.delete(path)
-      MCP::Tool::Response.new([{ type: "text", text: "Deleted" }])
+      MCP::Tool::Response.new([{type: "text", text: "Deleted"}])
     end
 
     def error_response(message)
-      MCP::Tool::Response.new([{ type: "text", text: message }], error: true)
+      MCP::Tool::Response.new([{type: "text", text: message}], error: true)
     end
   end
 end

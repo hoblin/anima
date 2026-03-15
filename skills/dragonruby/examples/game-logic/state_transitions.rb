@@ -19,17 +19,17 @@ def title_tick(args)
 
   if args.inputs.keyboard.key_down.space
     # Initialize game state
-    args.state.player = { x: 640, y: 100, health: 3 }
+    args.state.player = {x: 640, y: 100, health: 3}
     args.state.score = 0
     args.state.scene = :gameplay
-    return  # Early return on transition
+    nil  # Early return on transition
   end
 end
 
 # === GAMEPLAY SCENE ===
 def gameplay_tick(args)
   # Initialize
-  args.state.player ||= { x: 640, y: 100, health: 3 }
+  args.state.player ||= {x: 640, y: 100, health: 3}
   args.state.score ||= 0
 
   # Update
@@ -60,7 +60,7 @@ def check_game_over(args)
   if args.state.player.health <= 0
     args.state.game_over_at = Kernel.tick_count
     args.state.scene = :game_over
-    return  # Early return critical!
+    nil  # Early return critical!
   end
 end
 
@@ -72,9 +72,9 @@ def render_gameplay(args)
   }
 
   # HUD
-  args.outputs.labels << { x: 40, y: 700, text: "Score: #{args.state.score}" }
-  args.outputs.labels << { x: 40, y: 670, text: "Health: #{args.state.player.health}" }
-  args.outputs.labels << { x: 40, y: 40, text: "X: Take damage | SPACE: Score" }
+  args.outputs.labels << {x: 40, y: 700, text: "Score: #{args.state.score}"}
+  args.outputs.labels << {x: 40, y: 670, text: "Health: #{args.state.player.health}"}
+  args.outputs.labels << {x: 40, y: 40, text: "X: Take damage | SPACE: Score"}
 end
 
 # === GAME OVER SCENE ===

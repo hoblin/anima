@@ -110,7 +110,7 @@ RSpec.describe "Transaction configuration" do
   # end
 
   it "demonstrates transactional isolation" do
-    widget = create(:widget)
+    create(:widget)
     expect(Widget.count).to eq(1)
 
     # After this test, widget won't exist

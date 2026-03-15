@@ -200,7 +200,7 @@ RSpec.describe DataExportJob, type: :job do
         DataExportJob.perform_later(
           user_id: 1,
           format: :csv,
-          filters: { status: :active }
+          filters: {status: :active}
         )
       }.to have_enqueued_job.with { |args|
         expect(args[:user_id]).to eq(1)

@@ -137,7 +137,7 @@ class AddSpecialIndexes < ActiveRecord::Migration[7.2]
 
     # Full-text search index (PostgreSQL)
     add_index :articles, "to_tsvector('english', title || ' ' || body)",
-              using: :gin, name: "idx_articles_fulltext"
+      using: :gin, name: "idx_articles_fulltext"
 
     # Trigram index for LIKE queries (PostgreSQL, requires pg_trgm)
     add_index :products, :name, using: :gin, opclass: :gin_trgm_ops
@@ -157,10 +157,10 @@ class AddOrderedIndexes < ActiveRecord::Migration[7.2]
     add_index :events, :created_at, order: :desc
 
     # Mixed ordering
-    add_index :leaderboards, [:game_id, :score], order: { game_id: :asc, score: :desc }
+    add_index :leaderboards, [:game_id, :score], order: {game_id: :asc, score: :desc}
 
     # NULLS positioning (PostgreSQL)
-    add_index :tasks, :due_date, order: { due_date: "ASC NULLS LAST" }
+    add_index :tasks, :due_date, order: {due_date: "ASC NULLS LAST"}
   end
 end
 
@@ -194,8 +194,8 @@ end
 class AddNamedForeignKey < ActiveRecord::Migration[7.2]
   def change
     add_foreign_key :orders, :users,
-                    column: :placed_by_id,
-                    name: "fk_orders_placed_by_user"
+      column: :placed_by_id,
+      name: "fk_orders_placed_by_user"
   end
 end
 
@@ -213,18 +213,18 @@ class AddCheckConstraints < ActiveRecord::Migration[7.2]
 
     # Status validation
     add_check_constraint :orders, "status IN ('pending', 'processing', 'shipped', 'delivered')",
-                         name: "orders_valid_status"
+      name: "orders_valid_status"
 
     # Date range
     add_check_constraint :events, "end_date >= start_date", name: "events_valid_dates"
 
     # Email format (basic)
     add_check_constraint :users, "email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$'",
-                         name: "users_valid_email"
+      name: "users_valid_email"
 
     # Percentage range
     add_check_constraint :discounts, "percentage BETWEEN 0 AND 100",
-                         name: "discounts_valid_percentage"
+      name: "discounts_valid_percentage"
   end
 end
 
@@ -233,8 +233,8 @@ class AddConstraintSafely < ActiveRecord::Migration[7.2]
   def change
     # Step 1: Add without validation
     add_check_constraint :products, "price > 0",
-                         name: "products_price_positive",
-                         validate: false
+      name: "products_price_positive",
+      validate: false
   end
 end
 
@@ -317,7 +317,7 @@ class CreateOrdersWithConstraints < ActiveRecord::Migration[7.2]
     add_check_constraint :orders, "tax >= 0", name: "orders_tax_non_negative"
     add_check_constraint :orders, "total = subtotal + tax", name: "orders_total_calculation"
     add_check_constraint :orders, "status IN ('pending', 'paid', 'shipped', 'delivered', 'cancelled')",
-                         name: "orders_valid_status"
+      name: "orders_valid_status"
 
     # Indexes for common queries
     add_index :orders, [:user_id, :status]

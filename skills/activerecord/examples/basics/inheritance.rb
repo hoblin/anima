@@ -31,7 +31,7 @@ class Vehicle < ApplicationRecord
 end
 
 class Car < Vehicle
-  validates :wheels, inclusion: { in: [4] }
+  validates :wheels, inclusion: {in: [4]}
 
   def vehicle_type
     "Automobile"
@@ -39,7 +39,7 @@ class Car < Vehicle
 end
 
 class Truck < Vehicle
-  validates :wheels, inclusion: { in: [4, 6, 8, 10, 18] }
+  validates :wheels, inclusion: {in: [4, 6, 8, 10, 18]}
   validates :cargo_capacity, presence: true
 
   def vehicle_type
@@ -48,7 +48,7 @@ class Truck < Vehicle
 end
 
 class Motorcycle < Vehicle
-  validates :wheels, inclusion: { in: [2, 3] }
+  validates :wheels, inclusion: {in: [2, 3]}
 
   def vehicle_type
     "Two-wheeler"
@@ -63,7 +63,7 @@ end
 car = Car.create!(make: "Toyota", model: "Camry", year: 2024, wheels: 4)
 car.type  # => "Car"
 
-truck = Truck.create!(
+Truck.create!(
   make: "Ford",
   model: "F-150",
   year: 2024,
@@ -255,16 +255,19 @@ end
 
 class Car < ApplicationRecord
   include Vehicular
-  validates :doors, inclusion: { in: 2..5 }
+
+  validates :doors, inclusion: {in: 2..5}
 end
 
 class Motorcycle < ApplicationRecord
   include Vehicular
+
   validates :engine_cc, presence: true
 end
 
 class Boat < ApplicationRecord
   include Vehicular
+
   validates :length_feet, presence: true
 end
 

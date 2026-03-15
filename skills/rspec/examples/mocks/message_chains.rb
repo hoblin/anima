@@ -170,4 +170,3 @@ RSpec.describe "acceptable chain usage" do
     end
   end
 end
-

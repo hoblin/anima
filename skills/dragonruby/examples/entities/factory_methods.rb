@@ -27,8 +27,8 @@ def spawn_enemy(args)
     y: rand(args.grid.h - size * 2) + size,
     w: size,
     h: size,
-    path: 'sprites/enemy.png',
-    speed: rand(3) + 1
+    path: "sprites/enemy.png",
+    speed: rand(1..3)
   }
 end
 

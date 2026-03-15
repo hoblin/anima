@@ -6,10 +6,10 @@
 
 class User < ApplicationRecord
   # Always validates (no :on option)
-  validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
+  validates :email, presence: true, format: {with: URI::MailTo::EMAIL_REGEXP}
 
   # Only on create (new records)
-  validates :password, presence: true, length: { minimum: 8 }, on: :create
+  validates :password, presence: true, length: {minimum: 8}, on: :create
   validates :password_confirmation, presence: true, on: :create
   validates :terms_accepted, acceptance: true, on: :create
 
@@ -45,7 +45,7 @@ class Article < ApplicationRecord
 
   # Feature context
   validates :featured_position, presence: true,
-    numericality: { greater_than: 0 }, on: :feature
+    numericality: {greater_than: 0}, on: :feature
 
   def publish!
     self.published_at ||= Time.current
@@ -89,8 +89,8 @@ class Document < ApplicationRecord
   validates :review_notes, presence: true, on: [:approve, :reject]
 
   # Different validations for different approval levels
-  validates :manager_approval, inclusion: { in: [true] }, on: :final_approve
-  validates :director_approval, inclusion: { in: [true] }, on: :final_approve
+  validates :manager_approval, inclusion: {in: [true]}, on: :final_approve
+  validates :director_approval, inclusion: {in: [true]}, on: :final_approve
 end
 
 # =============================================================================
@@ -129,7 +129,7 @@ class Order < ApplicationRecord
 
   # Context: processing payment
   validates :payment_token, presence: true, on: :process_payment
-  validates :payment_amount, numericality: { greater_than: 0 }, on: :process_payment
+  validates :payment_amount, numericality: {greater_than: 0}, on: :process_payment
 
   # Context: shipping
   validates :tracking_number, presence: true, on: :ship
@@ -179,7 +179,7 @@ end
 class Registration < ApplicationRecord
   # Step 1: Basic info
   validates :email, presence: true, on: :step_one
-  validates :password, presence: true, length: { minimum: 8 }, on: :step_one
+  validates :password, presence: true, length: {minimum: 8}, on: :step_one
 
   # Step 2: Personal info
   validates :first_name, presence: true, on: :step_two
@@ -187,7 +187,7 @@ class Registration < ApplicationRecord
   validates :date_of_birth, presence: true, on: :step_two
 
   # Step 3: Preferences
-  validates :newsletter_preference, inclusion: { in: [true, false] }, on: :step_three
+  validates :newsletter_preference, inclusion: {in: [true, false]}, on: :step_three
   validates :terms_accepted, acceptance: true, on: :step_three
 
   # Final validation includes all steps
@@ -196,7 +196,7 @@ class Registration < ApplicationRecord
   validates :terms_accepted, acceptance: true, on: :finalize
 
   def complete_step!(step)
-    context = "step_#{step}".to_sym
+    context = :"step_#{step}"
     save!(context:)
   end
 

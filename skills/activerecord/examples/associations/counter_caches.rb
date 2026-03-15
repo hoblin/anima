@@ -77,7 +77,7 @@ SQL
 
 # Option 3: Disable during backfill (prevents incorrect reads)
 class Comment < ApplicationRecord
-  belongs_to :post, counter_cache: { active: false }
+  belongs_to :post, counter_cache: {active: false}
 end
 
 # After backfill complete, change to:
@@ -98,8 +98,8 @@ class Review < ApplicationRecord
   belongs_to :product
   counter_culture :product
   counter_culture :product,
-                  column_name: proc { |r| r.approved? ? "approved_reviews_count" : nil },
-                  column_names: { ["reviews.approved = ?", true] => "approved_reviews_count" }
+    column_name: proc { |r| r.approved? ? "approved_reviews_count" : nil },
+    column_names: {["reviews.approved = ?", true] => "approved_reviews_count"}
 end
 
 class Product < ApplicationRecord

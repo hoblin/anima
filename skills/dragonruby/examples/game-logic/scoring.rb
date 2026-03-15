@@ -98,7 +98,7 @@ def render(args)
   end
 
   # Instructions
-  args.outputs.labels << { x: 40, y: 100, text: "SPACE: +10 points" }
-  args.outputs.labels << { x: 40, y: 70, text: "Z: +100 with combo" }
-  args.outputs.labels << { x: 40, y: 40, text: "X: Break combo | R: Reset score" }
+  args.outputs.labels << {x: 40, y: 100, text: "SPACE: +10 points"}
+  args.outputs.labels << {x: 40, y: 70, text: "Z: +100 with combo"}
+  args.outputs.labels << {x: 40, y: 40, text: "X: Break combo | R: Reset score"}
 end

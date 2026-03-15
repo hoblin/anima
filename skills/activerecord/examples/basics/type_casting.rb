@@ -23,7 +23,7 @@ product = Product.new
 product.price = "19.99"       # Cast to BigDecimal
 product.quantity = "5"        # Cast to Integer
 product.active = "yes"        # Cast to true
-product.metadata = { foo: 1 } # Stored as JSON
+product.metadata = {foo: 1} # Stored as JSON
 
 # =============================================================================
 # CUSTOM TYPES
@@ -123,7 +123,7 @@ end
 
 # Usage
 setting = Setting.new
-setting.preferences = { theme: "dark", language: "en" }
+setting.preferences = {theme: "dark", language: "en"}
 setting.tags = ["important", "featured"]
 setting.save
 
@@ -274,7 +274,7 @@ class User < ApplicationRecord
 end
 
 # Usage
-user = User.create(ssn: "123-45-6789")
+User.create(ssn: "123-45-6789")
 # Database stores encrypted value
 
 User.find_by(email: "alice@example.com")  # Works with deterministic: true

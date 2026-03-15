@@ -28,7 +28,7 @@ class Article < ApplicationRecord
   end
 
   def log_changes
-    Rails.logger.info("Article #{id} updated: #{previous_changes.keys.join(', ')}")
+    Rails.logger.info("Article #{id} updated: #{previous_changes.keys.join(", ")}")
   end
 
   def check_deletable
@@ -233,7 +233,7 @@ class Product < ApplicationRecord
   def log_validation_errors
     return if errors.empty?
 
-    Rails.logger.warn("Product validation failed: #{errors.full_messages.join(', ')}")
+    Rails.logger.warn("Product validation failed: #{errors.full_messages.join(", ")}")
   end
 end
 

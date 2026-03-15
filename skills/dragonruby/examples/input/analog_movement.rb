@@ -3,7 +3,7 @@
 
 def tick args
   controller = args.inputs.controller_one
-  args.state.player ||= { x: 640, y: 360, w: 32, h: 32, dx: 0, dy: 0 }
+  args.state.player ||= {x: 640, y: 360, w: 32, h: 32, dx: 0, dy: 0}
 
   max_speed = 8
 
@@ -22,7 +22,7 @@ def tick args
 
   # Visual speed indicator
   speed = Math.sqrt(args.state.player.dx**2 + args.state.player.dy**2)
-  args.outputs.labels << { x: 640, y: 700, text: "Speed: #{speed.to_sf} (tilt stick for variable speed)", size_enum: 5, alignment_enum: 1 }
+  args.outputs.labels << {x: 640, y: 700, text: "Speed: #{speed.to_sf} (tilt stick for variable speed)", size_enum: 5, alignment_enum: 1}
 
-  args.outputs.sprites << args.state.player.merge(path: 'sprites/square/blue.png')
+  args.outputs.sprites << args.state.player.merge(path: "sprites/square/blue.png")
 end

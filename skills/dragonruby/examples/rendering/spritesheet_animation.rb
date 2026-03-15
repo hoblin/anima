@@ -1,7 +1,7 @@
 # Spritesheet animation using tile_x and tile_y
 
 def tick args
-  args.state.player ||= { x: 640, y: 360, w: 64, h: 64 }
+  args.state.player ||= {x: 640, y: 360, w: 64, h: 64}
 
   moving = args.inputs.left || args.inputs.right
 
@@ -16,7 +16,7 @@ def tick args
       y: args.state.player.y,
       w: args.state.player.w,
       h: args.state.player.h,
-      path: 'sprites/horizontal-run.png',
+      path: "sprites/horizontal-run.png",
       tile_x: tile_index * 64,
       tile_y: 0,
       tile_w: 64,
@@ -31,9 +31,9 @@ def tick args
       y: args.state.player.y,
       w: args.state.player.w,
       h: args.state.player.h,
-      path: 'sprites/horizontal-stand.png'
+      path: "sprites/horizontal-stand.png"
     }
   end
 
-  args.outputs.labels << { x: 640, y: 100, text: "Hold LEFT/RIGHT to run", anchor_x: 0.5 }
+  args.outputs.labels << {x: 640, y: 100, text: "Hold LEFT/RIGHT to run", anchor_x: 0.5}
 end

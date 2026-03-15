@@ -55,7 +55,7 @@ def tick args
   }
 
   # Labels explaining the approach
-  args.outputs.primitives << { x: 340, y: 640, text: "primitive_marker: :solid", size_px: 18 }
-  args.outputs.primitives << { x: 580, y: 640, text: "path: :solid (performance)", size_px: 18 }
-  args.outputs.primitives << { x: 160, y: 440, text: "primitive_marker: :border", size_px: 18 }
+  args.outputs.primitives << {x: 340, y: 640, text: "primitive_marker: :solid", size_px: 18}
+  args.outputs.primitives << {x: 580, y: 640, text: "path: :solid (performance)", size_px: 18}
+  args.outputs.primitives << {x: 160, y: 440, text: "primitive_marker: :border", size_px: 18}
 end

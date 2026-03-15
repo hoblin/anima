@@ -79,7 +79,7 @@ RSpec.describe "argument matchers" do
       expect(dbl).to receive(:foo).with(
         hash_including(user: hash_including(name: "Alice"))
       )
-      dbl.foo(user: { name: "Alice", email: "alice@example.com" })
+      dbl.foo(user: {name: "Alice", email: "alice@example.com"})
     end
   end
 
@@ -141,7 +141,7 @@ RSpec.describe "argument matchers" do
       expect(dbl).to receive(:foo).with(
         satisfy { |x| x[:a][:b][:c] == 5 }
       )
-      dbl.foo(a: { b: { c: 5 } })
+      dbl.foo(a: {b: {c: 5}})
     end
   end
 
@@ -203,4 +203,3 @@ RSpec.describe UserRepository do
     end
   end
 end
-

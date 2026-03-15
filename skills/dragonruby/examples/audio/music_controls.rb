@@ -11,10 +11,10 @@ def defaults(args)
   return if args.audio[:music]
 
   args.audio[:music] = {
-    input:   "sounds/music.ogg",
+    input: "sounds/music.ogg",
     looping: true,
-    gain:    0.5,
-    paused:  false
+    gain: 0.5,
+    paused: false
   }
 end
 
@@ -43,9 +43,9 @@ end
 def render(args)
   music = args.audio[:music]
   args.outputs.labels << [
-    { x: 10, y: 700, text: "SPACE: #{music.paused ? 'Resume' : 'Pause'}" },
-    { x: 10, y: 670, text: "UP/DOWN: Volume (#{(music.gain * 100).to_i}%)" },
-    { x: 10, y: 640, text: "LEFT/RIGHT: Seek (+/- 5s)" },
-    { x: 10, y: 610, text: "Position: #{music.playtime.to_i}s" }
+    {x: 10, y: 700, text: "SPACE: #{music.paused ? "Resume" : "Pause"}"},
+    {x: 10, y: 670, text: "UP/DOWN: Volume (#{(music.gain * 100).to_i}%)"},
+    {x: 10, y: 640, text: "LEFT/RIGHT: Seek (+/- 5s)"},
+    {x: 10, y: 610, text: "Position: #{music.playtime.to_i}s"}
   ]
 end

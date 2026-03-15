@@ -8,7 +8,7 @@ def tick args
     y: 200,
     w: 128,
     h: 101,
-    path: 'dragonruby.png'
+    path: "dragonruby.png"
   }
 
   # Sprite with animated alpha (fading effect)
@@ -17,7 +17,7 @@ def tick args
     y: 200,
     w: 128,
     h: 101,
-    path: 'dragonruby.png',
+    path: "dragonruby.png",
     a: Kernel.tick_count % 255
   }
 
@@ -27,7 +27,7 @@ def tick args
     y: 250,
     w: 128,
     h: 101,
-    path: 'dragonruby.png',
+    path: "dragonruby.png",
     angle: Kernel.tick_count % 360,
     anchor_x: 0.5,
     anchor_y: 0.5

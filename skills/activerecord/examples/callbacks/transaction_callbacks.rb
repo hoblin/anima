@@ -79,7 +79,7 @@ class Article < ApplicationRecord
   end
 
   def log_failure
-    Rails.logger.error("Article #{id || 'new'} save failed, transaction rolled back")
+    Rails.logger.error("Article #{id || "new"} save failed, transaction rolled back")
   end
 end
 

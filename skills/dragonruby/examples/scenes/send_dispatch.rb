@@ -22,12 +22,12 @@ def title_tick args
 
   if args.inputs.keyboard.key_down.space
     args.state.scene = :gameplay
-    return  # Early return prevents old scene code
+    nil  # Early return prevents old scene code
   end
 end
 
 def gameplay_tick args
-  args.state.player ||= { x: 640, y: 360, w: 64, h: 64, path: "sprites/player.png" }
+  args.state.player ||= {x: 640, y: 360, w: 64, h: 64, path: "sprites/player.png"}
   args.state.score ||= 0
   args.state.timer ||= 30 * 60
 

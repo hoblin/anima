@@ -79,7 +79,7 @@ class CreateComments < ActiveRecord::Migration[7.2]
   def change
     create_table :comments do |t|
       t.references :commentable, polymorphic: true, null: false
-      t.references :author, null: false, foreign_key: { to_table: :users }
+      t.references :author, null: false, foreign_key: {to_table: :users}
       t.text :body, null: false
       t.timestamps
     end
@@ -117,7 +117,7 @@ class AddOrganizationToUsers < ActiveRecord::Migration[7.2]
     add_reference :users, :organization, foreign_key: true
 
     # Without index
-    add_reference :users, :invited_by, foreign_key: { to_table: :users }, index: false
+    add_reference :users, :invited_by, foreign_key: {to_table: :users}, index: false
 
     # Polymorphic reference (no foreign key possible)
     add_reference :attachments, :attachable, polymorphic: true, index: true

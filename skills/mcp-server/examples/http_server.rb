@@ -19,16 +19,16 @@ class WeatherTool < MCP::Tool
   description "Gets weather for a location"
   input_schema(
     properties: {
-      location: { type: "string" },
-      units: { type: "string", enum: %w[celsius fahrenheit] }
+      location: {type: "string"},
+      units: {type: "string", enum: %w[celsius fahrenheit]}
     },
     required: ["location"]
   )
 
   output_schema(
     properties: {
-      temperature: { type: "number" },
-      condition: { type: "string" }
+      temperature: {type: "number"},
+      condition: {type: "string"}
     },
     required: %w[temperature condition]
   )
@@ -38,10 +38,10 @@ class WeatherTool < MCP::Tool
   class << self
     def call(location:, units: "celsius", server_context: nil)
       # Simulate API call
-      data = { temperature: 22, condition: "sunny" }
+      data = {temperature: 22, condition: "sunny"}
 
       MCP::Tool::Response.new(
-        [{ type: "text", text: data.to_json }],
+        [{type: "text", text: data.to_json}],
         structured_content: data
       )
     end

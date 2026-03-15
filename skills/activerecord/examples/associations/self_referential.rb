@@ -8,16 +8,16 @@
 class Employee < ApplicationRecord
   # Employee has one manager (who is also an Employee)
   belongs_to :manager,
-             class_name: "Employee",
-             optional: true,
-             inverse_of: :subordinates
+    class_name: "Employee",
+    optional: true,
+    inverse_of: :subordinates
 
   # Employee has many subordinates (who are also Employees)
   has_many :subordinates,
-           class_name: "Employee",
-           foreign_key: "manager_id",
-           dependent: :nullify,
-           inverse_of: :manager
+    class_name: "Employee",
+    foreign_key: "manager_id",
+    dependent: :nullify,
+    inverse_of: :manager
 
   validates :name, presence: true
 
@@ -57,12 +57,12 @@ class User < ApplicationRecord
 
   # Inverse friendships (where user is the friend)
   has_many :inverse_friendships,
-           class_name: "Friendship",
-           foreign_key: "friend_id",
-           dependent: :destroy
+    class_name: "Friendship",
+    foreign_key: "friend_id",
+    dependent: :destroy
   has_many :inverse_friends,
-           through: :inverse_friendships,
-           source: :user
+    through: :inverse_friendships,
+    source: :user
 
   def all_friends
     friends + inverse_friends
@@ -77,7 +77,7 @@ class Friendship < ApplicationRecord
   belongs_to :user
   belongs_to :friend, class_name: "User"
 
-  validates :user_id, uniqueness: { scope: :friend_id }
+  validates :user_id, uniqueness: {scope: :friend_id}
   validate :not_self_friend
 
   private
@@ -140,16 +140,16 @@ end
 
 class Category < ApplicationRecord
   belongs_to :parent,
-             class_name: "Category",
-             optional: true,
-             inverse_of: :children,
-             counter_cache: :children_count
+    class_name: "Category",
+    optional: true,
+    inverse_of: :children,
+    counter_cache: :children_count
 
   has_many :children,
-           class_name: "Category",
-           foreign_key: "parent_id",
-           dependent: :destroy,
-           inverse_of: :parent
+    class_name: "Category",
+    foreign_key: "parent_id",
+    dependent: :destroy,
+    inverse_of: :parent
 
   validates :name, presence: true
 
@@ -222,7 +222,7 @@ class Category < ApplicationRecord
       SELECT * FROM category_tree ORDER BY depth, name
     SQL
 
-    find_by_sql([sql, { root_id: }])
+    find_by_sql([sql, {root_id:}])
   end
 
   def full_path
@@ -243,7 +243,7 @@ class Category < ApplicationRecord
       SELECT * FROM ancestors ORDER BY depth DESC
     SQL
 
-    find_by_sql([sql, { category_id: }])
+    find_by_sql([sql, {category_id:}])
   end
 end
 
@@ -254,16 +254,16 @@ end
 class User < ApplicationRecord
   # Users I follow
   has_many :active_follows,
-           class_name: "Follow",
-           foreign_key: "follower_id",
-           dependent: :destroy
+    class_name: "Follow",
+    foreign_key: "follower_id",
+    dependent: :destroy
   has_many :following, through: :active_follows, source: :followed
 
   # Users who follow me
   has_many :passive_follows,
-           class_name: "Follow",
-           foreign_key: "followed_id",
-           dependent: :destroy
+    class_name: "Follow",
+    foreign_key: "followed_id",
+    dependent: :destroy
   has_many :followers, through: :passive_follows, source: :follower
 
   def follow(other_user)
@@ -283,7 +283,7 @@ class Follow < ApplicationRecord
   belongs_to :follower, class_name: "User"
   belongs_to :followed, class_name: "User"
 
-  validates :follower_id, uniqueness: { scope: :followed_id }
+  validates :follower_id, uniqueness: {scope: :followed_id}
   validate :not_self_follow
 
   private

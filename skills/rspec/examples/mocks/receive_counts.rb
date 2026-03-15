@@ -178,4 +178,3 @@ RSpec.describe RateLimitedClient do
     end
   end
 end
-

@@ -18,12 +18,12 @@ end
 # ============================================
 
 # Single record - raises RecordNotFound if not found
-user = User.find(1)
+User.find(1)
 # SELECT * FROM users WHERE id = 1
 
 # Multiple records - returns array, raises if ANY not found
-users = User.find([1, 2, 3])
-users = User.find(1, 2, 3)  # Same result
+User.find([1, 2, 3])
+User.find(1, 2, 3)  # Same result
 # SELECT * FROM users WHERE id IN (1, 2, 3)
 
 # Use when record MUST exist (will crash otherwise)
@@ -36,17 +36,17 @@ end
 # ============================================
 
 # Returns nil if not found
-user = User.find_by(email: "test@example.com")
+User.find_by(email: "test@example.com")
 # SELECT * FROM users WHERE email = 'test@example.com' LIMIT 1
 
 # Multiple conditions
-user = User.find_by(email: "test@example.com", active: true)
+User.find_by(email: "test@example.com", active: true)
 
 # With string conditions (use placeholders!)
-user = User.find_by("email LIKE ?", "%@company.com")
+User.find_by("email LIKE ?", "%@company.com")
 
 # find_by! raises RecordNotFound
-user = User.find_by!(email: "test@example.com")
+User.find_by!(email: "test@example.com")
 
 # Use when absence is acceptable
 def authenticate(email, password)
@@ -66,9 +66,9 @@ User.where(age: 18..65)                   # BETWEEN
 User.where(deleted_at: nil)               # IS NULL
 
 # Chaining - lazy evaluation
-users = User.where(active: true)
-            .where(role: "admin")
-            .order(created_at: :desc)
+User.where(active: true)
+  .where(role: "admin")
+  .order(created_at: :desc)
 # Query not executed until iteration
 
 # String conditions - ALWAYS use placeholders
@@ -112,7 +112,7 @@ User.where.missing(:posts)
 # ============================================
 
 # Finds existing or creates new record
-user = User.find_or_create_by(email: "new@example.com") do |u|
+User.find_or_create_by(email: "new@example.com") do |u|
   u.name = "New User"  # Only set for new records
   u.role = "member"
 end
@@ -123,7 +123,7 @@ user.new_record?  # true if not found, false if found
 user.save if user.new_record?
 
 # With scoped relation
-admin = User.admins.find_or_create_by(email: "admin@example.com")
+User.admins.find_or_create_by(email: "admin@example.com")
 
 # ============================================
 # Handling Race Conditions

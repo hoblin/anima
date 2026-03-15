@@ -158,7 +158,7 @@ RSpec.describe "block implementation" do
 
       allow(client).to receive(:fetch_data) do
         call_count += 1
-        call_count.odd? ? raise("timeout") : { count: 15 }
+        call_count.odd? ? raise("timeout") : {count: 15}
       end
 
       expect { client.fetch_data }.to raise_error("timeout")
@@ -210,7 +210,7 @@ RSpec.describe ApiClient do
       before do
         allow(http).to receive(:get).and_invoke(
           -> { raise Timeout::Error },
-          -> { { data: "success" } }
+          -> { {data: "success"} }
         )
       end
 
@@ -220,4 +220,3 @@ RSpec.describe ApiClient do
     end
   end
 end
-

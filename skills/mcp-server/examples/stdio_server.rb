@@ -18,8 +18,8 @@ class AddTool < MCP::Tool
   description "Adds two numbers together"
   input_schema(
     properties: {
-      a: { type: "number" },
-      b: { type: "number" }
+      a: {type: "number"},
+      b: {type: "number"}
     },
     required: %w[a b]
   )
@@ -87,20 +87,20 @@ server.define_tool(
   name: "echo",
   description: "Echoes input back",
   input_schema: {
-    properties: { message: { type: "string" } },
+    properties: {message: {type: "string"}},
     required: ["message"]
   }
 ) do |message:|
-  MCP::Tool::Response.new([{ type: "text", text: message }])
+  MCP::Tool::Response.new([{type: "text", text: message}])
 end
 
 # Resource handler
 server.resources_read_handler do |params|
   case params[:uri]
   when "config://app"
-    { uri: params[:uri], mimeType: "application/json", text: '{"env":"prod"}' }
+    {uri: params[:uri], mimeType: "application/json", text: '{"env":"prod"}'}
   else
-    { uri: params[:uri], mimeType: "text/plain", text: "Unknown resource" }
+    {uri: params[:uri], mimeType: "text/plain", text: "Unknown resource"}
   end
 end
 

@@ -199,19 +199,19 @@ RSpec.describe "Broadcast matching", type: :channel do
   describe "matching broadcast content" do
     it "matches exact content" do
       expect {
-        ActionCable.server.broadcast("test", { action: "update", data: 123 })
+        ActionCable.server.broadcast("test", {action: "update", data: 123})
       }.to have_broadcasted_to("test").with(action: "update", data: 123)
     end
 
     it "matches with hash including" do
       expect {
-        ActionCable.server.broadcast("test", { action: "update", data: 123, timestamp: Time.current })
+        ActionCable.server.broadcast("test", {action: "update", data: 123, timestamp: Time.current})
       }.to have_broadcasted_to("test").with(a_hash_including(action: "update"))
     end
 
     it "matches with block" do
       expect {
-        ActionCable.server.broadcast("test", { count: 5 })
+        ActionCable.server.broadcast("test", {count: 5})
       }.to have_broadcasted_to("test").with { |data|
         expect(data[:count]).to be > 0
       }
@@ -223,19 +223,19 @@ end
 RSpec.describe "Broadcast counts", type: :channel do
   it "matches exact broadcast count" do
     expect {
-      3.times { ActionCable.server.broadcast("updates", { ping: true }) }
+      3.times { ActionCable.server.broadcast("updates", {ping: true}) }
     }.to have_broadcasted_to("updates").exactly(3).times
   end
 
   it "matches at least count" do
     expect {
-      5.times { ActionCable.server.broadcast("updates", { ping: true }) }
+      5.times { ActionCable.server.broadcast("updates", {ping: true}) }
     }.to have_broadcasted_to("updates").at_least(:twice)
   end
 
   it "matches at most count" do
     expect {
-      2.times { ActionCable.server.broadcast("updates", { ping: true }) }
+      2.times { ActionCable.server.broadcast("updates", {ping: true}) }
     }.to have_broadcasted_to("updates").at_most(3).times
   end
 end

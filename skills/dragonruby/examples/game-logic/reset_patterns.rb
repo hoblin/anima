@@ -11,7 +11,7 @@ def defaults(args)
   args.state.score ||= 0
   args.state.level ||= 1
   args.state.high_score ||= 0  # Persists across $gtk.reset
-  args.state.player ||= { x: 640, y: 360 }
+  args.state.player ||= {x: 640, y: 360}
 end
 
 def handle_input(args)
@@ -52,12 +52,12 @@ end
 # Pattern 2: Partial reset - keep high score, reset game
 def partial_reset(args)
   # Save what we want to keep
-  high_score = args.state.high_score
+  args.state.high_score
 
   # Clear specific state
   args.state.score = 0
   args.state.level = 1
-  args.state.player = { x: 640, y: 360 }
+  args.state.player = {x: 640, y: 360}
 
   # Note: high_score wasn't touched, so it remains
 end
@@ -78,13 +78,13 @@ def render(args)
   }
 
   # Stats
-  args.outputs.labels << { x: 40, y: 700, text: "Score: #{args.state.score}", size_enum: 5 }
-  args.outputs.labels << { x: 40, y: 660, text: "Level: #{args.state.level}", size_enum: 3 }
-  args.outputs.labels << { x: 40, y: 620, text: "High Score: #{args.state.high_score}", size_enum: 3, r: 255, g: 215, b: 0 }
+  args.outputs.labels << {x: 40, y: 700, text: "Score: #{args.state.score}", size_enum: 5}
+  args.outputs.labels << {x: 40, y: 660, text: "Level: #{args.state.level}", size_enum: 3}
+  args.outputs.labels << {x: 40, y: 620, text: "High Score: #{args.state.high_score}", size_enum: 3, r: 255, g: 215, b: 0}
 
   # Instructions
-  args.outputs.labels << { x: 40, y: 100, text: "Arrows: Move | SPACE: Score" }
-  args.outputs.labels << { x: 40, y: 70, text: "R: Full reset | P: Partial reset | S: Soft reset" }
+  args.outputs.labels << {x: 40, y: 100, text: "Arrows: Move | SPACE: Score"}
+  args.outputs.labels << {x: 40, y: 70, text: "R: Full reset | P: Partial reset | S: Soft reset"}
 end
 
 # Custom reset handler - called when $gtk.reset executes

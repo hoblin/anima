@@ -60,27 +60,27 @@ class UserSearchTool < MCP::Tool
   description "Searches for users by name or email"
   input_schema(
     properties: {
-      query: { type: "string", minLength: 2 },
-      limit: { type: "integer", minimum: 1, maximum: 100 }
+      query: {type: "string", minLength: 2},
+      limit: {type: "integer", minimum: 1, maximum: 100}
     },
     required: ["query"]
   )
 
   class << self
-    def call(query:, limit: 10, server_context:)
+    def call(query:, server_context:, limit: 10)
       unless server_context[:permissions].include?("users:read")
         return MCP::Tool::Response.new(
-          [{ type: "text", text: "Permission denied" }],
+          [{type: "text", text: "Permission denied"}],
           error: true
         )
       end
 
       users = User.where("name ILIKE ? OR email ILIKE ?", "%#{query}%", "%#{query}%")
-                  .limit(limit)
-                  .select(:id, :name, :email)
+        .limit(limit)
+        .select(:id, :name, :email)
 
       MCP::Tool::Response.new(
-        [{ type: "text", text: users.to_json }],
+        [{type: "text", text: users.to_json}],
         structured_content: users.as_json
       )
     end

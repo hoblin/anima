@@ -12,14 +12,14 @@ def defaults(args)
   return if args.audio[:track_a]
 
   # Initialize two tracks - one playing, one silent
-  args.audio[:track_a] = { input: "sounds/music.ogg", gain: 1.0, looping: true }
-  args.audio[:track_b] = { input: "sounds/music2.ogg", gain: 0.0, looping: true }
+  args.audio[:track_a] = {input: "sounds/music.ogg", gain: 1.0, looping: true}
+  args.audio[:track_b] = {input: "sounds/music2.ogg", gain: 0.0, looping: true}
   args.state.active_track = :track_a
 end
 
 def update_crossfade(args)
   active = args.state.active_track
-  inactive = active == :track_a ? :track_b : :track_a
+  inactive = (active == :track_a) ? :track_b : :track_a
 
   # Fade in active track
   if args.audio[active]
@@ -35,7 +35,7 @@ end
 def input(args)
   # Swap tracks on SPACE
   if args.inputs.keyboard.key_down.space
-    args.state.active_track = args.state.active_track == :track_a ? :track_b : :track_a
+    args.state.active_track = (args.state.active_track == :track_a) ? :track_b : :track_a
   end
 end
 
@@ -44,8 +44,8 @@ def render(args)
   b_vol = (args.audio[:track_b]&.gain.to_f * 100).to_i
 
   args.outputs.labels << [
-    { x: 640, y: 400, text: "Press SPACE to crossfade", alignment_enum: 1 },
-    { x: 640, y: 360, text: "Track A: #{a_vol}%", alignment_enum: 1 },
-    { x: 640, y: 330, text: "Track B: #{b_vol}%", alignment_enum: 1 }
+    {x: 640, y: 400, text: "Press SPACE to crossfade", alignment_enum: 1},
+    {x: 640, y: 360, text: "Track A: #{a_vol}%", alignment_enum: 1},
+    {x: 640, y: 330, text: "Track B: #{b_vol}%", alignment_enum: 1}
   ]
 end

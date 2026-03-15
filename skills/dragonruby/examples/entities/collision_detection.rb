@@ -2,8 +2,8 @@
 # Demonstrates intersect_rect? and find_intersect_rect
 
 def tick(args)
-  args.state.player ||= { x: 640, y: 360, w: 32, h: 32 }
-  args.state.enemies ||= 8.map { |i| { x: i * 150 + 50, y: 300, w: 40, h: 40 } }
+  args.state.player ||= {x: 640, y: 360, w: 32, h: 32}
+  args.state.enemies ||= 8.map { |i| {x: i * 150 + 50, y: 300, w: 40, h: 40} }
 
   # Move player with arrow keys
   args.state.player.x += args.inputs.left_right * 5
@@ -20,7 +20,7 @@ def tick(args)
   end
 
   # Method 2: find_intersect_rect - returns first collision (faster)
-  collision = Geometry.find_intersect_rect(
+  Geometry.find_intersect_rect(
     args.state.player,
     args.state.enemies
   )
@@ -39,5 +39,5 @@ def tick(args)
     e.merge(r: e.hit ? 255 : 128, g: e.hit ? 0 : 128, b: e.hit ? 0 : 128)
   end
 
-  args.outputs.labels << { x: 10, y: 710, text: "Collisions: #{all_hits.length}" }
+  args.outputs.labels << {x: 10, y: 710, text: "Collisions: #{all_hits.length}"}
 end

@@ -134,4 +134,3 @@ RSpec.describe "mixed expectations and stubs" do
     end
   end
 end
-

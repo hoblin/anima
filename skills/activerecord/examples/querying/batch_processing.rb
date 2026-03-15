@@ -144,7 +144,7 @@ User.find_each(cursor: [:created_at, :id]) { |u| }
 class BackfillUserSettings < ActiveRecord::Migration[7.1]
   def up
     User.in_batches do |batch|
-      batch.update_all(settings: { notifications: true }.to_json)
+      batch.update_all(settings: {notifications: true}.to_json)
     end
   end
 end

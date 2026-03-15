@@ -3,7 +3,7 @@
 # Source: DragonRuby samples/02_input_basics/07_managing_scenes_advanced
 
 class Game
-  attr :args, :hp
+  attr_reader :args, :hp
 
   def initialize
     @hp = 100
@@ -27,7 +27,7 @@ class Game
 end
 
 class TitleScene
-  attr :args
+  attr_reader :args
 
   def id
     :title
@@ -47,7 +47,7 @@ class TitleScene
 end
 
 class GameplayScene
-  attr :game, :args
+  attr_reader :game, :args
 
   def initialize(game)
     @game = game
@@ -78,7 +78,7 @@ class GameplayScene
 end
 
 class GameOverScene
-  attr :game, :args
+  attr_reader :game, :args
 
   def initialize(game)
     @game = game
@@ -103,7 +103,7 @@ class GameOverScene
 end
 
 class SceneManager
-  attr :args
+  attr_reader :args
 
   def initialize
     @game = Game.new

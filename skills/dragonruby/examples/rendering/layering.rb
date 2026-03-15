@@ -20,14 +20,14 @@ def tick args
   }
 
   # 3. Objects (back to front based on insertion order)
-  args.outputs.primitives << { x: 100, y: 150, w: 100, h: 150, path: :solid, r: 34, g: 100, b: 34 }
-  args.outputs.primitives << { x: 180, y: 150, w: 100, h: 150, path: :solid, r: 34, g: 139, b: 34 }
-  args.outputs.primitives << { x: 260, y: 150, w: 100, h: 150, path: :solid, r: 50, g: 200, b: 50 }
+  args.outputs.primitives << {x: 100, y: 150, w: 100, h: 150, path: :solid, r: 34, g: 100, b: 34}
+  args.outputs.primitives << {x: 180, y: 150, w: 100, h: 150, path: :solid, r: 34, g: 139, b: 34}
+  args.outputs.primitives << {x: 260, y: 150, w: 100, h: 150, path: :solid, r: 50, g: 200, b: 50}
 
   # Labels for objects
-  args.outputs.primitives << { x: 150, y: 120, text: "Back",   anchor_x: 0.5 }
-  args.outputs.primitives << { x: 230, y: 120, text: "Middle", anchor_x: 0.5 }
-  args.outputs.primitives << { x: 310, y: 120, text: "Front",  anchor_x: 0.5 }
+  args.outputs.primitives << {x: 150, y: 120, text: "Back", anchor_x: 0.5}
+  args.outputs.primitives << {x: 230, y: 120, text: "Middle", anchor_x: 0.5}
+  args.outputs.primitives << {x: 310, y: 120, text: "Front", anchor_x: 0.5}
 
   # 4. UI bar (rendered last = top layer)
   args.outputs.primitives << {

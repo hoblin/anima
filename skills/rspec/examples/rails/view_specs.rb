@@ -78,7 +78,7 @@ RSpec.describe "widgets/_widget", type: :view do
   let(:widget) { create(:widget, name: "Grinder") }
 
   it "renders the widget partial with locals" do
-    render partial: "widgets/widget", locals: { widget: }
+    render partial: "widgets/widget", locals: {widget:}
 
     expect(rendered).to include("Grinder")
   end

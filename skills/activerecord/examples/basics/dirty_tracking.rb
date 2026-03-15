@@ -79,7 +79,7 @@ class User < ApplicationRecord
 
   def notify_if_email_changed
     if saved_change_to_email?
-      old_email, new_email = saved_change_to_email
+      old_email, _ = saved_change_to_email
       UserMailer.email_changed(self, old_email).deliver_later
     end
   end
@@ -215,4 +215,4 @@ end
 User.where(status: :pending).update_all(status: :active)
 
 # For read-only operations, use pluck
-emails = User.pluck(:email)  # No model instantiation
+User.pluck(:email)  # No model instantiation

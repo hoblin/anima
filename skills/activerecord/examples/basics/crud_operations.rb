@@ -21,27 +21,27 @@ if user.persisted?
 end
 
 # With block
-user = User.create(email: "charlie@example.com") do |u|
+User.create(email: "charlie@example.com") do |u|
   u.name = "Charlie"
   u.role = :admin
 end
 
 # Bang methods (raise on failure)
 begin
-  user = User.create!(name: "", email: "invalid")
+  User.create!(name: "", email: "invalid")
 rescue ActiveRecord::RecordInvalid => e
   puts "Validation failed: #{e.message}"
 end
 
 # Bulk insert (skips validations and callbacks)
 User.insert_all([
-  { name: "User 1", email: "user1@example.com", created_at: Time.current, updated_at: Time.current },
-  { name: "User 2", email: "user2@example.com", created_at: Time.current, updated_at: Time.current }
+  {name: "User 1", email: "user1@example.com", created_at: Time.current, updated_at: Time.current},
+  {name: "User 2", email: "user2@example.com", created_at: Time.current, updated_at: Time.current}
 ])
 
 # Upsert (insert or update on conflict)
 User.upsert_all(
-  [{ email: "alice@example.com", name: "Alice Updated" }],
+  [{email: "alice@example.com", name: "Alice Updated"}],
   unique_by: :email
 )
 
@@ -50,38 +50,38 @@ User.upsert_all(
 # =============================================================================
 
 # find - raises RecordNotFound if not found
-user = User.find(1)
+User.find(1)
 
 # find with multiple IDs
-users = User.find([1, 2, 3])  # Returns array, raises if ANY not found
+User.find([1, 2, 3])  # Returns array, raises if ANY not found
 
 # find_by - returns nil if not found
-user = User.find_by(email: "alice@example.com")
-user = User.find_by(status: :active, role: :admin)
+User.find_by(email: "alice@example.com")
+User.find_by(status: :active, role: :admin)
 
 # find_by! - raises if not found
-user = User.find_by!(email: "nonexistent@example.com")
+User.find_by!(email: "nonexistent@example.com")
 
 # where - returns Relation
-users = User.where(active: true)
-users = User.where("created_at > ?", 1.week.ago)
-users = User.where(role: [:admin, :moderator])
+User.where(active: true)
+User.where("created_at > ?", 1.week.ago)
+User.where(role: [:admin, :moderator])
 
 # Chainable queries
-users = User
+User
   .where(active: true)
   .where.not(role: :guest)
   .order(created_at: :desc)
   .limit(10)
 
 # First/last
-user = User.first
-user = User.last
-user = User.order(:name).first(5)  # First 5 by name
+User.first
+User.last
+User.order(:name).first(5)  # First 5 by name
 
 # Take (no order guarantee, faster)
-user = User.take
-users = User.take(3)
+User.take
+User.take(3)
 
 # =============================================================================
 # UPDATE
@@ -98,7 +98,7 @@ user.update!(name: "New Name")
 user.update(
   name: "New Name",
   email: "newemail@example.com",
-  settings: { theme: "dark" }
+  settings: {theme: "dark"}
 )
 
 # Update attribute (skips validations, runs callbacks)
@@ -152,10 +152,10 @@ User.delete(5)        # Without callbacks
 # =============================================================================
 
 # Find or create
-user = User.find_or_create_by(email: "alice@example.com")
+User.find_or_create_by(email: "alice@example.com")
 
 # With additional attributes via block
-user = User.find_or_create_by(email: "alice@example.com") do |u|
+User.find_or_create_by(email: "alice@example.com") do |u|
   u.name = "Alice"
   u.role = :member
 end

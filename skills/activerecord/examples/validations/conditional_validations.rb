@@ -71,8 +71,8 @@ end
 class User < ApplicationRecord
   # Group validations by condition
   with_options if: :admin? do |admin|
-    admin.validates :password, length: { minimum: 12 }
-    admin.validates :two_factor_enabled, inclusion: { in: [true] }
+    admin.validates :password, length: {minimum: 12}
+    admin.validates :two_factor_enabled, inclusion: {in: [true]}
     admin.validates :security_question, presence: true
   end
 
@@ -117,14 +117,14 @@ end
 
 class Profile < ApplicationRecord
   # Static allow_blank
-  validates :bio, length: { minimum: 50 }, allow_blank: true
+  validates :bio, length: {minimum: 50}, allow_blank: true
 
   # Dynamic allow_blank with Proc
   validates :phone, presence: true,
     allow_blank: -> { signup_step < 3 }
 
   # Dynamic allow_nil
-  validates :age, numericality: { greater_than: 0 },
+  validates :age, numericality: {greater_than: 0},
     allow_nil: :optional_age_field?
 
   private
@@ -165,7 +165,7 @@ class ImportedRecord < ApplicationRecord
   before_validation :check_skip_validation
 
   validates :name, presence: true
-  validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }
+  validates :email, format: {with: URI::MailTo::EMAIL_REGEXP}
 
   attr_accessor :skip_validation
 
@@ -256,8 +256,8 @@ end
 class BadExample < ApplicationRecord
   # WRONG: Too many conditions, hard to understand
   validates :field1, presence: true, if: :a?
-  validates :field1, length: { min: 5 }, if: :b?
-  validates :field1, format: { with: /.../ }, unless: :c?
+  validates :field1, length: {min: 5}, if: :b?
+  validates :field1, format: {with: /.../}, unless: :c?
   validates :field2, presence: true, if: :a?
   validates :field2, uniqueness: true, if: -> { b? && !d? }
   # ... more scattered conditionals
@@ -271,7 +271,7 @@ class GoodExample < ApplicationRecord
   end
 
   with_options on: :step_two do
-    validates :field1, length: { minimum: 5 }
+    validates :field1, length: {minimum: 5}
     validates :field2, uniqueness: true
   end
 

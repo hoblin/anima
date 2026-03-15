@@ -16,7 +16,7 @@ RSpec.describe "include matcher" do
 
     it "works with composed matchers" do
       expect([1, 3, 7]).to include(a_kind_of(Integer))
-      expect([1, 3, 7]).to include(be_odd.and be < 10)
+      expect([1, 3, 7]).to include(be_odd.and(be < 10))
     end
   end
 
@@ -32,7 +32,7 @@ RSpec.describe "include matcher" do
   end
 
   describe "with hashes" do
-    let(:hash) { { a: 1, b: 2, c: 3 } }
+    let(:hash) { {a: 1, b: 2, c: 3} }
 
     it "checks key existence" do
       expect(hash).to include(:a)
@@ -46,7 +46,7 @@ RSpec.describe "include matcher" do
   end
 
   describe "with counts" do
-    let(:items) { [{ type: :a }, { type: :b }, { type: :a }] }
+    let(:items) { [{type: :a}, {type: :b}, {type: :a}] }
 
     it "specifies occurrence count" do
       expect(items).to include(have_key(:type)).exactly(3).times
@@ -108,13 +108,13 @@ RSpec.describe "all matcher" do
   end
 
   it "works with compound matchers" do
-    expect([1, 3, 5]).to all(be_odd.and be_an(Integer))
-    expect([1, 4, 21]).to all(be_odd.or be < 10)
+    expect([1, 3, 5]).to all(be_odd.and(be_an(Integer)))
+    expect([1, 4, 21]).to all(be_odd.or(be < 10))
   end
 
   it "provides clear failure messages" do
     # When one element fails, message shows which
-    expect(["foo", "bar", "baz"]).to all(be_a(String).and include("a"))
+    expect(["foo", "bar", "baz"]).to all(be_a(String).and(include("a")))
   end
 end
 

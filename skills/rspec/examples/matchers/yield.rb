@@ -86,7 +86,7 @@ RSpec.describe "yield_successive_args matcher" do
   end
 
   it "works with hashes" do
-    expect { |b| { a: 1, b: 2 }.each(&b) }.to yield_successive_args([:a, 1], [:b, 2])
+    expect { |b| {a: 1, b: 2}.each(&b) }.to yield_successive_args([:a, 1], [:b, 2])
   end
 
   it "works with composed matchers" do

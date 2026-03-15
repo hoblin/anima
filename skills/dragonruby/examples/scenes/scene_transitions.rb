@@ -4,7 +4,7 @@
 # --- Pattern 1: Instant Transition ---
 def instant_transition args
   args.state.scene = :new_scene
-  return  # Important: early return
+  nil  # Important: early return
 end
 
 # --- Pattern 2: Tracked Transition ---
@@ -78,7 +78,7 @@ def tick args
 
   case args.state.scene
   when :title
-    args.outputs.labels << { x: 640, y: 400, text: "Title - Press SPACE", anchor_x: 0.5 }
+    args.outputs.labels << {x: 640, y: 400, text: "Title - Press SPACE", anchor_x: 0.5}
     if args.inputs.keyboard.key_down.space
       transition_to_gameplay args
     end
@@ -86,7 +86,7 @@ def tick args
   when :gameplay
     args.state.timer ||= 60 * 60
     args.state.timer -= 1
-    args.outputs.labels << { x: 640, y: 400, text: "Time: #{(args.state.timer / 60).ceil}", anchor_x: 0.5 }
+    args.outputs.labels << {x: 640, y: 400, text: "Time: #{(args.state.timer / 60).ceil}", anchor_x: 0.5}
     if args.state.timer <= 0
       args.state.scene = :game_over
       args.state.grace_timer = nil  # Reset for game_over_tick
