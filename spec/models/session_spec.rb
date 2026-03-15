@@ -273,6 +273,14 @@ RSpec.describe Session do
       expect(child.system_prompt).to eq("You are a research assistant.")
     end
 
+    it "ignores environment_context for sub-agent sessions" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "You are a research assistant.")
+
+      expect(child.system_prompt(environment_context: "## Environment\n\nOS: Linux"))
+        .to eq("You are a research assistant.")
+    end
+
     it "includes soul content for main sessions" do
       session = Session.create!
 
@@ -287,6 +295,40 @@ RSpec.describe Session do
       soul_pos = prompt.index("# Soul")
       expertise_pos = prompt.index("## Your Expertise")
       expect(soul_pos).to be < expertise_pos
+    end
+
+    it "includes environment context between soul and expertise" do
+      session = Session.create!
+      session.activate_skill("gh-issue")
+      env = "## Environment\n\nOS: Arch Linux (pacman, yay)\nCWD: /home/user/project"
+
+      prompt = session.system_prompt(environment_context: env)
+      soul_pos = prompt.index("# Soul")
+      env_pos = prompt.index("## Environment")
+      expertise_pos = prompt.index("## Your Expertise")
+      expect(soul_pos).to be < env_pos
+      expect(env_pos).to be < expertise_pos
+    end
+
+    it "includes environment context between soul and goals when no expertise" do
+      session = Session.create!
+      Goal.create!(session: session, description: "Test goal")
+      env = "## Environment\n\nOS: Linux"
+
+      prompt = session.system_prompt(environment_context: env)
+      soul_pos = prompt.index("# Soul")
+      env_pos = prompt.index("## Environment")
+      goals_pos = prompt.index("## Current Goals")
+      expect(soul_pos).to be < env_pos
+      expect(env_pos).to be < goals_pos
+    end
+
+    it "works without environment context" do
+      session = Session.create!
+
+      prompt = session.system_prompt
+      expect(prompt).to start_with("# Soul")
+      expect(prompt).not_to include("## Environment")
     end
   end
 

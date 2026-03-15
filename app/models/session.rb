@@ -116,9 +116,11 @@ class Session < ApplicationRecord
   # Sub-agent sessions use their stored prompt. Main sessions assemble
   # a system prompt from active skills and current goals.
   #
+  # @param environment_context [String, nil] pre-assembled environment block
+  #   from {EnvironmentProbe}; injected between soul and expertise sections
   # @return [String, nil] the system prompt text, or nil when nothing to inject
-  def system_prompt
-    sub_agent? ? prompt : assemble_system_prompt
+  def system_prompt(environment_context: nil)
+    sub_agent? ? prompt : assemble_system_prompt(environment_context: environment_context)
   end
 
   # Activates a skill on this session. Validates the skill exists in the
@@ -179,12 +181,14 @@ class Session < ApplicationRecord
     save!
   end
 
-  # Assembles the system prompt: soul first, then skills/workflow, then goals.
+  # Assembles the system prompt: soul first, then environment context,
+  # then skills/workflow, then goals.
   # The soul is always present — "who am I" before "what can I do."
   #
+  # @param environment_context [String, nil] pre-assembled environment block
   # @return [String] composed system prompt
-  def assemble_system_prompt
-    [assemble_soul_section, assemble_expertise_section, assemble_goals_section].compact.join("\n\n")
+  def assemble_system_prompt(environment_context: nil)
+    [assemble_soul_section, environment_context, assemble_expertise_section, assemble_goals_section].compact.join("\n\n")
   end
 
   # Serializes active goals as a lightweight summary for ActionCable
