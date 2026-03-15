@@ -24,7 +24,7 @@ module Providers
 
     class << self
       def fetch_token
-        token = Rails.application.credentials.dig(:anthropic, :subscription_token)
+        token = CredentialStore.read("anthropic", "subscription_token")
         raise AuthenticationError, <<~MSG.strip if token.blank?
           No Anthropic subscription token found in credentials.
           Use the TUI token setup (Ctrl+a → a) to configure your token.

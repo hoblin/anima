@@ -26,11 +26,15 @@ class CredentialStore
     end
 
     # Reads a single credential value from a namespace.
+    # Busts the Rails credentials cache first so cross-process writes
+    # (e.g. token saved in the web process, read in the SolidQueue worker)
+    # are always visible.
     #
     # @param namespace [String] top-level YAML key
     # @param key [String] credential key within the namespace
     # @return [String, nil] credential value or nil if not found
     def read(namespace, key)
+      bust_credentials_cache!
       Rails.application.credentials.dig(namespace.to_sym, key.to_sym)
     end
 
@@ -84,9 +88,16 @@ class CredentialStore
     def save_credentials(data)
       creds = Rails.application.credentials
       creds.write(data.to_yaml)
-      # Rails memoizes the decrypted config in @config. Without clearing it,
-      # subsequent credential reads return stale data.
-      creds.instance_variable_set(:@config, nil)
+      bust_credentials_cache!
+    end
+
+    # Clears the Rails credentials in-memory cache so the next access
+    # re-reads and decrypts from disk. Required because Rails memoizes
+    # the decrypted config in @config per-process.
+    #
+    # @return [void]
+    def bust_credentials_cache!
+      Rails.application.credentials.instance_variable_set(:@config, nil)
     end
   end
 end
