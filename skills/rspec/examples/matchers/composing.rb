@@ -91,7 +91,7 @@ RSpec.describe "matchers accepting matcher arguments" do
         user: {
           name: "Alice",
           roles: ["admin", "editor"],
-          settings: {theme: "dark"}
+          settings: { theme: "dark" }
         }
       }
 
@@ -99,7 +99,7 @@ RSpec.describe "matchers accepting matcher arguments" do
         user: {
           name: a_string_starting_with("A"),
           roles: a_collection_including("admin"),
-          settings: {theme: a_kind_of(String)}
+          settings: { theme: a_kind_of(String) }
         }
       )
     end

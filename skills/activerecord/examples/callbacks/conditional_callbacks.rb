@@ -89,15 +89,15 @@ end
 class Article < ApplicationRecord
   # All conditions must be true (AND logic)
   before_save :schedule_publication,
-    if: [:published?, :publication_date_set?, :not_already_scheduled?]
+              if: [:published?, :publication_date_set?, :not_already_scheduled?]
 
   # Mix of symbols and lambdas
   after_update :notify_author,
-    if: [:status_changed?, -> { previous_changes[:status]&.last == "rejected" }]
+               if: [:status_changed?, -> { previous_changes[:status]&.last == "rejected" }]
 
   # Multiple unless conditions
   before_destroy :archive_content,
-    unless: [:draft?, :never_published?]
+                 unless: [:draft?, :never_published?]
 
   private
 
@@ -146,13 +146,13 @@ end
 class Payment < ApplicationRecord
   # Callback runs when :if is true AND :unless is false
   after_create :send_receipt,
-    if: :successful?,
-    unless: :receipt_sent?
+               if: :successful?,
+               unless: :receipt_sent?
 
   # Multiple conditions on both
   before_save :validate_card,
-    if: [:card_payment?, :new_card?],
-    unless: -> { skip_validation? || test_mode? }
+              if: [:card_payment?, :new_card?],
+              unless: -> { skip_validation? || test_mode? }
 
   private
 
@@ -243,7 +243,7 @@ class Article < ApplicationRecord
   # Only on :publish context
   validates :body, presence: true, on: :publish
   validates :category_id, presence: true, on: :publish
-  validates :meta_description, length: {maximum: 160}, on: :publish
+  validates :meta_description, length: { maximum: 160 }, on: :publish
 
   # Callbacks can also use custom contexts
   before_validation :prepare_for_publish, on: :publish

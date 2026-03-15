@@ -24,7 +24,7 @@ class MCPStreamingClient
   end
 
   def call_tool(name, arguments)
-    post_request("tools/call", {name:, arguments:})
+    post_request("tools/call", { name:, arguments: })
   end
 
   def disconnect
@@ -69,12 +69,12 @@ class MCPStreamingClient
             next unless line.start_with?("data: ")
 
             data = JSON.parse(line[6..])
-            puts "SSE Event: #{data["method"]}"
+            puts "SSE Event: #{data['method']}"
           end
         end
       end
     end
-  rescue => e
+  rescue StandardError => e
     puts "SSE Error: #{e.message}"
   end
 
@@ -90,6 +90,6 @@ end
 # Usage
 client = MCPStreamingClient.new("http://localhost:9292")
 client.connect
-result = client.call_tool("echo", {message: "Hello!"})
+result = client.call_tool("echo", { message: "Hello!" })
 puts result
 client.disconnect

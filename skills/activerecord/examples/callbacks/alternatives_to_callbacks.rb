@@ -143,11 +143,11 @@ class RegistrationForm
   attribute :company_name, :string
   attribute :plan, :string, default: "free"
 
-  validates :email, presence: true, format: {with: URI::MailTo::EMAIL_REGEXP}
-  validates :password, presence: true, length: {minimum: 8}, confirmation: true
+  validates :email, presence: true, format: { with: URI::MailTo::EMAIL_REGEXP }
+  validates :password, presence: true, length: { minimum: 8 }, confirmation: true
   validates :terms_accepted, acceptance: true
   validates :company_name, presence: true
-  validates :plan, inclusion: {in: %w[free starter business]}
+  validates :plan, inclusion: { in: %w[free starter business] }
 
   def save
     return false unless valid?
@@ -165,7 +165,9 @@ class RegistrationForm
     false
   end
 
-  attr_reader :user
+  def user
+    @user
+  end
 
   private
 

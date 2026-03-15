@@ -20,7 +20,7 @@ def tick args
 end
 
 def gameplay_tick args
-  args.state.player ||= {x: 640, y: 360, w: 64, h: 64}
+  args.state.player ||= { x: 640, y: 360, w: 64, h: 64 }
   args.state.score ||= 0
 
   # Handle input

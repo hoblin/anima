@@ -30,7 +30,7 @@ RSpec.describe WidgetsController, type: :controller do
     let(:widget) { create(:widget) }
 
     it "assigns @widget" do
-      get :show, params: {id: widget.id}
+      get :show, params: { id: widget.id }
       expect(assigns(:widget)).to eq(widget)
     end
   end
@@ -44,7 +44,7 @@ RSpec.describe WidgetsController, type: :controller do
 
   describe "POST #create" do
     context "with valid params" do
-      let(:valid_params) { {widget: attributes_for(:widget)} }
+      let(:valid_params) { { widget: attributes_for(:widget) } }
 
       it "creates a new Widget" do
         expect {
@@ -59,7 +59,7 @@ RSpec.describe WidgetsController, type: :controller do
     end
 
     context "with invalid params" do
-      let(:invalid_params) { {widget: {name: ""}} }
+      let(:invalid_params) { { widget: { name: "" } } }
 
       it "does not create a Widget" do
         expect {
@@ -79,12 +79,12 @@ RSpec.describe WidgetsController, type: :controller do
 
     context "with valid params" do
       it "updates the widget" do
-        patch :update, params: {id: widget.id, widget: {name: "New Name"}}
+        patch :update, params: { id: widget.id, widget: { name: "New Name" } }
         expect(widget.reload.name).to eq("New Name")
       end
 
       it "redirects to the widget" do
-        patch :update, params: {id: widget.id, widget: {name: "New Name"}}
+        patch :update, params: { id: widget.id, widget: { name: "New Name" } }
         expect(response).to redirect_to(widget)
       end
     end
@@ -95,12 +95,12 @@ RSpec.describe WidgetsController, type: :controller do
 
     it "destroys the widget" do
       expect {
-        delete :destroy, params: {id: widget.id}
+        delete :destroy, params: { id: widget.id }
       }.to change(Widget, :count).by(-1)
     end
 
     it "redirects to index" do
-      delete :destroy, params: {id: widget.id}
+      delete :destroy, params: { id: widget.id }
       expect(response).to redirect_to(widgets_url)
     end
   end
@@ -123,7 +123,7 @@ end
 # Testing different response formats
 RSpec.describe WidgetsController, type: :controller do
   describe "POST #create" do
-    let(:valid_params) { {widget: attributes_for(:widget)} }
+    let(:valid_params) { { widget: attributes_for(:widget) } }
 
     it "responds to HTML by default" do
       post :create, params: valid_params
@@ -266,14 +266,14 @@ RSpec.describe WidgetsController, type: :controller do
   describe "POST #create" do
     context "with valid params" do
       it "sets a success flash message" do
-        post :create, params: {widget: attributes_for(:widget)}
+        post :create, params: { widget: attributes_for(:widget) }
         expect(flash[:notice]).to eq("Widget was successfully created.")
       end
     end
 
     context "with invalid params" do
       it "sets an error flash message" do
-        post :create, params: {widget: {name: ""}}
+        post :create, params: { widget: { name: "" } }
         expect(flash[:alert]).to be_present
       end
     end
@@ -286,7 +286,7 @@ RSpec.describe SessionsController, type: :controller do
     let(:user) { create(:user, password: "secret") }
 
     it "sets user_id in session" do
-      post :create, params: {email: user.email, password: "secret"}
+      post :create, params: { email: user.email, password: "secret" }
       expect(session[:user_id]).to eq(user.id)
     end
   end

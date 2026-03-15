@@ -13,14 +13,14 @@ def tick args
     click = args.state.last_click
 
     # Access click position
-    args.outputs.labels << {x: 640, y: 400, text: "Clicked at: #{click.x}, #{click.y}", size_enum: 5, alignment_enum: 1}
+    args.outputs.labels << { x: 640, y: 400, text: "Clicked at: #{click.x}, #{click.y}", size_enum: 5, alignment_enum: 1 }
 
     # How many frames ago did it happen?
-    args.outputs.labels << {x: 640, y: 350, text: "Clicked #{click.created_at_elapsed} ticks ago", size_enum: 5, alignment_enum: 1}
+    args.outputs.labels << { x: 640, y: 350, text: "Clicked #{click.created_at_elapsed} ticks ago", size_enum: 5, alignment_enum: 1 }
 
     # Draw a marker at click position
-    args.outputs.primitives << {x: click.x - 5, y: click.y - 5, w: 10, h: 10, r: 255, g: 0, b: 0, primitive_marker: :solid}
+    args.outputs.primitives << { x: click.x - 5, y: click.y - 5, w: 10, h: 10, r: 255, g: 0, b: 0, primitive_marker: :solid }
   else
-    args.outputs.labels << {x: 640, y: 360, text: "Click anywhere!", size_enum: 5, alignment_enum: 1}
+    args.outputs.labels << { x: 640, y: 360, text: "Click anywhere!", size_enum: 5, alignment_enum: 1 }
   end
 end

@@ -13,7 +13,7 @@ RSpec.describe "have_http_status", type: :request do
     end
 
     it "matches created status" do
-      post "/widgets", params: {widget: {name: "New"}}
+      post "/widgets", params: { widget: { name: "New" } }
       expect(response).to have_http_status(201)
     end
   end
@@ -25,8 +25,8 @@ RSpec.describe "have_http_status", type: :request do
     end
 
     it "matches :created" do
-      post "/api/widgets", params: {widget: {name: "New"}},
-        headers: {"ACCEPT" => "application/json"}
+      post "/api/widgets", params: { widget: { name: "New" } },
+        headers: { "ACCEPT" => "application/json" }
       expect(response).to have_http_status(:created)
     end
 
@@ -36,7 +36,7 @@ RSpec.describe "have_http_status", type: :request do
     end
 
     it "matches :unprocessable_entity" do
-      post "/widgets", params: {widget: {name: ""}}
+      post "/widgets", params: { widget: { name: "" } }
       expect(response).to have_http_status(:unprocessable_entity)
     end
 
@@ -53,7 +53,7 @@ RSpec.describe "have_http_status", type: :request do
     end
 
     it "matches :redirect (any 3xx)" do
-      post "/widgets", params: {widget: {name: "New"}}
+      post "/widgets", params: { widget: { name: "New" } }
       expect(response).to have_http_status(:redirect)
     end
 
@@ -80,7 +80,7 @@ RSpec.describe "redirect_to", type: :controller do
   end
 
   describe "POST #create" do
-    let(:valid_params) { {widget: {name: "Test"}} }
+    let(:valid_params) { { widget: { name: "Test" } } }
 
     it "redirects to URL" do
       post :create, params: valid_params

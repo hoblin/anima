@@ -87,15 +87,15 @@ def load_game(args)
 end
 
 def render(args)
-  args.outputs.labels << {x: 40, y: 700, text: "Score: #{args.state.score}", size_enum: 5}
-  args.outputs.labels << {x: 40, y: 650, text: "Level: #{args.state.level}", size_enum: 3}
-  args.outputs.labels << {x: 40, y: 600, text: "High Score: #{args.state.high_score}", size_enum: 3}
+  args.outputs.labels << { x: 40, y: 700, text: "Score: #{args.state.score}", size_enum: 5 }
+  args.outputs.labels << { x: 40, y: 650, text: "Level: #{args.state.level}", size_enum: 3 }
+  args.outputs.labels << { x: 40, y: 600, text: "High Score: #{args.state.high_score}", size_enum: 3 }
 
   # File status
   save_exists = $gtk.stat_file(SAVE_FILE) ? "Yes" : "No"
-  args.outputs.labels << {x: 40, y: 500, text: "Save file exists: #{save_exists}"}
+  args.outputs.labels << { x: 40, y: 500, text: "Save file exists: #{save_exists}" }
 
   # Instructions
-  args.outputs.labels << {x: 40, y: 100, text: "SPACE: +10 score | S: Save high score"}
-  args.outputs.labels << {x: 40, y: 70, text: "F5: Save game | F9: Load game | R: Reset"}
+  args.outputs.labels << { x: 40, y: 100, text: "SPACE: +10 score | S: Save high score" }
+  args.outputs.labels << { x: 40, y: 70, text: "F5: Save game | F9: Load game | R: Reset" }
 end

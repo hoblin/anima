@@ -3,11 +3,11 @@
 
 def tick args
   controller = args.inputs.controller_one
-  args.state.player ||= {x: 640, y: 360, w: 32, h: 32}
+  args.state.player ||= { x: 640, y: 360, w: 32, h: 32 }
 
   # Button inputs (key_down, key_held, key_up work like keyboard)
   if controller.key_down.a
-    args.outputs.labels << {x: 640, y: 600, text: "A button pressed!", size_enum: 5, alignment_enum: 1}
+    args.outputs.labels << { x: 640, y: 600, text: "A button pressed!", size_enum: 5, alignment_enum: 1 }
   end
 
   # D-pad directions
@@ -21,8 +21,8 @@ def tick args
   args.state.player.y += controller.left_analog_y_perc * 8
 
   # Display analog values
-  args.outputs.labels << {x: 10, y: 700, text: "Left stick X: #{controller.left_analog_x_perc.to_sf}"}
-  args.outputs.labels << {x: 10, y: 670, text: "Left stick Y: #{controller.left_analog_y_perc.to_sf}"}
+  args.outputs.labels << { x: 10, y: 700, text: "Left stick X: #{controller.left_analog_x_perc.to_sf}" }
+  args.outputs.labels << { x: 10, y: 670, text: "Left stick Y: #{controller.left_analog_y_perc.to_sf}" }
 
-  args.outputs.sprites << args.state.player.merge(path: "sprites/square/blue.png")
+  args.outputs.sprites << args.state.player.merge(path: 'sprites/square/blue.png')
 end

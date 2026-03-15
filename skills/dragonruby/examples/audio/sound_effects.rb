@@ -20,11 +20,11 @@ def tick(args)
   # Multiple sounds at once
   if args.inputs.keyboard.key_down.enter
     args.outputs.sounds << "sounds/jump.wav"
-    args.outputs.sounds << {path: "sounds/coin.wav", gain: 0.3}
+    args.outputs.sounds << { path: "sounds/coin.wav", gain: 0.3 }
   end
 
   args.outputs.labels << [
-    {x: 640, y: 400, text: "Click or SPACE for sounds", alignment_enum: 1},
-    {x: 640, y: 360, text: "ENTER for multiple sounds", alignment_enum: 1}
+    { x: 640, y: 400, text: "Click or SPACE for sounds", alignment_enum: 1 },
+    { x: 640, y: 360, text: "ENTER for multiple sounds", alignment_enum: 1 }
   ]
 end

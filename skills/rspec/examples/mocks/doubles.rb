@@ -74,7 +74,7 @@ RSpec.describe "class_double" do
     end
 
     it "transfers nested constants when requested" do
-      class_double("CardDeck").as_stubbed_const(
+      fake_class = class_double("CardDeck").as_stubbed_const(
         transfer_nested_constants: true
       )
       # CardDeck::SUITS and other constants are now available
@@ -82,7 +82,7 @@ RSpec.describe "class_double" do
     end
 
     it "can selectively transfer constants" do
-      class_double("CardDeck").as_stubbed_const(
+      fake_class = class_double("CardDeck").as_stubbed_const(
         transfer_nested_constants: [:SUITS]
       )
       # Only SUITS is transferred
@@ -136,3 +136,4 @@ RSpec.describe "object_double" do
     end
   end
 end
+

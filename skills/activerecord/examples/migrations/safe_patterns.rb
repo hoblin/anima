@@ -34,8 +34,8 @@ end
 class AddNotNullConstraintStep1 < ActiveRecord::Migration[7.2]
   def change
     add_check_constraint :users, "email IS NOT NULL",
-      name: "users_email_not_null",
-      validate: false
+                         name: "users_email_not_null",
+                         validate: false
   end
 end
 
@@ -181,9 +181,9 @@ class AddIndexSafely < ActiveRecord::Migration[7.2]
 
   def change
     add_index :users, :email,
-      unique: true,
-      algorithm: :concurrently,
-      name: "index_users_on_email_unique"
+              unique: true,
+              algorithm: :concurrently,
+              name: "index_users_on_email_unique"
   end
 end
 
@@ -228,9 +228,9 @@ class BackfillUserStatus < ActiveRecord::Migration[7.2]
     loop do
       # Find batch of records to update
       count = User.unscoped
-        .where(status: nil)
-        .limit(10_000)
-        .update_all(status: "active")
+                  .where(status: nil)
+                  .limit(10_000)
+                  .update_all(status: "active")
 
       break if count.zero?
 

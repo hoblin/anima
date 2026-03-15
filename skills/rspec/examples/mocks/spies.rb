@@ -146,3 +146,4 @@ RSpec.describe "partial double spy pattern" do
     end
   end
 end
+

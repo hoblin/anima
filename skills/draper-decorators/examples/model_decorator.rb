@@ -88,7 +88,7 @@ class PostDecorator < ApplicationDecorator
       "Delete",
       h.post_path(object),
       method: :delete,
-      data: {confirm: "Are you sure?"},
+      data: { confirm: "Are you sure?" },
       class: "btn btn-sm btn-danger"
     )
   end

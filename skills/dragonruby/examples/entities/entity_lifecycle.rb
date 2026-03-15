@@ -12,7 +12,7 @@ end
 
 def defaults(args)
   args.state.bullets ||= []
-  args.state.targets ||= 5.map { |i| {x: 1000, y: i * 120 + 100, w: 50, h: 50, dead: false} }
+  args.state.targets ||= 5.map { |i| { x: 1000, y: i * 120 + 100, w: 50, h: 50, dead: false } }
 end
 
 # Step 1: CREATE entities
@@ -64,5 +64,5 @@ end
 def render(args)
   args.outputs.solids << args.state.bullets.map { |b| b.merge(r: 255, g: 200, b: 0) }
   args.outputs.borders << args.state.targets
-  args.outputs.labels << {x: 10, y: 710, text: "Click to shoot. Targets: #{args.state.targets.length}"}
+  args.outputs.labels << { x: 10, y: 710, text: "Click to shoot. Targets: #{args.state.targets.length}" }
 end

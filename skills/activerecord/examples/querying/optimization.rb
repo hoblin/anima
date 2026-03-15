@@ -6,13 +6,13 @@
 # ============================================
 
 # BAD - loads full User objects into memory
-User.all.map(&:email)
+emails = User.all.map(&:email)
 # 1. Instantiates every User object
 # 2. Allocates memory for all attributes
 # 3. Then extracts just email
 
 # GOOD - only fetches email column from database
-User.pluck(:email)
+emails = User.pluck(:email)
 # SELECT email FROM users
 # Returns Array of strings directly
 
@@ -132,11 +132,11 @@ User.active.any?
 # SELECT 1 FROM users WHERE active = true LIMIT 1
 
 # count - returns number, less efficient for just checking
-User.active.count  # Less efficient than any?
+User.active.count > 0  # Less efficient than any?
 
 # BAD - loads all records
 User.active.to_a.any?  # Loads everything!
-User.active.length  # Also loads everything!
+User.active.length > 0  # Also loads everything!
 
 # ============================================
 # size vs count vs length
@@ -188,7 +188,7 @@ User.count
 
 # Anti-pattern 5: exists check with count
 # BAD
-User.where(email: "test@example.com").count
+User.where(email: "test@example.com").count > 0
 # GOOD
 User.where(email: "test@example.com").exists?
 

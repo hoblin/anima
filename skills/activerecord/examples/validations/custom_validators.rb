@@ -96,11 +96,11 @@ end
 # Usage in models:
 class User < ApplicationRecord
   validates :email, email: true
-  validates :backup_email, email: {allow_blank: true}
-  validates :phone, phone: {allow_blank: true}
-  validates :mobile, phone: {country: :us}
-  validates :website, url: {allow_blank: true}
-  validates :api_endpoint, url: {https_only: true}
+  validates :backup_email, email: { allow_blank: true }
+  validates :phone, phone: { allow_blank: true }
+  validates :mobile, phone: { country: :us }
+  validates :website, url: { allow_blank: true }
+  validates :api_endpoint, url: { https_only: true }
 end
 
 # =============================================================================
@@ -172,7 +172,7 @@ end
 # Usage:
 class Comment < ApplicationRecord
   validates :body, profanity: true
-  validates :title, profanity: {message: "must not contain bad words"}
+  validates :title, profanity: { message: "must not contain bad words" }
 end
 
 # =============================================================================
@@ -241,7 +241,7 @@ class BusinessHoursValidator < ActiveModel::Validator
     business_end = Time.zone.parse("17:00")
 
     if record.start_time.seconds_since_midnight < business_start.seconds_since_midnight ||
-        record.end_time.seconds_since_midnight > business_end.seconds_since_midnight
+       record.end_time.seconds_since_midnight > business_end.seconds_since_midnight
       record.errors.add(:base, "Booking must be within business hours (9 AM - 5 PM)")
     end
   end
@@ -334,7 +334,7 @@ end
 # Usage:
 class User < ApplicationRecord
   validates :password, strong_password: true, on: :create
-  validates :password, strong_password: {allow_blank: true}, on: :update
+  validates :password, strong_password: { allow_blank: true }, on: :update
 
   # Or with custom requirements
   validates :admin_password, strong_password: {

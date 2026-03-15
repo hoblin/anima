@@ -14,9 +14,9 @@ class Book < ApplicationRecord
 
   # Custom naming
   belongs_to :category,
-    class_name: "Genre",
-    foreign_key: "genre_id",
-    inverse_of: :books  # Required with custom FK
+             class_name: "Genre",
+             foreign_key: "genre_id",
+             inverse_of: :books  # Required with custom FK
 
   # With counter cache on parent
   belongs_to :series, counter_cache: true
@@ -48,9 +48,9 @@ class Supplier < ApplicationRecord
 
   # Custom naming
   has_one :representative,
-    class_name: "Person",
-    foreign_key: "company_id",
-    inverse_of: :employer
+          class_name: "Person",
+          foreign_key: "company_id",
+          inverse_of: :employer
 end
 
 # Migration - enforce true 1:1 at database level
@@ -69,12 +69,12 @@ class Author < ApplicationRecord
 
   # Scoped association
   has_many :published_books,
-    -> { where(published: true) },
-    class_name: "Book"
+           -> { where(published: true) },
+           class_name: "Book"
 
   has_many :recent_books,
-    -> { order(created_at: :desc).limit(5) },
-    class_name: "Book"
+           -> { order(created_at: :desc).limit(5) },
+           class_name: "Book"
 
   # Through association
   has_many :publishers, -> { distinct }, through: :books
@@ -86,7 +86,7 @@ end
 
 # Creating with associations
 author = Author.create!(name: "Jane Austen")
-author.books.create!(title: "Pride and Prejudice")
+book = author.books.create!(title: "Pride and Prejudice")
 
 # Building without saving
 draft = author.books.build(title: "Work in Progress")

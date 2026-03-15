@@ -10,11 +10,7 @@ RSpec.describe "stub_const" do
     end
 
     it "restores original value after example" do
-      begin
-        FOO
-      rescue
-        nil
-      end
+      original = FOO rescue nil
       stub_const("FOO", 999)
       # After this example, FOO returns to original
     end
@@ -108,7 +104,7 @@ RSpec.describe "configuration testing" do
   describe FeatureToggle do
     describe ".enabled?" do
       context "when feature is enabled" do
-        before { stub_const("FeatureToggle::FEATURES", {dark_mode: true}) }
+        before { stub_const("FeatureToggle::FEATURES", { dark_mode: true }) }
 
         it "returns true" do
           expect(FeatureToggle.enabled?(:dark_mode)).to be(true)
@@ -116,7 +112,7 @@ RSpec.describe "configuration testing" do
       end
 
       context "when feature is disabled" do
-        before { stub_const("FeatureToggle::FEATURES", {dark_mode: false}) }
+        before { stub_const("FeatureToggle::FEATURES", { dark_mode: false }) }
 
         it "returns false" do
           expect(FeatureToggle.enabled?(:dark_mode)).to be(false)
@@ -178,3 +174,4 @@ RSpec.describe "pagination configuration" do
     end
   end
 end
+

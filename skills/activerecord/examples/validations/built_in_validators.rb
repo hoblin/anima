@@ -15,7 +15,7 @@ class Feature < ApplicationRecord
   # validates :enabled, presence: true
 
   # CORRECT: Use inclusion for boolean fields
-  validates :enabled, inclusion: {in: [true, false]}
+  validates :enabled, inclusion: { in: [true, false] }
 end
 
 # =============================================================================
@@ -27,13 +27,13 @@ class Account < ApplicationRecord
   validates :email, uniqueness: true
 
   # Case-insensitive
-  validates :username, uniqueness: {case_sensitive: false}
+  validates :username, uniqueness: { case_sensitive: false }
 
   # Scoped to another column (per-organization uniqueness)
-  validates :employee_id, uniqueness: {scope: :organization_id}
+  validates :employee_id, uniqueness: { scope: :organization_id }
 
   # Composite scope
-  validates :slug, uniqueness: {scope: [:category_id, :year]}
+  validates :slug, uniqueness: { scope: [:category_id, :year] }
 
   # With conditions
   validates :primary_email, uniqueness: true, if: :primary?
@@ -49,10 +49,10 @@ end
 
 class Product < ApplicationRecord
   # Basic format with regex
-  validates :sku, format: {with: /\A[A-Z]{3}-\d{4}\z/}
+  validates :sku, format: { with: /\A[A-Z]{3}-\d{4}\z/ }
 
   # Email format using Ruby's built-in regex
-  validates :contact_email, format: {with: URI::MailTo::EMAIL_REGEXP}
+  validates :contact_email, format: { with: URI::MailTo::EMAIL_REGEXP }
 
   # With custom message
   validates :code, format: {
@@ -72,10 +72,10 @@ end
 # =============================================================================
 
 class Post < ApplicationRecord
-  validates :title, length: {minimum: 5}
-  validates :excerpt, length: {maximum: 200}
-  validates :access_code, length: {is: 8}
-  validates :username, length: {in: 3..20}
+  validates :title, length: { minimum: 5 }
+  validates :excerpt, length: { maximum: 200 }
+  validates :access_code, length: { is: 8 }
+  validates :username, length: { in: 3..20 }
 
   # With custom messages
   validates :password, length: {
@@ -86,8 +86,8 @@ class Post < ApplicationRecord
   }
 
   # Note: :maximum alone allows nil by default
-  validates :bio, length: {maximum: 500}  # nil is valid
-  validates :name, length: {minimum: 1}   # nil is NOT valid
+  validates :bio, length: { maximum: 500 }  # nil is valid
+  validates :name, length: { minimum: 1 }   # nil is NOT valid
 end
 
 # =============================================================================
@@ -99,26 +99,26 @@ class Order < ApplicationRecord
   validates :total, numericality: true
 
   # Integer only
-  validates :quantity, numericality: {only_integer: true}
+  validates :quantity, numericality: { only_integer: true }
 
   # Comparison operators
-  validates :price, numericality: {greater_than: 0}
+  validates :price, numericality: { greater_than: 0 }
   validates :discount_percent, numericality: {
     greater_than_or_equal_to: 0,
     less_than_or_equal_to: 100
   }
 
   # Range
-  validates :rating, numericality: {in: 1..5}
+  validates :rating, numericality: { in: 1..5 }
 
   # Other than
-  validates :priority, numericality: {other_than: 0}
+  validates :priority, numericality: { other_than: 0 }
 
   # Odd/even
-  validates :pair_count, numericality: {even: true}
+  validates :pair_count, numericality: { even: true }
 
   # Allowing nil (for optional fields)
-  validates :optional_score, numericality: {greater_than: 0}, allow_nil: true
+  validates :optional_score, numericality: { greater_than: 0 }, allow_nil: true
 end
 
 # =============================================================================
@@ -127,7 +127,7 @@ end
 
 class Article < ApplicationRecord
   # Inclusion - value must be in list
-  validates :status, inclusion: {in: %w[draft published archived]}
+  validates :status, inclusion: { in: %w[draft published archived] }
 
   # With custom message
   validates :size, inclusion: {
@@ -173,7 +173,7 @@ class Signup < ApplicationRecord
   validates :terms_of_service, acceptance: true
 
   # Custom accepted values
-  validates :eula, acceptance: {accept: ["yes", "1", true]}
+  validates :eula, acceptance: { accept: ["yes", "1", true] }
 
   # With message
   validates :age_verification, acceptance: {
@@ -186,12 +186,12 @@ end
 # =============================================================================
 
 class Event < ApplicationRecord
-  validates :end_date, comparison: {greater_than: :start_date}
-  validates :max_attendees, comparison: {greater_than_or_equal_to: :min_attendees}
+  validates :end_date, comparison: { greater_than: :start_date }
+  validates :max_attendees, comparison: { greater_than_or_equal_to: :min_attendees }
 end
 
 class User < ApplicationRecord
-  validates :password, comparison: {other_than: :username}
+  validates :password, comparison: { other_than: :username }
 end
 
 # =============================================================================
@@ -218,13 +218,13 @@ end
 class User < ApplicationRecord
   validates :email,
     presence: true,
-    uniqueness: {case_sensitive: false},
-    format: {with: URI::MailTo::EMAIL_REGEXP},
-    length: {maximum: 255}
+    uniqueness: { case_sensitive: false },
+    format: { with: URI::MailTo::EMAIL_REGEXP },
+    length: { maximum: 255 }
 
   validates :password,
     presence: true,
-    length: {minimum: 8, maximum: 72},
+    length: { minimum: 8, maximum: 72 },
     confirmation: true,
     on: :create
 
@@ -233,13 +233,13 @@ class User < ApplicationRecord
     if: :password_required?
 
   validates :age,
-    numericality: {greater_than_or_equal_to: 13, only_integer: true},
+    numericality: { greater_than_or_equal_to: 13, only_integer: true },
     allow_nil: true
 
   validates :username,
     presence: true,
-    uniqueness: {case_sensitive: false},
-    length: {in: 3..30},
+    uniqueness: { case_sensitive: false },
+    length: { in: 3..30 },
     format: {
       with: /\A[a-z0-9_]+\z/,
       message: "only allows lowercase letters, numbers, and underscores"
@@ -258,10 +258,10 @@ end
 
 class Item < ApplicationRecord
   # allow_nil - skip validation if value is nil
-  validates :optional_code, format: {with: /\A[A-Z]+\z/}, allow_nil: true
+  validates :optional_code, format: { with: /\A[A-Z]+\z/ }, allow_nil: true
 
   # allow_blank - skip validation if value is blank (nil, "", " ")
-  validates :notes, length: {minimum: 10}, allow_blank: true
+  validates :notes, length: { minimum: 10 }, allow_blank: true
 
   # on - specify validation context
   validates :publish_date, presence: true, on: :publish

@@ -14,8 +14,8 @@ def tick(args)
 
   # Show play area boundary
   gutter = 50
-  args.outputs.primitives << {x: gutter, y: gutter, w: 1280 - gutter * 2, h: 720 - gutter * 2, r: 128, g: 128, b: 128, primitive_marker: :border}
-  args.outputs.labels << {x: 10, y: 710, text: "Enemies spawn within gray boundary"}
+  args.outputs.primitives << { x: gutter, y: gutter, w: 1280 - gutter * 2, h: 720 - gutter * 2, r: 128, g: 128, b: 128, primitive_marker: :border }
+  args.outputs.labels << { x: 10, y: 710, text: "Enemies spawn within gray boundary" }
 end
 
 # Safe spawn: entities never appear partially off-screen
@@ -32,7 +32,7 @@ def spawn_with_gutters(args)
     y: gutter + rand * play_h,
     w: size,
     h: size,
-    path: "sprites/enemy.png"
+    path: 'sprites/enemy.png'
   }
 end
 

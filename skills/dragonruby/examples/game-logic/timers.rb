@@ -68,8 +68,8 @@ def render(args)
   # Progress bar visual
   bar_width = 400
   filled = (args.state.progress.fdiv(args.state.progress_max) * bar_width).round
-  args.outputs.solids << {x: 440, y: 450, w: bar_width, h: 20, r: 100, g: 100, b: 100}
-  args.outputs.solids << {x: 440, y: 450, w: filled, h: 20, r: 0, g: 200, b: 0}
+  args.outputs.solids << { x: 440, y: 450, w: bar_width, h: 20, r: 100, g: 100, b: 100 }
+  args.outputs.solids << { x: 440, y: 450, w: filled, h: 20, r: 0, g: 200, b: 0 }
 
   # Spawn counter
   args.outputs.labels << {

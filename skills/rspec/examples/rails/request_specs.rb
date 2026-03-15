@@ -36,8 +36,8 @@ RSpec.describe "Widgets", type: :request do
   end
 
   describe "POST /widgets" do
-    let(:valid_params) { {widget: {name: "New Widget"}} }
-    let(:invalid_params) { {widget: {name: ""}} }
+    let(:valid_params) { { widget: { name: "New Widget" } } }
+    let(:invalid_params) { { widget: { name: "" } } }
 
     context "with valid parameters" do
       it "creates a widget" do
@@ -73,7 +73,7 @@ RSpec.describe "Widgets", type: :request do
     let(:widget) { create(:widget, name: "Old Name") }
 
     it "updates the widget" do
-      patch "/widgets/#{widget.id}", params: {widget: {name: "New Name"}}
+      patch "/widgets/#{widget.id}", params: { widget: { name: "New Name" } }
 
       expect(response).to redirect_to(widget_path(widget))
       expect(widget.reload.name).to eq("New Name")
@@ -98,7 +98,7 @@ end
 
 # JSON API request specs
 RSpec.describe "API::Widgets", type: :request do
-  let(:json_headers) { {"ACCEPT" => "application/json"} }
+  let(:json_headers) { { "ACCEPT" => "application/json" } }
 
   describe "GET /api/widgets" do
     let!(:widgets) { create_list(:widget, 3) }
@@ -119,7 +119,7 @@ RSpec.describe "API::Widgets", type: :request do
   end
 
   describe "POST /api/widgets" do
-    let(:valid_params) { {widget: {name: "New Widget"}} }
+    let(:valid_params) { { widget: { name: "New Widget" } } }
 
     it "creates a widget and returns 201" do
       post "/api/widgets", params: valid_params, headers: json_headers
@@ -175,14 +175,14 @@ RSpec.describe "API Authentication", type: :request do
 
     context "with valid token" do
       it "returns the profile" do
-        get "/api/profile", headers: {"Authorization" => "Bearer #{token}"}
+        get "/api/profile", headers: { "Authorization" => "Bearer #{token}" }
         expect(response).to have_http_status(:ok)
       end
     end
 
     context "with invalid token" do
       it "returns unauthorized" do
-        get "/api/profile", headers: {"Authorization" => "Bearer invalid"}
+        get "/api/profile", headers: { "Authorization" => "Bearer invalid" }
         expect(response).to have_http_status(:unauthorized)
       end
     end
@@ -197,7 +197,7 @@ RSpec.describe "API subdomain", type: :request do
     let!(:widgets) { create_list(:widget, 2) }
 
     it "serves JSON from api subdomain" do
-      get "/widgets", headers: {"ACCEPT" => "application/json"}
+      get "/widgets", headers: { "ACCEPT" => "application/json" }
 
       expect(response).to have_http_status(:ok)
       expect(response.content_type).to start_with("application/json")
@@ -233,7 +233,7 @@ RSpec.describe "File uploads", type: :request do
     let(:file) { fixture_file_upload("spec/fixtures/document.pdf", "application/pdf") }
 
     it "accepts file upload" do
-      post "/documents", params: {document: {file:}}
+      post "/documents", params: { document: { file: } }
 
       expect(response).to redirect_to(documents_path)
       expect(Document.last.file).to be_attached
@@ -247,7 +247,7 @@ RSpec.describe "Redirect chains", type: :request do
     let(:user) { create(:user, password: "secret") }
 
     it "redirects to dashboard after login" do
-      post "/login", params: {email: user.email, password: "secret"}
+      post "/login", params: { email: user.email, password: "secret" }
 
       expect(response).to redirect_to(dashboard_path)
       follow_redirect!
@@ -266,7 +266,7 @@ RSpec.describe "Widgets API", type: :request do
     let(:widget) { create(:widget, name: "Test") }
 
     it "returns widget attributes" do
-      get "/api/widgets/#{widget.id}", headers: {"ACCEPT" => "application/json"}
+      get "/api/widgets/#{widget.id}", headers: { "ACCEPT" => "application/json" }
 
       expect(json_response[:name]).to eq("Test")
       expect(json_response[:id]).to eq(widget.id)

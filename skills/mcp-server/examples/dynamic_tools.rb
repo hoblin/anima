@@ -16,10 +16,10 @@ class PluginManager
     @server.define_tool(
       name: "plugin_#{name}",
       description: "Plugin: #{name}",
-      input_schema: {properties: {input: {type: "string"}}}
+      input_schema: { properties: { input: { type: "string" } } }
     ) do |input:, server_context:|
       result = block.call(input, server_context)
-      MCP::Tool::Response.new([{type: "text", text: result.to_s}])
+      MCP::Tool::Response.new([{ type: "text", text: result.to_s }])
     end
 
     @server.notify_tools_list_changed

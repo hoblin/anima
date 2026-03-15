@@ -183,7 +183,7 @@ class Doctor < ApplicationRecord
 
     def needing_followup
       joins(:appointments)
-        .where(appointments: {followup_needed: true})
+        .where(appointments: { followup_needed: true })
         .distinct
     end
   end
@@ -213,8 +213,8 @@ class Document < ApplicationRecord
 
     def diff(v1, v2)
       # Return diff between two versions
-      find_by(version_number: v1)
-      find_by(version_number: v2)
+      version1 = find_by(version_number: v1)
+      version2 = find_by(version_number: v2)
       # Implementation...
     end
 
@@ -262,7 +262,7 @@ class Project < ApplicationRecord
       # Complex calculation involving project data
       owner = proxy_association.owner
       active.where("due_date <= ?", owner.deadline)
-        .order(priority: :desc)
+            .order(priority: :desc)
     end
   end
 end

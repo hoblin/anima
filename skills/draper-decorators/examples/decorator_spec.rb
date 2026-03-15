@@ -14,7 +14,7 @@ RSpec.describe PostDecorator do
   describe "#formatted_title" do
     subject(:formatted_title) { decorator.formatted_title }
 
-    let(:attributes) { {title: "my post title"} }
+    let(:attributes) { { title: "my post title" } }
 
     it "titleizes the title" do
       expect(formatted_title).to eq("My Post Title")
@@ -23,7 +23,7 @@ RSpec.describe PostDecorator do
     context "with max_length" do
       subject(:formatted_title) { decorator.formatted_title(max_length: 10) }
 
-      let(:attributes) { {title: "a very long post title"} }
+      let(:attributes) { { title: "a very long post title" } }
 
       it "truncates to specified length" do
         expect(formatted_title.length).to be <= 13 # includes "..."
@@ -59,7 +59,7 @@ RSpec.describe PostDecorator do
     subject(:publication_date) { decorator.publication_date }
 
     context "when published" do
-      let(:attributes) { {published_at: Time.zone.parse("2024-03-15")} }
+      let(:attributes) { { published_at: Time.zone.parse("2024-03-15") } }
 
       it "formats the date" do
         expect(publication_date).to eq("March 15, 2024")
@@ -67,7 +67,7 @@ RSpec.describe PostDecorator do
     end
 
     context "when not published" do
-      let(:attributes) { {published_at: nil} }
+      let(:attributes) { { published_at: nil } }
 
       it "returns not published message" do
         expect(publication_date).to eq("Not published")
@@ -78,7 +78,7 @@ RSpec.describe PostDecorator do
   describe "#reading_time" do
     subject(:reading_time) { decorator.reading_time }
 
-    let(:attributes) { {body: "word " * 400} }
+    let(:attributes) { { body: "word " * 400 } }
 
     it "calculates reading time" do
       expect(reading_time).to eq("2 min read")
@@ -88,7 +88,7 @@ RSpec.describe PostDecorator do
   describe "#excerpt" do
     subject(:excerpt) { decorator.excerpt }
 
-    let(:attributes) { {body: "a " * 150} }
+    let(:attributes) { { body: "a " * 150 } }
 
     it "truncates body" do
       expect(excerpt.length).to be <= 203 # 200 + "..."
@@ -111,7 +111,7 @@ RSpec.describe PostDecorator do
     end
 
     context "with user who cannot edit" do
-      let(:context) { {current_user: build_stubbed(:user)} }
+      let(:context) { { current_user: build_stubbed(:user) } }
 
       before do
         allow(context[:current_user]).to receive(:can?).with(:edit, post).and_return(false)
@@ -124,7 +124,7 @@ RSpec.describe PostDecorator do
 
     context "with user who can edit" do
       let(:post) { create(:post) }
-      let(:context) { {current_user: build_stubbed(:user)} }
+      let(:context) { { current_user: build_stubbed(:user) } }
 
       before do
         allow(context[:current_user]).to receive(:can?).with(:edit, post).and_return(true)
@@ -149,7 +149,7 @@ RSpec.describe PostDecorator do
 
     context "with user who can delete" do
       let(:post) { create(:post) }
-      let(:context) { {current_user: build_stubbed(:user)} }
+      let(:context) { { current_user: build_stubbed(:user) } }
 
       before do
         allow(context[:current_user]).to receive(:can?).with(:delete, post).and_return(true)
@@ -176,7 +176,7 @@ RSpec.describe PostDecorator do
 
     context "with edit permission" do
       let(:post) { create(:post) }
-      let(:context) { {current_user: build_stubbed(:user)} }
+      let(:context) { { current_user: build_stubbed(:user) } }
 
       before do
         allow(context[:current_user]).to receive(:can?).with(:edit, post).and_return(true)

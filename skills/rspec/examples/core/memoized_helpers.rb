@@ -67,7 +67,7 @@ end
 
 # Using super() to extend parent let
 RSpec.describe "API request" do
-  let(:params) { {name: "Item", price: 10} }
+  let(:params) { { name: "Item", price: 10 } }
 
   context "with discount" do
     let(:params) { super().merge(discount: 2) }  # Extend parent

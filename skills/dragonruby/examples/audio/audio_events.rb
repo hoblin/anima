@@ -9,9 +9,9 @@ def tick(args)
 end
 
 def defaults(args)
-  args.state.player ||= {x: 640, y: 360, w: 50, h: 50, dy: 0}
-  args.state.coins ||= [{x: 700, y: 360, w: 30, h: 30}]
-  args.state.timer ||= 0
+  args.state.player ||= { x: 640, y: 360, w: 50, h: 50, dy: 0 }
+  args.state.coins  ||= [{ x: 700, y: 360, w: 30, h: 30 }]
+  args.state.timer  ||= 0
 end
 
 def input(args)
@@ -36,7 +36,7 @@ def calc(args)
   # Sound on collision event (coin pickup)
   args.state.coins.reject! do |coin|
     if player.intersect_rect?(coin)
-      args.outputs.sounds << {path: "sounds/coin.wav", gain: 0.8}
+      args.outputs.sounds << { path: "sounds/coin.wav", gain: 0.8 }
       true
     end
   end
@@ -44,12 +44,12 @@ def calc(args)
   # Sound on timer event (every 3 seconds)
   args.state.timer += 1
   if args.state.timer.zmod?(180)
-    args.outputs.sounds << {path: "sounds/ambient.wav", gain: 0.3}
+    args.outputs.sounds << { path: "sounds/ambient.wav", gain: 0.3 }
   end
 end
 
 def render(args)
   args.outputs.solids << args.state.player
   args.outputs.solids << args.state.coins.map { |c| c.merge(r: 255, g: 200, b: 0) }
-  args.outputs.labels << {x: 10, y: 720, text: "SPACE to jump (input event)"}
+  args.outputs.labels << { x: 10, y: 720, text: "SPACE to jump (input event)" }
 end

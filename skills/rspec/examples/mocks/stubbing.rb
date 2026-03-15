@@ -130,3 +130,4 @@ RSpec.describe ReportGenerator do
     end
   end
 end
+

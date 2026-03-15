@@ -3,8 +3,8 @@
 
 def tick args
   # Initialize player on first tick
-  args.state.player ||= {x: 640, y: 360, w: 32, h: 32,
-                         path: "sprites/square/blue.png"}
+  args.state.player ||= { x: 640, y: 360, w: 32, h: 32,
+                          path: 'sprites/square/blue.png' }
 
   # Check directional inputs - returns true when pressed or held
   if args.inputs.up

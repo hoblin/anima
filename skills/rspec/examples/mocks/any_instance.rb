@@ -169,3 +169,4 @@ RSpec.describe "acceptable any_instance usage" do
     end
   end
 end
+

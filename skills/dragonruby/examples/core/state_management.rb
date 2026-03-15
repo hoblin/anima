@@ -9,7 +9,7 @@ def tick args
     y: 360,
     w: 50,
     h: 50,
-    path: "sprites/square/green.png"
+    path: 'sprites/square/green.png'
   }
 
   # Initialize counter if not set
@@ -24,6 +24,6 @@ def tick args
 
   # Render player and counter
   args.outputs.sprites << args.state.player
-  args.outputs.labels << {x: 10, y: 710, text: "Counter: #{args.state.counter}"}
-  args.outputs.labels << {x: 10, y: 680, text: "Use arrow keys to move"}
+  args.outputs.labels << { x: 10, y: 710, text: "Counter: #{args.state.counter}" }
+  args.outputs.labels << { x: 10, y: 680, text: "Use arrow keys to move" }
 end
