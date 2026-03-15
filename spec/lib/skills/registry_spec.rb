@@ -19,14 +19,48 @@ RSpec.describe Skills::Registry do
     MD
   end
 
+  def write_directory_skill(dir, skill_name, description:, content: "Knowledge content")
+    skill_dir = File.join(dir, skill_name)
+    FileUtils.mkdir_p(skill_dir)
+    File.write(File.join(skill_dir, "SKILL.md"), <<~MD)
+      ---
+      name: #{skill_name}
+      description: "#{description}"
+      ---
+
+      #{content}
+    MD
+    skill_dir
+  end
+
   describe "#load_directory" do
-    it "loads .md files from the directory" do
+    it "loads flat .md files from the directory" do
       write_skill(tmp_dir, "testing.md", name: "testing", description: "Testing patterns")
 
       registry.load_directory(tmp_dir)
 
       expect(registry.size).to eq(1)
       expect(registry.find("testing")).to be_a(Skills::Definition)
+    end
+
+    it "loads directory-based skills with SKILL.md" do
+      write_directory_skill(tmp_dir, "my-skill", description: "Directory skill")
+
+      registry.load_directory(tmp_dir)
+
+      expect(registry.size).to eq(1)
+      expect(registry.find("my-skill")).to be_a(Skills::Definition)
+    end
+
+    it "loads both flat and directory-based skills" do
+      write_skill(tmp_dir, "flat.md", name: "flat", description: "Flat skill")
+      write_directory_skill(tmp_dir, "nested", description: "Nested skill")
+
+      registry.load_directory(tmp_dir)
+
+      expect(registry.size).to eq(2)
+      expect(registry.find("flat")).to be_present
+      expect(registry.find("nested")).to be_present
     end
 
     it "skips invalid definition files with a warning" do
@@ -135,14 +169,17 @@ RSpec.describe Skills::Registry do
   end
 
   describe ".instance" do
+    before { described_class.reload! }
+
     it "returns a loaded registry" do
       expect(described_class.instance).to be_a(described_class)
       expect(described_class.instance).to be_any
     end
 
-    it "includes the built-in gh-issue skill" do
-      described_class.reload!
-      expect(described_class.instance.find("gh-issue")).to be_present
+    it "loads built-in skills from both flat files and skill directories" do
+      instance = described_class.instance
+      expect(instance.find("gh-issue")).to be_present, "flat skill not loaded"
+      expect(instance.find("activerecord")).to be_present, "directory skill not loaded"
     end
   end
 

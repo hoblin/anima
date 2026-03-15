@@ -2,6 +2,9 @@
 
 module Skills
   # Loads skill definitions from Markdown files and provides lookup.
+  # Supports two formats:
+  #   - Flat file: skills/skill-name.md
+  #   - Directory: skills/skill-name/SKILL.md (with optional references/ and examples/)
   # Scans two directories:
   #   1. Built-in skills shipped with Anima (skills/ in the gem root)
   #   2. User-defined skills (~/.anima/skills/)
@@ -42,13 +45,14 @@ module Skills
     end
 
     # Loads skill definitions from a single directory.
+    # Supports flat files (*.md) and directory-based skills (*/SKILL.md).
     #
-    # @param dir [String] directory path to scan for .md files
+    # @param dir [String] directory path to scan
     # @return [void]
     def load_directory(dir)
       return unless Dir.exist?(dir)
 
-      Dir.glob(File.join(dir, "*.md")).sort.each do |path|
+      skill_files(dir).each do |path|
         definition = Definition.from_file(path)
         @skills[definition.name] = definition
       rescue InvalidDefinitionError => error
@@ -84,6 +88,19 @@ module Skills
     # @return [Integer]
     def size
       @skills.size
+    end
+
+    private
+
+    # Finds all skill definition files in a directory — both flat .md files
+    # and SKILL.md files inside subdirectories.
+    #
+    # @param dir [String] directory to scan
+    # @return [Array<String>] sorted paths to skill definition files
+    def skill_files(dir)
+      flat = Dir.glob(File.join(dir, "*.md"))
+      nested = Dir.glob(File.join(dir, "*/SKILL.md"))
+      (flat + nested).sort
     end
   end
 end
