@@ -217,7 +217,7 @@ module TUI
           tui.span(content: "Ctrl+a", style: tui.style(fg: "cyan", modifiers: [:bold])),
           tui.span(content: " command mode", style: tui.style(fg: "dark_gray"))
         ])
-      ]
+      ].compact
 
       info = tui.paragraph(
         text: lines,
@@ -232,10 +232,13 @@ module TUI
     end
 
     # Builds the active skills line for the info panel.
-    # Shows comma-separated skill names when skills are active; blank line otherwise.
+    # Returns nil when no skills are active so the line is hidden entirely.
+    # @param tui [RatatuiRuby] TUI rendering context
+    # @param session [Hash] session info hash containing :active_skills array
+    # @return [RatatuiRuby::Widgets::Line, nil] styled skills line, or nil when empty
     def active_skills_line(tui, session)
       skills = session[:active_skills]
-      return tui.line(spans: [tui.span(content: "")]) if skills.nil? || skills.empty?
+      return if skills.nil? || skills.empty?
 
       label = skills.join(", ")
       tui.line(spans: [
