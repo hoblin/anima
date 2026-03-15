@@ -12,7 +12,7 @@ module AnalyticalBrain
       def self.tool_name = "everything_is_ready"
 
       def self.description = "Signal that no changes are needed. " \
-        "Call this when the session name is already appropriate."
+        "Call this when the session name and active skills are already appropriate."
 
       def self.input_schema
         {type: "object", properties: {}, required: []}

@@ -108,12 +108,61 @@ class Session < ApplicationRecord
   end
 
   # Returns the system prompt for this session.
-  # Sub-agent sessions use their stored prompt. Main sessions return nil
-  # (system prompt assembly by Soul/Identity is not yet implemented).
+  # Sub-agent sessions use their stored prompt. Main sessions assemble
+  # a system prompt from active skills (returns nil if no skills active).
   #
-  # @return [String, nil] the system prompt text, or nil for main sessions
+  # @return [String, nil] the system prompt text, or nil when nothing to inject
   def system_prompt
-    prompt
+    sub_agent? ? prompt : assemble_system_prompt
+  end
+
+  # Activates a skill on this session. Validates the skill exists in the
+  # registry, adds it to active_skills, and persists.
+  #
+  # @param skill_name [String] name of the skill to activate
+  # @return [Skills::Definition] the activated skill
+  # @raise [ActiveRecord::RecordInvalid] if save fails
+  def activate_skill(skill_name)
+    definition = Skills::Registry.instance.find(skill_name)
+    raise Skills::InvalidDefinitionError, "Unknown skill: #{skill_name}" unless definition
+
+    return definition if active_skills.include?(skill_name)
+
+    self.active_skills = active_skills + [skill_name]
+    save!
+    definition
+  end
+
+  # Deactivates a skill on this session. Removes it from active_skills and persists.
+  #
+  # @param skill_name [String] name of the skill to deactivate
+  # @return [void]
+  def deactivate_skill(skill_name)
+    return unless active_skills.include?(skill_name)
+
+    self.active_skills = active_skills - [skill_name]
+    save!
+  end
+
+  # Assembles a system prompt from currently active skills.
+  # Returns nil when no skills are active (Soul/Identity is future work).
+  #
+  # @return [String, nil] composed system prompt, or nil if empty
+  def assemble_system_prompt
+    return if active_skills.empty?
+
+    sections = active_skills.filter_map do |skill_name|
+      definition = Skills::Registry.instance.find(skill_name)
+      next unless definition
+
+      content = definition.content
+      heading = content.lines.first&.sub(/^#+ /, "")&.strip || skill_name
+      "### #{heading}\n\n#{content}"
+    end
+
+    return if sections.empty?
+
+    "## Active Knowledge\n\n#{sections.join("\n\n")}"
   end
 
   # Builds the message array expected by the Anthropic Messages API.

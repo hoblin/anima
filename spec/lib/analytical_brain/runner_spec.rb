@@ -86,7 +86,48 @@ RSpec.describe AnalyticalBrain::Runner do
         expect(captured_opts[:system]).to include("Old Name")
       end
 
-      it "registers rename_session and everything_is_ready tools" do
+      it "includes available skills catalog in system prompt" do
+        Skills::Registry.reload!
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).to include("Available skills")
+        expect(captured_opts[:system]).to include("gh-issue")
+      end
+
+      it "includes currently active skills in system prompt" do
+        Skills::Registry.reload!
+        session.activate_skill("gh-issue")
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).to include("Currently active skills")
+        expect(captured_opts[:system]).to include("gh-issue")
+      end
+
+      it "shows 'None' for active skills when none are active" do
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).to include("Currently active skills\nNone")
+      end
+
+      it "registers all analytical brain tools" do
         captured_registry = nil
         allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
           captured_registry = opts[:registry]
@@ -96,6 +137,8 @@ RSpec.describe AnalyticalBrain::Runner do
         runner.call
 
         expect(captured_registry.registered?("rename_session")).to be true
+        expect(captured_registry.registered?("activate_skill")).to be true
+        expect(captured_registry.registered?("deactivate_skill")).to be true
         expect(captured_registry.registered?("everything_is_ready")).to be true
       end
 
@@ -147,7 +190,7 @@ RSpec.describe AnalyticalBrain::Runner do
     end
 
     context "context limiting" do
-      it "limits to MAX_CONTEXT_EVENTS most recent events" do
+      it "limits to the configured event window" do
         25.times do |i|
           type = i.even? ? "user_message" : "agent_message"
           session.events.create!(event_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
@@ -252,6 +295,97 @@ RSpec.describe AnalyticalBrain::Runner do
         real_runner.call
 
         expect(session.reload.name).to eq("💎 Ruby Basics")
+      end
+    end
+
+    context "integration with activate_skill tool" do
+      before { Skills::Registry.reload! }
+
+      it "activates a skill when LLM calls activate_skill" do
+        session.events.create!(event_type: "user_message", payload: {"content" => "Create a GitHub issue"}, timestamp: 1)
+        session.events.create!(event_type: "agent_message", payload: {"content" => "Sure!"}, timestamp: 2)
+
+        call_count = 0
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return do
+            call_count += 1
+            if call_count == 1
+              {
+                status: 200,
+                body: {
+                  content: [{
+                    type: "tool_use",
+                    id: "toolu_activate_1",
+                    name: "activate_skill",
+                    input: {"name" => "gh-issue"}
+                  }],
+                  stop_reason: "tool_use"
+                }.to_json,
+                headers: {"content-type" => "application/json"}
+              }
+            else
+              {
+                status: 200,
+                body: {
+                  content: [{type: "text", text: "Done"}],
+                  stop_reason: "end_turn"
+                }.to_json,
+                headers: {"content-type" => "application/json"}
+              }
+            end
+          end
+
+        real_client = LLM::Client.new(model: Anima::Settings.fast_model, max_tokens: 128)
+        real_runner = described_class.new(session, client: real_client)
+        real_runner.call
+
+        expect(session.reload.active_skills).to include("gh-issue")
+      end
+    end
+
+    context "integration with deactivate_skill tool" do
+      before { Skills::Registry.reload! }
+
+      it "deactivates a skill when LLM calls deactivate_skill" do
+        session.activate_skill("gh-issue")
+        session.events.create!(event_type: "user_message", payload: {"content" => "We're done with issues"}, timestamp: 1)
+        session.events.create!(event_type: "agent_message", payload: {"content" => "OK"}, timestamp: 2)
+
+        call_count = 0
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return do
+            call_count += 1
+            if call_count == 1
+              {
+                status: 200,
+                body: {
+                  content: [{
+                    type: "tool_use",
+                    id: "toolu_deactivate_1",
+                    name: "deactivate_skill",
+                    input: {"name" => "gh-issue"}
+                  }],
+                  stop_reason: "tool_use"
+                }.to_json,
+                headers: {"content-type" => "application/json"}
+              }
+            else
+              {
+                status: 200,
+                body: {
+                  content: [{type: "text", text: "Done"}],
+                  stop_reason: "end_turn"
+                }.to_json,
+                headers: {"content-type" => "application/json"}
+              }
+            end
+          end
+
+        real_client = LLM::Client.new(model: Anima::Settings.fast_model, max_tokens: 128)
+        real_runner = described_class.new(session, client: real_client)
+        real_runner.call
+
+        expect(session.reload.active_skills).not_to include("gh-issue")
       end
     end
 

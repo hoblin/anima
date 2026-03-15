@@ -240,6 +240,8 @@ RSpec.describe Session do
   end
 
   describe "#system_prompt" do
+    before { Skills::Registry.reload! }
+
     it "returns prompt for sub-agent sessions" do
       parent = Session.create!
       child = Session.create!(parent_session: parent, prompt: "You are a research assistant.")
@@ -247,9 +249,112 @@ RSpec.describe Session do
       expect(child.system_prompt).to eq("You are a research assistant.")
     end
 
-    it "returns nil for main sessions" do
+    it "returns nil for main sessions with no active skills" do
       session = Session.create!
       expect(session.system_prompt).to be_nil
+    end
+
+    it "returns assembled system prompt for main sessions with active skills" do
+      session = Session.create!
+      session.activate_skill("gh-issue")
+
+      prompt = session.system_prompt
+      expect(prompt).to include("Active Knowledge")
+      expect(prompt).to include("GitHub Issue Writing")
+    end
+  end
+
+  describe "#activate_skill" do
+    before { Skills::Registry.reload! }
+
+    let(:session) { Session.create! }
+
+    it "adds the skill to active_skills" do
+      session.activate_skill("gh-issue")
+
+      expect(session.reload.active_skills).to eq(["gh-issue"])
+    end
+
+    it "returns the skill definition" do
+      result = session.activate_skill("gh-issue")
+
+      expect(result).to be_a(Skills::Definition)
+      expect(result.name).to eq("gh-issue")
+    end
+
+    it "raises for unknown skills" do
+      expect { session.activate_skill("nonexistent") }
+        .to raise_error(Skills::InvalidDefinitionError, /Unknown skill/)
+    end
+
+    it "is idempotent — does not duplicate" do
+      session.activate_skill("gh-issue")
+      session.activate_skill("gh-issue")
+
+      expect(session.reload.active_skills).to eq(["gh-issue"])
+    end
+
+    it "persists to the database" do
+      session.activate_skill("gh-issue")
+
+      reloaded = Session.find(session.id)
+      expect(reloaded.active_skills).to eq(["gh-issue"])
+    end
+  end
+
+  describe "#deactivate_skill" do
+    before { Skills::Registry.reload! }
+
+    let(:session) { Session.create! }
+
+    it "removes the skill from active_skills" do
+      session.activate_skill("gh-issue")
+      session.deactivate_skill("gh-issue")
+
+      expect(session.reload.active_skills).to be_empty
+    end
+
+    it "is safe when skill is not active" do
+      expect { session.deactivate_skill("nonexistent") }.not_to raise_error
+    end
+
+    it "persists to the database" do
+      session.activate_skill("gh-issue")
+      session.deactivate_skill("gh-issue")
+
+      reloaded = Session.find(session.id)
+      expect(reloaded.active_skills).to be_empty
+    end
+  end
+
+  describe "#assemble_system_prompt" do
+    before { Skills::Registry.reload! }
+
+    let(:session) { Session.create! }
+
+    it "returns nil when no skills are active" do
+      expect(session.assemble_system_prompt).to be_nil
+    end
+
+    it "includes Active Knowledge header" do
+      session.activate_skill("gh-issue")
+
+      expect(session.assemble_system_prompt).to start_with("## Active Knowledge")
+    end
+
+    it "includes full skill content" do
+      session.activate_skill("gh-issue")
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).to include("WHAT/WHY/HOW")
+      expect(prompt).to include("Quality Checklist")
+    end
+
+    it "uses the first heading from skill content as section title" do
+      session.activate_skill("gh-issue")
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).to include("### GitHub Issue Writing")
     end
   end
 
