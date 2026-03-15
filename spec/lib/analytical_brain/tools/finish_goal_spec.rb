@@ -76,5 +76,44 @@ RSpec.describe AnalyticalBrain::Tools::FinishGoal do
 
       expect(result).to include("Goal completed:")
     end
+
+    context "completion cascade" do
+      it "cascades completion to all active sub-goals when finishing a root goal" do
+        root = session.goals.create!(description: "Root goal")
+        sub_a = session.goals.create!(description: "Sub A", parent_goal: root)
+        sub_b = session.goals.create!(description: "Sub B", parent_goal: root)
+
+        tool.execute({"goal_id" => root.id})
+
+        expect(sub_a.reload.status).to eq("completed")
+        expect(sub_a.completed_at).to be_within(1.second).of(Time.current)
+        expect(sub_b.reload.status).to eq("completed")
+        expect(sub_b.completed_at).to be_within(1.second).of(Time.current)
+      end
+
+      it "only cascades to active sub-goals, leaving already completed ones unchanged" do
+        root = session.goals.create!(description: "Root goal")
+        completed_sub = session.goals.create!(
+          description: "Already done", parent_goal: root,
+          status: "completed", completed_at: 1.hour.ago
+        )
+        active_sub = session.goals.create!(description: "Still active", parent_goal: root)
+
+        tool.execute({"goal_id" => root.id})
+
+        expect(active_sub.reload.status).to eq("completed")
+        expect(completed_sub.reload.completed_at).to be_within(1.second).of(1.hour.ago)
+      end
+
+      it "does not cascade when finishing a sub-goal" do
+        root = session.goals.create!(description: "Root goal")
+        sub = session.goals.create!(description: "Sub-goal", parent_goal: root)
+
+        tool.execute({"goal_id" => sub.id})
+
+        expect(sub.reload.status).to eq("completed")
+        expect(root.reload.status).to eq("active")
+      end
+    end
   end
 end

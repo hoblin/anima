@@ -44,11 +44,15 @@ module AnalyticalBrain
       # Idempotent guard: the analytical brain may retry completion on
       # a goal it already finished. Returning an error lets it learn to
       # check status first rather than silently succeeding.
+      #
+      # When a root goal completes, all active sub-goals are marked completed
+      # too — parent completion means the semantic episode is done.
       def complete(goal)
         id = goal.id
-        return {error: "Goal already completed: #{goal.description} (id: #{id})"} if goal.status == "completed"
+        return {error: "Goal already completed: #{goal.description} (id: #{id})"} if goal.completed?
 
         goal.update!(status: "completed", completed_at: Time.current)
+        goal.cascade_completion! if goal.root?
         "Goal completed: #{goal.description} (id: #{id})"
       end
     end

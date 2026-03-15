@@ -120,6 +120,69 @@ RSpec.describe Goal do
     end
   end
 
+  describe "#completed?" do
+    let(:session) { Session.create! }
+
+    it "returns true for completed goals" do
+      goal = Goal.create!(session: session, description: "done", status: "completed")
+      expect(goal).to be_completed
+    end
+
+    it "returns false for active goals" do
+      goal = Goal.create!(session: session, description: "active")
+      expect(goal).not_to be_completed
+    end
+  end
+
+  describe "#root?" do
+    let(:session) { Session.create! }
+
+    it "returns true for goals without a parent" do
+      goal = Goal.create!(session: session, description: "root")
+      expect(goal).to be_root
+    end
+
+    it "returns false for sub-goals" do
+      root = Goal.create!(session: session, description: "root")
+      sub = Goal.create!(session: session, parent_goal: root, description: "sub")
+      expect(sub).not_to be_root
+    end
+  end
+
+  describe "#cascade_completion!" do
+    let(:session) { Session.create! }
+
+    it "completes all active sub-goals" do
+      root = Goal.create!(session: session, description: "root")
+      sub_a = Goal.create!(session: session, parent_goal: root, description: "A")
+      sub_b = Goal.create!(session: session, parent_goal: root, description: "B")
+
+      root.cascade_completion!
+
+      expect(sub_a.reload.status).to eq("completed")
+      expect(sub_a.completed_at).to be_within(1.second).of(Time.current)
+      expect(sub_b.reload.status).to eq("completed")
+    end
+
+    it "skips already completed sub-goals" do
+      root = Goal.create!(session: session, description: "root")
+      done = Goal.create!(session: session, parent_goal: root, description: "done",
+        status: "completed", completed_at: 1.hour.ago)
+      active = Goal.create!(session: session, parent_goal: root, description: "active")
+
+      root.cascade_completion!
+
+      expect(active.reload.status).to eq("completed")
+      expect(done.reload.completed_at).to be_within(1.second).of(1.hour.ago)
+    end
+
+    it "is a no-op when there are no sub-goals" do
+      root = Goal.create!(session: session, description: "standalone")
+
+      expect { root.cascade_completion! }.not_to raise_error
+    end
+  end
+
   describe "#as_summary" do
     let(:session) { Session.create! }
 

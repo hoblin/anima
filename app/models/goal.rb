@@ -25,6 +25,22 @@ class Goal < ApplicationRecord
 
   after_commit :broadcast_goals_update
 
+  # @return [Boolean] true if this goal has been completed
+  def completed? = status == "completed"
+
+  # @return [Boolean] true if this is a root goal (no parent)
+  def root? = !parent_goal_id
+
+  # Cascades completion to all active sub-goals. Called when a root goal
+  # is finished — remaining sub-items are implicitly resolved.
+  #
+  # @return [void]
+  def cascade_completion!
+    sub_goals.active.find_each do |sub|
+      sub.update!(status: "completed", completed_at: Time.current)
+    end
+  end
+
   # Serializes this goal for ActionCable broadcast and TUI display.
   # Includes nested sub-goals for root goals.
   #

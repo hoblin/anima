@@ -143,6 +143,7 @@ RSpec.describe AnalyticalBrain::Runner do
         expect(captured_registry.registered?("activate_skill")).to be true
         expect(captured_registry.registered?("deactivate_skill")).to be true
         expect(captured_registry.registered?("set_goal")).to be true
+        expect(captured_registry.registered?("update_goal")).to be true
         expect(captured_registry.registered?("finish_goal")).to be true
         expect(captured_registry.registered?("everything_is_ready")).to be true
       end
@@ -158,6 +159,8 @@ RSpec.describe AnalyticalBrain::Runner do
 
         expect(captured_opts[:system]).to include("GOAL TRACKING")
         expect(captured_opts[:system]).to include("set_goal")
+        expect(captured_opts[:system]).to include("update_goal")
+        expect(captured_opts[:system]).to include("cascades")
       end
 
       it "includes active goals in system prompt" do
@@ -573,6 +576,50 @@ RSpec.describe AnalyticalBrain::Runner do
 
         expect(goal.reload.status).to eq("completed")
         expect(goal.completed_at).to be_within(1.second).of(Time.current)
+      end
+    end
+
+    context "integration with update_goal tool" do
+      it "updates a goal description when LLM calls update_goal" do
+        goal = session.goals.create!(description: "Implement auth")
+        session.events.create!(event_type: "user_message", payload: {"content" => "Actually it's OAuth2"}, timestamp: 1)
+        session.events.create!(event_type: "agent_message", payload: {"content" => "OK"}, timestamp: 2)
+
+        call_count = 0
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return do
+            call_count += 1
+            if call_count == 1
+              {
+                status: 200,
+                body: {
+                  content: [{
+                    type: "tool_use",
+                    id: "toolu_update_goal_1",
+                    name: "update_goal",
+                    input: {"goal_id" => goal.id, "description" => "Implement OAuth2 middleware"}
+                  }],
+                  stop_reason: "tool_use"
+                }.to_json,
+                headers: {"content-type" => "application/json"}
+              }
+            else
+              {
+                status: 200,
+                body: {
+                  content: [{type: "text", text: "Done"}],
+                  stop_reason: "end_turn"
+                }.to_json,
+                headers: {"content-type" => "application/json"}
+              }
+            end
+          end
+
+        real_client = LLM::Client.new(model: Anima::Settings.fast_model, max_tokens: 128)
+        real_runner = described_class.new(session, client: real_client)
+        real_runner.call
+
+        expect(goal.reload.description).to eq("Implement OAuth2 middleware")
       end
     end
 
