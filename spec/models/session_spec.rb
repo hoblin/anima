@@ -431,6 +431,117 @@ RSpec.describe Session do
     end
   end
 
+  describe "goals association" do
+    it "has many goals" do
+      session = Session.create!
+      goal = Goal.create!(session: session, description: "test goal")
+
+      expect(session.goals).to eq([goal])
+    end
+
+    it "destroys goals when session is destroyed" do
+      session = Session.create!
+      Goal.create!(session: session, description: "doomed")
+
+      expect { session.destroy }.to change(Goal, :count).by(-1)
+    end
+  end
+
+  describe "#goals_summary" do
+    let(:session) { Session.create! }
+
+    it "returns empty array when no goals exist" do
+      expect(session.goals_summary).to eq([])
+    end
+
+    it "returns root goals with their sub-goals" do
+      root = Goal.create!(session: session, description: "Implement auth")
+      Goal.create!(session: session, parent_goal: root, description: "Read code")
+      Goal.create!(session: session, parent_goal: root, description: "Write tests", status: "completed")
+
+      summary = session.goals_summary
+      expect(summary.size).to eq(1)
+      expect(summary.first["description"]).to eq("Implement auth")
+      expect(summary.first["status"]).to eq("active")
+      expect(summary.first["sub_goals"].size).to eq(2)
+      expect(summary.first["sub_goals"].first["description"]).to eq("Read code")
+      expect(summary.first["sub_goals"].last["status"]).to eq("completed")
+    end
+
+    it "excludes sub-goals from root level" do
+      root = Goal.create!(session: session, description: "root")
+      Goal.create!(session: session, parent_goal: root, description: "child")
+
+      summary = session.goals_summary
+      expect(summary.size).to eq(1)
+      expect(summary.first["description"]).to eq("root")
+    end
+
+    it "orders root goals by created_at" do
+      first = Goal.create!(session: session, description: "first")
+      second = Goal.create!(session: session, description: "second")
+
+      summary = session.goals_summary
+      expect(summary.map { |g| g["id"] }).to eq([first.id, second.id])
+    end
+  end
+
+  describe "#assemble_system_prompt with goals" do
+    before { Skills::Registry.reload! }
+
+    let(:session) { Session.create! }
+
+    it "returns nil when neither skills nor goals are present" do
+      expect(session.assemble_system_prompt).to be_nil
+    end
+
+    it "returns goals section when goals exist but no skills" do
+      Goal.create!(session: session, description: "Implement feature")
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).to include("## Current Goals")
+      expect(prompt).to include("### Implement feature")
+      expect(prompt).not_to include("Your Expertise")
+    end
+
+    it "returns skills section when skills exist but no goals" do
+      session.activate_skill("gh-issue")
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).to include("## Your Expertise")
+      expect(prompt).not_to include("Current Goals")
+    end
+
+    it "returns both sections when skills and goals are present" do
+      session.activate_skill("gh-issue")
+      Goal.create!(session: session, description: "Write ticket")
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).to include("## Your Expertise")
+      expect(prompt).to include("## Current Goals")
+    end
+
+    it "renders sub-goals as checkbox items" do
+      root = Goal.create!(session: session, description: "Refactor auth")
+      Goal.create!(session: session, parent_goal: root, description: "Read existing code", status: "completed")
+      Goal.create!(session: session, parent_goal: root, description: "Write new middleware")
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).to include("### Refactor auth")
+      expect(prompt).to include("- [x] Read existing code")
+      expect(prompt).to include("- [ ] Write new middleware")
+    end
+
+    it "renders multiple root goals" do
+      Goal.create!(session: session, description: "First goal")
+      Goal.create!(session: session, description: "Second goal")
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).to include("### First goal")
+      expect(prompt).to include("### Second goal")
+    end
+  end
+
   describe "#messages_for_llm" do
     let(:session) { Session.create! }
 

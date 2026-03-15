@@ -174,7 +174,7 @@ class SessionChannel < ApplicationCable::Channel
   # client can handle both paths with a single code path.
   #
   # Payload: session_id, name, parent_session_id, message_count,
-  # view_mode, active_skills.
+  # view_mode, active_skills, goals.
   #
   # @param session [Session] the session to announce
   # @return [void]
@@ -186,7 +186,8 @@ class SessionChannel < ApplicationCable::Channel
       "parent_session_id" => session.parent_session_id,
       "message_count" => session.events.llm_messages.count,
       "view_mode" => session.view_mode,
-      "active_skills" => session.active_skills
+      "active_skills" => session.active_skills,
+      "goals" => session.goals_summary
     })
   end
 

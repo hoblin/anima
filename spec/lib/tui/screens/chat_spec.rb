@@ -1136,7 +1136,7 @@ RSpec.describe TUI::Screens::Chat do
     it "updates session info including name" do
       allow(cable_client).to receive(:drain_messages).and_return([session_changed_msg])
       screen.send(:process_incoming_messages)
-      expect(screen.session_info).to eq({id: 99, name: nil, message_count: 5, active_skills: []})
+      expect(screen.session_info).to eq({id: 99, name: nil, message_count: 5, active_skills: [], goals: []})
     end
 
     it "stores session name from session_changed payload" do
@@ -1219,6 +1219,44 @@ RSpec.describe TUI::Screens::Chat do
       screen.send(:process_incoming_messages)
 
       expect(screen.session_info[:active_skills]).to eq([])
+    end
+  end
+
+  describe "goals_updated protocol message" do
+    it "updates goals for the current session" do
+      goals = [{"id" => 1, "description" => "Implement auth", "status" => "active", "sub_goals" => []}]
+      msg = {"action" => "goals_updated", "session_id" => 42, "goals" => goals}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.session_info[:goals]).to eq(goals)
+    end
+
+    it "ignores goals updates for other sessions" do
+      msg = {"action" => "goals_updated", "session_id" => 999, "goals" => [{"id" => 1}]}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.session_info[:goals]).to eq([])
+    end
+
+    it "stores goals from session_changed payload" do
+      goals = [{"id" => 1, "description" => "Test goal", "status" => "active", "sub_goals" => []}]
+      msg = {"action" => "session_changed", "session_id" => 99, "message_count" => 5, "goals" => goals}
+      allow(cable_client).to receive(:update_session_id)
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.session_info[:goals]).to eq(goals)
+    end
+
+    it "defaults goals to empty array when missing from session_changed" do
+      msg = {"action" => "session_changed", "session_id" => 99, "message_count" => 5}
+      allow(cable_client).to receive(:update_session_id)
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.session_info[:goals]).to eq([])
     end
   end
 
