@@ -111,6 +111,24 @@ RSpec.describe SessionChannel, type: :channel do
       expect(changed["active_skills"]).to eq([])
     end
 
+    it "includes active_workflow in session_changed" do
+      Session.create!(id: session_id, active_workflow: "feature")
+
+      subscribe(session_id: session_id)
+
+      changed = transmissions.find { |t| t["action"] == "session_changed" }
+      expect(changed["active_workflow"]).to eq("feature")
+    end
+
+    it "includes nil active_workflow for sessions with no workflow" do
+      Session.create!(id: session_id)
+
+      subscribe(session_id: session_id)
+
+      changed = transmissions.find { |t| t["action"] == "session_changed" }
+      expect(changed["active_workflow"]).to be_nil
+    end
+
     it "includes goals in session_changed" do
       session = Session.create!(id: session_id)
       Goal.create!(session: session, description: "Test goal")

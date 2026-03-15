@@ -2,33 +2,33 @@
 
 require "yaml"
 
-module Skills
+module Workflows
   class InvalidDefinitionError < StandardError; end
 
-  # A domain knowledge skill parsed from a Markdown definition file.
-  # YAML frontmatter holds metadata; the Markdown body is the knowledge
-  # content injected into the main agent's system prompt when active.
+  # A workflow parsed from a Markdown definition file.
+  # YAML frontmatter holds metadata; the Markdown body contains free-form
+  # instructions that the analytical brain reads and converts into goals.
   #
-  # Skills are passive knowledge — they describe WHAT you know, not
-  # WHAT to do. The analytical brain activates/deactivates them based
-  # on conversation context.
+  # Workflows are operational recipes — they describe WHAT to do step by
+  # step. The analytical brain uses judgment to decompose workflow prose
+  # into tracked goals based on the user's specific context.
   #
-  # @example Skill file format
+  # @example Workflow file format
   #   ---
-  #   name: gh-issue
-  #   description: "GitHub issue writing with WHAT/WHY/HOW framework."
+  #   name: feature
+  #   description: "Implement a GitHub issue end-to-end."
   #   ---
   #
-  #   # GitHub Issue Writing
-  #   Write issues with clear rationale...
+  #   ## Context
+  #   Create and complete a new feature...
   class Definition
-    # @return [String] unique skill identifier used in activate_skill(name: "...")
+    # @return [String] unique workflow identifier used in read_workflow(name: "...")
     attr_reader :name
 
     # @return [String] description shown to the analytical brain for relevance matching
     attr_reader :description
 
-    # @return [String] knowledge content (Markdown body) injected into system prompt
+    # @return [String] workflow content (Markdown body) — free-form instructions
     attr_reader :content
 
     # @return [String] file path this definition was loaded from
@@ -88,7 +88,7 @@ module Skills
       name = frontmatter["name"].to_s.strip
       unless name.match?(NAME_FORMAT)
         raise InvalidDefinitionError,
-          "Invalid skill name '#{name}' in #{path} — must be lowercase alphanumeric with hyphens/underscores"
+          "Invalid workflow name '#{name}' in #{path} — must be lowercase alphanumeric with hyphens/underscores"
       end
     end
 

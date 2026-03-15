@@ -187,6 +187,7 @@ class SessionChannel < ApplicationCable::Channel
       "message_count" => session.events.llm_messages.count,
       "view_mode" => session.view_mode,
       "active_skills" => session.active_skills,
+      "active_workflow" => session.active_workflow,
       "goals" => session.goals_summary
     })
   end
