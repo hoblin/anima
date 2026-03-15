@@ -12,7 +12,7 @@ class Goal < ApplicationRecord
 
   belongs_to :session
   belongs_to :parent_goal, class_name: "Goal", optional: true
-  has_many :sub_goals, class_name: "Goal", foreign_key: :parent_goal_id, dependent: :destroy
+  has_many :sub_goals, -> { order(:created_at) }, class_name: "Goal", foreign_key: :parent_goal_id, dependent: :destroy
 
   validates :description, presence: true
   validates :status, inclusion: {in: STATUSES}
@@ -32,13 +32,18 @@ class Goal < ApplicationRecord
   def root? = !parent_goal_id
 
   # Cascades completion to all active sub-goals. Called when a root goal
-  # is finished — remaining sub-items are implicitly resolved.
+  # is finished — remaining sub-items are implicitly resolved because
+  # the semantic episode that spawned them has ended.
+  #
+  # Uses +update_all+ to avoid N per-record +after_commit+ broadcasts;
+  # the caller ({AnalyticalBrain::Tools::FinishGoal}) wraps the whole
+  # operation in a transaction so the root goal's single broadcast
+  # includes the cascaded state.
   #
   # @return [void]
   def cascade_completion!
-    sub_goals.active.find_each do |sub|
-      sub.update!(status: "completed", completed_at: Time.current)
-    end
+    now = Time.current
+    sub_goals.active.update_all(status: "completed", completed_at: now, updated_at: now)
   end
 
   # Serializes this goal for ActionCable broadcast and TUI display.
@@ -51,7 +56,7 @@ class Goal < ApplicationRecord
       "id" => id,
       "description" => description,
       "status" => status,
-      "sub_goals" => sub_goals.sort_by(&:created_at).map { |sub|
+      "sub_goals" => sub_goals.map { |sub|
         {"id" => sub.id, "description" => sub.description, "status" => sub.status}
       }
     }

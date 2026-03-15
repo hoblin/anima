@@ -162,6 +162,7 @@ RSpec.describe Goal do
       expect(sub_a.reload.status).to eq("completed")
       expect(sub_a.completed_at).to be_within(1.second).of(Time.current)
       expect(sub_b.reload.status).to eq("completed")
+      expect(sub_b.completed_at).to be_within(1.second).of(Time.current)
     end
 
     it "skips already completed sub-goals" do

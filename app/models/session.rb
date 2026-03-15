@@ -238,7 +238,7 @@ class Session < ApplicationRecord
     return "### ~~#{description}~~ ✓" if goal.completed?
 
     lines = ["### #{description}"]
-    goal.sub_goals.sort_by(&:created_at).each do |sub|
+    goal.sub_goals.each do |sub|
       checkbox = sub.completed? ? "[x]" : "[ ]"
       lines << "- #{checkbox} #{sub.description}"
     end

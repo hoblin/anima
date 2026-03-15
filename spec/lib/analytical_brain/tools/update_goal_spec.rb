@@ -38,7 +38,7 @@ RSpec.describe AnalyticalBrain::Tools::UpdateGoal do
 
       result = tool.execute({"goal_id" => sub.id, "description" => "Read auth middleware code"})
 
-      expect(result).to include("Goal updated:")
+      expect(result).to eq("Goal updated: Read auth middleware code (id: #{sub.id})")
       expect(sub.reload.description).to eq("Read auth middleware code")
     end
 
