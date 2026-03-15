@@ -15,6 +15,7 @@ RSpec.describe Anima::Settings do
       "timeouts" => {"api" => 30, "command" => 30, "mcp_response" => 60, "web_request" => 10},
       "shell" => {"max_output_bytes" => 100_000},
       "tools" => {"max_file_size" => 10_485_760, "max_read_lines" => 2_000, "max_read_bytes" => 50_000, "max_web_response_bytes" => 100_000},
+      "paths" => {"soul" => "/home/test/.anima/soul.md"},
       "session" => {"name_generation_interval" => 30},
       "analytical_brain" => {"max_tokens" => 128, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "event_window" => 20}
     }
@@ -36,6 +37,10 @@ RSpec.describe Anima::Settings do
       expect(described_class.command_timeout).to eq(30)
       expect(described_class.mcp_response_timeout).to eq(60)
       expect(described_class.web_request_timeout).to eq(10)
+    end
+
+    it "reads path settings" do
+      expect(described_class.soul_path).to eq("/home/test/.anima/soul.md")
     end
 
     it "reads shell, tool, and session settings" do

@@ -764,14 +764,15 @@ RSpec.describe SessionChannel, type: :channel do
       expect(system_prompt_msg["rendered"]["debug"]["estimated"]).to be true
     end
 
-    it "does not prepend system prompt when prompt is nil" do
+    it "always prepends system prompt (soul is always present)" do
       session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
 
       subscribe(session_id: session_id)
 
       history = transmissions.reject { |t| t["action"] }
       system_prompt_msg = history.find { |t| t["type"] == "system_prompt" }
-      expect(system_prompt_msg).to be_nil
+      expect(system_prompt_msg).to be_present
+      expect(system_prompt_msg["rendered"]["debug"]["content"]).to include("Soul")
     end
 
     it "does not prepend system prompt in basic mode" do

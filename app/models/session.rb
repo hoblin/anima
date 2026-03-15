@@ -7,6 +7,8 @@
 # Sessions form a hierarchy: a main session can spawn child sessions
 # (sub-agents) that inherit the parent's viewport context at fork time.
 class Session < ApplicationRecord
+  class MissingSoulError < StandardError; end
+
   VIEW_MODES = %w[basic verbose debug].freeze
 
   serialize :granted_tools, coder: JSON
@@ -177,15 +179,12 @@ class Session < ApplicationRecord
     save!
   end
 
-  # Assembles a system prompt from active skills, active workflow, and
-  # current goals. Returns nil when nothing is active.
+  # Assembles the system prompt: soul first, then skills/workflow, then goals.
+  # The soul is always present — "who am I" before "what can I do."
   #
-  # @return [String, nil] composed system prompt, or nil if empty
+  # @return [String] composed system prompt
   def assemble_system_prompt
-    parts = [assemble_expertise_section, assemble_goals_section].compact
-    return if parts.empty?
-
-    parts.join("\n\n")
+    [assemble_soul_section, assemble_expertise_section, assemble_goals_section].compact.join("\n\n")
   end
 
   # Serializes active goals as a lightweight summary for ActionCable
@@ -225,6 +224,21 @@ class Session < ApplicationRecord
   end
 
   private
+
+  # Reads the soul file — the agent's self-authored identity.
+  # Loaded as the first section of every system prompt, before skills,
+  # workflows, and goals.
+  #
+  # @return [String] soul content
+  # @raise [MissingSoulError] when the soul file does not exist
+  def assemble_soul_section
+    path = Anima::Settings.soul_path
+    unless File.exist?(path)
+      raise MissingSoulError, "Soul file not found: #{path}. Run `anima install` to create it."
+    end
+
+    File.read(path).strip
+  end
 
   # Assembles the expertise section of the system prompt from active skills
   # and the active workflow. Both are injected into the same "Your Expertise"

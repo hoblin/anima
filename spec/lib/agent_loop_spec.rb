@@ -363,10 +363,10 @@ RSpec.describe AgentLoop do
       sub_loop.finalize
     end
 
-    it "does not pass system option for main sessions" do
+    it "passes soul as system prompt for main sessions" do
       session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      allow(client).to receive(:chat_with_tools) do |_msgs, **opts|
-        expect(opts).not_to have_key(:system)
+      allow(client).to receive(:chat_with_tools) do |_msgs, system:, **_|
+        expect(system).to include("# Soul")
         "ok"
       end
 

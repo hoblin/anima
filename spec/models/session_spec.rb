@@ -266,25 +266,27 @@ RSpec.describe Session do
   describe "#system_prompt" do
     before { Skills::Registry.reload! }
 
-    it "returns prompt for sub-agent sessions" do
+    it "returns prompt for sub-agent sessions (bypasses soul)" do
       parent = Session.create!
       child = Session.create!(parent_session: parent, prompt: "You are a research assistant.")
 
       expect(child.system_prompt).to eq("You are a research assistant.")
     end
 
-    it "returns nil for main sessions with no active skills" do
+    it "includes soul content for main sessions" do
       session = Session.create!
-      expect(session.system_prompt).to be_nil
+
+      expect(session.system_prompt).to include("# Soul")
     end
 
-    it "returns assembled system prompt for main sessions with active skills" do
+    it "places soul before expertise in the system prompt" do
       session = Session.create!
       session.activate_skill("gh-issue")
 
       prompt = session.system_prompt
-      expect(prompt).to include("Your Expertise")
-      expect(prompt).to include("GitHub Issue Writing")
+      soul_pos = prompt.index("# Soul")
+      expertise_pos = prompt.index("## Your Expertise")
+      expect(soul_pos).to be < expertise_pos
     end
   end
 
@@ -356,14 +358,14 @@ RSpec.describe Session do
 
     let(:session) { Session.create! }
 
-    it "returns nil when no skills are active" do
-      expect(session.assemble_system_prompt).to be_nil
+    it "always starts with the soul" do
+      expect(session.assemble_system_prompt).to start_with("# Soul")
     end
 
-    it "includes Your Expertise header" do
+    it "includes Your Expertise header when skills are active" do
       session.activate_skill("gh-issue")
 
-      expect(session.assemble_system_prompt).to start_with("## Your Expertise")
+      expect(session.assemble_system_prompt).to include("## Your Expertise")
     end
 
     it "includes full skill content" do
@@ -431,6 +433,17 @@ RSpec.describe Session do
     end
   end
 
+  describe "#assemble_soul_section" do
+    let(:session) { Session.create! }
+
+    it "raises MissingSoulError when soul file does not exist" do
+      allow(Anima::Settings).to receive(:soul_path).and_return("/nonexistent/soul.md")
+
+      expect { session.send(:assemble_soul_section) }
+        .to raise_error(Session::MissingSoulError, /Run `anima install`/)
+    end
+  end
+
   describe "goals association" do
     it "has many goals" do
       session = Session.create!
@@ -491,28 +504,17 @@ RSpec.describe Session do
 
     let(:session) { Session.create! }
 
-    it "returns nil when neither skills nor goals are present" do
-      expect(session.assemble_system_prompt).to be_nil
-    end
-
-    it "returns goals section when goals exist but no skills" do
+    it "includes soul and goals when goals exist but no skills" do
       Goal.create!(session: session, description: "Implement feature")
 
       prompt = session.assemble_system_prompt
+      expect(prompt).to start_with("# Soul")
       expect(prompt).to include("## Current Goals")
       expect(prompt).to include("### Implement feature")
       expect(prompt).not_to include("Your Expertise")
     end
 
-    it "returns skills section when skills exist but no goals" do
-      session.activate_skill("gh-issue")
-
-      prompt = session.assemble_system_prompt
-      expect(prompt).to include("## Your Expertise")
-      expect(prompt).not_to include("Current Goals")
-    end
-
-    it "returns both sections when skills and goals are present" do
+    it "includes all sections when skills and goals are present" do
       session.activate_skill("gh-issue")
       Goal.create!(session: session, description: "Write ticket")
 
@@ -689,8 +691,8 @@ RSpec.describe Session do
       expect(prompt).to include("branch creation to PR readiness")
     end
 
-    it "returns nil when neither skills nor workflow nor goals are present" do
-      expect(session.assemble_system_prompt).to be_nil
+    it "returns only soul when neither skills nor workflow nor goals are present" do
+      expect(session.assemble_system_prompt).to start_with("# Soul")
     end
   end
 
