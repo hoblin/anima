@@ -18,6 +18,8 @@ module AnalyticalBrain
       Tools::RenameSession,
       Tools::ActivateSkill,
       Tools::DeactivateSkill,
+      Tools::ReadWorkflow,
+      Tools::DeactivateWorkflow,
       Tools::SetGoal,
       Tools::UpdateGoal,
       Tools::FinishGoal,
@@ -41,6 +43,15 @@ module AnalyticalBrain
       Call activate_skill when the conversation matches a skill's description.
       Call deactivate_skill when the agent moves to a different domain.
       Multiple skills can be active at once.
+
+      ──────────────────────────────
+      WORKFLOW MANAGEMENT
+      ──────────────────────────────
+      Call read_workflow when the user starts a multi-step task matching a workflow description.
+      Read the returned content and use judgment to create appropriate goals — not a mechanical 1:1 mapping.
+      Adapt to context: skip irrelevant steps, add extra steps for unfamiliar areas.
+      Call deactivate_workflow when the workflow completes or the user shifts focus.
+      Only one workflow can be active at a time — activating a new one replaces the previous.
 
       ──────────────────────────────
       GOAL TRACKING
@@ -125,7 +136,7 @@ module AnalyticalBrain
         #{transcript}
         ```
 
-        Observe the conversation and take action: manage goals, activate or deactivate relevant skills, rename the session if needed, then call everything_is_ready.
+        Observe the conversation and take action: manage goals, activate or deactivate relevant skills, read workflows when a multi-step task matches, rename the session if needed, then call everything_is_ready.
       MSG
       [{role: "user", content: content}]
     end
@@ -167,21 +178,24 @@ module AnalyticalBrain
         SYSTEM_PROMPT,
         session_state_section,
         skills_catalog_section,
+        workflows_catalog_section,
         active_goals_section
       ]
       sections.compact.join("\n")
     end
 
-    # @return [String] current session name and active skills
+    # @return [String] current session name, active skills, and active workflow
     def session_state_section
       name = @session.name || "(unnamed)"
       skills = @session.active_skills.join(", ").presence || "None"
+      workflow = @session.active_workflow || "None"
       <<~SECTION
         ──────────────────────────────
         CURRENT STATE
         ──────────────────────────────
         Session name: #{name}
         Active skills: #{skills}
+        Active workflow: #{workflow}
       SECTION
     end
 
@@ -196,6 +210,22 @@ module AnalyticalBrain
       <<~SECTION
         ──────────────────────────────
         AVAILABLE SKILLS
+        ──────────────────────────────
+        #{items}
+      SECTION
+    end
+
+    # @return [String] available workflows list for the analytical brain
+    def workflows_catalog_section
+      catalog = Workflows::Registry.instance.catalog
+      items = if catalog.empty?
+        "None"
+      else
+        catalog.map { |name, desc| "- #{name} — #{desc}" }.join("\n")
+      end
+      <<~SECTION
+        ──────────────────────────────
+        AVAILABLE WORKFLOWS
         ──────────────────────────────
         #{items}
       SECTION

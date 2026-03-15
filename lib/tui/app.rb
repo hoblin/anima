@@ -204,6 +204,7 @@ module TUI
           tui.span(content: session[:message_count].to_s, style: tui.style(fg: "cyan"))
         ]),
         active_skills_line(tui, session),
+        active_workflow_line(tui, session),
         goals_line(tui, session),
         tui.line(spans: [tui.span(content: "")]),
         tui.line(spans: [
@@ -245,6 +246,21 @@ module TUI
       tui.line(spans: [
         tui.span(content: "\u{1F4DA} ", style: tui.style(fg: "dark_gray")),
         tui.span(content: label, style: tui.style(fg: "yellow"))
+      ])
+    end
+
+    # Builds the active workflow line for the info panel.
+    # Returns nil when no workflow is active so the line is hidden entirely.
+    # @param tui [RatatuiRuby] TUI rendering context
+    # @param session [Hash] session info hash containing :active_workflow string
+    # @return [RatatuiRuby::Widgets::Line, nil] styled workflow line, or nil when empty
+    def active_workflow_line(tui, session)
+      workflow = session[:active_workflow]
+      return if workflow.nil? || workflow.empty?
+
+      tui.line(spans: [
+        tui.span(content: "\u{1F504} ", style: tui.style(fg: "dark_gray")),
+        tui.span(content: workflow, style: tui.style(fg: "magenta"))
       ])
     end
 

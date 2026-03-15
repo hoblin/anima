@@ -569,6 +569,131 @@ RSpec.describe Session do
     end
   end
 
+  describe "#activate_workflow" do
+    before { Workflows::Registry.reload! }
+
+    let(:session) { Session.create! }
+
+    it "sets the workflow as active" do
+      session.activate_workflow("feature")
+
+      expect(session.reload.active_workflow).to eq("feature")
+    end
+
+    it "returns the workflow definition" do
+      result = session.activate_workflow("feature")
+
+      expect(result).to be_a(Workflows::Definition)
+      expect(result.name).to eq("feature")
+    end
+
+    it "raises for unknown workflows" do
+      expect { session.activate_workflow("nonexistent") }
+        .to raise_error(Workflows::InvalidDefinitionError, /Unknown workflow/)
+    end
+
+    it "is idempotent — returns definition without re-saving" do
+      session.activate_workflow("feature")
+      result = session.activate_workflow("feature")
+
+      expect(result).to be_a(Workflows::Definition)
+      expect(session.reload.active_workflow).to eq("feature")
+    end
+
+    it "replaces the previous active workflow" do
+      session.activate_workflow("feature")
+      session.activate_workflow("commit")
+
+      expect(session.reload.active_workflow).to eq("commit")
+    end
+
+    it "persists to the database" do
+      session.activate_workflow("feature")
+
+      reloaded = Session.find(session.id)
+      expect(reloaded.active_workflow).to eq("feature")
+    end
+  end
+
+  describe "#deactivate_workflow" do
+    before { Workflows::Registry.reload! }
+
+    let(:session) { Session.create! }
+
+    it "clears the active workflow" do
+      session.activate_workflow("feature")
+      session.deactivate_workflow
+
+      expect(session.reload.active_workflow).to be_nil
+    end
+
+    it "is safe when no workflow is active" do
+      expect { session.deactivate_workflow }.not_to raise_error
+    end
+
+    it "persists to the database" do
+      session.activate_workflow("feature")
+      session.deactivate_workflow
+
+      reloaded = Session.find(session.id)
+      expect(reloaded.active_workflow).to be_nil
+    end
+  end
+
+  describe "#broadcast_active_workflow_update" do
+    it "broadcasts active workflow change to the session stream" do
+      session = Session.create!
+
+      expect {
+        session.update!(active_workflow: "feature")
+      }.to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including(
+          "action" => "active_workflow_updated",
+          "session_id" => session.id,
+          "active_workflow" => "feature"
+        ))
+    end
+
+    it "does not broadcast when active_workflow is unchanged" do
+      session = Session.create!(active_workflow: "feature")
+
+      expect {
+        session.update!(name: "New Name")
+      }.not_to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("action" => "active_workflow_updated"))
+    end
+  end
+
+  describe "#assemble_system_prompt with workflows" do
+    before do
+      Skills::Registry.reload!
+      Workflows::Registry.reload!
+    end
+
+    let(:session) { Session.create! }
+
+    it "includes workflow content in Your Expertise section" do
+      session.activate_workflow("feature")
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).to include("## Your Expertise")
+      expect(prompt).to include("branch creation to PR readiness")
+    end
+
+    it "includes both skills and workflow content" do
+      session.activate_skill("gh-issue")
+      session.activate_workflow("feature")
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).to include("### GitHub Issue Writing")
+      expect(prompt).to include("branch creation to PR readiness")
+    end
+
+    it "returns nil when neither skills nor workflow nor goals are present" do
+      expect(session.assemble_system_prompt).to be_nil
+    end
+  end
+
   describe "#messages_for_llm" do
     let(:session) { Session.create! }
 

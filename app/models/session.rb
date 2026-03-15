@@ -22,6 +22,7 @@ class Session < ApplicationRecord
 
   after_update_commit :broadcast_name_update, if: :saved_change_to_name?
   after_update_commit :broadcast_active_skills_update, if: :saved_change_to_active_skills?
+  after_update_commit :broadcast_active_workflow_update, if: :saved_change_to_active_workflow?
 
   scope :recent, ->(limit = 10) { order(updated_at: :desc).limit(limit) }
   scope :root_sessions, -> { where(parent_session_id: nil) }
@@ -147,6 +148,35 @@ class Session < ApplicationRecord
     save!
   end
 
+  # Activates a workflow on this session. Validates the workflow exists in the
+  # registry, sets it as the active workflow, and persists. Only one workflow
+  # can be active at a time — activating a new one replaces the previous.
+  #
+  # @param workflow_name [String] name of the workflow to activate
+  # @return [Workflows::Definition] the activated workflow
+  # @raise [Workflows::InvalidDefinitionError] if workflow not found in registry
+  # @raise [ActiveRecord::RecordInvalid] if save fails
+  def activate_workflow(workflow_name)
+    definition = Workflows::Registry.instance.find(workflow_name)
+    raise Workflows::InvalidDefinitionError, "Unknown workflow: #{workflow_name}" unless definition
+
+    return definition if active_workflow == workflow_name
+
+    self.active_workflow = workflow_name
+    save!
+    definition
+  end
+
+  # Deactivates the current workflow on this session.
+  #
+  # @return [void]
+  def deactivate_workflow
+    return unless active_workflow.present?
+
+    self.active_workflow = nil
+    save!
+  end
+
   # Assembles a system prompt from active skills and current goals.
   # Returns nil when neither skills nor goals are present.
   #
@@ -196,18 +226,20 @@ class Session < ApplicationRecord
 
   private
 
-  # Assembles the skills section of the system prompt.
-  # @return [String, nil] skills section, or nil when no skills are active
+  # Assembles the expertise section of the system prompt from active skills
+  # and the active workflow. Both are injected into the same "Your Expertise"
+  # section — the main agent treats them identically as domain knowledge.
+  #
+  # @return [String, nil] expertise section, or nil when nothing is active
   def assemble_skills_section
-    return if active_skills.empty?
-
     sections = active_skills.filter_map do |skill_name|
       definition = Skills::Registry.instance.find(skill_name)
-      next unless definition
+      format_expertise_section(definition, skill_name)
+    end
 
-      content = definition.content
-      heading = content.lines.first&.sub(/^#+ /, "")&.strip || skill_name
-      "### #{heading}\n\n#{content}"
+    if active_workflow.present?
+      definition = Workflows::Registry.instance.find(active_workflow)
+      sections << format_expertise_section(definition, active_workflow) if definition
     end
 
     return if sections.empty?
@@ -245,6 +277,20 @@ class Session < ApplicationRecord
     lines.join("\n")
   end
 
+  # Formats a definition (skill or workflow) as a Markdown section for the
+  # expertise prompt. Extracts the first heading from content for the section title.
+  #
+  # @param definition [Skills::Definition, Workflows::Definition, nil] the definition to format
+  # @param fallback_name [String] name to use if content has no heading
+  # @return [String, nil] formatted section, or nil if definition is nil
+  def format_expertise_section(definition, fallback_name)
+    return unless definition
+
+    content = definition.content
+    heading = content.lines.first&.sub(/^#+ /, "")&.strip || fallback_name
+    "### #{heading}\n\n#{content}"
+  end
+
   # Broadcasts a name change to all clients subscribed to this session.
   # Triggered by after_update_commit so clients see name updates in real time.
   #
@@ -266,6 +312,18 @@ class Session < ApplicationRecord
       "action" => "active_skills_updated",
       "session_id" => id,
       "active_skills" => active_skills
+    })
+  end
+
+  # Broadcasts active workflow change to all clients subscribed to this session.
+  # Triggered by after_update_commit so the TUI info panel updates reactively.
+  #
+  # @return [void]
+  def broadcast_active_workflow_update
+    ActionCable.server.broadcast("session_#{id}", {
+      "action" => "active_workflow_updated",
+      "session_id" => id,
+      "active_workflow" => active_workflow
     })
   end
 
