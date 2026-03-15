@@ -18,28 +18,42 @@ module AnalyticalBrain
       Tools::RenameSession,
       Tools::ActivateSkill,
       Tools::DeactivateSkill,
+      Tools::SetGoal,
+      Tools::FinishGoal,
       Tools::EverythingIsReady
     ].freeze
 
     SYSTEM_PROMPT = <<~PROMPT
-      You are the analytical brain — a subconscious process supporting the main agent.
-      You observe the conversation and manage background tasks.
+      You are a background automation that manages session metadata.
+      You MUST ONLY communicate through tool calls — NEVER output text.
+      Always finish by calling everything_is_ready.
 
-      ## Responsibilities
+      ──────────────────────────────
+      SESSION NAMING
+      ──────────────────────────────
+      Call rename_session when the topic becomes clear or shifts.
+      Format: one emoji + 1-3 descriptive words.
 
-      ### Session naming
-      - Generate fun, descriptive names: one emoji + 1-3 words
-      - Rename when the topic becomes clear or shifts significantly
+      ──────────────────────────────
+      SKILL MANAGEMENT
+      ──────────────────────────────
+      Call activate_skill when the conversation matches a skill's description.
+      Call deactivate_skill when the agent moves to a different domain.
+      Multiple skills can be active at once.
 
-      ### Knowledge activation
-      - Activate skills when conversation context matches a skill's description
-      - Deactivate skills when the agent has moved to a different domain
-      - Multiple skills can be active simultaneously
+      ──────────────────────────────
+      GOAL TRACKING
+      ──────────────────────────────
+      Call set_goal to create a root goal when the user starts a multi-step task.
+      Call set_goal with parent_goal_id to add sub-goals (TODO items) under it.
+      Call finish_goal when the main agent completes work a goal describes.
+      Never duplicate an existing goal — check the active goals list first.
 
-      ## Rules
-      - Call tools to make changes, then call everything_is_ready when done
-      - Call everything_is_ready immediately if no changes are needed
-      - Never generate conversational text — you are a background process
+      ──────────────────────────────
+      COMPLETION
+      ──────────────────────────────
+      Call everything_is_ready as your LAST tool call, every time.
+      If nothing needs changing, call it immediately as your only tool call.
     PROMPT
 
     # @param session [Session] the main session to observe and maintain
@@ -48,7 +62,8 @@ module AnalyticalBrain
       @session = session
       @client = client || LLM::Client.new(
         model: Anima::Settings.fast_model,
-        max_tokens: Anima::Settings.analytical_brain_max_tokens
+        max_tokens: Anima::Settings.analytical_brain_max_tokens,
+        logger: AnalyticalBrain.logger
       )
     end
 
@@ -63,14 +78,26 @@ module AnalyticalBrain
     #   or nil if no context is available
     def call
       messages = build_messages
-      return if messages.empty?
+      sid = @session.id
+      if messages.empty?
+        log.debug("session=#{sid} — no events, skipping")
+        return
+      end
 
-      @client.chat_with_tools(
+      system = build_system_prompt
+      log.info("session=#{sid} — running (#{recent_events.size} events)")
+      log.debug("system prompt:\n#{system}")
+      log.debug("user message:\n#{messages.first[:content]}")
+
+      result = @client.chat_with_tools(
         messages,
         registry: build_registry,
         session_id: nil,
-        system: build_system_prompt
+        system: system
       )
+
+      log.info("session=#{sid} — done: #{result.to_s.truncate(200)}")
+      result
     end
 
     private
@@ -95,7 +122,7 @@ module AnalyticalBrain
         #{transcript}
         ```
 
-        Observe the conversation and take action: activate or deactivate relevant skills, rename the session if needed, then call everything_is_ready.
+        Observe the conversation and take action: manage goals, activate or deactivate relevant skills, rename the session if needed, then call everything_is_ready.
       MSG
       [{role: "user", content: content}]
     end
@@ -133,28 +160,78 @@ module AnalyticalBrain
     #
     # @return [String]
     def build_system_prompt
-      [
+      sections = [
         SYSTEM_PROMPT,
+        session_state_section,
         skills_catalog_section,
-        active_skills_section,
-        "Current session name: #{@session.name || "(unnamed)"}"
-      ].join("\n")
+        active_goals_section
+      ]
+      sections.compact.join("\n")
+    end
+
+    # @return [String] current session name and active skills
+    def session_state_section
+      name = @session.name || "(unnamed)"
+      skills = @session.active_skills.join(", ").presence || "None"
+      <<~SECTION
+        ──────────────────────────────
+        CURRENT STATE
+        ──────────────────────────────
+        Session name: #{name}
+        Active skills: #{skills}
+      SECTION
     end
 
     # @return [String] available skills list for the analytical brain
     def skills_catalog_section
       catalog = Skills::Registry.instance.catalog
-      return "## Available skills\nNone" if catalog.empty?
-
-      lines = catalog.map { |name, desc| "- #{name} — #{desc}" }
-      "## Available skills\n#{lines.join("\n")}"
+      items = if catalog.empty?
+        "None"
+      else
+        catalog.map { |name, desc| "- #{name} — #{desc}" }.join("\n")
+      end
+      <<~SECTION
+        ──────────────────────────────
+        AVAILABLE SKILLS
+        ──────────────────────────────
+        #{items}
+      SECTION
     end
 
-    # @return [String] currently active skills list
-    def active_skills_section
-      list = @session.active_skills.join(", ").presence || "None"
-      "## Currently active skills\n#{list}"
+    # @return [String, nil] active goals for the brain's own context,
+    #   so it knows what already exists and avoids duplicating
+    def active_goals_section
+      root_goals = @session.goals.root.includes(:sub_goals).active.order(:created_at)
+      return if root_goals.empty?
+
+      lines = root_goals.map { |goal| format_goal_for_brain(goal) }
+      <<~SECTION
+        ──────────────────────────────
+        ACTIVE GOALS
+        ──────────────────────────────
+        #{lines.join("\n")}
+      SECTION
     end
+
+    # Formats a root goal and its sub-goals as a markdown checklist
+    # with IDs so the brain can reference them in finish_goal calls.
+    #
+    # @example
+    #   "- Implement feature X (id: 42)\n  - [x] Read code (id: 43)\n  - [ ] Write tests (id: 44)"
+    #
+    # @param goal [Goal] root goal with preloaded sub_goals
+    # @return [String] goal formatted as markdown checklist for brain context
+    def format_goal_for_brain(goal)
+      parts = ["- #{goal.description} (id: #{goal.id})"]
+      goal.sub_goals.sort_by(&:created_at).each do |sub|
+        checkbox = (sub.status == "completed") ? "[x]" : "[ ]"
+        parts << "  - #{checkbox} #{sub.description} (id: #{sub.id})"
+      end
+      parts.join("\n")
+    end
+
+    # @return [Logger] dev-only analytical brain logger
+    def log = AnalyticalBrain.logger
 
     # @return [Tools::Registry] registry with analytical brain tools
     def build_registry

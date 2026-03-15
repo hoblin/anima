@@ -28,10 +28,12 @@ module LLM
     # @param max_tokens [Integer] maximum tokens in the response (default from Settings)
     # @param provider [Providers::Anthropic, nil] injectable provider instance;
     #   defaults to a new {Providers::Anthropic} using credentials
-    def initialize(model: Anima::Settings.model, max_tokens: Anima::Settings.max_tokens, provider: nil)
+    # @param logger [Logger, nil] optional logger for tool call tracing
+    def initialize(model: Anima::Settings.model, max_tokens: Anima::Settings.max_tokens, provider: nil, logger: nil)
       @provider = build_provider(provider)
       @model = model
       @max_tokens = max_tokens
+      @logger = logger
     end
 
     # Send messages to the LLM and return the assistant's text response.
@@ -83,6 +85,8 @@ module LLM
           tools: registry.schemas,
           **options
         )
+
+        log(:debug, "stop_reason=#{response["stop_reason"]} content_types=#{(response["content"] || []).map { |b| b["type"] }.join(",")}")
 
         if response["stop_reason"] == "tool_use"
           tool_results = execute_tools(response, registry, session_id)
@@ -137,6 +141,8 @@ module LLM
       id = tool_use["id"]
       input = tool_use["input"] || {}
 
+      log(:debug, "tool_call: #{name}(#{input.to_json})")
+
       Events::Bus.emit(Events::ToolCall.new(
         content: "Calling #{name}", tool_name: name,
         tool_input: input, tool_use_id: id, session_id: session_id
@@ -150,6 +156,7 @@ module LLM
       end
 
       result_content = format_tool_result(result)
+      log(:debug, "tool_result: #{name} → #{result_content.to_s.truncate(200)}")
 
       Events::Bus.emit(Events::ToolResponse.new(
         content: result_content, tool_name: name, tool_use_id: id,
@@ -158,6 +165,12 @@ module LLM
       ))
 
       {type: "tool_result", tool_use_id: id, content: result_content}
+    end
+
+    def log(level, message)
+      return unless @logger
+
+      @logger.public_send(level, message)
     end
 
     def format_tool_result(result)

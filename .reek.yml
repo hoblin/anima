@@ -13,6 +13,10 @@ detectors:
   NilCheck:
     exclude:
       - "Anima::Settings#get"
+  # Rescue blocks naturally reference the error object more than self
+  FeatureEnvy:
+    exclude:
+      - "AnalyticalBrainJob#perform"
   # Private helpers don't need instance state to be valid.
   # ActiveJob#perform is always a utility function by design.
   UtilityFunction:

@@ -35,6 +35,8 @@ tmux kill-session -t anima-brain
 
 Development uses port **42135** (not 42134) to avoid conflicting with the production brain running via systemd.
 
+**WARNING: The agent has full filesystem access and internet. When smoke-testing in TUI, choose tasks carefully — avoid prompts that trigger file edits or destructive actions.**
+
 ## Testing TUI in tmux
 
 RatatuiRuby requires a real PTY. Background processes (`&`) and `script` don't work reliably. Use tmux to smoke-test the TUI:
@@ -46,10 +48,16 @@ tmux new-session -d -s anima-test -x 120 -y 30 './exe/anima tui --host localhost
 # Wait for render, then capture the screen
 sleep 1 && tmux capture-pane -t anima-test -p
 
-# Send keystrokes (add sleep 0.3-0.5 between send and capture for rendering)
-tmux send-keys -t anima-test C-a        # Ctrl+a
-tmux send-keys -t anima-test s           # letter key
-tmux send-keys -t anima-test Escape      # Esc
+# TUI command mode: Ctrl+a enters command mode, then:
+#   n — new session
+#   s — session picker (shows sub-sessions / subagents)
+#   v — cycle view mode (basic → verbose → debug)
+#   a — enter Anthropic API token
+#   q — quit
+tmux send-keys -t anima-test C-a        # enter command mode
+sleep 0.3
+tmux send-keys -t anima-test n           # new session
+tmux send-keys -t anima-test Escape      # cancel / close picker
 
 # Capture specific areas
 tmux capture-pane -t anima-test -p | head -5   # top of screen
@@ -64,6 +72,8 @@ If the TUI crashes on startup, append `; sleep 30` to the command to keep the se
 Always clean up tmux sessions when done. Use `anima-test` as the session name for consistency.
 
 **Important:** Use `./exe/anima` (not `bundle exec anima`) to test local code changes. The exe uses `require_relative` so it loads local `lib/` directly. `bundle exec` may load the installed gem version instead.
+
+Analytical brain debug log (dev only): `tail -f log/analytical_brain.log`
 
 ## GitHub sub-issues
 
