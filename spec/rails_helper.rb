@@ -30,7 +30,8 @@ RSpec.configure do |config|
       "tools" => {"max_file_size" => 10_485_760, "max_read_lines" => 2_000, "max_read_bytes" => 50_000, "max_web_response_bytes" => 100_000},
       "paths" => {"soul" => Rails.root.join("templates/soul.md").to_s},
       "session" => {"name_generation_interval" => 30},
-      "analytical_brain" => {"max_tokens" => 128, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "event_window" => 20}
+      "analytical_brain" => {"max_tokens" => 128, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "event_window" => 20},
+      "environment" => {"project_files" => ["CLAUDE.md", "AGENTS.md", "README.md", "CONTRIBUTING.md"], "project_files_max_depth" => 3}
     )
   end
 end

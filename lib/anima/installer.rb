@@ -140,6 +140,16 @@ module Anima
         # Maximum bytes from web GET responses.
         max_web_response_bytes = 100_000
 
+        # ─── Environment ──────────────────────────────────────────────
+
+        [environment]
+
+        # Files to scan for in the working directory (project_files_max_depth levels deep).
+        project_files = ["CLAUDE.md", "AGENTS.md", "README.md", "CONTRIBUTING.md"]
+
+        # Maximum directory depth for project file scanning.
+        project_files_max_depth = 3
+
         # ─── Paths ─────────────────────────────────────────────────────
 
         [paths]

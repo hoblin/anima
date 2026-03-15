@@ -74,7 +74,10 @@ class AgentLoop
 
     messages = @session.messages_for_llm
     options = {}
-    options[:system] = @session.system_prompt if @session.system_prompt
+
+    env_context = EnvironmentProbe.to_prompt(@shell_session.pwd)
+    prompt = @session.system_prompt(environment_context: env_context)
+    options[:system] = prompt if prompt
 
     response = @client.chat_with_tools(messages, registry: @registry, session_id: @session.id, **options)
     Events::Bus.emit(Events::AgentMessage.new(content: response, session_id: @session.id))
