@@ -47,7 +47,8 @@ module Skills
     # Loads skill definitions from a single directory.
     # Supports flat files (*.md) and directory-based skills (*/SKILL.md).
     #
-    # @param dir [String] directory path to scan
+    # @param dir [String] directory path to scan for skill definitions
+    #   (flat .md files and SKILL.md inside subdirectories)
     # @return [void]
     def load_directory(dir)
       return unless Dir.exist?(dir)
@@ -98,9 +99,7 @@ module Skills
     # @param dir [String] directory to scan
     # @return [Array<String>] sorted paths to skill definition files
     def skill_files(dir)
-      flat = Dir.glob(File.join(dir, "*.md"))
-      nested = Dir.glob(File.join(dir, "*/SKILL.md"))
-      (flat + nested).sort
+      Dir.glob([File.join(dir, "*.md"), File.join(dir, "*/SKILL.md")]).sort
     end
   end
 end

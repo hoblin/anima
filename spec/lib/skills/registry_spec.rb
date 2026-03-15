@@ -75,6 +75,20 @@ RSpec.describe Skills::Registry do
       expect(registry.find("good")).to be_a(Skills::Definition)
     end
 
+    it "skips invalid directory-based skills with a warning" do
+      bad_dir = File.join(tmp_dir, "bad-skill")
+      FileUtils.mkdir_p(bad_dir)
+      File.write(File.join(bad_dir, "SKILL.md"), "No frontmatter here")
+      write_directory_skill(tmp_dir, "good-skill", description: "Valid nested skill")
+
+      expect(Rails.logger).to receive(:warn).with(/Skipping invalid skill definition/)
+
+      registry.load_directory(tmp_dir)
+
+      expect(registry.size).to eq(1)
+      expect(registry.find("good-skill")).to be_a(Skills::Definition)
+    end
+
     it "skips non-existent directories without error" do
       registry.load_directory("/nonexistent/path")
       expect(registry.size).to eq(0)
