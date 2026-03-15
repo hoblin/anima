@@ -116,7 +116,7 @@ RSpec.describe AgentRequestJob do
       expect(session.events.where(status: "pending").count).to eq(0)
     end
 
-    it "schedules name generation after the agent loop completes" do
+    it "schedules analytical brain after the agent loop completes" do
       session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
       # Pre-create agent reply since the test env doesn't persist via event bus
       session.events.create!(event_type: "agent_message", payload: {"content" => "Hi!"}, timestamp: 2)
@@ -129,7 +129,7 @@ RSpec.describe AgentRequestJob do
         )
 
       expect { described_class.perform_now(session.id) }
-        .to have_enqueued_job(GenerateSessionNameJob).with(session.id)
+        .to have_enqueued_job(AnalyticalBrainJob).with(session.id)
     end
 
     it "finalizes the agent loop after completion" do

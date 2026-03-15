@@ -37,12 +37,15 @@ class Session < ApplicationRecord
     parent_session_id.present?
   end
 
-  # Enqueues a background job to auto-generate a session name.
+  # Enqueues the analytical brain to perform background maintenance on
+  # this session. Currently handles session naming; future phases add
+  # skill activation, goal tracking, and memory.
+  #
   # Runs after the first exchange and periodically as the conversation
   # evolves, so the name stays relevant to the current topic.
   #
   # @return [void]
-  def schedule_name_generation!
+  def schedule_analytical_brain!
     return if sub_agent?
 
     count = events.llm_messages.count
@@ -50,7 +53,7 @@ class Session < ApplicationRecord
     # Already named — only regenerate at interval boundaries (30, 60, 90, …)
     return if name.present? && (count % Anima::Settings.name_generation_interval != 0)
 
-    GenerateSessionNameJob.perform_later(id)
+    AnalyticalBrainJob.perform_later(id)
   end
 
   # Returns the events currently visible in the LLM context window.

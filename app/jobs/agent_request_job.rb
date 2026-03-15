@@ -55,7 +55,7 @@ class AgentRequestJob < ApplicationJob
       break if promoted == 0
     end
 
-    session.schedule_name_generation!
+    session.schedule_analytical_brain!
   ensure
     release_processing(session_id)
     agent_loop&.finalize
