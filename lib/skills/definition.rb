@@ -73,10 +73,18 @@ module Skills
       [frontmatter, match[2]]
     end
 
+    NAME_FORMAT = /\A[a-z0-9][a-z0-9_-]*\z/
+
     def self.validate_required_fields!(frontmatter, path)
       %w[name description].each do |field|
         value = frontmatter[field].to_s.strip
         raise InvalidDefinitionError, "Missing required field '#{field}' in #{path}" if value.empty?
+      end
+
+      name = frontmatter["name"].to_s.strip
+      unless name.match?(NAME_FORMAT)
+        raise InvalidDefinitionError,
+          "Invalid skill name '#{name}' in #{path} — must be lowercase alphanumeric with hyphens/underscores"
       end
     end
 

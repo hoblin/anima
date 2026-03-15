@@ -33,8 +33,9 @@ RSpec.describe Skills::Registry do
       File.write(File.join(tmp_dir, "bad.md"), "No frontmatter here")
       write_skill(tmp_dir, "good.md", name: "good", description: "Valid skill")
 
-      expect { registry.load_directory(tmp_dir) }
-        .to output(/Skipping invalid skill definition/).to_stderr
+      expect(Rails.logger).to receive(:warn).with(/Skipping invalid skill definition/)
+
+      registry.load_directory(tmp_dir)
 
       expect(registry.size).to eq(1)
       expect(registry.find("good")).to be_a(Skills::Definition)

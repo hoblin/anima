@@ -79,7 +79,10 @@ class AgentRequestJob < ApplicationJob
 
     AnalyticalBrain::Runner.new(session).call
   rescue => error
-    Rails.logger.error("Analytical brain (blocking) failed: #{error.message}")
+    # The analytical brain is best-effort: skill activation enhances the
+    # response but the main agent must still reply even if it fails.
+    Rails.logger.error("Analytical brain (blocking) failed: #{error.class}: #{error.message}")
+    Rails.logger.error(error.backtrace&.first(10)&.join("\n"))
   end
 
   # Sets the session's processing flag atomically. Returns true if this

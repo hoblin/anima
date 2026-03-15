@@ -121,6 +121,7 @@ class Session < ApplicationRecord
   #
   # @param skill_name [String] name of the skill to activate
   # @return [Skills::Definition] the activated skill
+  # @raise [Skills::InvalidDefinitionError] if skill not found in registry
   # @raise [ActiveRecord::RecordInvalid] if save fails
   def activate_skill(skill_name)
     definition = Skills::Registry.instance.find(skill_name)

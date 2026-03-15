@@ -356,6 +356,55 @@ RSpec.describe Session do
       prompt = session.assemble_system_prompt
       expect(prompt).to include("### GitHub Issue Writing")
     end
+
+    context "with multiple skills" do
+      let(:tmp_dir) { Dir.mktmpdir }
+
+      before do
+        File.write(File.join(tmp_dir, "testing.md"), <<~MD)
+          ---
+          name: testing
+          description: "Testing best practices"
+          ---
+
+          # Testing Guide
+
+          Write thorough tests.
+        MD
+
+        stub_const("Skills::Registry::USER_DIR", tmp_dir)
+        Skills::Registry.reload!
+      end
+
+      after { FileUtils.remove_entry(tmp_dir) }
+
+      it "assembles all active skills into the system prompt" do
+        session.activate_skill("gh-issue")
+        session.activate_skill("testing")
+
+        prompt = session.assemble_system_prompt
+        expect(prompt).to include("### GitHub Issue Writing")
+        expect(prompt).to include("### Testing Guide")
+      end
+
+      it "preserves activation order" do
+        session.activate_skill("testing")
+        session.activate_skill("gh-issue")
+
+        expect(session.reload.active_skills).to eq(%w[testing gh-issue])
+      end
+
+      it "deactivates one skill while others remain active" do
+        session.activate_skill("gh-issue")
+        session.activate_skill("testing")
+        session.deactivate_skill("gh-issue")
+
+        expect(session.reload.active_skills).to eq(["testing"])
+        prompt = session.assemble_system_prompt
+        expect(prompt).to include("### Testing Guide")
+        expect(prompt).not_to include("GitHub Issue Writing")
+      end
+    end
   end
 
   describe "#messages_for_llm" do

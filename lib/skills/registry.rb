@@ -52,7 +52,7 @@ module Skills
         definition = Definition.from_file(path)
         @skills[definition.name] = definition
       rescue InvalidDefinitionError => error
-        warn "Skipping invalid skill definition #{path}: #{error.message}"
+        Rails.logger.warn("Skipping invalid skill definition #{path}: #{error.message}")
       end
     end
 

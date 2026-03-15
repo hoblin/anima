@@ -109,6 +109,64 @@ RSpec.describe Skills::Definition do
       end
     end
 
+    context "with invalid skill name format" do
+      it "rejects names with uppercase letters" do
+        File.write(skill_path, <<~MD)
+          ---
+          name: BadName
+          description: valid
+          ---
+
+          Content
+        MD
+
+        expect { described_class.from_file(skill_path) }
+          .to raise_error(Skills::InvalidDefinitionError, /Invalid skill name/)
+      end
+
+      it "rejects names with spaces" do
+        File.write(skill_path, <<~MD)
+          ---
+          name: "bad name"
+          description: valid
+          ---
+
+          Content
+        MD
+
+        expect { described_class.from_file(skill_path) }
+          .to raise_error(Skills::InvalidDefinitionError, /Invalid skill name/)
+      end
+
+      it "rejects names starting with a hyphen" do
+        File.write(skill_path, <<~MD)
+          ---
+          name: "-bad"
+          description: valid
+          ---
+
+          Content
+        MD
+
+        expect { described_class.from_file(skill_path) }
+          .to raise_error(Skills::InvalidDefinitionError, /Invalid skill name/)
+      end
+
+      it "accepts valid kebab-case names" do
+        File.write(skill_path, <<~MD)
+          ---
+          name: my-skill_v2
+          description: valid
+          ---
+
+          Content
+        MD
+
+        definition = described_class.from_file(skill_path)
+        expect(definition.name).to eq("my-skill_v2")
+      end
+    end
+
     context "with extra whitespace in fields" do
       before do
         File.write(skill_path, <<~MD)

@@ -173,6 +173,23 @@ RSpec.describe AgentRequestJob do
         described_class.perform_now(session.id)
       end
 
+      it "skips blocking analytical brain when setting is disabled" do
+        session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+        session.events.create!(event_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
+
+        allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(false)
+        expect(AnalyticalBrain::Runner).not_to receive(:new)
+
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return(
+            status: 200,
+            body: {content: [{type: "text", text: "ok"}], stop_reason: "end_turn"}.to_json,
+            headers: {"content-type" => "application/json"}
+          )
+
+        described_class.perform_now(session.id)
+      end
+
       it "continues with agent loop even if analytical brain fails" do
         session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
         session.events.create!(event_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
