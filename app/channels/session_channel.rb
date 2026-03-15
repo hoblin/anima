@@ -173,6 +173,9 @@ class SessionChannel < ApplicationCable::Channel
   # Used on initial subscription and after session switches so the
   # client can handle both paths with a single code path.
   #
+  # Payload: session_id, name, parent_session_id, message_count,
+  # view_mode, active_skills.
+  #
   # @param session [Session] the session to announce
   # @return [void]
   def transmit_session_changed(session)
@@ -182,7 +185,8 @@ class SessionChannel < ApplicationCable::Channel
       "name" => session.name,
       "parent_session_id" => session.parent_session_id,
       "message_count" => session.events.llm_messages.count,
-      "view_mode" => session.view_mode
+      "view_mode" => session.view_mode,
+      "active_skills" => session.active_skills
     })
   end
 

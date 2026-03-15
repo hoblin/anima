@@ -1193,5 +1193,40 @@ RSpec.describe TUI::App do
         expect(span[:style][:fg]).to eq("red")
       end
     end
+
+    describe "#active_skills_line" do
+      let(:tui) do
+        tui = double("tui")
+        allow(tui).to receive(:style) { |**kwargs| kwargs }
+        allow(tui).to receive(:span) { |**kwargs| kwargs }
+        allow(tui).to receive(:line) { |**kwargs| kwargs }
+        tui
+      end
+
+      it "returns nil when skills are nil" do
+        allow(app).to receive(:screens).and_return({chat: double(session_info: {active_skills: nil})})
+        result = app.send(:active_skills_line, tui, {active_skills: nil})
+        expect(result).to be_nil
+      end
+
+      it "returns nil when skills are empty" do
+        result = app.send(:active_skills_line, tui, {active_skills: []})
+        expect(result).to be_nil
+      end
+
+      it "renders emoji prefix and comma-separated skill names" do
+        result = app.send(:active_skills_line, tui, {active_skills: ["gh-issue", "activerecord"]})
+        spans = result[:spans]
+        expect(spans[0][:content]).to eq("\u{1F4DA} ")
+        expect(spans[0][:style][:fg]).to eq("dark_gray")
+        expect(spans[1][:content]).to eq("gh-issue, activerecord")
+        expect(spans[1][:style][:fg]).to eq("yellow")
+      end
+
+      it "renders single skill without comma" do
+        result = app.send(:active_skills_line, tui, {active_skills: ["gh-issue"]})
+        expect(result[:spans][1][:content]).to eq("gh-issue")
+      end
+    end
   end
 end

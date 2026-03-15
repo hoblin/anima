@@ -203,6 +203,7 @@ module TUI
           tui.span(content: "Messages ", style: tui.style(fg: "dark_gray")),
           tui.span(content: session[:message_count].to_s, style: tui.style(fg: "cyan"))
         ]),
+        active_skills_line(tui, session),
         tui.line(spans: [tui.span(content: "")]),
         tui.line(spans: [
           tui.span(content: "Mode ", style: tui.style(fg: "dark_gray")),
@@ -216,7 +217,7 @@ module TUI
           tui.span(content: "Ctrl+a", style: tui.style(fg: "cyan", modifiers: [:bold])),
           tui.span(content: " command mode", style: tui.style(fg: "dark_gray"))
         ])
-      ]
+      ].compact
 
       info = tui.paragraph(
         text: lines,
@@ -228,6 +229,22 @@ module TUI
         )
       )
       frame.render_widget(info, area)
+    end
+
+    # Builds the active skills line for the info panel.
+    # Returns nil when no skills are active so the line is hidden entirely.
+    # @param tui [RatatuiRuby] TUI rendering context
+    # @param session [Hash] session info hash containing :active_skills array
+    # @return [RatatuiRuby::Widgets::Line, nil] styled skills line, or nil when empty
+    def active_skills_line(tui, session)
+      skills = session[:active_skills]
+      return if skills.nil? || skills.empty?
+
+      label = skills.join(", ")
+      tui.line(spans: [
+        tui.span(content: "\u{1F4DA} ", style: tui.style(fg: "dark_gray")),
+        tui.span(content: label, style: tui.style(fg: "yellow"))
+      ])
     end
 
     # Builds the interaction state line for the info panel.
