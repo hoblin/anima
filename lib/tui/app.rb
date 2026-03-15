@@ -203,6 +203,7 @@ module TUI
           tui.span(content: "Messages ", style: tui.style(fg: "dark_gray")),
           tui.span(content: session[:message_count].to_s, style: tui.style(fg: "cyan"))
         ]),
+        active_skills_line(tui, session),
         tui.line(spans: [tui.span(content: "")]),
         tui.line(spans: [
           tui.span(content: "Mode ", style: tui.style(fg: "dark_gray")),
@@ -228,6 +229,19 @@ module TUI
         )
       )
       frame.render_widget(info, area)
+    end
+
+    # Builds the active skills line for the info panel.
+    # Shows comma-separated skill names when skills are active; blank line otherwise.
+    def active_skills_line(tui, session)
+      skills = session[:active_skills]
+      return tui.line(spans: [tui.span(content: "")]) if skills.nil? || skills.empty?
+
+      label = skills.join(", ")
+      tui.line(spans: [
+        tui.span(content: "\u{1F4DA} ", style: tui.style(fg: "dark_gray")),
+        tui.span(content: label, style: tui.style(fg: "yellow"))
+      ])
     end
 
     # Builds the interaction state line for the info panel.

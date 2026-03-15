@@ -93,6 +93,24 @@ RSpec.describe SessionChannel, type: :channel do
       expect(changed["name"]).to be_nil
     end
 
+    it "includes active_skills in session_changed" do
+      Session.create!(id: session_id, active_skills: ["gh-issue", "activerecord"])
+
+      subscribe(session_id: session_id)
+
+      changed = transmissions.find { |t| t["action"] == "session_changed" }
+      expect(changed["active_skills"]).to eq(["gh-issue", "activerecord"])
+    end
+
+    it "includes empty active_skills for sessions with no skills" do
+      Session.create!(id: session_id)
+
+      subscribe(session_id: session_id)
+
+      changed = transmissions.find { |t| t["action"] == "session_changed" }
+      expect(changed["active_skills"]).to eq([])
+    end
+
     it "includes parent_session_id for child sessions" do
       parent = Session.create!
       child = Session.create!(parent_session: parent)

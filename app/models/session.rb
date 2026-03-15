@@ -20,6 +20,7 @@ class Session < ApplicationRecord
   validates :name, length: {maximum: 255}, allow_nil: true
 
   after_update_commit :broadcast_name_update, if: :saved_change_to_name?
+  after_update_commit :broadcast_active_skills_update, if: :saved_change_to_active_skills?
 
   scope :recent, ->(limit = 10) { order(updated_at: :desc).limit(limit) }
   scope :root_sessions, -> { where(parent_session_id: nil) }
@@ -204,6 +205,18 @@ class Session < ApplicationRecord
       "action" => "session_name_updated",
       "session_id" => id,
       "name" => name
+    })
+  end
+
+  # Broadcasts active skill changes to all clients subscribed to this session.
+  # Triggered by after_update_commit so the TUI info panel updates reactively.
+  #
+  # @return [void]
+  def broadcast_active_skills_update
+    ActionCable.server.broadcast("session_#{id}", {
+      "action" => "active_skills_updated",
+      "session_id" => id,
+      "active_skills" => active_skills
     })
   end
 

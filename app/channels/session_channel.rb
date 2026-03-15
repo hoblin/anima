@@ -182,7 +182,8 @@ class SessionChannel < ApplicationCable::Channel
       "name" => session.name,
       "parent_session_id" => session.parent_session_id,
       "message_count" => session.events.llm_messages.count,
-      "view_mode" => session.view_mode
+      "view_mode" => session.view_mode,
+      "active_skills" => session.active_skills
     })
   end
 

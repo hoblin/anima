@@ -204,6 +204,30 @@ RSpec.describe Session do
     end
   end
 
+  describe "#broadcast_active_skills_update" do
+    it "broadcasts active skills change to the session stream" do
+      session = Session.create!
+
+      expect {
+        session.update!(active_skills: ["gh-issue", "activerecord"])
+      }.to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including(
+          "action" => "active_skills_updated",
+          "session_id" => session.id,
+          "active_skills" => ["gh-issue", "activerecord"]
+        ))
+    end
+
+    it "does not broadcast when active_skills is unchanged" do
+      session = Session.create!(active_skills: ["gh-issue"])
+
+      expect {
+        session.update!(name: "New Name")
+      }.not_to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("action" => "active_skills_updated"))
+    end
+  end
+
   describe "#granted_tools" do
     it "returns nil when not set" do
       session = Session.create!
