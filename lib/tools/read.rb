@@ -26,7 +26,7 @@ module Tools
         properties: {
           path: {type: "string", description: "Absolute or relative file path (relative resolved against working directory)"},
           offset: {type: "integer", description: "1-indexed line number to start from (default: 1)"},
-          limit: {type: "integer", description: "Maximum number of lines to read (default: #{Anima::Settings.max_read_lines}, also limited by #{Anima::Settings.max_read_bytes} byte cap)"}
+          limit: {type: "integer", description: "Maximum lines to read (subject to line and byte caps from config)"}
         },
         required: ["path"]
       }
@@ -109,11 +109,12 @@ module Tools
     end
 
     def check_oversized_lines(window, offset, path)
-      index = window.index { |line| line.bytesize > Anima::Settings.max_read_bytes }
+      max_bytes = Anima::Settings.max_read_bytes
+      index = window.index { |line| line.bytesize > max_bytes }
       return unless index
 
       line_num = offset + index
-      {error: "Line #{line_num} exceeds #{Anima::Settings.max_read_bytes} bytes (likely minified). " \
+      {error: "Line #{line_num} exceeds #{max_bytes} bytes (likely minified). " \
               "Use bash tool with: sed -n '#{line_num}p' #{path}"}
     end
 
@@ -128,15 +129,16 @@ module Tools
       end
     end
 
-    # Accumulates lines until `Anima::Settings.max_read_bytes` would be exceeded.
+    # Accumulates lines until the byte cap would be exceeded.
     # @return [Array(String, Integer)] accumulated text and number of lines included
     def accumulate_lines(window)
+      max_bytes = Anima::Settings.max_read_bytes
       output = +""
       bytes = 0
       count = 0
 
       window.each_with_index do |line, index|
-        break if bytes + line.bytesize > Anima::Settings.max_read_bytes && index > 0
+        break if bytes + line.bytesize > max_bytes && index > 0
 
         output << line
         bytes += line.bytesize

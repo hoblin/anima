@@ -32,13 +32,13 @@ module Tools
     private
 
     def validate_and_fetch(url)
+      timeout = Anima::Settings.web_request_timeout
       scheme = URI.parse(url).scheme
 
       unless %w[http https].include?(scheme)
         return {error: "Only http and https URLs are supported, got: #{scheme.inspect}"}
       end
 
-      timeout = Anima::Settings.web_request_timeout
       truncate_body(HTTParty.get(url, timeout: timeout, follow_redirects: false).body.to_s)
     rescue URI::InvalidURIError => error
       {error: "Invalid URL: #{error.message}"}

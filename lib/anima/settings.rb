@@ -36,6 +36,7 @@ module Anima
     @config_path = nil
     @config_cache = nil
     @config_mtime = nil
+    @cache_mutex = Mutex.new
 
     class << self
       # Override config file path (for testing).
@@ -73,7 +74,7 @@ module Anima
       # @return [Integer]
       def max_tokens = get("llm", "max_tokens")
 
-      # Maximum consecutive tool execution rounds per request.
+      # Maximum consecutive tool execution rounds per LLM message.
       # Prevents runaway tool loops.
       # @return [Integer]
       def max_tool_rounds = get("llm", "max_tool_rounds")
@@ -86,19 +87,19 @@ module Anima
       # ─── Timeouts (seconds) ────────────────────────────────────────
 
       # LLM API request timeout.
-      # @return [Integer]
+      # @return [Integer] seconds
       def api_timeout = get("timeouts", "api")
 
       # Shell command execution timeout.
-      # @return [Integer]
+      # @return [Integer] seconds
       def command_timeout = get("timeouts", "command")
 
       # MCP server response timeout.
-      # @return [Integer]
+      # @return [Integer] seconds
       def mcp_response_timeout = get("timeouts", "mcp_response")
 
       # Web fetch request timeout.
-      # @return [Integer]
+      # @return [Integer] seconds
       def web_request_timeout = get("timeouts", "web_request")
 
       # ─── Shell ──────────────────────────────────────────────────────
@@ -117,7 +118,7 @@ module Anima
       # @return [Integer]
       def max_read_lines = get("tools", "max_read_lines")
 
-      # Maximum bytes returned by the read tool per request.
+      # Maximum bytes returned by the read tool.
       # @return [Integer]
       def max_read_bytes = get("tools", "max_read_bytes")
 
@@ -152,25 +153,28 @@ module Anima
 
       # Loads the TOML config with mtime-based caching.
       # Re-parses only when the file has been modified since the last read.
+      # Thread-safe via mutex — concurrent callers share the same cache.
       #
       # @return [Hash] parsed config
       # @raise [MissingConfigError] when config.toml does not exist
       def config
-        path = config_path
-        unless File.exist?(path)
-          @config_cache = nil
-          @config_mtime = nil
-          raise MissingConfigError,
-            "Config file not found: #{path}. Run `anima install` to create it."
-        end
+        @cache_mutex.synchronize do
+          path = config_path
+          unless File.exist?(path)
+            @config_cache = nil
+            @config_mtime = nil
+            raise MissingConfigError,
+              "Config file not found: #{path}. Run `anima install` to create it."
+          end
 
-        current_mtime = File.mtime(path)
-        if current_mtime != @config_mtime
-          @config_mtime = current_mtime
-          @config_cache = TomlRB.load_file(path)
-        end
+          current_mtime = File.mtime(path)
+          if current_mtime != @config_mtime
+            @config_mtime = current_mtime
+            @config_cache = TomlRB.load_file(path)
+          end
 
-        @config_cache
+          @config_cache
+        end
       end
     end
   end

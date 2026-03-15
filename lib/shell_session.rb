@@ -137,12 +137,14 @@ class ShellSession
     @stderr_buffer = []
     @stderr_bytes = 0
     @stderr_truncated = false
+    @max_output_bytes = Anima::Settings.max_output_bytes
     @stderr_thread = Thread.new do
+      max_bytes = @max_output_bytes
       File.open(@fifo_path, "r") do |fifo|
         while (line = fifo.gets)
           cleaned = line.chomp.delete("\r")
           @stderr_mutex.synchronize do
-            if @stderr_bytes < Anima::Settings.max_output_bytes
+            if @stderr_bytes < max_bytes
               @stderr_buffer << cleaned
               @stderr_bytes += cleaned.bytesize
             else
@@ -258,7 +260,7 @@ class ShellSession
       @stderr_buffer.clear
       @stderr_bytes = 0
       @stderr_truncated = false
-      truncated ? result + "\n\n[Truncated: output exceeded #{Anima::Settings.max_output_bytes} bytes]" : result
+      truncated ? result + "\n\n[Truncated: output exceeded #{@max_output_bytes} bytes]" : result
     end
   end
 
@@ -272,12 +274,13 @@ class ShellSession
   end
 
   def truncate(output)
-    return output if output.bytesize <= Anima::Settings.max_output_bytes
+    max_bytes = @max_output_bytes
+    return output if output.bytesize <= max_bytes
 
-    output.byteslice(0, Anima::Settings.max_output_bytes)
+    output.byteslice(0, max_bytes)
       .force_encoding("UTF-8")
       .scrub +
-      "\n\n[Truncated: output exceeded #{Anima::Settings.max_output_bytes} bytes]"
+      "\n\n[Truncated: output exceeded #{max_bytes} bytes]"
   end
 
   def shutdown

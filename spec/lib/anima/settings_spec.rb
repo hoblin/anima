@@ -99,4 +99,87 @@ RSpec.describe Anima::Settings do
       expect(described_class.config_path).to eq(File.expand_path("~/.anima/config.toml"))
     end
   end
+
+  describe "hot-reload" do
+    let(:config_file) { Tempfile.new(["anima-config", ".toml"]) }
+
+    before do
+      allow(described_class).to receive(:config).and_call_original
+      config_file.write(<<~TOML)
+        [llm]
+        model = "model-v1"
+        fast_model = "fast-v1"
+        max_tokens = 100
+        max_tool_rounds = 5
+        token_budget = 1000
+        [timeouts]
+        api = 10
+        command = 10
+        mcp_response = 10
+        web_request = 10
+        [shell]
+        max_output_bytes = 1000
+        [tools]
+        max_file_size = 1000
+        max_read_lines = 100
+        max_read_bytes = 1000
+        max_web_response_bytes = 1000
+        [session]
+        name_generation_interval = 5
+      TOML
+      config_file.flush
+      described_class.config_path = config_file.path
+    end
+
+    after do
+      described_class.reset!
+      config_file.close
+      config_file.unlink
+    end
+
+    it "reads values from a real TOML file" do
+      expect(described_class.model).to eq("model-v1")
+      expect(described_class.api_timeout).to eq(10)
+    end
+
+    it "picks up changes when the file is modified" do
+      expect(described_class.model).to eq("model-v1")
+
+      # Ensure mtime changes (filesystem granularity can be 1 second)
+      sleep 0.01
+      config_file.reopen(config_file.path, "w")
+      config_file.write(<<~TOML)
+        [llm]
+        model = "model-v2"
+        fast_model = "fast-v1"
+        max_tokens = 100
+        max_tool_rounds = 5
+        token_budget = 1000
+        [timeouts]
+        api = 10
+        command = 10
+        mcp_response = 10
+        web_request = 10
+        [shell]
+        max_output_bytes = 1000
+        [tools]
+        max_file_size = 1000
+        max_read_lines = 100
+        max_read_bytes = 1000
+        max_web_response_bytes = 1000
+        [session]
+        name_generation_interval = 5
+      TOML
+      config_file.flush
+      FileUtils.touch(config_file.path, mtime: Time.now + 1)
+
+      expect(described_class.model).to eq("model-v2")
+    end
+
+    it "does not re-parse TOML when file has not changed" do
+      described_class.model
+      expect(TomlRB).not_to receive(:load_file)
+      2.times { described_class.model }
+    end
+  end
 end
