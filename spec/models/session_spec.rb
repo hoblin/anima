@@ -259,7 +259,7 @@ RSpec.describe Session do
       session.activate_skill("gh-issue")
 
       prompt = session.system_prompt
-      expect(prompt).to include("Active Knowledge")
+      expect(prompt).to include("Your Expertise")
       expect(prompt).to include("GitHub Issue Writing")
     end
   end
@@ -336,10 +336,10 @@ RSpec.describe Session do
       expect(session.assemble_system_prompt).to be_nil
     end
 
-    it "includes Active Knowledge header" do
+    it "includes Your Expertise header" do
       session.activate_skill("gh-issue")
 
-      expect(session.assemble_system_prompt).to start_with("## Active Knowledge")
+      expect(session.assemble_system_prompt).to start_with("## Your Expertise")
     end
 
     it "includes full skill content" do

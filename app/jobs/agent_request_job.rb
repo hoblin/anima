@@ -75,7 +75,6 @@ class AgentRequestJob < ApplicationJob
   def run_analytical_brain_blocking(session)
     return unless Anima::Settings.analytical_brain_blocking_on_user_message
     return if session.sub_agent?
-    return if session.events.llm_messages.count < 2
 
     AnalyticalBrain::Runner.new(session).call
   rescue => error

@@ -163,7 +163,7 @@ class Session < ApplicationRecord
 
     return if sections.empty?
 
-    "## Active Knowledge\n\n#{sections.join("\n\n")}"
+    "## Your Expertise\n\nYou know this deeply. Now's your chance to put it to work.\n\n#{sections.join("\n\n")}"
   end
 
   # Builds the message array expected by the Anthropic Messages API.

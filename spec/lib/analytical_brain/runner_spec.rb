@@ -44,8 +44,11 @@ RSpec.describe AnalyticalBrain::Runner do
 
         expect(captured_messages.length).to eq(1)
         expect(captured_messages.first[:role]).to eq("user")
-        expect(captured_messages.first[:content]).to match(/User:.*Tell me about Ruby/m)
-        expect(captured_messages.first[:content]).to match(/Assistant:.*Ruby is great!/m)
+        content = captured_messages.first[:content]
+        expect(content).to include("The main session is working on this:")
+        expect(content).to match(/User:.*Tell me about Ruby/m)
+        expect(content).to match(/Assistant:.*Ruby is great!/m)
+        expect(content).to include("call everything_is_ready")
       end
 
       it "passes nil session_id to prevent event persistence" do

@@ -79,13 +79,25 @@ module AnalyticalBrain
     # The analytical brain doesn't need multi-turn conversation history — it
     # just needs to understand "what is the agent doing RIGHT NOW?"
     #
+    # The transcript is framed as an observation of the main session, not as
+    # a direct message to the analytical brain. Without this framing, Haiku
+    # confuses the main session's user messages with requests directed at it.
+    #
     # @return [Array<Hash>] single-element messages array, or empty if no events
     def build_messages
       events = recent_events
       return [] if events.empty?
 
       transcript = events.filter_map { |event| format_event(event) }.join("\n")
-      [{role: "user", content: transcript}]
+      content = <<~MSG.strip
+        The main session is working on this:
+        ```
+        #{transcript}
+        ```
+
+        Observe the conversation and take action: activate or deactivate relevant skills, rename the session if needed, then call everything_is_ready.
+      MSG
+      [{role: "user", content: content}]
     end
 
     # @return [Array<Event>] most recent events in chronological order
