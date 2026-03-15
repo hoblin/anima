@@ -69,6 +69,24 @@ RSpec.describe Anima::Installer do
       end
     end
 
+    it "creates soul.md from template" do
+      installer.run
+
+      soul_path = tmp_home.join("soul.md")
+      expect(soul_path).to exist
+      expect(soul_path.read).to include("You've just woken up in a new body")
+    end
+
+    it "does not overwrite existing soul.md on re-run" do
+      soul_path = tmp_home.join("soul.md")
+      FileUtils.mkdir_p(tmp_home)
+      soul_path.write("I am who I chose to be.")
+
+      installer.run
+
+      expect(soul_path.read).to eq("I am who I chose to be.")
+    end
+
     it "creates mcp.toml config file" do
       installer.run
 

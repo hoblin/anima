@@ -18,6 +18,7 @@ module Anima
     ].freeze
 
     ANIMA_HOME = Pathname.new(File.expand_path("~/.anima")).freeze
+    TEMPLATE_DIR = File.expand_path("../../templates", __dir__).freeze
 
     attr_reader :anima_home
 
@@ -28,6 +29,7 @@ module Anima
     def run
       say "Installing Anima to #{anima_home}..."
       create_directories
+      create_soul_file
       create_config_file
       create_settings_config
       create_mcp_config
@@ -44,6 +46,18 @@ module Anima
         FileUtils.mkdir_p(path)
         say "  created #{path}"
       end
+    end
+
+    # Copies the soul template to ~/.anima/soul.md — the agent's
+    # self-authored identity file. Skips if the file already exists
+    # so agent-written content is never overwritten.
+    def create_soul_file
+      soul_path = anima_home.join("soul.md")
+      return if soul_path.exist?
+
+      template = File.join(TEMPLATE_DIR, "soul.md")
+      soul_path.write(File.read(template))
+      say "  created #{soul_path}"
     end
 
     def create_config_file
