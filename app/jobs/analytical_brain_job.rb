@@ -27,7 +27,7 @@ class AnalyticalBrainJob < ApplicationJob
     brain_log.info("async job started for session=#{session_id}")
     AnalyticalBrain::Runner.new(session).call
   rescue => error
-    brain_log&.error("FAILED (async) session=#{session_id}: #{error.class}: #{error.message}")
+    brain_log.error("FAILED (async) session=#{session_id}: #{error.class}: #{error.message}")
     raise
   end
 end

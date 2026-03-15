@@ -72,7 +72,7 @@ RSpec.describe AnalyticalBrain::Runner do
 
         runner.call
 
-        expect(captured_opts[:system]).to match(/analytical brain/i)
+        expect(captured_opts[:system]).to include("background automation")
         expect(captured_opts[:system]).to include("(unnamed)")
       end
 
@@ -99,7 +99,7 @@ RSpec.describe AnalyticalBrain::Runner do
 
         runner.call
 
-        expect(captured_opts[:system]).to include("Available skills")
+        expect(captured_opts[:system]).to include("AVAILABLE SKILLS")
         expect(captured_opts[:system]).to include("gh-issue")
       end
 
@@ -114,7 +114,7 @@ RSpec.describe AnalyticalBrain::Runner do
 
         runner.call
 
-        expect(captured_opts[:system]).to include("Currently active skills")
+        expect(captured_opts[:system]).to include("Active skills:")
         expect(captured_opts[:system]).to include("gh-issue")
       end
 
@@ -127,7 +127,7 @@ RSpec.describe AnalyticalBrain::Runner do
 
         runner.call
 
-        expect(captured_opts[:system]).to include("Currently active skills\nNone")
+        expect(captured_opts[:system]).to include("Active skills: None")
       end
 
       it "registers all analytical brain tools" do
@@ -156,8 +156,8 @@ RSpec.describe AnalyticalBrain::Runner do
 
         runner.call
 
-        expect(captured_opts[:system]).to include("Goal tracking")
-        expect(captured_opts[:system]).to include("Set goals when")
+        expect(captured_opts[:system]).to include("GOAL TRACKING")
+        expect(captured_opts[:system]).to include("set_goal")
       end
 
       it "includes active goals in system prompt" do
@@ -173,7 +173,7 @@ RSpec.describe AnalyticalBrain::Runner do
 
         runner.call
 
-        expect(captured_opts[:system]).to include("Active goals")
+        expect(captured_opts[:system]).to include("ACTIVE GOALS")
         expect(captured_opts[:system]).to include("Implement feature X")
         expect(captured_opts[:system]).to include("Read code")
         expect(captured_opts[:system]).to include("Write tests")
@@ -207,7 +207,7 @@ RSpec.describe AnalyticalBrain::Runner do
 
         runner.call
 
-        expect(captured_opts[:system]).not_to include("Active goals")
+        expect(captured_opts[:system]).not_to include("ACTIVE GOALS")
       end
 
       it "excludes completed root goals from active goals section" do

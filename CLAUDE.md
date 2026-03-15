@@ -35,6 +35,8 @@ tmux kill-session -t anima-brain
 
 Development uses port **42135** (not 42134) to avoid conflicting with the production brain running via systemd.
 
+**WARNING: The agent has full filesystem access and internet. When smoke-testing in TUI, choose tasks carefully — avoid prompts that trigger file edits or destructive actions.**
+
 ## Testing TUI in tmux
 
 RatatuiRuby requires a real PTY. Background processes (`&`) and `script` don't work reliably. Use tmux to smoke-test the TUI:

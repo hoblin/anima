@@ -11,7 +11,7 @@ module AnalyticalBrain
   end
 
   def self.build_logger
-    return Logger.new(File.open(File::NULL, "w")) unless Rails.env.development?
+    return Logger.new(File::NULL) unless Rails.env.development?
 
     Logger.new(Rails.root.join("log", "analytical_brain.log")).tap do |log|
       log.formatter = proc { |severity, time, _progname, msg|
