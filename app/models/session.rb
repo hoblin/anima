@@ -232,7 +232,7 @@ class Session < ApplicationRecord
   # @return [String] Markdown fragment
   def render_goal_markdown(goal)
     lines = ["### #{goal.description}"]
-    goal.sub_goals.order(:created_at).each do |sub|
+    goal.sub_goals.sort_by(&:created_at).each do |sub|
       checkbox = (sub.status == "completed") ? "[x]" : "[ ]"
       lines << "- #{checkbox} #{sub.description}"
     end

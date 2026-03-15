@@ -16,6 +16,8 @@ class Goal < ApplicationRecord
 
   validates :description, presence: true
   validates :status, inclusion: {in: STATUSES}
+  validate :parent_goal_belongs_to_same_session, if: :parent_goal
+  validate :parent_goal_is_root, if: :parent_goal
 
   scope :active, -> { where(status: "active") }
   scope :completed, -> { where(status: "completed") }
@@ -26,19 +28,32 @@ class Goal < ApplicationRecord
   # Serializes this goal for ActionCable broadcast and TUI display.
   # Includes nested sub-goals for root goals.
   #
-  # @return [Hash] with "id", "description", "status", and "sub_goals"
+  # @return [Hash{String => Object}] with keys "id", "description", "status",
+  #   and "sub_goals" (Array of Hash with "id", "description", "status")
   def as_summary
     {
       "id" => id,
       "description" => description,
       "status" => status,
-      "sub_goals" => sub_goals.order(:created_at).map { |sub|
+      "sub_goals" => sub_goals.sort_by(&:created_at).map { |sub|
         {"id" => sub.id, "description" => sub.description, "status" => sub.status}
       }
     }
   end
 
   private
+
+  def parent_goal_belongs_to_same_session
+    return if parent_goal.session_id == session_id
+
+    errors.add(:parent_goal, "must belong to the same session")
+  end
+
+  def parent_goal_is_root
+    return unless parent_goal.parent_goal_id
+
+    errors.add(:parent_goal, "cannot nest deeper than two levels")
+  end
 
   # Broadcasts goal changes to all clients subscribed to this session.
   # Mirrors the Session#broadcast_active_skills_update pattern so the

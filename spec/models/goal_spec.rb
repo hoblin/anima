@@ -28,6 +28,26 @@ RSpec.describe Goal do
       goal = Goal.create!(session: Session.create!, description: "test")
       expect(goal.status).to eq("active")
     end
+
+    it "rejects parent_goal from a different session" do
+      session_a = Session.create!
+      session_b = Session.create!
+      parent = Goal.create!(session: session_a, description: "parent")
+
+      child = Goal.new(session: session_b, parent_goal: parent, description: "orphan")
+      expect(child).not_to be_valid
+      expect(child.errors[:parent_goal]).to include("must belong to the same session")
+    end
+
+    it "rejects nesting deeper than two levels" do
+      session = Session.create!
+      root = Goal.create!(session: session, description: "root")
+      child = Goal.create!(session: session, parent_goal: root, description: "child")
+
+      grandchild = Goal.new(session: session, parent_goal: child, description: "grandchild")
+      expect(grandchild).not_to be_valid
+      expect(grandchild.errors[:parent_goal]).to include("cannot nest deeper than two levels")
+    end
   end
 
   describe "associations" do
@@ -100,6 +120,51 @@ RSpec.describe Goal do
     end
   end
 
+  describe "#as_summary" do
+    let(:session) { Session.create! }
+
+    it "returns hash with string keys" do
+      goal = Goal.create!(session: session, description: "test")
+
+      summary = goal.as_summary
+      expect(summary.keys).to eq(%w[id description status sub_goals])
+    end
+
+    it "includes goal attributes" do
+      goal = Goal.create!(session: session, description: "Implement auth", status: "completed")
+
+      summary = goal.as_summary
+      expect(summary["id"]).to eq(goal.id)
+      expect(summary["description"]).to eq("Implement auth")
+      expect(summary["status"]).to eq("completed")
+    end
+
+    it "returns empty sub_goals array for root goals without children" do
+      goal = Goal.create!(session: session, description: "standalone")
+
+      expect(goal.as_summary["sub_goals"]).to eq([])
+    end
+
+    it "includes sub-goals ordered by created_at" do
+      root = Goal.create!(session: session, description: "root")
+      first = Goal.create!(session: session, parent_goal: root, description: "first")
+      second = Goal.create!(session: session, parent_goal: root, description: "second")
+
+      sub_goals = root.reload.as_summary["sub_goals"]
+      expect(sub_goals.map { |sg| sg["id"] }).to eq([first.id, second.id])
+    end
+
+    it "serializes sub-goals with id, description, status" do
+      root = Goal.create!(session: session, description: "root")
+      Goal.create!(session: session, parent_goal: root, description: "child", status: "completed")
+
+      sub = root.reload.as_summary["sub_goals"].first
+      expect(sub.keys).to eq(%w[id description status])
+      expect(sub["description"]).to eq("child")
+      expect(sub["status"]).to eq("completed")
+    end
+  end
+
   describe "ActionCable broadcast" do
     let(:session) { Session.create! }
 
@@ -117,7 +182,7 @@ RSpec.describe Goal do
       goal = Goal.create!(session: session, description: "in progress")
 
       expect {
-        goal.update!(status: "completed", completed_at: Time.current)
+        goal.update!(status: "completed")
       }.to have_broadcasted_to("session_#{session.id}")
         .with(a_hash_including("action" => "goals_updated"))
     end
