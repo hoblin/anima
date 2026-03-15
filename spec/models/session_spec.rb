@@ -157,9 +157,9 @@ RSpec.describe Session do
         .not_to have_enqueued_job(GenerateSessionNameJob)
     end
 
-    it "enqueues at NAME_GENERATION_INTERVAL for named sessions" do
+    it "enqueues at name_generation_interval for named sessions" do
       session = Session.create!(name: "Old Name")
-      Session::NAME_GENERATION_INTERVAL.times do |i|
+      Anima::Settings.name_generation_interval.times do |i|
         type = i.even? ? "user_message" : "agent_message"
         session.events.create!(event_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
       end

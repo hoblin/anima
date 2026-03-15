@@ -4,7 +4,7 @@ module Tools
   # Reads file contents with smart truncation and offset/limit paging.
   # Returns plain text without line numbers, normalized to LF line endings.
   #
-  # Truncation limits: `MAX_LINES` lines or `MAX_BYTES` bytes, whichever
+  # Truncation limits: `Anima::Settings.max_read_lines` lines or `Anima::Settings.max_read_bytes` bytes, whichever
   # hits first. When truncated, appends a continuation hint with the next
   # offset value so the agent can page through large files.
   #
@@ -16,9 +16,6 @@ module Tools
   #   tool.execute("path" => "large.log", "offset" => 2001, "limit" => 500)
   #   # => "line 2001 content\n..."
   class Read < Base
-    MAX_LINES = 2_000
-    MAX_BYTES = 50_000
-
     def self.tool_name = "read"
 
     def self.description = "Read file contents. Returns plain text with smart truncation. Use offset/limit to page through large files."
@@ -29,7 +26,7 @@ module Tools
         properties: {
           path: {type: "string", description: "Absolute or relative file path (relative resolved against working directory)"},
           offset: {type: "integer", description: "1-indexed line number to start from (default: 1)"},
-          limit: {type: "integer", description: "Maximum number of lines to read (default: 2000, also limited by #{MAX_BYTES} byte cap)"}
+          limit: {type: "integer", description: "Maximum lines to read (subject to line and byte caps from config)"}
         },
         required: ["path"]
       }
@@ -61,7 +58,7 @@ module Tools
       path = input["path"].to_s.strip
       offset = [input["offset"].to_i, 1].max
       raw_limit = input["limit"]
-      limit = raw_limit ? [raw_limit.to_i, 1].max : MAX_LINES
+      limit = raw_limit ? [raw_limit.to_i, 1].max : Anima::Settings.max_read_lines
       [path, offset, limit]
     end
 
@@ -81,15 +78,15 @@ module Tools
 
     # Reads the file, normalizes line endings, and applies truncation limits.
     # Two limits are enforced as first-hit-wins: line count and byte size.
-    # A single line exceeding `MAX_BYTES` is rejected outright (likely minified).
-    # Files larger than `MAX_READ_SIZE` are rejected to avoid memory exhaustion.
-    MAX_READ_SIZE = 10 * 1024 * 1024 # 10 MB
+    # A single line exceeding `Anima::Settings.max_read_bytes` is rejected outright (likely minified).
+    # Files larger than max_file_size are rejected to avoid memory exhaustion.
 
     def read_file(path, offset, limit)
       file_size = File.size(path)
-      if file_size > MAX_READ_SIZE
+      max_size = Anima::Settings.max_file_size
+      if file_size > max_size
         return {error: "File is #{file_size} bytes (#{file_size / 1_048_576} MB). " \
-                       "Max readable size is #{MAX_READ_SIZE / 1_048_576} MB. " \
+                       "Max readable size is #{max_size / 1_048_576} MB. " \
                        "Use bash tool with: head -n #{offset + limit} #{path} | tail -n +#{offset}"}
       end
 
@@ -99,7 +96,7 @@ module Tools
       start_index = offset - 1
       return "[File has #{lines.size} lines. Offset #{offset} is beyond end of file.]" if start_index >= lines.size
 
-      window = lines[start_index, [limit, MAX_LINES].min]
+      window = lines[start_index, [limit, Anima::Settings.max_read_lines].min]
 
       error = check_oversized_lines(window, offset, path)
       return error if error
@@ -112,11 +109,12 @@ module Tools
     end
 
     def check_oversized_lines(window, offset, path)
-      index = window.index { |line| line.bytesize > MAX_BYTES }
+      max_bytes = Anima::Settings.max_read_bytes
+      index = window.index { |line| line.bytesize > max_bytes }
       return unless index
 
       line_num = offset + index
-      {error: "Line #{line_num} exceeds #{MAX_BYTES} bytes (likely minified). " \
+      {error: "Line #{line_num} exceeds #{max_bytes} bytes (likely minified). " \
               "Use bash tool with: sed -n '#{line_num}p' #{path}"}
     end
 
@@ -131,15 +129,16 @@ module Tools
       end
     end
 
-    # Accumulates lines until `MAX_BYTES` would be exceeded.
+    # Accumulates lines until the byte cap would be exceeded.
     # @return [Array(String, Integer)] accumulated text and number of lines included
     def accumulate_lines(window)
+      max_bytes = Anima::Settings.max_read_bytes
       output = +""
       bytes = 0
       count = 0
 
       window.each_with_index do |line, index|
-        break if bytes + line.bytesize > MAX_BYTES && index > 0
+        break if bytes + line.bytesize > max_bytes && index > 0
 
         output << line
         bytes += line.bytesize

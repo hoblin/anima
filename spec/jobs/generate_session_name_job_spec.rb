@@ -19,7 +19,7 @@ RSpec.describe GenerateSessionNameJob do
 
       stub_request(:post, "https://api.anthropic.com/v1/messages")
         .with(body: hash_including(
-          "model" => LLM::Client::FAST_MODEL,
+          "model" => Anima::Settings.fast_model,
           "max_tokens" => GenerateSessionNameJob::MAX_TOKENS
         ))
         .to_return(

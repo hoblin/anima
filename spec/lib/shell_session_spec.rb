@@ -59,12 +59,12 @@ RSpec.describe ShellSession do
       expect(result[:stdout]).to eq("line1\nline2\nline3")
     end
 
-    it "truncates stdout exceeding MAX_OUTPUT_BYTES" do
-      result = shell.run("head -c #{described_class::MAX_OUTPUT_BYTES + 1000} /dev/zero | tr '\\0' 'x'")
+    it "truncates stdout exceeding max_output_bytes" do
+      result = shell.run("head -c #{Anima::Settings.max_output_bytes + 1000} /dev/zero | tr '\\0' 'x'")
       expect(result[:stdout]).to include("[Truncated:")
     end
 
-    it "truncates stderr exceeding MAX_OUTPUT_BYTES" do
+    it "truncates stderr exceeding max_output_bytes" do
       result = shell.run("seq 1 100000 >&2")
       expect(result[:stderr]).to include("[Truncated:")
     end
@@ -77,7 +77,7 @@ RSpec.describe ShellSession do
 
     context "timeout" do
       it "returns error for long-running commands" do
-        stub_const("ShellSession::COMMAND_TIMEOUT", 1)
+        allow(Anima::Settings).to receive(:command_timeout).and_return(1)
         timed_shell = described_class.new(session_id: "timeout-#{SecureRandom.hex(4)}")
         result = timed_shell.run("sleep 30")
         expect(result[:error]).to include("timed out")

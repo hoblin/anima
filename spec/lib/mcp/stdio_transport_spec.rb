@@ -215,7 +215,7 @@ RSpec.describe Mcp::StdioTransport do
       after { transport.shutdown }
 
       it "raises RequestHandlerError after timeout" do
-        stub_const("Mcp::StdioTransport::RESPONSE_TIMEOUT", 0.5)
+        allow(Anima::Settings).to receive(:mcp_response_timeout).and_return(0.5)
 
         expect {
           transport.send_request(request: json_rpc_request)

@@ -227,7 +227,7 @@ RSpec.describe Tools::Edit do
 
       it "returns error for file exceeding size limit" do
         path = write_file("big.txt", "data\n")
-        allow(File).to receive(:size).with(path).and_return(Tools::Edit::MAX_FILE_SIZE + 1)
+        allow(File).to receive(:size).with(path).and_return(Anima::Settings.max_file_size + 1)
 
         result = tool.execute("path" => path, "old_text" => "data", "new_text" => "new")
 

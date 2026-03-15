@@ -22,7 +22,7 @@ RSpec.describe CountEventTokensJob do
 
       stub_request(:post, "https://api.anthropic.com/v1/messages/count_tokens")
         .with(body: hash_including(
-          "model" => LLM::Client::DEFAULT_MODEL,
+          "model" => Anima::Settings.model,
           "messages" => [{"role" => "user", "content" => "Hello, Claude"}]
         ))
         .to_return(

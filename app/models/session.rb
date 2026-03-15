@@ -7,9 +7,6 @@
 # Sessions form a hierarchy: a main session can spawn child sessions
 # (sub-agents) that inherit the parent's viewport context at fork time.
 class Session < ApplicationRecord
-  # Claude Sonnet 4 context window minus system prompt reserve.
-  DEFAULT_TOKEN_BUDGET = 190_000
-
   VIEW_MODES = %w[basic verbose debug].freeze
 
   serialize :granted_tools, coder: JSON
@@ -40,10 +37,6 @@ class Session < ApplicationRecord
     parent_session_id.present?
   end
 
-  # How often to regenerate session names (in LLM messages).
-  # First generation at 2 messages, then every 30 messages after that.
-  NAME_GENERATION_INTERVAL = 30
-
   # Enqueues a background job to auto-generate a session name.
   # Runs after the first exchange and periodically as the conversation
   # evolves, so the name stays relevant to the current topic.
@@ -55,7 +48,7 @@ class Session < ApplicationRecord
     count = events.llm_messages.count
     return if count < 2
     # Already named — only regenerate at interval boundaries (30, 60, 90, …)
-    return if name.present? && (count % NAME_GENERATION_INTERVAL != 0)
+    return if name.present? && (count % Anima::Settings.name_generation_interval != 0)
 
     GenerateSessionNameJob.perform_later(id)
   end
@@ -73,7 +66,7 @@ class Session < ApplicationRecord
   # @param include_pending [Boolean] whether to include pending messages (true for
   #   display, false for LLM context assembly)
   # @return [Array<Event>] chronologically ordered
-  def viewport_events(token_budget: DEFAULT_TOKEN_BUDGET, include_pending: true)
+  def viewport_events(token_budget: Anima::Settings.token_budget, include_pending: true)
     own_events = select_events(own_event_scope(include_pending), budget: token_budget)
     remaining = token_budget - own_events.sum { |e| event_token_cost(e) }
 
@@ -129,7 +122,7 @@ class Session < ApplicationRecord
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @return [Array<Hash>] Anthropic Messages API format
-  def messages_for_llm(token_budget: DEFAULT_TOKEN_BUDGET)
+  def messages_for_llm(token_budget: Anima::Settings.token_budget)
     assemble_messages(viewport_events(token_budget: token_budget, include_pending: false))
   end
 
