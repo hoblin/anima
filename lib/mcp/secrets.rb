@@ -19,13 +19,19 @@ module Mcp
   class Secrets
     NAMESPACE = "mcp"
 
+    # Keys must be interpolatable via ${credential:key_name} in mcp.toml.
+    VALID_KEY_PATTERN = /\A\w+\z/
+
     class << self
       # Stores a secret in encrypted credentials.
       #
       # @param key [String] secret identifier (e.g. "linear_api_key")
       # @param value [String] secret value
       # @return [void]
+      # @raise [ArgumentError] if key contains characters that cannot be
+      #   referenced via +${credential:key_name}+ syntax
       def set(key, value)
+        validate_key!(key)
         CredentialStore.write(NAMESPACE, key => value)
       end
 
@@ -50,6 +56,17 @@ module Mcp
       # @return [void]
       def remove(key)
         CredentialStore.remove(NAMESPACE, key)
+      end
+
+      private
+
+      # @raise [ArgumentError] if key is not interpolatable
+      def validate_key!(key)
+        return if key.match?(VALID_KEY_PATTERN)
+
+        raise ArgumentError,
+          "invalid secret key '#{key}' — use only letters, numbers, and underscores " \
+          "(must match ${credential:key_name} syntax)"
       end
     end
   end

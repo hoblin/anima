@@ -116,6 +116,25 @@ RSpec.describe Mcp::Config do
       end
     end
 
+    context "with multiple credential placeholders in a single value" do
+      before do
+        File.write(config_path, <<~TOML)
+          [servers.multi]
+          transport = "http"
+          url = "https://${credential:mcp_host}:${credential:mcp_port}/mcp"
+        TOML
+      end
+
+      it "interpolates all placeholders in one string" do
+        allow(Mcp::Secrets).to receive(:get).with("mcp_host").and_return("api.example.com")
+        allow(Mcp::Secrets).to receive(:get).with("mcp_port").and_return("8443")
+
+        servers = config.http_servers
+
+        expect(servers.first[:url]).to eq("https://api.example.com:8443/mcp")
+      end
+    end
+
     context "with server missing url" do
       before do
         File.write(config_path, <<~TOML)

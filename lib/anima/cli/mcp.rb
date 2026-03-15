@@ -91,7 +91,7 @@ module Anima
       def store_secrets(secret_strings)
         return unless secret_strings&.any?
 
-        pairs = parse_key_values(secret_strings)
+        pairs = parse_key_values(secret_strings, label: "secret")
         require_relative "../../mcp/secrets"
         require_relative "../../credential_store"
         pairs.each { |key, value| ::Mcp::Secrets.set(key, value) }
@@ -154,10 +154,10 @@ module Anima
         end
       end
 
-      def parse_key_values(kv_strings)
+      def parse_key_values(kv_strings, label: "env var")
         kv_strings.to_h do |kv|
           key, value = kv.split("=", 2)
-          raise ArgumentError, "invalid env var format '#{kv}' — expected KEY=VALUE" unless value
+          raise ArgumentError, "invalid #{label} format '#{kv}' — expected KEY=VALUE" unless value
 
           [key, value]
         end

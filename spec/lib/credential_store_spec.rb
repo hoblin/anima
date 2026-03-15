@@ -128,6 +128,14 @@ RSpec.describe CredentialStore do
       described_class.remove("nonexistent", "key")
     end
 
+    it "is a no-op when the key does not exist in the namespace" do
+      allow(creds).to receive(:read).and_return("mcp:\n  other_key: value\n")
+
+      expect(creds).not_to receive(:write)
+
+      described_class.remove("mcp", "missing_key")
+    end
+
     it "invalidates Rails credentials cache after removal" do
       allow(creds).to receive(:read).and_return("mcp:\n  api_key: sk-xxx\n")
 

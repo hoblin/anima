@@ -55,6 +55,7 @@ class CredentialStore
       existing = load_credentials
       section = existing[namespace]
       return unless section.is_a?(Hash)
+      return unless section.key?(key)
 
       section.delete(key)
       existing.delete(namespace) if section.empty?

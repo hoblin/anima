@@ -320,6 +320,28 @@ RSpec.describe Anima::CLI::Mcp do
         ])
       }.to output(/Added http server 'api'/).to_stdout
     end
+
+    it "exits with error for invalid secret format" do
+      expect {
+        Anima::CLI.start([
+          "mcp", "add",
+          "-s", "no_equals_sign",
+          "api", "https://api.example.com/mcp"
+        ])
+      }.to output(/invalid secret format/).to_stdout.and raise_error(SystemExit)
+    end
+
+    it "exits with error for invalid secret key characters" do
+      expect(Mcp::Secrets).to receive(:set).and_call_original
+
+      expect {
+        Anima::CLI.start([
+          "mcp", "add",
+          "-s", "my-key=value",
+          "api", "https://api.example.com/mcp"
+        ])
+      }.to output(/invalid secret key/).to_stdout.and raise_error(SystemExit)
+    end
   end
 
   describe "secrets" do

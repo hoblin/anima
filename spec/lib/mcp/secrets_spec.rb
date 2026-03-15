@@ -16,6 +16,24 @@ RSpec.describe Mcp::Secrets do
 
       described_class.set("api_key", "sk-xxx")
     end
+
+    it "rejects keys with hyphens" do
+      expect {
+        described_class.set("my-key", "value")
+      }.to raise_error(ArgumentError, /invalid secret key/)
+    end
+
+    it "rejects keys with spaces" do
+      expect {
+        described_class.set("my key", "value")
+      }.to raise_error(ArgumentError, /invalid secret key/)
+    end
+
+    it "accepts keys with underscores and digits" do
+      expect(CredentialStore).to receive(:write).with("mcp", "api_key_2" => "val")
+
+      described_class.set("api_key_2", "val")
+    end
   end
 
   describe ".get" do
