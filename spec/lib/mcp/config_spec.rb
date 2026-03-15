@@ -118,8 +118,6 @@ RSpec.describe Mcp::Config do
         ENV.delete("TEST_MCP_HOST")
         ENV.delete("TEST_MCP_TOKEN")
 
-        allow(Rails.logger).to receive(:warn)
-
         expect(config.http_servers).to eq([])
         expect(config.warnings).to include(match(/api.*unset env var.*TEST_MCP_HOST/))
       end
@@ -134,8 +132,6 @@ RSpec.describe Mcp::Config do
       end
 
       it "skips servers without a url and collects a warning" do
-        allow(Rails.logger).to receive(:warn)
-
         expect(config.http_servers).to eq([])
         expect(config.warnings).to include(match(/incomplete.*no url/))
       end
@@ -261,8 +257,6 @@ RSpec.describe Mcp::Config do
       it "skips servers with missing env vars and collects a warning" do
         ENV.delete("TEST_TOOL_PATH")
 
-        allow(Rails.logger).to receive(:warn)
-
         expect(config.stdio_servers).to eq([])
         expect(config.warnings).to include(match(/tool.*unset env var.*TEST_TOOL_PATH/))
       end
@@ -277,11 +271,226 @@ RSpec.describe Mcp::Config do
       end
 
       it "skips servers without a command and collects a warning" do
-        allow(Rails.logger).to receive(:warn)
-
         expect(config.stdio_servers).to eq([])
         expect(config.warnings).to include(match(/incomplete.*no command/))
       end
+    end
+  end
+
+  describe "#all_servers" do
+    context "when config file does not exist" do
+      let(:config_path) { File.join(config_dir, "nonexistent.toml") }
+
+      it "returns an empty array" do
+        expect(config.all_servers).to eq([])
+      end
+    end
+
+    context "with mixed servers" do
+      before do
+        File.write(config_path, <<~TOML)
+          [servers.web]
+          transport = "http"
+          url = "http://localhost:3000/mcp"
+
+          [servers.tool]
+          transport = "stdio"
+          command = "my-tool"
+          args = ["--verbose"]
+        TOML
+      end
+
+      it "returns all servers with raw settings and injected name" do
+        servers = config.all_servers
+
+        expect(servers.size).to eq(2)
+
+        web = servers.find { |s| s["name"] == "web" }
+        expect(web["transport"]).to eq("http")
+        expect(web["url"]).to eq("http://localhost:3000/mcp")
+
+        tool = servers.find { |s| s["name"] == "tool" }
+        expect(tool["transport"]).to eq("stdio")
+        expect(tool["command"]).to eq("my-tool")
+        expect(tool["args"]).to eq(["--verbose"])
+      end
+
+      it "does not interpolate environment variables" do
+        File.write(config_path, <<~TOML)
+          [servers.api]
+          transport = "http"
+          url = "https://${SOME_HOST}/mcp"
+        TOML
+
+        servers = config.all_servers
+        expect(servers.first["url"]).to eq("https://${SOME_HOST}/mcp")
+      end
+    end
+  end
+
+  describe "#add_server" do
+    it "creates a new server entry" do
+      config.add_server("sentry", {"transport" => "http", "url" => "https://mcp.sentry.dev/mcp"})
+
+      servers = config.all_servers
+      expect(servers.size).to eq(1)
+      expect(servers.first).to include("name" => "sentry", "url" => "https://mcp.sentry.dev/mcp")
+    end
+
+    it "preserves existing servers" do
+      File.write(config_path, <<~TOML)
+        [servers.existing]
+        transport = "http"
+        url = "http://localhost:3000/mcp"
+      TOML
+
+      config.add_server("new_one", {"transport" => "http", "url" => "http://new.test/mcp"})
+
+      servers = config.all_servers
+      expect(servers.size).to eq(2)
+      names = servers.map { |s| s["name"] }
+      expect(names).to contain_exactly("existing", "new_one")
+    end
+
+    it "creates the config file and directories if missing" do
+      nested_path = File.join(config_dir, "nested", "dir", "mcp.toml")
+      nested_config = described_class.new(path: nested_path)
+
+      nested_config.add_server("test", {"transport" => "http", "url" => "http://test/mcp"})
+
+      expect(File.exist?(nested_path)).to be true
+    end
+
+    it "raises ArgumentError for duplicate server names" do
+      config.add_server("sentry", {"transport" => "http", "url" => "http://test/mcp"})
+
+      expect {
+        config.add_server("sentry", {"transport" => "http", "url" => "http://other/mcp"})
+      }.to raise_error(ArgumentError, /already exists/)
+    end
+
+    it "raises ArgumentError for invalid names" do
+      expect {
+        config.add_server("my server", {"transport" => "http", "url" => "http://test/mcp"})
+      }.to raise_error(ArgumentError, /invalid server name/)
+    end
+
+    it "accepts hyphens and underscores in names" do
+      expect {
+        config.add_server("my-server_1", {"transport" => "http", "url" => "http://test/mcp"})
+      }.not_to raise_error
+    end
+
+    it "writes valid TOML that can be re-read for stdio servers" do
+      config.add_server("fs", {
+        "transport" => "stdio",
+        "command" => "mcp-server-filesystem",
+        "args" => ["--root", "/workspace"],
+        "env" => {"DEBUG" => "true"}
+      })
+
+      reloaded = described_class.new(path: config_path)
+      server = reloaded.stdio_servers.first
+
+      expect(server[:name]).to eq("fs")
+      expect(server[:command]).to eq("mcp-server-filesystem")
+      expect(server[:args]).to eq(["--root", "/workspace"])
+      expect(server[:env]).to eq({"DEBUG" => "true"})
+    end
+
+    it "writes valid TOML that can be re-read for HTTP servers with headers" do
+      config.add_server("api", {
+        "transport" => "http",
+        "url" => "https://api.test/mcp",
+        "headers" => {"Authorization" => "Bearer token", "X-Custom" => "value"}
+      })
+
+      reloaded = described_class.new(path: config_path)
+      server = reloaded.http_servers.first
+
+      expect(server[:name]).to eq("api")
+      expect(server[:url]).to eq("https://api.test/mcp")
+      expect(server[:headers]).to eq({"Authorization" => "Bearer token", "X-Custom" => "value"})
+    end
+
+    it "sets restrictive file permissions on write" do
+      config.add_server("test", {"transport" => "http", "url" => "http://test/mcp"})
+
+      mode = File.stat(config_path).mode & 0o777
+      expect(mode).to eq(0o600)
+    end
+  end
+
+  describe "#remove_server" do
+    before do
+      File.write(config_path, <<~TOML)
+        [servers.alpha]
+        transport = "http"
+        url = "http://alpha.test/mcp"
+
+        [servers.beta]
+        transport = "stdio"
+        command = "beta-tool"
+      TOML
+    end
+
+    it "removes the named server" do
+      config.remove_server("alpha")
+
+      servers = config.all_servers
+      expect(servers.size).to eq(1)
+      expect(servers.first["name"]).to eq("beta")
+    end
+
+    it "preserves remaining servers" do
+      config.remove_server("alpha")
+
+      reloaded = described_class.new(path: config_path)
+      server = reloaded.stdio_servers.first
+      expect(server[:name]).to eq("beta")
+      expect(server[:command]).to eq("beta-tool")
+    end
+
+    it "raises ArgumentError when server not found" do
+      expect {
+        config.remove_server("ghost")
+      }.to raise_error(ArgumentError, /not found/)
+    end
+
+    context "when config file does not exist" do
+      let(:config_path) { File.join(config_dir, "nonexistent.toml") }
+
+      it "raises ArgumentError" do
+        expect {
+          config.remove_server("anything")
+        }.to raise_error(ArgumentError, /not found/)
+      end
+    end
+  end
+
+  describe "logger injection" do
+    let(:logger) { instance_double("Logger") }
+
+    subject(:config) { described_class.new(path: config_path, logger: logger) }
+
+    before do
+      File.write(config_path, <<~TOML)
+        [servers.broken]
+        transport = "http"
+      TOML
+    end
+
+    it "logs warnings through the injected logger" do
+      expect(logger).to receive(:warn).with(/broken.*no url/)
+
+      config.http_servers
+    end
+
+    it "does not log when no logger provided" do
+      quiet_config = described_class.new(path: config_path)
+
+      expect { quiet_config.http_servers }.not_to raise_error
+      expect(quiet_config.warnings).to include(match(/broken.*no url/))
     end
   end
 end

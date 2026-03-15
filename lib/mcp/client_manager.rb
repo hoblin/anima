@@ -18,7 +18,7 @@ module Mcp
   #   manager.register_tools(registry)
   class ClientManager
     # @param config [Mcp::Config] injectable config for testing
-    def initialize(config: Config.new)
+    def initialize(config: Config.new(logger: Rails.logger))
       @config = config
     end
 
