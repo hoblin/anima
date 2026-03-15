@@ -193,6 +193,7 @@ module Mcp
     # @return [String] interpolated string
     # @raise [KeyError] if a referenced credential is not stored
     def interpolate_credentials(value)
+      Anima.boot_rails!
       require_relative "secrets"
 
       value.gsub(CREDENTIAL_PATTERN) do

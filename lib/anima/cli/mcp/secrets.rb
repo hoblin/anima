@@ -32,6 +32,9 @@ module Anima
 
           require_mcp_secrets.set(key, value)
           say "Stored secret '#{key}'.", :green
+        rescue ArgumentError => argument_error
+          say "Error: #{argument_error.message}", :red
+          exit 1
         end
 
         desc "list", "List stored MCP secret names (not values)"
@@ -62,6 +65,7 @@ module Anima
         private
 
         def require_mcp_secrets
+          Anima.boot_rails!
           require_relative "../../../mcp/secrets"
           require_relative "../../../credential_store"
           ::Mcp::Secrets

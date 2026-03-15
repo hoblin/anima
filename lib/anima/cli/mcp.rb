@@ -92,6 +92,7 @@ module Anima
         return unless secret_strings&.any?
 
         pairs = parse_key_values(secret_strings, label: "secret")
+        Anima.boot_rails!
         require_relative "../../mcp/secrets"
         require_relative "../../credential_store"
         pairs.each { |key, value| ::Mcp::Secrets.set(key, value) }
