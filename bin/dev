@@ -2,4 +2,6 @@
 
 export PORT="${PORT:-42135}"
 
+bin/rails db:prepare || exit 1
+
 exec foreman start -f Procfile.dev --env /dev/null "$@"
