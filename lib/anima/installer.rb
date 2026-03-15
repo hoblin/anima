@@ -8,6 +8,7 @@ module Anima
   class Installer
     DIRECTORIES = %w[
       agents
+      skills
       db
       config/credentials
       log
@@ -132,10 +133,22 @@ module Anima
         # Regenerate session name every N messages.
         name_generation_interval = 30
 
+        # ─── Analytical Brain ─────────────────────────────────────────
+
+        [analytical_brain]
+
         # Maximum tokens per analytical brain response.
-        # Higher than the main LLM (8192) because the analytical brain
-        # only needs enough for tool_use metadata, not long text.
-        analytical_brain_max_tokens = 128
+        max_tokens = 128
+
+        # Run the analytical brain synchronously before the main agent on user messages.
+        # Ensures activated skills are available for the current response.
+        blocking_on_user_message = true
+
+        # Run the analytical brain asynchronously after the main agent completes.
+        blocking_on_agent_message = false
+
+        # Number of recent events to include in the analytical brain's context window.
+        event_window = 20
       TOML
       say "  created #{config_path}"
     end

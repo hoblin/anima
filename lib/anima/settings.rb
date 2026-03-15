@@ -132,9 +132,23 @@ module Anima
       # @return [Integer]
       def name_generation_interval = get("session", "name_generation_interval")
 
+      # ─── Analytical Brain ─────────────────────────────────────────
+
       # Maximum tokens per analytical brain response.
       # @return [Integer]
-      def analytical_brain_max_tokens = get("session", "analytical_brain_max_tokens")
+      def analytical_brain_max_tokens = get("analytical_brain", "max_tokens")
+
+      # Run the analytical brain synchronously before the main agent on user messages.
+      # @return [Boolean]
+      def analytical_brain_blocking_on_user_message = get("analytical_brain", "blocking_on_user_message")
+
+      # Run the analytical brain asynchronously after the main agent completes.
+      # @return [Boolean]
+      def analytical_brain_blocking_on_agent_message = get("analytical_brain", "blocking_on_agent_message")
+
+      # Number of recent events to include in the analytical brain's context window.
+      # @return [Integer]
+      def analytical_brain_event_window = get("analytical_brain", "event_window")
 
       private
 

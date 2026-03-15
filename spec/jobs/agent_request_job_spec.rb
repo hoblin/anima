@@ -12,6 +12,8 @@ RSpec.describe AgentRequestJob do
       .and_return(valid_token)
     allow(Mcp::ClientManager).to receive(:new)
       .and_return(instance_double(Mcp::ClientManager, register_tools: []))
+    # Stub analytical brain by default — dedicated tests below override this
+    allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(false)
   end
 
   describe "retry configuration" do
@@ -114,6 +116,104 @@ RSpec.describe AgentRequestJob do
 
       expect(call_count).to eq(2)
       expect(session.events.where(status: "pending").count).to eq(0)
+    end
+
+    context "blocking analytical brain" do
+      before { allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(true) }
+
+      it "runs analytical brain synchronously before the agent loop when enabled" do
+        session.events.create!(event_type: "user_message", payload: {"content" => "Create a ticket"}, timestamp: 1)
+
+        analytical_brain_ran = false
+        allow(AnalyticalBrain::Runner).to receive(:new).and_wrap_original do |method, *args|
+          runner = method.call(*args)
+          allow(runner).to receive(:call) { analytical_brain_ran = true }
+          runner
+        end
+
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return(
+            status: 200,
+            body: {content: [{type: "text", text: "ok"}], stop_reason: "end_turn"}.to_json,
+            headers: {"content-type" => "application/json"}
+          )
+
+        described_class.perform_now(session.id)
+
+        expect(analytical_brain_ran).to be true
+      end
+
+      it "skips blocking analytical brain for sub-agent sessions" do
+        parent = Session.create!
+        child = Session.create!(parent_session: parent, prompt: "sub-agent")
+        child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
+        child.events.create!(event_type: "agent_message", payload: {"content" => "done"}, timestamp: 2)
+
+        expect(AnalyticalBrain::Runner).not_to receive(:new)
+
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return(
+            status: 200,
+            body: {content: [{type: "text", text: "ok"}], stop_reason: "end_turn"}.to_json,
+            headers: {"content-type" => "application/json"}
+          )
+
+        described_class.perform_now(child.id)
+      end
+
+      it "runs blocking analytical brain on the very first message" do
+        session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+
+        analytical_brain_ran = false
+        allow(AnalyticalBrain::Runner).to receive(:new).and_wrap_original do |method, *args|
+          runner = method.call(*args)
+          allow(runner).to receive(:call) { analytical_brain_ran = true }
+          runner
+        end
+
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return(
+            status: 200,
+            body: {content: [{type: "text", text: "ok"}], stop_reason: "end_turn"}.to_json,
+            headers: {"content-type" => "application/json"}
+          )
+
+        described_class.perform_now(session.id)
+
+        expect(analytical_brain_ran).to be true
+      end
+
+      it "skips blocking analytical brain when setting is disabled" do
+        session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+
+        allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(false)
+        expect(AnalyticalBrain::Runner).not_to receive(:new)
+
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return(
+            status: 200,
+            body: {content: [{type: "text", text: "ok"}], stop_reason: "end_turn"}.to_json,
+            headers: {"content-type" => "application/json"}
+          )
+
+        described_class.perform_now(session.id)
+      end
+
+      it "continues with agent loop even if analytical brain fails" do
+        session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+        session.events.create!(event_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
+
+        allow(AnalyticalBrain::Runner).to receive(:new).and_raise(RuntimeError, "brain exploded")
+
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return(
+            status: 200,
+            body: {content: [{type: "text", text: "ok"}], stop_reason: "end_turn"}.to_json,
+            headers: {"content-type" => "application/json"}
+          )
+
+        expect { described_class.perform_now(session.id) }.not_to raise_error
+      end
     end
 
     it "schedules analytical brain after the agent loop completes" do

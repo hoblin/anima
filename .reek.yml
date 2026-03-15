@@ -19,6 +19,10 @@ detectors:
     public_methods_only: true
     exclude:
       - "AnalyticalBrainJob#perform"
+  # Session model is the core domain object — methods grow naturally
+  TooManyMethods:
+    exclude:
+      - "Session"
   # Method length is enforced by code review, not arbitrary line counts
   TooManyStatements:
     enabled: false

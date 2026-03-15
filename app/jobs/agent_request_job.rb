@@ -48,6 +48,10 @@ class AgentRequestJob < ApplicationJob
     # any pending messages after its current loop completes.
     return unless claim_processing(session_id)
 
+    # Run analytical brain BEFORE the main agent on user messages so
+    # activated skills are available for the current response.
+    run_analytical_brain_blocking(session)
+
     agent_loop = AgentLoop.new(session: session)
     loop do
       agent_loop.run
@@ -55,6 +59,8 @@ class AgentRequestJob < ApplicationJob
       break if promoted == 0
     end
 
+    # Non-blocking analytical brain run after agent completes —
+    # handles post-response updates (renaming, skill changes).
     session.schedule_analytical_brain!
   ensure
     release_processing(session_id)
@@ -62,6 +68,21 @@ class AgentRequestJob < ApplicationJob
   end
 
   private
+
+  # Runs the analytical brain synchronously before the main agent loop.
+  # Respects the blocking_on_user_message setting and session guards
+  # (skips sub-agents and sessions with too few messages).
+  def run_analytical_brain_blocking(session)
+    return unless Anima::Settings.analytical_brain_blocking_on_user_message
+    return if session.sub_agent?
+
+    AnalyticalBrain::Runner.new(session).call
+  rescue => error
+    # The analytical brain is best-effort: skill activation enhances the
+    # response but the main agent must still reply even if it fails.
+    Rails.logger.error("Analytical brain (blocking) failed: #{error.class}: #{error.message}")
+    Rails.logger.error(error.backtrace&.first(10)&.join("\n"))
+  end
 
   # Sets the session's processing flag atomically. Returns true if this
   # job claimed the lock, false if another job already holds it.

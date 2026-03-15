@@ -6,33 +6,39 @@ module AnalyticalBrain
   #
   # The analytical brain is a "subconscious" process: it operates ON the main
   # session without the main agent knowing it exists. Tools mutate the main
-  # session directly (e.g. renaming it), but no trace of the analytical brain's
-  # reasoning is persisted.
-  #
-  # Phase 1: session naming (rename_session + everything_is_ready).
-  # Future phases add skill activation, goal tracking, and memory tools.
+  # session directly (e.g. renaming it, activating skills), but no trace of
+  # the analytical brain's reasoning is persisted.
   #
   # @example
   #   AnalyticalBrain::Runner.new(session).call
   class Runner
-    # How many recent events to include as context for the analytical brain.
-    MAX_CONTEXT_EVENTS = 20
-
     # Tools available to the analytical brain.
     # @return [Array<Class<Tools::Base>>]
-    TOOLS = [Tools::RenameSession, Tools::EverythingIsReady].freeze
+    TOOLS = [
+      Tools::RenameSession,
+      Tools::ActivateSkill,
+      Tools::DeactivateSkill,
+      Tools::EverythingIsReady
+    ].freeze
 
     SYSTEM_PROMPT = <<~PROMPT
       You are the analytical brain — a subconscious process supporting the main agent.
-      You observe the conversation and perform background maintenance.
+      You observe the conversation and manage background tasks.
 
-      Your current responsibility: session naming.
-      - Generate fun, descriptive session names: one emoji + 1-3 words
-      - Rename when the conversation topic becomes clear or shifts significantly
-      - Call everything_is_ready if the current name is already good
+      ## Responsibilities
 
-      Rules:
-      - Always call exactly one tool: either rename_session or everything_is_ready
+      ### Session naming
+      - Generate fun, descriptive names: one emoji + 1-3 words
+      - Rename when the topic becomes clear or shifts significantly
+
+      ### Knowledge activation
+      - Activate skills when conversation context matches a skill's description
+      - Deactivate skills when the agent has moved to a different domain
+      - Multiple skills can be active simultaneously
+
+      ## Rules
+      - Call tools to make changes, then call everything_is_ready when done
+      - Call everything_is_ready immediately if no changes are needed
       - Never generate conversational text — you are a background process
     PROMPT
 
@@ -73,13 +79,25 @@ module AnalyticalBrain
     # The analytical brain doesn't need multi-turn conversation history — it
     # just needs to understand "what is the agent doing RIGHT NOW?"
     #
+    # The transcript is framed as an observation of the main session, not as
+    # a direct message to the analytical brain. Without this framing, Haiku
+    # confuses the main session's user messages with requests directed at it.
+    #
     # @return [Array<Hash>] single-element messages array, or empty if no events
     def build_messages
       events = recent_events
       return [] if events.empty?
 
       transcript = events.filter_map { |event| format_event(event) }.join("\n")
-      [{role: "user", content: transcript}]
+      content = <<~MSG.strip
+        The main session is working on this:
+        ```
+        #{transcript}
+        ```
+
+        Observe the conversation and take action: activate or deactivate relevant skills, rename the session if needed, then call everything_is_ready.
+      MSG
+      [{role: "user", content: content}]
     end
 
     # @return [Array<Event>] most recent events in chronological order
@@ -87,7 +105,7 @@ module AnalyticalBrain
       @session.events
         .context_events
         .reorder(id: :desc)
-        .limit(MAX_CONTEXT_EVENTS)
+        .limit(Anima::Settings.analytical_brain_event_window)
         .to_a
         .reverse
     end
@@ -110,12 +128,32 @@ module AnalyticalBrain
       end
     end
 
-    # Builds the system prompt with current session state so the analytical
-    # brain can decide whether renaming is needed.
+    # Builds the system prompt with current session state, skills catalog,
+    # and currently active skills.
     #
     # @return [String]
     def build_system_prompt
-      "#{SYSTEM_PROMPT}\nCurrent session name: #{@session.name || "(unnamed)"}"
+      [
+        SYSTEM_PROMPT,
+        skills_catalog_section,
+        active_skills_section,
+        "Current session name: #{@session.name || "(unnamed)"}"
+      ].join("\n")
+    end
+
+    # @return [String] available skills list for the analytical brain
+    def skills_catalog_section
+      catalog = Skills::Registry.instance.catalog
+      return "## Available skills\nNone" if catalog.empty?
+
+      lines = catalog.map { |name, desc| "- #{name} — #{desc}" }
+      "## Available skills\n#{lines.join("\n")}"
+    end
+
+    # @return [String] currently active skills list
+    def active_skills_section
+      list = @session.active_skills.join(", ").presence || "None"
+      "## Currently active skills\n#{list}"
     end
 
     # @return [Tools::Registry] registry with analytical brain tools
