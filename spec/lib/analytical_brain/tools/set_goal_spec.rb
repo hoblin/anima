@@ -75,6 +75,7 @@ RSpec.describe AnalyticalBrain::Tools::SetGoal do
 
       expect(result).to be_a(Hash)
       expect(result[:error]).to include("must belong to the same session")
+      expect(session.goals.count).to eq(0)
     end
 
     it "accepts context kwargs without error" do

@@ -179,6 +179,25 @@ RSpec.describe AnalyticalBrain::Runner do
         expect(captured_opts[:system]).to include("Write tests")
       end
 
+      it "formats sub-goals with checkbox state in system prompt" do
+        root = session.goals.create!(description: "Implement feature")
+        session.goals.create!(description: "Read code", parent_goal: root, status: "completed", completed_at: 1.hour.ago)
+        session.goals.create!(description: "Write tests", parent_goal: root)
+
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        system = captured_opts[:system]
+        expect(system).to include("[x] Read code")
+        expect(system).to include("[ ] Write tests")
+        expect(system).to match(/- Implement feature \(id: \d+\)/)
+      end
+
       it "omits goals section when no active goals exist" do
         captured_opts = nil
         allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
@@ -553,7 +572,7 @@ RSpec.describe AnalyticalBrain::Runner do
         real_runner.call
 
         expect(goal.reload.status).to eq("completed")
-        expect(goal.completed_at).to be_present
+        expect(goal.completed_at).to be_within(1.second).of(Time.current)
       end
     end
 

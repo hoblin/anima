@@ -30,7 +30,18 @@ RSpec.describe AnalyticalBrain::Tools::FinishGoal do
       expect(result).to eq("Goal completed: Write tests (id: #{goal.id})")
       goal.reload
       expect(goal.status).to eq("completed")
-      expect(goal.completed_at).to be_present
+      expect(goal.completed_at).to be_within(1.second).of(Time.current)
+    end
+
+    it "marks a sub-goal as completed while parent stays active" do
+      root = session.goals.create!(description: "Root goal")
+      sub = session.goals.create!(description: "Sub-step", parent_goal: root)
+
+      result = tool.execute({"goal_id" => sub.id})
+
+      expect(result).to eq("Goal completed: Sub-step (id: #{sub.id})")
+      expect(sub.reload.status).to eq("completed")
+      expect(root.reload.status).to eq("active")
     end
 
     it "returns error for non-existent goal" do
@@ -44,7 +55,7 @@ RSpec.describe AnalyticalBrain::Tools::FinishGoal do
 
       result = tool.execute({"goal_id" => goal.id})
 
-      expect(result).to eq({error: "Goal already completed (id: #{goal.id})"})
+      expect(result).to eq({error: "Goal already completed: Done already (id: #{goal.id})"})
     end
 
     it "does not complete goals from another session" do

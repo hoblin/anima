@@ -175,8 +175,14 @@ module AnalyticalBrain
       "## Active goals\n#{lines.join("\n")}"
     end
 
+    # Formats a root goal and its sub-goals as a markdown checklist
+    # with IDs so the brain can reference them in finish_goal calls.
+    #
+    # @example
+    #   "- Implement feature X (id: 42)\n  - [x] Read code (id: 43)\n  - [ ] Write tests (id: 44)"
+    #
     # @param goal [Goal] root goal with preloaded sub_goals
-    # @return [String] goal formatted for brain context
+    # @return [String] goal formatted as markdown checklist for brain context
     def format_goal_for_brain(goal)
       parts = ["- #{goal.description} (id: #{goal.id})"]
       goal.sub_goals.sort_by(&:created_at).each do |sub|

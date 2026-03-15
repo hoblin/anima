@@ -17,7 +17,7 @@ module AnalyticalBrain
           properties: {
             description: {
               type: "string",
-              description: "What needs to be accomplished"
+              description: "What needs to be accomplished (1-2 sentences)"
             },
             parent_goal_id: {
               type: "integer",

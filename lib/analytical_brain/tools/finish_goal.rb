@@ -41,9 +41,12 @@ module AnalyticalBrain
 
       private
 
+      # Idempotent guard: the analytical brain may retry completion on
+      # a goal it already finished. Returning an error lets it learn to
+      # check status first rather than silently succeeding.
       def complete(goal)
         id = goal.id
-        return {error: "Goal already completed (id: #{id})"} if goal.status == "completed"
+        return {error: "Goal already completed: #{goal.description} (id: #{id})"} if goal.status == "completed"
 
         goal.update!(status: "completed", completed_at: Time.current)
         "Goal completed: #{goal.description} (id: #{id})"
