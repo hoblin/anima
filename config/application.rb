@@ -14,7 +14,7 @@ require "solid_queue"
 
 Bundler.require(*Rails.groups) if ENV.key?("BUNDLE_GEMFILE")
 
-require_relative "../lib/anima/settings"
+require_relative "../lib/anima"
 
 module Anima
   class Application < Rails::Application
