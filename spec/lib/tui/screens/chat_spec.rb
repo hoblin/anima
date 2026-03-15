@@ -1136,7 +1136,7 @@ RSpec.describe TUI::Screens::Chat do
     it "updates session info including name" do
       allow(cable_client).to receive(:drain_messages).and_return([session_changed_msg])
       screen.send(:process_incoming_messages)
-      expect(screen.session_info).to eq({id: 99, name: nil, message_count: 5, active_skills: [], goals: []})
+      expect(screen.session_info).to eq({id: 99, name: nil, message_count: 5, active_skills: [], active_workflow: nil, goals: []})
     end
 
     it "stores session name from session_changed payload" do
