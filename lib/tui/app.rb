@@ -204,6 +204,7 @@ module TUI
           tui.span(content: session[:message_count].to_s, style: tui.style(fg: "cyan"))
         ]),
         active_skills_line(tui, session),
+        goals_line(tui, session),
         tui.line(spans: [tui.span(content: "")]),
         tui.line(spans: [
           tui.span(content: "Mode ", style: tui.style(fg: "dark_gray")),
@@ -244,6 +245,26 @@ module TUI
       tui.line(spans: [
         tui.span(content: "\u{1F4DA} ", style: tui.style(fg: "dark_gray")),
         tui.span(content: label, style: tui.style(fg: "yellow"))
+      ])
+    end
+
+    # Builds the active goals line for the info panel.
+    # Returns nil when no goals exist so the line is hidden entirely.
+    # Shows root goal count with active/completed breakdown.
+    # @param tui [RatatuiRuby] TUI rendering context
+    # @param session [Hash] session info hash containing :goals array
+    # @return [RatatuiRuby::Widgets::Line, nil] styled goals line, or nil when empty
+    def goals_line(tui, session)
+      goal_list = session[:goals]
+      return if goal_list.nil? || goal_list.empty?
+
+      active = goal_list.count { |g| g["status"] == "active" }
+      completed = goal_list.count { |g| g["status"] == "completed" }
+      label = "#{active} active"
+      label += ", #{completed} done" if completed > 0
+      tui.line(spans: [
+        tui.span(content: "\u{1F3AF} ", style: tui.style(fg: "dark_gray")),
+        tui.span(content: label, style: tui.style(fg: "green"))
       ])
     end
 

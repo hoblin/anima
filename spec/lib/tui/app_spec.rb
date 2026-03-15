@@ -1228,5 +1228,49 @@ RSpec.describe TUI::App do
         expect(result[:spans][1][:content]).to eq("gh-issue")
       end
     end
+
+    describe "#goals_line" do
+      let(:tui) do
+        tui = double("tui")
+        allow(tui).to receive(:style) { |**kwargs| kwargs }
+        allow(tui).to receive(:span) { |**kwargs| kwargs }
+        allow(tui).to receive(:line) { |**kwargs| kwargs }
+        tui
+      end
+
+      it "returns nil when goals are nil" do
+        result = app.send(:goals_line, tui, {goals: nil})
+        expect(result).to be_nil
+      end
+
+      it "returns nil when goals are empty" do
+        result = app.send(:goals_line, tui, {goals: []})
+        expect(result).to be_nil
+      end
+
+      it "renders target emoji and active count" do
+        goals = [{"status" => "active", "sub_goals" => []}]
+        result = app.send(:goals_line, tui, {goals: goals})
+        spans = result[:spans]
+        expect(spans[0][:content]).to eq("\u{1F3AF} ")
+        expect(spans[1][:content]).to eq("1 active")
+        expect(spans[1][:style][:fg]).to eq("green")
+      end
+
+      it "includes completed count when present" do
+        goals = [
+          {"status" => "active", "sub_goals" => []},
+          {"status" => "completed", "sub_goals" => []}
+        ]
+        result = app.send(:goals_line, tui, {goals: goals})
+        expect(result[:spans][1][:content]).to eq("1 active, 1 done")
+      end
+
+      it "shows zero active with completed" do
+        goals = [{"status" => "completed", "sub_goals" => []}]
+        result = app.send(:goals_line, tui, {goals: goals})
+        expect(result[:spans][1][:content]).to eq("0 active, 1 done")
+      end
+    end
   end
 end

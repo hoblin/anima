@@ -111,6 +111,27 @@ RSpec.describe SessionChannel, type: :channel do
       expect(changed["active_skills"]).to eq([])
     end
 
+    it "includes goals in session_changed" do
+      session = Session.create!(id: session_id)
+      Goal.create!(session: session, description: "Test goal")
+
+      subscribe(session_id: session_id)
+
+      changed = transmissions.find { |t| t["action"] == "session_changed" }
+      expect(changed["goals"]).to be_an(Array)
+      expect(changed["goals"].size).to eq(1)
+      expect(changed["goals"].first["description"]).to eq("Test goal")
+    end
+
+    it "includes empty goals for sessions with no goals" do
+      Session.create!(id: session_id)
+
+      subscribe(session_id: session_id)
+
+      changed = transmissions.find { |t| t["action"] == "session_changed" }
+      expect(changed["goals"]).to eq([])
+    end
+
     it "includes parent_session_id for child sessions" do
       parent = Session.create!
       child = Session.create!(parent_session: parent)

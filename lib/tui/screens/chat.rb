@@ -44,7 +44,7 @@ module TUI
         @max_scroll = 0
         @input_scroll_offset = 0
         @view_mode = "basic"
-        @session_info = {id: cable_client.session_id || 0, message_count: 0, active_skills: []}
+        @session_info = {id: cable_client.session_id || 0, message_count: 0, active_skills: [], goals: []}
         @sessions_list = nil
         @parent_session_id = nil
         @authentication_required = false
@@ -217,6 +217,8 @@ module TUI
             handle_session_name_updated(msg)
           when "active_skills_updated"
             handle_active_skills_updated(msg)
+          when "goals_updated"
+            handle_goals_updated(msg)
           when "sessions_list"
             @sessions_list = msg["sessions"]
           when "user_message_recalled"
@@ -289,7 +291,7 @@ module TUI
         @message_store.clear
         @view_mode = msg["view_mode"] if msg["view_mode"]
         @session_info = {id: new_id, name: msg["name"], message_count: msg["message_count"] || 0,
-                         active_skills: msg["active_skills"] || []}
+                         active_skills: msg["active_skills"] || [], goals: msg["goals"] || []}
         @parent_session_id = msg["parent_session_id"]
         @input_buffer.clear
         @loading = false
@@ -314,6 +316,14 @@ module TUI
         return unless msg["session_id"] == @session_info[:id]
 
         @session_info[:active_skills] = msg["active_skills"] || []
+      end
+
+      # Updates the goals list when the analytical brain creates or
+      # completes goals. Only applies to the current session.
+      def handle_goals_updated(msg)
+        return unless msg["session_id"] == @session_info[:id]
+
+        @session_info[:goals] = msg["goals"] || []
       end
 
       # Handles server broadcast of view mode change. Clears the message store

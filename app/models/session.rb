@@ -12,6 +12,7 @@ class Session < ApplicationRecord
   serialize :granted_tools, coder: JSON
 
   has_many :events, -> { order(:id) }, dependent: :destroy
+  has_many :goals, dependent: :destroy
 
   belongs_to :parent_session, class_name: "Session", optional: true
   has_many :child_sessions, class_name: "Session", foreign_key: :parent_session_id, dependent: :destroy
@@ -110,7 +111,7 @@ class Session < ApplicationRecord
 
   # Returns the system prompt for this session.
   # Sub-agent sessions use their stored prompt. Main sessions assemble
-  # a system prompt from active skills (returns nil if no skills active).
+  # a system prompt from active skills and current goals.
   #
   # @return [String, nil] the system prompt text, or nil when nothing to inject
   def system_prompt
@@ -146,25 +147,24 @@ class Session < ApplicationRecord
     save!
   end
 
-  # Assembles a system prompt from currently active skills.
-  # Returns nil when no skills are active (Soul/Identity is future work).
+  # Assembles a system prompt from active skills and current goals.
+  # Returns nil when neither skills nor goals are present.
   #
   # @return [String, nil] composed system prompt, or nil if empty
   def assemble_system_prompt
-    return if active_skills.empty?
+    parts = [assemble_skills_section, assemble_goals_section].compact
+    return if parts.empty?
 
-    sections = active_skills.filter_map do |skill_name|
-      definition = Skills::Registry.instance.find(skill_name)
-      next unless definition
+    parts.join("\n\n")
+  end
 
-      content = definition.content
-      heading = content.lines.first&.sub(/^#+ /, "")&.strip || skill_name
-      "### #{heading}\n\n#{content}"
-    end
-
-    return if sections.empty?
-
-    "## Your Expertise\n\nYou know this deeply. Now's your chance to put it to work.\n\n#{sections.join("\n\n")}"
+  # Serializes active goals as a lightweight summary for ActionCable
+  # broadcasts and TUI display. Returns a nested structure: root goals
+  # with their sub-goals inlined.
+  #
+  # @return [Array<Hash>] each with :id, :description, :status, and :sub_goals
+  def goals_summary
+    goals.root.includes(:sub_goals).order(:created_at).map(&:as_summary)
   end
 
   # Builds the message array expected by the Anthropic Messages API.
@@ -195,6 +195,49 @@ class Session < ApplicationRecord
   end
 
   private
+
+  # Assembles the skills section of the system prompt.
+  # @return [String, nil] skills section, or nil when no skills are active
+  def assemble_skills_section
+    return if active_skills.empty?
+
+    sections = active_skills.filter_map do |skill_name|
+      definition = Skills::Registry.instance.find(skill_name)
+      next unless definition
+
+      content = definition.content
+      heading = content.lines.first&.sub(/^#+ /, "")&.strip || skill_name
+      "### #{heading}\n\n#{content}"
+    end
+
+    return if sections.empty?
+
+    "## Your Expertise\n\nYou know this deeply. Now's your chance to put it to work.\n\n#{sections.join("\n\n")}"
+  end
+
+  # Assembles the goals section of the system prompt.
+  # Root goals render as `###` headings; sub-goals as checkbox items.
+  #
+  # @return [String, nil] goals section, or nil when no goals exist
+  def assemble_goals_section
+    root_goals = goals.root.includes(:sub_goals).order(:created_at)
+    return if root_goals.empty?
+
+    entries = root_goals.map { |goal| render_goal_markdown(goal) }
+    "## Current Goals\n\n#{entries.join("\n\n")}"
+  end
+
+  # Renders a single root goal with its sub-goals as Markdown.
+  # @param goal [Goal] a root goal
+  # @return [String] Markdown fragment
+  def render_goal_markdown(goal)
+    lines = ["### #{goal.description}"]
+    goal.sub_goals.sort_by(&:created_at).each do |sub|
+      checkbox = (sub.status == "completed") ? "[x]" : "[ ]"
+      lines << "- #{checkbox} #{sub.description}"
+    end
+    lines.join("\n")
+  end
 
   # Broadcasts a name change to all clients subscribed to this session.
   # Triggered by after_update_commit so clients see name updates in real time.
