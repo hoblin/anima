@@ -22,10 +22,6 @@ module AnalyticalBrain
     # @return [Array<Class<Tools::Base>>]
     TOOLS = [Tools::RenameSession, Tools::EverythingIsReady].freeze
 
-    # Response token budget. Higher than the old single-shot job (32) to
-    # accommodate tool_use responses which include tool metadata.
-    MAX_RESPONSE_TOKENS = 128
-
     SYSTEM_PROMPT = <<~PROMPT
       You are the analytical brain — a subconscious process supporting the main agent.
       You observe the conversation and perform background maintenance.
@@ -46,7 +42,7 @@ module AnalyticalBrain
       @session = session
       @client = client || LLM::Client.new(
         model: Anima::Settings.fast_model,
-        max_tokens: MAX_RESPONSE_TOKENS
+        max_tokens: Anima::Settings.analytical_brain_max_tokens
       )
     end
 

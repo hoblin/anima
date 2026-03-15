@@ -15,7 +15,7 @@ RSpec.describe Anima::Settings do
       "timeouts" => {"api" => 30, "command" => 30, "mcp_response" => 60, "web_request" => 10},
       "shell" => {"max_output_bytes" => 100_000},
       "tools" => {"max_file_size" => 10_485_760, "max_read_lines" => 2_000, "max_read_bytes" => 50_000, "max_web_response_bytes" => 100_000},
-      "session" => {"name_generation_interval" => 30}
+      "session" => {"name_generation_interval" => 30, "analytical_brain_max_tokens" => 128}
     }
   end
 
@@ -44,6 +44,7 @@ RSpec.describe Anima::Settings do
       expect(described_class.max_read_bytes).to eq(50_000)
       expect(described_class.max_web_response_bytes).to eq(100_000)
       expect(described_class.name_generation_interval).to eq(30)
+      expect(described_class.analytical_brain_max_tokens).to eq(128)
     end
   end
 
@@ -126,6 +127,7 @@ RSpec.describe Anima::Settings do
         max_web_response_bytes = 1000
         [session]
         name_generation_interval = 5
+        analytical_brain_max_tokens = 128
       TOML
       config_file.flush
       described_class.config_path = config_file.path
@@ -169,6 +171,7 @@ RSpec.describe Anima::Settings do
         max_web_response_bytes = 1000
         [session]
         name_generation_interval = 5
+        analytical_brain_max_tokens = 128
       TOML
       config_file.flush
       FileUtils.touch(config_file.path, mtime: Time.now + 1)

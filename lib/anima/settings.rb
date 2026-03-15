@@ -132,6 +132,10 @@ module Anima
       # @return [Integer]
       def name_generation_interval = get("session", "name_generation_interval")
 
+      # Maximum tokens per analytical brain response.
+      # @return [Integer]
+      def analytical_brain_max_tokens = get("session", "analytical_brain_max_tokens")
+
       private
 
       # Reads a setting from the config file.
