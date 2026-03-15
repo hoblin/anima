@@ -19,6 +19,7 @@ module AnalyticalBrain
       Tools::ActivateSkill,
       Tools::DeactivateSkill,
       Tools::SetGoal,
+      Tools::UpdateGoal,
       Tools::FinishGoal,
       Tools::EverythingIsReady
     ].freeze
@@ -46,7 +47,9 @@ module AnalyticalBrain
       ──────────────────────────────
       Call set_goal to create a root goal when the user starts a multi-step task.
       Call set_goal with parent_goal_id to add sub-goals (TODO items) under it.
+      Call update_goal to refine a goal's description as understanding evolves.
       Call finish_goal when the main agent completes work a goal describes.
+      Finishing a root goal cascades — all active sub-goals are completed too.
       Never duplicate an existing goal — check the active goals list first.
 
       ──────────────────────────────

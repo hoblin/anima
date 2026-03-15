@@ -216,7 +216,8 @@ class Session < ApplicationRecord
   end
 
   # Assembles the goals section of the system prompt.
-  # Root goals render as `###` headings; sub-goals as checkbox items.
+  # Active root goals render as `###` headings with sub-goal checkboxes.
+  # Completed root goals collapse to a single strikethrough line.
   #
   # @return [String, nil] goals section, or nil when no goals exist
   def assemble_goals_section
@@ -228,12 +229,17 @@ class Session < ApplicationRecord
   end
 
   # Renders a single root goal with its sub-goals as Markdown.
+  # Active goals show full hierarchy; completed goals collapse to one line.
+  #
   # @param goal [Goal] a root goal
   # @return [String] Markdown fragment
   def render_goal_markdown(goal)
-    lines = ["### #{goal.description}"]
-    goal.sub_goals.sort_by(&:created_at).each do |sub|
-      checkbox = (sub.status == "completed") ? "[x]" : "[ ]"
+    description = goal.description
+    return "### ~~#{description}~~ ✓" if goal.completed?
+
+    lines = ["### #{description}"]
+    goal.sub_goals.each do |sub|
+      checkbox = sub.completed? ? "[x]" : "[ ]"
       lines << "- #{checkbox} #{sub.description}"
     end
     lines.join("\n")

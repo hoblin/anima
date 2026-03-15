@@ -41,14 +41,20 @@ module AnalyticalBrain
 
       private
 
-      # Idempotent guard: the analytical brain may retry completion on
-      # a goal it already finished. Returning an error lets it learn to
-      # check status first rather than silently succeeding.
+      # Marks the goal as completed. Root goals cascade completion to all
+      # active sub-goals within a single transaction so the after_commit
+      # broadcast includes the fully cascaded state.
+      #
+      # Returns an error for already-completed goals so the analytical
+      # brain learns to check status before retrying.
       def complete(goal)
         id = goal.id
-        return {error: "Goal already completed: #{goal.description} (id: #{id})"} if goal.status == "completed"
+        return {error: "Goal already completed: #{goal.description} (id: #{id})"} if goal.completed?
 
-        goal.update!(status: "completed", completed_at: Time.current)
+        Goal.transaction do
+          goal.update!(status: "completed", completed_at: Time.current)
+          goal.cascade_completion! if goal.root?
+        end
         "Goal completed: #{goal.description} (id: #{id})"
       end
     end

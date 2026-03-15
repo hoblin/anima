@@ -540,6 +540,33 @@ RSpec.describe Session do
       expect(prompt).to include("### First goal")
       expect(prompt).to include("### Second goal")
     end
+
+    it "renders completed root goals with strikethrough" do
+      Goal.create!(session: session, description: "Set up CI", status: "completed", completed_at: 1.hour.ago)
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).to include("### ~~Set up CI~~ ✓")
+    end
+
+    it "hides sub-goals of completed root goals" do
+      root = Goal.create!(session: session, description: "Done task", status: "completed", completed_at: 1.hour.ago)
+      Goal.create!(session: session, parent_goal: root, description: "Hidden sub-goal", status: "completed", completed_at: 1.hour.ago)
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).to include("### ~~Done task~~ ✓")
+      expect(prompt).not_to include("Hidden sub-goal")
+    end
+
+    it "renders active and completed root goals together" do
+      Goal.create!(session: session, description: "Completed task", status: "completed", completed_at: 1.hour.ago)
+      root = Goal.create!(session: session, description: "Active task")
+      Goal.create!(session: session, parent_goal: root, description: "Step 1")
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).to include("### ~~Completed task~~ ✓")
+      expect(prompt).to include("### Active task")
+      expect(prompt).to include("- [ ] Step 1")
+    end
   end
 
   describe "#messages_for_llm" do
