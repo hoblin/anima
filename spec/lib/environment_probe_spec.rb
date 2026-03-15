@@ -90,7 +90,7 @@ RSpec.describe EnvironmentProbe do
 
   describe "Git detection" do
     it "includes Git metadata when in a repo" do
-      init_git_repo(pwd, remote: "git@github.com:user/my-app.git", branch: "feature/auth")
+      stub_git_repo(remote: "git@github.com:user/my-app.git", branch: "feature/auth")
 
       result = described_class.to_prompt(pwd)
       expect(result).to include("Git: user/my-app (git@github.com:user/my-app.git)")
@@ -98,7 +98,7 @@ RSpec.describe EnvironmentProbe do
     end
 
     it "handles HTTPS remote URLs" do
-      init_git_repo(pwd, remote: "https://github.com/user/my-app.git")
+      stub_git_repo(remote: "https://github.com/user/my-app.git")
 
       result = described_class.to_prompt(pwd)
       expect(result).to include("Git: user/my-app")
@@ -113,14 +113,14 @@ RSpec.describe EnvironmentProbe do
     end
 
     it "omits PR line when no PR exists" do
-      init_git_repo(pwd)
+      stub_git_repo
 
       result = described_class.to_prompt(pwd)
       expect(result).not_to include("PR:")
     end
 
     it "includes PR status when a PR exists" do
-      init_git_repo(pwd)
+      stub_git_repo
       stub_pr(number: 42, state: "OPEN")
 
       result = described_class.to_prompt(pwd)
@@ -138,7 +138,7 @@ RSpec.describe EnvironmentProbe do
     end
 
     it "handles gh not being installed" do
-      init_git_repo(pwd)
+      stub_git_repo
       allow(Open3).to receive(:capture2)
         .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: pwd)
         .and_raise(Errno::ENOENT)
@@ -149,7 +149,7 @@ RSpec.describe EnvironmentProbe do
     end
 
     it "handles gh timeout gracefully" do
-      init_git_repo(pwd)
+      stub_git_repo
       allow(Open3).to receive(:capture2)
         .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: pwd)
         .and_raise(Timeout::Error)
@@ -160,7 +160,7 @@ RSpec.describe EnvironmentProbe do
     end
 
     it "handles malformed JSON from gh" do
-      init_git_repo(pwd)
+      stub_git_repo
       allow(Open3).to receive(:capture2)
         .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: pwd)
         .and_return(["not json at all", instance_double(Process::Status, success?: true)])
@@ -171,11 +171,7 @@ RSpec.describe EnvironmentProbe do
     end
 
     it "handles invalid URI in remote URL" do
-      init_git_repo(pwd, remote: "https://[invalid/repo.git")
-      # Override the remote stub to return the invalid URL
-      allow(Open3).to receive(:capture2)
-        .with("git", "-C", pwd, "remote", "get-url", "origin")
-        .and_return(["https://[invalid/repo.git\n", instance_double(Process::Status, success?: true)])
+      stub_git_repo(remote: "https://[invalid/repo.git")
 
       result = described_class.to_prompt(pwd)
       expect(result).to include("Git:")
@@ -246,15 +242,21 @@ RSpec.describe EnvironmentProbe do
       .and_return(["false\n", instance_double(Process::Status, success?: false)])
   end
 
-  def init_git_repo(dir, remote: "git@github.com:user/repo.git", branch: "main")
-    system("git", "-C", dir, "init", "-b", branch, out: File::NULL, err: File::NULL)
-    system("git", "-C", dir, "remote", "add", "origin", remote, out: File::NULL, err: File::NULL)
-    system("git", "-C", dir, "commit", "--allow-empty", "-m", "init", out: File::NULL, err: File::NULL)
-    # Allow real git calls to pass through, but stub gh
+  def stub_git_repo(remote: "git@github.com:user/repo.git", branch: "main")
+    ok = instance_double(Process::Status, success?: true)
     allow(Open3).to receive(:capture2).and_call_original
     allow(Open3).to receive(:capture2)
-      .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: dir)
-      .and_return(["[]\n", instance_double(Process::Status, success?: true)])
+      .with("git", "-C", pwd, "rev-parse", "--is-inside-work-tree")
+      .and_return(["true\n", ok])
+    allow(Open3).to receive(:capture2)
+      .with("git", "-C", pwd, "remote", "get-url", "origin")
+      .and_return(["#{remote}\n", ok])
+    allow(Open3).to receive(:capture2)
+      .with("git", "-C", pwd, "rev-parse", "--abbrev-ref", "HEAD")
+      .and_return(["#{branch}\n", ok])
+    allow(Open3).to receive(:capture2)
+      .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: pwd)
+      .and_return(["[]\n", ok])
   end
 
   def stub_pr(number:, state:)
