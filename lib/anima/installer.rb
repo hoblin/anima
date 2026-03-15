@@ -140,6 +140,13 @@ module Anima
         # Maximum bytes from web GET responses.
         max_web_response_bytes = 100_000
 
+        # ─── Paths ─────────────────────────────────────────────────────
+
+        [paths]
+
+        # The agent's self-authored identity file.
+        soul = "#{anima_home.join("soul.md")}"
+
         # ─── Session ────────────────────────────────────────────────────
 
         [session]

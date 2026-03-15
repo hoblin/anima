@@ -132,6 +132,12 @@ module Anima
       # @return [Integer]
       def name_generation_interval = get("session", "name_generation_interval")
 
+      # ─── Paths ───────────────────────────────────────────────────────
+
+      # Path to the soul file — the agent's self-authored identity.
+      # @return [String] absolute path
+      def soul_path = get("paths", "soul")
+
       # ─── Analytical Brain ─────────────────────────────────────────
 
       # Maximum tokens per analytical brain response.

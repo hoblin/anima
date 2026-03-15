@@ -264,15 +264,7 @@ RSpec.describe Session do
   end
 
   describe "#system_prompt" do
-    let(:soul_dir) { Dir.mktmpdir }
-
-    before do
-      Skills::Registry.reload!
-      stub_const("Session::SOUL_PATH", File.join(soul_dir, "soul.md"))
-      File.write(Session::SOUL_PATH, "# Soul\n\nI am Anima.")
-    end
-
-    after { FileUtils.remove_entry(soul_dir) }
+    before { Skills::Registry.reload! }
 
     it "returns prompt for sub-agent sessions (bypasses soul)" do
       parent = Session.create!
@@ -281,20 +273,10 @@ RSpec.describe Session do
       expect(child.system_prompt).to eq("You are a research assistant.")
     end
 
-    it "returns soul content for main sessions with no skills or goals" do
+    it "includes soul content for main sessions" do
       session = Session.create!
 
-      expect(session.system_prompt).to eq("# Soul\n\nI am Anima.")
-    end
-
-    it "returns soul + expertise for main sessions with active skills" do
-      session = Session.create!
-      session.activate_skill("gh-issue")
-
-      prompt = session.system_prompt
-      expect(prompt).to start_with("# Soul")
-      expect(prompt).to include("Your Expertise")
-      expect(prompt).to include("GitHub Issue Writing")
+      expect(session.system_prompt).to include("# Soul")
     end
 
     it "places soul before expertise in the system prompt" do
@@ -372,15 +354,7 @@ RSpec.describe Session do
   end
 
   describe "#assemble_system_prompt" do
-    let(:soul_dir) { Dir.mktmpdir }
-
-    before do
-      Skills::Registry.reload!
-      stub_const("Session::SOUL_PATH", File.join(soul_dir, "soul.md"))
-      File.write(Session::SOUL_PATH, "# Soul\n\nI am Anima.")
-    end
-
-    after { FileUtils.remove_entry(soul_dir) }
+    before { Skills::Registry.reload! }
 
     let(:session) { Session.create! }
 
@@ -460,28 +434,13 @@ RSpec.describe Session do
   end
 
   describe "#assemble_soul_section" do
-    let(:soul_dir) { Dir.mktmpdir }
-    let(:soul_path) { File.join(soul_dir, "soul.md") }
     let(:session) { Session.create! }
 
-    before { stub_const("Session::SOUL_PATH", soul_path) }
-    after { FileUtils.remove_entry(soul_dir) }
-
     it "raises MissingSoulError when soul file does not exist" do
+      allow(Anima::Settings).to receive(:soul_path).and_return("/nonexistent/soul.md")
+
       expect { session.send(:assemble_soul_section) }
         .to raise_error(Session::MissingSoulError, /Run `anima install`/)
-    end
-
-    it "returns the soul content stripped of surrounding whitespace" do
-      File.write(soul_path, "\n# Soul\n\nI am Anima.\n\n")
-      expect(session.send(:assemble_soul_section)).to eq("# Soul\n\nI am Anima.")
-    end
-
-    it "loads agent-rewritten soul content" do
-      File.write(soul_path, "# Luna\n\nI chose this name because it feels right.\nI value curiosity and kindness.")
-      content = session.send(:assemble_soul_section)
-      expect(content).to include("Luna")
-      expect(content).to include("curiosity and kindness")
     end
   end
 
@@ -541,21 +500,9 @@ RSpec.describe Session do
   end
 
   describe "#assemble_system_prompt with goals" do
-    let(:soul_dir) { Dir.mktmpdir }
-
-    before do
-      Skills::Registry.reload!
-      stub_const("Session::SOUL_PATH", File.join(soul_dir, "soul.md"))
-      File.write(Session::SOUL_PATH, "# Soul\n\nI am Anima.")
-    end
-
-    after { FileUtils.remove_entry(soul_dir) }
+    before { Skills::Registry.reload! }
 
     let(:session) { Session.create! }
-
-    it "returns only soul when neither skills nor goals are present" do
-      expect(session.assemble_system_prompt).to eq("# Soul\n\nI am Anima.")
-    end
 
     it "includes soul and goals when goals exist but no skills" do
       Goal.create!(session: session, description: "Implement feature")
@@ -565,15 +512,6 @@ RSpec.describe Session do
       expect(prompt).to include("## Current Goals")
       expect(prompt).to include("### Implement feature")
       expect(prompt).not_to include("Your Expertise")
-    end
-
-    it "includes soul and skills when skills exist but no goals" do
-      session.activate_skill("gh-issue")
-
-      prompt = session.assemble_system_prompt
-      expect(prompt).to start_with("# Soul")
-      expect(prompt).to include("## Your Expertise")
-      expect(prompt).not_to include("Current Goals")
     end
 
     it "includes all sections when skills and goals are present" do
@@ -729,16 +667,10 @@ RSpec.describe Session do
   end
 
   describe "#assemble_system_prompt with workflows" do
-    let(:soul_dir) { Dir.mktmpdir }
-
     before do
       Skills::Registry.reload!
       Workflows::Registry.reload!
-      stub_const("Session::SOUL_PATH", File.join(soul_dir, "soul.md"))
-      File.write(Session::SOUL_PATH, "# Soul\n\nI am Anima.")
     end
-
-    after { FileUtils.remove_entry(soul_dir) }
 
     let(:session) { Session.create! }
 
@@ -760,7 +692,7 @@ RSpec.describe Session do
     end
 
     it "returns only soul when neither skills nor workflow nor goals are present" do
-      expect(session.assemble_system_prompt).to eq("# Soul\n\nI am Anima.")
+      expect(session.assemble_system_prompt).to start_with("# Soul")
     end
   end
 

@@ -10,7 +10,6 @@ class Session < ApplicationRecord
   class MissingSoulError < StandardError; end
 
   VIEW_MODES = %w[basic verbose debug].freeze
-  SOUL_PATH = File.expand_path("~/.anima/soul.md").freeze
 
   serialize :granted_tools, coder: JSON
 
@@ -233,11 +232,12 @@ class Session < ApplicationRecord
   # @return [String] soul content
   # @raise [MissingSoulError] when the soul file does not exist
   def assemble_soul_section
-    unless File.exist?(SOUL_PATH)
-      raise MissingSoulError, "Soul file not found: #{SOUL_PATH}. Run `anima install` to create it."
+    path = Anima::Settings.soul_path
+    unless File.exist?(path)
+      raise MissingSoulError, "Soul file not found: #{path}. Run `anima install` to create it."
     end
 
-    File.read(SOUL_PATH).strip
+    File.read(path).strip
   end
 
   # Assembles the expertise section of the system prompt from active skills
