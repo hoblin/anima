@@ -16,6 +16,7 @@ Your agent. Your machine. Your rules. Anima is an AI agent with desires, persona
   - [Tools](#tools)
   - [Sub-Agents](#sub-agents)
   - [Skills](#skills)
+  - [Workflows](#workflows)
   - [MCP Integration](#mcp-integration)
   - [Analytical Brain](#analytical-brain)
   - [Configuration](#configuration)
@@ -96,6 +97,7 @@ Anima (Ruby, Rails 8.1 headless)
 ├── Nous         — LLM integration (cortex, thinking, decisions, tool use)
 ├── Analytical   — subconscious background brain (naming, skills, goals)
 ├── Skills       — domain knowledge bundles (Markdown, user-extensible)
+├── Workflows    — operational recipes for multi-step tasks
 ├── MCP          — external tool integration (Model Context Protocol)
 ├── Sub-agents   — autonomous child sessions (specialists + generic)
 ├── Thymos       — hormonal/desire system (stimulus → hormone vector) [planned]
@@ -111,6 +113,7 @@ Brain Server (Rails + Puma)              TUI Client (RatatuiRuby)
 ├── Agent loop + tool execution          ├── Terminal rendering
 ├── Analytical brain (background)        └── User input capture
 ├── Skills registry + activation
+├── Workflow registry + activation
 ├── MCP client (HTTP + stdio)
 ├── Sub-agent spawning
 ├── Event bus + persistence
@@ -165,6 +168,7 @@ State directory (`~/.anima/`):
 ├── mcp.toml         # MCP server configuration
 ├── agents/          # User-defined specialist agents (override built-ins)
 ├── skills/          # User-defined skills (override built-ins)
+├── workflows/       # User-defined workflows (override built-ins)
 ├── db/              # SQLite databases (production, development, test)
 ├── log/
 └── tmp/
@@ -229,6 +233,30 @@ Domain knowledge bundles loaded from Markdown files. Skills provide specialized 
 - **Format:** Flat files (`skill-name.md`) or directories (`skill-name/SKILL.md` with `examples/` and `references/`)
 
 Active skills are displayed in the TUI info panel.
+
+### Workflows
+
+Operational recipes that describe multi-step tasks. Unlike skills (domain knowledge), workflows describe WHAT to do. The analytical brain activates a workflow when it recognizes a matching task, converts the prose into tracked goals, and deactivates it when done.
+
+- **Built-in workflows:** `feature`, `commit`, `create_plan`, `implement_plan`, `review_pr`, `create_note`, `research_codebase`, `decompose_ticket`, and more
+- **User workflows:** Drop `.md` files into `~/.anima/workflows/` to add custom workflows
+- **Override:** User workflows with the same name replace built-in ones
+- **Single active:** Only one workflow can be active at a time (unlike skills which stack)
+
+Workflow files use the same YAML frontmatter format as skills:
+
+```markdown
+---
+name: create_note
+description: "Capture findings or context as a persistent note."
+---
+
+## Create Note
+
+You are tasked with capturing content as a persistent note...
+```
+
+The active workflow is shown in the TUI info panel with a 🔄 indicator. The full lifecycle — activation, goal creation, execution, deactivation — is managed by the analytical brain using judgment, not hardcoded triggers.
 
 ### MCP Integration
 
@@ -483,7 +511,7 @@ This single example demonstrates every core principle:
 
 ## Status
 
-**Agent with autonomous capabilities.** The conversational agent works end-to-end with: event-driven architecture, LLM integration with 8 built-in tools, MCP integration (HTTP + stdio transports), skills system with 7 built-in knowledge domains, analytical brain (session naming, skill activation, goal tracking), sub-agents (5 named specialists + generic spawning), sliding viewport context assembly, persistent sessions with sub-agent hierarchy, client-server architecture with WebSocket transport, graceful reconnection, three TUI view modes (Basic/Verbose/Debug), and hot-reloadable TOML configuration.
+**Agent with autonomous capabilities.** The conversational agent works end-to-end with: event-driven architecture, LLM integration with 8 built-in tools, MCP integration (HTTP + stdio transports), skills system with 7 built-in knowledge domains, workflow engine with 13 built-in operational recipes, analytical brain (session naming, skill activation, workflow management, goal tracking), sub-agents (5 named specialists + generic spawning), sliding viewport context assembly, persistent sessions with sub-agent hierarchy, client-server architecture with WebSocket transport, graceful reconnection, three TUI view modes (Basic/Verbose/Debug), and hot-reloadable TOML configuration.
 
 The hormonal system (Thymos, feelings, desires), semantic memory (Mneme), and soul matrix (Psyche) are designed but not yet implemented — they're the next layer on top of the working agent.
 
