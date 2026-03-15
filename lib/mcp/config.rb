@@ -5,9 +5,9 @@ require "toml-rb"
 
 module Mcp
   # Reads and writes MCP server configuration from a TOML file at
-  # {DEFAULT_PATH}. Supports HTTP and stdio transports. Environment
-  # variable interpolation via +${VAR_NAME}+ syntax works in any
-  # string value.
+  # {DEFAULT_PATH}. Supports HTTP and stdio transports. Secrets stored
+  # in Rails encrypted credentials are interpolated via
+  # +${credential:key_name}+ syntax in any string value.
   #
   # @example Config file format (~/.anima/mcp.toml)
   #   [servers.mythonix]
@@ -17,23 +17,22 @@ module Mcp
   #   [servers.linear]
   #   transport = "http"
   #   url = "https://mcp.linear.app/mcp"
-  #   headers = { Authorization = "Bearer ${LINEAR_API_KEY}" }
+  #   headers = { Authorization = "Bearer ${credential:linear_api_key}" }
   #
   #   [servers.filesystem]
   #   transport = "stdio"
   #   command = "mcp-server-filesystem"
   #   args = ["--root", "/workspace"]
-  #   env = { DEBUG = "true" }
   class Config
     DEFAULT_PATH = File.expand_path("~/.anima/mcp.toml")
 
-    # Pattern matching `${VAR_NAME}` for environment variable interpolation.
-    ENV_VAR_PATTERN = /\$\{(\w+)\}/
+    # Pattern matching `${credential:key_name}` for credential interpolation.
+    CREDENTIAL_PATTERN = /\$\{credential:(\w+)\}/
 
     # Bare TOML keys: letters, digits, hyphens, underscores.
     VALID_NAME_PATTERN = /\A[A-Za-z0-9_-]+\z/
 
-    # Warnings accumulated during parsing (missing env vars, invalid entries).
+    # Warnings accumulated during parsing (missing credentials, invalid entries).
     # @return [Array<String>]
     attr_reader :warnings
 
@@ -47,8 +46,8 @@ module Mcp
     end
 
     # Returns all configured servers with raw (pre-interpolation) settings.
-    # Intended for display in CLI commands where showing literal +${VAR}+
-    # placeholders is more useful than resolved values.
+    # Intended for display in CLI commands where showing literal
+    # +${credential:...}+ placeholders is more useful than resolved values.
     #
     # @return [Array<Hash>] servers with string keys from TOML plus +"name"+
     def all_servers
@@ -100,7 +99,7 @@ module Mcp
 
         {
           name: name,
-          url: interpolate_env(url),
+          url: interpolate_credentials(url),
           headers: interpolate_hash_values(settings["headers"] || {})
         }
       end
@@ -119,8 +118,8 @@ module Mcp
 
         {
           name: name,
-          command: interpolate_env(command),
-          args: (settings["args"] || []).map { |arg| interpolate_env(arg) },
+          command: interpolate_credentials(command),
+          args: (settings["args"] || []).map { |arg| interpolate_credentials(arg) },
           env: interpolate_hash_values(settings["env"] || {})
         }
       end
@@ -160,9 +159,9 @@ module Mcp
     end
 
     # Iterates servers matching a given transport type, yielding each
-    # for transport-specific parsing. Servers referencing unset
-    # environment variables are skipped with a warning — one bad
-    # server config must not prevent others from loading.
+    # for transport-specific parsing. Servers referencing missing
+    # credentials are skipped with a warning — one bad server config
+    # must not prevent others from loading.
     #
     # @param transport [String] transport type to filter by ("http", "stdio")
     # @yield [name, settings] block that returns a parsed server hash or nil
@@ -175,7 +174,7 @@ module Mcp
 
         yield(name, settings)
       rescue KeyError => error
-        warn_and_skip("server '#{name}' references unset env var #{error.message}")
+        warn_and_skip("server '#{name}' references missing credential #{error.message}")
         nil
       end
     end
@@ -187,21 +186,27 @@ module Mcp
       @warnings << message
     end
 
-    # Replaces +${VAR_NAME}+ placeholders with environment variable values.
+    # Replaces +${credential:key_name}+ placeholders with values from
+    # Rails encrypted credentials via {Mcp::Secrets}.
     #
     # @param value [String] string potentially containing placeholders
     # @return [String] interpolated string
-    # @raise [KeyError] if a referenced variable is not set
-    def interpolate_env(value)
-      value.gsub(ENV_VAR_PATTERN) { ENV.fetch(::Regexp.last_match(1)) }
+    # @raise [KeyError] if a referenced credential is not stored
+    def interpolate_credentials(value)
+      require_relative "secrets"
+
+      value.gsub(CREDENTIAL_PATTERN) do
+        key = ::Regexp.last_match(1)
+        Secrets.get(key) || raise(KeyError, key)
+      end
     end
 
-    # Interpolates environment variables in all values of a string hash.
+    # Interpolates credentials in all values of a string hash.
     #
     # @param hash [Hash<String, String>] key-value pairs with potential placeholders
     # @return [Hash<String, String>] hash with interpolated values
     def interpolate_hash_values(hash)
-      hash.transform_values { |value| interpolate_env(value) }
+      hash.transform_values { |value| interpolate_credentials(value) }
     end
   end
 end

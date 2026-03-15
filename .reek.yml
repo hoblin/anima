@@ -27,6 +27,7 @@ detectors:
   TooManyMethods:
     exclude:
       - "Session"
+      - "Anima::CLI::Mcp"
   # Method length is enforced by code review, not arbitrary line counts
   TooManyStatements:
     enabled: false

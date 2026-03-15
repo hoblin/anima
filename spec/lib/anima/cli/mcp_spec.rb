@@ -6,6 +6,8 @@ require "tmpdir"
 require "anima/cli"
 require "mcp/config"
 require "mcp/health_check"
+require "mcp/secrets"
+require "credential_store"
 
 RSpec.describe Anima::CLI::Mcp do
   let(:config_dir) { Dir.mktmpdir("anima-mcp-test-") }
@@ -93,18 +95,18 @@ RSpec.describe Anima::CLI::Mcp do
     context "with config warnings" do
       before do
         File.write(config_path, <<~TOML)
-          [servers.needs_env]
+          [servers.needs_cred]
           transport = "http"
-          url = "https://${MISSING_VAR}/mcp"
+          url = "https://${credential:missing_key}/mcp"
         TOML
 
-        ENV.delete("MISSING_VAR")
+        allow(Mcp::Secrets).to receive(:get).and_return(nil)
       end
 
       it "displays config warnings" do
         expect {
           Anima::CLI.start(["mcp", "list"])
-        }.to output(/warning:.*MISSING_VAR/).to_stdout
+        }.to output(/warning:.*missing_key/).to_stdout
       end
 
       it "shows config error status for unresolvable servers" do
@@ -272,6 +274,129 @@ RSpec.describe Anima::CLI::Mcp do
         expect {
           Anima::CLI.start(["mcp", "remove", "ghost"])
         }.to output(/server 'ghost' not found/).to_stdout.and raise_error(SystemExit)
+      end
+    end
+  end
+
+  describe "add with -s flag" do
+    before do
+      allow(Mcp::Secrets).to receive(:set)
+    end
+
+    it "stores secrets in encrypted credentials" do
+      expect(Mcp::Secrets).to receive(:set).with("api_key", "sk-xxx")
+
+      expect {
+        Anima::CLI.start([
+          "mcp", "add",
+          "-s", "api_key=sk-xxx",
+          "api", "https://api.example.com/mcp"
+        ])
+      }.to output(/Added http server 'api'/).to_stdout
+    end
+
+    it "stores multiple secrets" do
+      expect(Mcp::Secrets).to receive(:set).with("key_one", "val1")
+      expect(Mcp::Secrets).to receive(:set).with("key_two", "val2")
+
+      expect {
+        Anima::CLI.start([
+          "mcp", "add",
+          "-s", "key_one=val1",
+          "-s", "key_two=val2",
+          "api", "https://api.example.com/mcp"
+        ])
+      }.to output(/Added http server 'api'/).to_stdout
+    end
+
+    it "preserves equals signs in secret values" do
+      expect(Mcp::Secrets).to receive(:set).with("token", "base64=encoded=value")
+
+      expect {
+        Anima::CLI.start([
+          "mcp", "add",
+          "-s", "token=base64=encoded=value",
+          "api", "https://api.example.com/mcp"
+        ])
+      }.to output(/Added http server 'api'/).to_stdout
+    end
+  end
+
+  describe "secrets" do
+    before do
+      allow(Mcp::Secrets).to receive(:set)
+      allow(Mcp::Secrets).to receive(:list).and_return([])
+      allow(Mcp::Secrets).to receive(:remove)
+    end
+
+    describe "set" do
+      it "stores a secret" do
+        expect(Mcp::Secrets).to receive(:set).with("api_key", "sk-xxx")
+
+        expect {
+          Anima::CLI.start(["mcp", "secrets", "set", "api_key=sk-xxx"])
+        }.to output(/Stored secret 'api_key'/).to_stdout
+      end
+
+      it "preserves equals signs in value" do
+        expect(Mcp::Secrets).to receive(:set).with("token", "a=b=c")
+
+        expect {
+          Anima::CLI.start(["mcp", "secrets", "set", "token=a=b=c"])
+        }.to output(/Stored secret 'token'/).to_stdout
+      end
+
+      it "exits with error for invalid format" do
+        expect {
+          Anima::CLI.start(["mcp", "secrets", "set", "no_equals"])
+        }.to output(/expected KEY=VALUE/).to_stdout.and raise_error(SystemExit)
+      end
+    end
+
+    describe "list" do
+      context "with no secrets" do
+        it "says no secrets stored" do
+          expect {
+            Anima::CLI.start(["mcp", "secrets", "list"])
+          }.to output(/No MCP secrets stored/).to_stdout
+        end
+
+        it "suggests the set command" do
+          expect {
+            Anima::CLI.start(["mcp", "secrets", "list"])
+          }.to output(/anima mcp secrets set/).to_stdout
+        end
+      end
+
+      context "with stored secrets" do
+        before do
+          allow(Mcp::Secrets).to receive(:list).and_return(["api_key", "token"])
+        end
+
+        it "lists secret names" do
+          expect {
+            Anima::CLI.start(["mcp", "secrets", "list"])
+          }.to output(/api_key.*token/m).to_stdout
+        end
+      end
+    end
+
+    describe "remove" do
+      it "removes a stored secret" do
+        allow(Mcp::Secrets).to receive(:list).and_return(["api_key"])
+        expect(Mcp::Secrets).to receive(:remove).with("api_key")
+
+        expect {
+          Anima::CLI.start(["mcp", "secrets", "remove", "api_key"])
+        }.to output(/Removed secret 'api_key'/).to_stdout
+      end
+
+      it "exits with error when secret not found" do
+        allow(Mcp::Secrets).to receive(:list).and_return([])
+
+        expect {
+          Anima::CLI.start(["mcp", "secrets", "remove", "ghost"])
+        }.to output(/secret 'ghost' not found/).to_stdout.and raise_error(SystemExit)
       end
     end
   end
