@@ -1,8 +1,40 @@
 # Anima
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 **A personal AI agent that actually wants things.**
 
 Your agent. Your machine. Your rules. Anima is an AI agent with desires, personality, and personal growth — running locally as a headless Rails 8.1 app with a client-server architecture and TUI interface.
+
+## Table of Contents
+
+- [The Problem](#the-problem)
+- [The Insight](#the-insight)
+- [Core Concepts](#core-concepts)
+- [Architecture](#architecture)
+- [Agent Capabilities](#agent-capabilities)
+  - [Tools](#tools)
+  - [Sub-Agents](#sub-agents)
+  - [Skills](#skills)
+  - [MCP Integration](#mcp-integration)
+  - [Analytical Brain](#analytical-brain)
+  - [Configuration](#configuration)
+- [Design](#design)
+  - [Three Layers](#three-layers-mirroring-biology)
+  - [Event-Driven Design](#event-driven-design)
+  - [Context as Viewport](#context-as-viewport-not-tape)
+  - [Brain as Microservices](#brain-as-microservices-on-a-shared-event-bus)
+  - [TUI View Modes](#tui-view-modes)
+  - [Plugin Architecture](#plugin-architecture)
+  - [Semantic Memory](#semantic-memory-mneme)
+- [Analogy Map](#analogy-map)
+- [Emergent Properties](#emergent-properties)
+- [Frustration: A Worked Example](#frustration-a-worked-example)
+- [Open Questions](#open-questions)
+- [Prior Art](#prior-art)
+- [Status](#status)
+- [Development](#development)
+- [License](#license)
 
 ## The Problem
 
@@ -61,21 +93,27 @@ Existing RL techniques apply at the starting point, then we gradually expand int
 
 ```
 Anima (Ruby, Rails 8.1 headless)
-├── Thymos    — hormonal/desire system (stimulus → hormone vector)
-├── Mneme     — semantic memory (QMD-style, emotional recall)
-├── Psyche    — soul matrix (coefficient table, evolving through experience)
-└── Nous      — LLM integration (cortex, thinking, decision-making)
+├── Nous         — LLM integration (cortex, thinking, decisions, tool use)
+├── Analytical   — subconscious background brain (naming, skills, goals)
+├── Skills       — domain knowledge bundles (Markdown, user-extensible)
+├── MCP          — external tool integration (Model Context Protocol)
+├── Sub-agents   — autonomous child sessions (specialists + generic)
+├── Thymos       — hormonal/desire system (stimulus → hormone vector) [planned]
+├── Mneme        — semantic memory (QMD-style, emotional recall) [planned]
+└── Psyche       — soul matrix (coefficient table, evolving) [planned]
 ```
 
 ### Runtime Architecture
-
-Anima runs as a client-server system:
 
 ```
 Brain Server (Rails + Puma)              TUI Client (RatatuiRuby)
 ├── LLM integration (Anthropic)          ├── WebSocket client
 ├── Agent loop + tool execution          ├── Terminal rendering
-├── Event bus + persistence              └── User input capture
+├── Analytical brain (background)        └── User input capture
+├── Skills registry + activation
+├── MCP client (HTTP + stdio)
+├── Sub-agent spawning
+├── Event bus + persistence
 ├── Solid Queue (background jobs)
 ├── Action Cable (WebSocket server)
 └── SQLite databases                ◄── WebSocket (port 42134) ──► TUI
@@ -90,10 +128,12 @@ The **Brain** is the persistent service — it handles LLM calls, tool execution
 | Framework | Rails 8.1 (headless — no web views, no asset pipeline) |
 | Database | SQLite (3 databases per environment: primary, queue, cable) |
 | Event system | Rails Structured Event Reporter + Action Cable bridge |
-| LLM integration | Anthropic API (Claude Sonnet 4) |
+| LLM integration | Anthropic API (Claude Sonnet 4, Claude Haiku 4.5) |
+| External tools | Model Context Protocol (HTTP + stdio transports) |
 | Transport | Action Cable WebSocket (Solid Cable adapter) |
 | Background jobs | Solid Queue |
 | Interface | TUI via RatatuiRuby (WebSocket client) |
+| Configuration | TOML with hot-reload (`Anima::Settings`) |
 | Process management | Foreman |
 | Distribution | RubyGems (`gem install anima-core`) |
 
@@ -118,10 +158,14 @@ journalctl --user -u anima       # View logs
 State directory (`~/.anima/`):
 ```
 ~/.anima/
-├── db/              # SQLite databases (production, development, test)
 ├── config/
 │   ├── credentials/ # Rails encrypted credentials per environment
-│   └── anima.yml    # User configuration
+│   └── anima.yml    # Placeholder config
+├── config.toml      # Main settings (hot-reloadable)
+├── mcp.toml         # MCP server configuration
+├── agents/          # User-defined specialist agents (override built-ins)
+├── skills/          # User-defined skills (override built-ins)
+├── db/              # SQLite databases (production, development, test)
 ├── log/
 └── tmp/
 ```
@@ -137,6 +181,126 @@ Anima uses your Claude Pro/Max subscription for API access. You need a setup-tok
 3. Paste the token and press Enter — Anima validates it against the Anthropic API and saves it to encrypted credentials
 
 The popup also activates automatically when Anima detects a missing or invalid token. If the token expires, repeat the process with a new one.
+
+## Agent Capabilities
+
+### Tools
+
+The agent has access to these built-in tools:
+
+| Tool | Description |
+|------|-------------|
+| `bash` | Execute shell commands with persistent working directory |
+| `read` | Read files with smart truncation and offset/limit paging |
+| `write` | Create or overwrite files |
+| `edit` | Surgical text replacement with uniqueness constraint |
+| `web_get` | Fetch content from HTTP/HTTPS URLs |
+| `spawn_specialist` | Spawn a named specialist sub-agent from the registry |
+| `spawn_subagent` | Spawn a generic child session with custom tool grants |
+| `return_result` | Sub-agents only — deliver results back to parent |
+
+Plus dynamic tools from configured MCP servers, namespaced as `server_name__tool_name`.
+
+### Sub-Agents
+
+Two types of autonomous child sessions:
+
+**Named Specialists** — predefined agents with specific roles and tool sets, defined in `agents/` (built-in or user-overridable):
+
+| Specialist | Role |
+|-----------|------|
+| `codebase-analyzer` | Analyze implementation details |
+| `codebase-pattern-finder` | Find similar patterns and usage examples |
+| `documentation-researcher` | Fetch library docs and provide code examples |
+| `thoughts-analyzer` | Extract decisions from project history |
+| `web-search-researcher` | Research questions via web search |
+
+**Generic Sub-agents** — child sessions that inherit parent context and run autonomously with custom tool grants.
+
+Sub-agents run as background jobs, return results via `return_result`, and appear in the TUI session picker under their parent.
+
+### Skills
+
+Domain knowledge bundles loaded from Markdown files. Skills provide specialized expertise that the analytical brain activates and deactivates based on conversation context.
+
+- **Built-in skills:** ActiveRecord, Draper decorators, DragonRuby, MCP server, RatatuiRuby, RSpec, GitHub issues
+- **User skills:** Drop `.md` files into `~/.anima/skills/` to add custom knowledge
+- **Override:** User skills with the same name replace built-in ones
+- **Format:** Flat files (`skill-name.md`) or directories (`skill-name/SKILL.md` with `examples/` and `references/`)
+
+Active skills are displayed in the TUI info panel.
+
+### MCP Integration
+
+Full [Model Context Protocol](https://modelcontextprotocol.io/) support for external tool integration. Configure servers in `~/.anima/mcp.toml`:
+
+```toml
+[servers.mythonix]
+transport = "http"
+url = "http://localhost:3000/mcp/v2"
+
+[servers.linear]
+transport = "http"
+url = "https://mcp.linear.app/mcp"
+headers = { Authorization = "Bearer ${credential:linear_api_key}" }
+
+[servers.filesystem]
+transport = "stdio"
+command = "mcp-server-filesystem"
+args = ["--root", "/workspace"]
+```
+
+Manage servers and secrets via CLI:
+
+```bash
+anima mcp list                              # List servers with health status
+anima mcp add sentry https://mcp.sentry.dev/mcp   # Add HTTP server
+anima mcp add fs -- mcp-server-filesystem --root / # Add stdio server
+anima mcp add -s api_key=sk-xxx linear https://...  # Add with secret
+anima mcp remove sentry                     # Remove server
+
+anima mcp secrets set linear_api_key=sk-xxx # Store secret in encrypted credentials
+anima mcp secrets list                      # List secret names (not values)
+anima mcp secrets remove linear_api_key     # Remove secret
+```
+
+Secrets are stored in Rails encrypted credentials and interpolated via `${credential:key_name}` syntax in any TOML string value.
+
+### Analytical Brain
+
+A subconscious background process that observes the main conversation and performs maintenance:
+
+- **Session naming** — generates emoji + short name when topic becomes clear
+- **Skill activation** — activates/deactivates domain skills based on context
+- **Goal tracking** — creates root goals and sub-goals as the conversation progresses, marks them complete
+
+Goals form a two-level hierarchy (root goals with sub-goals) and are displayed in the TUI. The analytical brain uses a fast model (Claude Haiku 4.5) for speed and runs as a non-persisted "phantom" session.
+
+### Configuration
+
+All tunable values are exposed through `~/.anima/config.toml` with hot-reload (no restart needed):
+
+```toml
+[llm]
+model = "claude-sonnet-4-20250514"
+fast_model = "claude-haiku-4-5-20251001"
+max_tokens = 16384
+token_budget = 190000
+
+[timeouts]
+api = 120
+command = 30
+
+[analytical_brain]
+max_tokens = 4096
+blocking_on_user_message = true
+event_window = 30
+
+[session]
+name_generation_interval = 3
+```
+
+## Design
 
 ### Three Layers (mirroring biology)
 
@@ -172,18 +336,6 @@ There is no linear chat history. There are only events attached to a session. Th
 
 Currently uses a simple sliding window (newest events first, walk backwards until budget exhausted). Future versions will add associative recall from Mneme.
 
-### TUI View Modes
-
-Three switchable view modes let you control how much detail the TUI shows. Cycle with `Ctrl+a → v`:
-
-| Mode | What you see |
-|------|-------------|
-| **Basic** (default) | User + assistant messages. Tool calls are hidden but summarized as an inline counter: `🔧 Tools: 2/2 ✓` |
-| **Verbose** | Everything in Basic, plus timestamps `[HH:MM:SS]`, tool call previews (`🔧 bash` / `$ command` / `↩ response`), and system messages |
-| **Debug** | Full X-ray view — timestamps, token counts per message (`[14 tok]`), full tool call args, full tool responses, tool use IDs |
-
-View modes are implemented via Draper decorators that operate at the transport layer. Each event type has a dedicated decorator (`UserMessageDecorator`, `ToolCallDecorator`, etc.) that returns structured data — the TUI renders it. Mode is stored on the `Session` model server-side, so it persists across reconnections.
-
 ### Brain as Microservices on a Shared Event Bus
 
 The human brain isn't a single process — it's dozens of specialized subsystems communicating through shared chemical and electrical signals. The prefrontal cortex doesn't "call" the amygdala. They both react to the same event independently, and their outputs combine.
@@ -205,6 +357,18 @@ Event: "user_sent_message"
 ```
 
 Each subscriber is a microservice — independent, stateless, reacting to the same event bus. No orchestrator decides "now update frustration." The architecture IS the nervous system.
+
+### TUI View Modes
+
+Three switchable view modes let you control how much detail the TUI shows. Cycle with `Ctrl+a → v`:
+
+| Mode | What you see |
+|------|-------------|
+| **Basic** (default) | User + assistant messages. Tool calls are hidden but summarized as an inline counter: `🔧 Tools: 2/2 ✓` |
+| **Verbose** | Everything in Basic, plus timestamps `[HH:MM:SS]`, tool call previews (`🔧 bash` / `$ command` / `↩ response`), and system messages |
+| **Debug** | Full X-ray view — timestamps, token counts per message (`[14 tok]`), full tool call args, full tool responses, tool use IDs |
+
+View modes are implemented via Draper decorators that operate at the transport layer. Each event type has a dedicated decorator (`UserMessageDecorator`, `ToolCallDecorator`, etc.) that returns structured data — the TUI renders it. Mode is stored on the `Session` model server-side, so it persists across reconnections.
 
 ### Plugin Architecture
 
@@ -319,7 +483,7 @@ This single example demonstrates every core principle:
 
 ## Status
 
-**Core agent complete.** The conversational agent works end-to-end: event-driven architecture, LLM integration with tool calling (bash, web), sliding viewport context assembly, persistent sessions, client-server architecture with WebSocket transport, graceful reconnection, and three TUI view modes (Basic/Verbose/Debug) via Draper decorators.
+**Agent with autonomous capabilities.** The conversational agent works end-to-end with: event-driven architecture, LLM integration with 8 built-in tools, MCP integration (HTTP + stdio transports), skills system with 7 built-in knowledge domains, analytical brain (session naming, skill activation, goal tracking), sub-agents (5 named specialists + generic spawning), sliding viewport context assembly, persistent sessions with sub-agent hierarchy, client-server architecture with WebSocket transport, graceful reconnection, three TUI view modes (Basic/Verbose/Debug), and hot-reloadable TOML configuration.
 
 The hormonal system (Thymos, feelings, desires), semantic memory (Mneme), and soul matrix (Psyche) are designed but not yet implemented — they're the next layer on top of the working agent.
 
@@ -340,10 +504,12 @@ Start the brain server and TUI client in separate terminals:
 bin/dev
 
 # Terminal 2: Connect the TUI to the dev brain
-bundle exec anima tui --host localhost:42135
+./exe/anima tui --host localhost:42135
 ```
 
 Development uses port **42135** so it doesn't conflict with the production brain (port 42134) running via systemd. On first run, `bin/dev` runs `db:prepare` automatically.
+
+Use `./exe/anima` (not `bundle exec anima`) to test local code changes — the exe uses `require_relative` to load local `lib/` directly.
 
 ### Running Tests
 
