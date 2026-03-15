@@ -30,3 +30,4 @@ detectors:
 # TUI render methods receive (frame, tui) by design — RatatuiRuby convention
 exclude_paths:
   - lib/tui
+  - skills
