@@ -144,7 +144,7 @@ module Anima
 
         [environment]
 
-        # Files to scan for in the working directory (project_files_max_depth levels deep).
+        # Files to scan for in the working directory (at root and up to project_files_max_depth subdirectories deep).
         project_files = ["CLAUDE.md", "AGENTS.md", "README.md", "CONTRIBUTING.md"]
 
         # Maximum directory depth for project file scanning.

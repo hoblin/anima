@@ -5,6 +5,7 @@ require "open3"
 require "timeout"
 require "json"
 require "pathname"
+require "uri"
 
 # Probes the shell environment and assembles a lightweight metadata block
 # for injection into the system prompt. Gives the agent awareness of its
@@ -75,7 +76,9 @@ class EnvironmentProbe
     nil
   end
 
-  # Detects available package managers by checking well-known binary paths.
+  # Returns the primary package manager(s) for the current system.
+  # Arch-based systems list both pacman and yay when present;
+  # other families return the first match.
   #
   # @return [String, nil] comma-separated package manager names
   def detect_package_manager
@@ -117,7 +120,8 @@ class EnvironmentProbe
 
   # Detects Git repo metadata: remote, branch, and open PR.
   #
-  # @return [Hash, nil] Git info hash, or nil when not in a repo
+  # @return [Hash{Symbol => String}, nil] keys: :remote, :repo_name, :branch,
+  #   and optionally :pr_number (Integer) and :pr_state (String); nil when not in a repo
   def detect_git
     _, status = Open3.capture2("git", "-C", @pwd, "rev-parse", "--is-inside-work-tree")
     return unless status.success?
@@ -154,7 +158,7 @@ class EnvironmentProbe
   # Extracts owner/repo from a Git remote URL.
   #
   # @param remote_url [String] SSH or HTTPS remote URL
-  # @return [String] "owner/repo" path
+  # @return [String] "owner/repo" path, or the raw URL when parsing fails
   def extract_repo_name(remote_url)
     path = if remote_url.match?(%r{\A\w+://})
       URI.parse(remote_url).path
@@ -163,7 +167,7 @@ class EnvironmentProbe
       remote_url.split(":").last
     end
     path.delete_prefix("/").delete_suffix(".git")
-  rescue
+  rescue URI::InvalidURIError
     remote_url
   end
 
@@ -171,6 +175,7 @@ class EnvironmentProbe
   #
   # @param branch [String] branch name
   # @return [Hash, nil] with :pr_number and :pr_state, or nil
+  # @note Returns nil on timeout, missing gh CLI, or JSON parse errors
   def detect_pr(branch)
     Timeout.timeout(Anima::Settings.web_request_timeout) do
       output, status = Open3.capture2(

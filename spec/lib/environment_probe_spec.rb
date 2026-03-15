@@ -147,6 +147,39 @@ RSpec.describe EnvironmentProbe do
       expect(result).to include("Branch:")
       expect(result).not_to include("PR:")
     end
+
+    it "handles gh timeout gracefully" do
+      init_git_repo(pwd)
+      allow(Open3).to receive(:capture2)
+        .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: pwd)
+        .and_raise(Timeout::Error)
+
+      result = described_class.to_prompt(pwd)
+      expect(result).to include("Branch:")
+      expect(result).not_to include("PR:")
+    end
+
+    it "handles malformed JSON from gh" do
+      init_git_repo(pwd)
+      allow(Open3).to receive(:capture2)
+        .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: pwd)
+        .and_return(["not json at all", instance_double(Process::Status, success?: true)])
+
+      result = described_class.to_prompt(pwd)
+      expect(result).to include("Branch:")
+      expect(result).not_to include("PR:")
+    end
+
+    it "handles invalid URI in remote URL" do
+      init_git_repo(pwd, remote: "https://[invalid/repo.git")
+      # Override the remote stub to return the invalid URL
+      allow(Open3).to receive(:capture2)
+        .with("git", "-C", pwd, "remote", "get-url", "origin")
+        .and_return(["https://[invalid/repo.git\n", instance_double(Process::Status, success?: true)])
+
+      result = described_class.to_prompt(pwd)
+      expect(result).to include("Git:")
+    end
   end
 
   describe "project file scanning" do

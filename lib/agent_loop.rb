@@ -75,7 +75,9 @@ class AgentLoop
     messages = @session.messages_for_llm
     options = {}
 
-    env_context = EnvironmentProbe.to_prompt(@shell_session.pwd)
+    unless @session.sub_agent?
+      env_context = EnvironmentProbe.to_prompt(@shell_session.pwd)
+    end
     prompt = @session.system_prompt(environment_context: env_context)
     options[:system] = prompt if prompt
 
