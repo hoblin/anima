@@ -22,6 +22,10 @@ module AnalyticalBrain
     # @return [Array<Class<Tools::Base>>]
     TOOLS = [Tools::RenameSession, Tools::EverythingIsReady].freeze
 
+    # Response token budget. Higher than the old single-shot job (32) to
+    # accommodate tool_use responses which include tool metadata.
+    MAX_RESPONSE_TOKENS = 128
+
     SYSTEM_PROMPT = <<~PROMPT
       You are the analytical brain — a subconscious process supporting the main agent.
       You observe the conversation and perform background maintenance.
@@ -42,7 +46,7 @@ module AnalyticalBrain
       @session = session
       @client = client || LLM::Client.new(
         model: Anima::Settings.fast_model,
-        max_tokens: 128
+        max_tokens: MAX_RESPONSE_TOKENS
       )
     end
 
@@ -93,9 +97,11 @@ module AnalyticalBrain
     end
 
     # Formats a single event for the analytical brain's transcript.
+    # User/agent messages get 500 chars to preserve conversation context;
+    # tool responses get 200 chars to reduce noise from verbose outputs.
     #
     # @param event [Event]
-    # @return [String, nil] formatted line, or nil for unknown event types
+    # @return [String, nil] formatted line, or nil for unhandled event types
     def format_event(event)
       payload = event.payload
       summary = payload["content"].to_s.truncate(500)
