@@ -14,6 +14,8 @@ There is no such thing as deprecated code or backward compatibility in this proj
 
 This project does not use i18n. Skip translation checks entirely.
 
+Never hardcode tunable values as constants — expose them through `Anima::Settings` backed by `config.toml`.
+
 The development environment is fully configured (LLM API keys, credentials, dependencies). Don't ask — just run things.
 
 ## Starting the dev environment

@@ -13,9 +13,12 @@ detectors:
   NilCheck:
     exclude:
       - "Anima::Settings#get"
-  # Private helpers don't need instance state to be valid
+  # Private helpers don't need instance state to be valid.
+  # ActiveJob#perform is always a utility function by design.
   UtilityFunction:
     public_methods_only: true
+    exclude:
+      - "AnalyticalBrainJob#perform"
   # Method length is enforced by code review, not arbitrary line counts
   TooManyStatements:
     enabled: false

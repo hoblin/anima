@@ -129,14 +129,14 @@ RSpec.describe Session do
     end
   end
 
-  describe "#schedule_name_generation!" do
-    it "enqueues GenerateSessionNameJob for unnamed root sessions with messages" do
+  describe "#schedule_analytical_brain!" do
+    it "enqueues AnalyticalBrainJob for unnamed root sessions with messages" do
       session = Session.create!
       session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       session.events.create!(event_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
 
-      expect { session.schedule_name_generation! }
-        .to have_enqueued_job(GenerateSessionNameJob).with(session.id)
+      expect { session.schedule_analytical_brain! }
+        .to have_enqueued_job(AnalyticalBrainJob).with(session.id)
     end
 
     it "does not enqueue for sub-agent sessions" do
@@ -145,16 +145,16 @@ RSpec.describe Session do
       child.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       child.events.create!(event_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
 
-      expect { child.schedule_name_generation! }
-        .not_to have_enqueued_job(GenerateSessionNameJob)
+      expect { child.schedule_analytical_brain! }
+        .not_to have_enqueued_job(AnalyticalBrainJob)
     end
 
     it "does not enqueue for sessions with fewer than 2 messages" do
       session = Session.create!
       session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
 
-      expect { session.schedule_name_generation! }
-        .not_to have_enqueued_job(GenerateSessionNameJob)
+      expect { session.schedule_analytical_brain! }
+        .not_to have_enqueued_job(AnalyticalBrainJob)
     end
 
     it "enqueues at name_generation_interval for named sessions" do
@@ -164,8 +164,8 @@ RSpec.describe Session do
         session.events.create!(event_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
       end
 
-      expect { session.schedule_name_generation! }
-        .to have_enqueued_job(GenerateSessionNameJob).with(session.id)
+      expect { session.schedule_analytical_brain! }
+        .to have_enqueued_job(AnalyticalBrainJob).with(session.id)
     end
 
     it "does not enqueue for named sessions between intervals" do
@@ -175,8 +175,8 @@ RSpec.describe Session do
         session.events.create!(event_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
       end
 
-      expect { session.schedule_name_generation! }
-        .not_to have_enqueued_job(GenerateSessionNameJob)
+      expect { session.schedule_analytical_brain! }
+        .not_to have_enqueued_job(AnalyticalBrainJob)
     end
   end
 

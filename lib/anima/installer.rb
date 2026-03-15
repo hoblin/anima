@@ -131,6 +131,11 @@ module Anima
 
         # Regenerate session name every N messages.
         name_generation_interval = 30
+
+        # Maximum tokens per analytical brain response.
+        # Higher than the main LLM (8192) because the analytical brain
+        # only needs enough for tool_use metadata, not long text.
+        analytical_brain_max_tokens = 128
       TOML
       say "  created #{config_path}"
     end
