@@ -2,6 +2,7 @@
 
 require "thor"
 require_relative "../anima"
+require_relative "cli/mcp"
 
 module Anima
   class CLI < Thor
@@ -65,6 +66,9 @@ module Anima
       require_relative "version"
       say "anima #{Anima::VERSION}"
     end
+
+    desc "mcp SUBCOMMAND", "Manage MCP server configuration"
+    subcommand "mcp", Mcp
 
     private
   end
