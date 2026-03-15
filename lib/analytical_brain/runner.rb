@@ -18,6 +18,8 @@ module AnalyticalBrain
       Tools::RenameSession,
       Tools::ActivateSkill,
       Tools::DeactivateSkill,
+      Tools::SetGoal,
+      Tools::FinishGoal,
       Tools::EverythingIsReady
     ].freeze
 
@@ -35,6 +37,12 @@ module AnalyticalBrain
       - Activate skills when conversation context matches a skill's description
       - Deactivate skills when the agent has moved to a different domain
       - Multiple skills can be active simultaneously
+
+      ### Goal tracking
+      - Set goals when the user expresses multi-step intentions or starts a new task
+      - Break complex goals into sub-goals (short-term TODO items under a root goal)
+      - Mark goals as completed when the main agent finishes the work they describe
+      - Do not duplicate goals that already exist — check the active goals list first
 
       ## Rules
       - Call tools to make changes, then call everything_is_ready when done
@@ -95,7 +103,7 @@ module AnalyticalBrain
         #{transcript}
         ```
 
-        Observe the conversation and take action: activate or deactivate relevant skills, rename the session if needed, then call everything_is_ready.
+        Observe the conversation and take action: manage goals, activate or deactivate relevant skills, rename the session if needed, then call everything_is_ready.
       MSG
       [{role: "user", content: content}]
     end
@@ -137,8 +145,9 @@ module AnalyticalBrain
         SYSTEM_PROMPT,
         skills_catalog_section,
         active_skills_section,
+        active_goals_section,
         "Current session name: #{@session.name || "(unnamed)"}"
-      ].join("\n")
+      ].compact.join("\n")
     end
 
     # @return [String] available skills list for the analytical brain
@@ -154,6 +163,27 @@ module AnalyticalBrain
     def active_skills_section
       list = @session.active_skills.join(", ").presence || "None"
       "## Currently active skills\n#{list}"
+    end
+
+    # @return [String, nil] active goals for the brain's own context,
+    #   so it knows what already exists and avoids duplicating
+    def active_goals_section
+      root_goals = @session.goals.root.includes(:sub_goals).active.order(:created_at)
+      return if root_goals.empty?
+
+      lines = root_goals.map { |goal| format_goal_for_brain(goal) }
+      "## Active goals\n#{lines.join("\n")}"
+    end
+
+    # @param goal [Goal] root goal with preloaded sub_goals
+    # @return [String] goal formatted for brain context
+    def format_goal_for_brain(goal)
+      parts = ["- #{goal.description} (id: #{goal.id})"]
+      goal.sub_goals.sort_by(&:created_at).each do |sub|
+        checkbox = (sub.status == "completed") ? "[x]" : "[ ]"
+        parts << "  - #{checkbox} #{sub.description} (id: #{sub.id})"
+      end
+      parts.join("\n")
     end
 
     # @return [Tools::Registry] registry with analytical brain tools

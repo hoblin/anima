@@ -142,7 +142,81 @@ RSpec.describe AnalyticalBrain::Runner do
         expect(captured_registry.registered?("rename_session")).to be true
         expect(captured_registry.registered?("activate_skill")).to be true
         expect(captured_registry.registered?("deactivate_skill")).to be true
+        expect(captured_registry.registered?("set_goal")).to be true
+        expect(captured_registry.registered?("finish_goal")).to be true
         expect(captured_registry.registered?("everything_is_ready")).to be true
+      end
+
+      it "includes goal tracking responsibilities in system prompt" do
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).to include("Goal tracking")
+        expect(captured_opts[:system]).to include("Set goals when")
+      end
+
+      it "includes active goals in system prompt" do
+        root = session.goals.create!(description: "Implement feature X")
+        session.goals.create!(description: "Read code", parent_goal: root)
+        session.goals.create!(description: "Write tests", parent_goal: root)
+
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).to include("Active goals")
+        expect(captured_opts[:system]).to include("Implement feature X")
+        expect(captured_opts[:system]).to include("Read code")
+        expect(captured_opts[:system]).to include("Write tests")
+      end
+
+      it "omits goals section when no active goals exist" do
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).not_to include("Active goals")
+      end
+
+      it "excludes completed root goals from active goals section" do
+        session.goals.create!(description: "Done goal", status: "completed", completed_at: 1.hour.ago)
+        session.goals.create!(description: "Active goal")
+
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).to include("Active goal")
+        expect(captured_opts[:system]).not_to include("Done goal")
+      end
+
+      it "mentions goal management in the user message" do
+        captured_messages = nil
+        allow(client).to receive(:chat_with_tools) { |msgs, **_opts|
+          captured_messages = msgs
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_messages.first[:content]).to include("manage goals")
       end
 
       it "does not register standard tools (bash, read, etc.)" do
@@ -389,6 +463,97 @@ RSpec.describe AnalyticalBrain::Runner do
         real_runner.call
 
         expect(session.reload.active_skills).not_to include("gh-issue")
+      end
+    end
+
+    context "integration with set_goal tool" do
+      it "creates a goal when LLM calls set_goal" do
+        session.events.create!(event_type: "user_message", payload: {"content" => "Implement auth refactoring"}, timestamp: 1)
+        session.events.create!(event_type: "agent_message", payload: {"content" => "Sure!"}, timestamp: 2)
+
+        call_count = 0
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return do
+            call_count += 1
+            if call_count == 1
+              {
+                status: 200,
+                body: {
+                  content: [{
+                    type: "tool_use",
+                    id: "toolu_set_goal_1",
+                    name: "set_goal",
+                    input: {"description" => "Implement auth refactoring"}
+                  }],
+                  stop_reason: "tool_use"
+                }.to_json,
+                headers: {"content-type" => "application/json"}
+              }
+            else
+              {
+                status: 200,
+                body: {
+                  content: [{type: "text", text: "Done"}],
+                  stop_reason: "end_turn"
+                }.to_json,
+                headers: {"content-type" => "application/json"}
+              }
+            end
+          end
+
+        real_client = LLM::Client.new(model: Anima::Settings.fast_model, max_tokens: 128)
+        real_runner = described_class.new(session, client: real_client)
+        real_runner.call
+
+        expect(session.goals.count).to eq(1)
+        goal = session.goals.first
+        expect(goal.description).to eq("Implement auth refactoring")
+        expect(goal.status).to eq("active")
+      end
+    end
+
+    context "integration with finish_goal tool" do
+      it "completes a goal when LLM calls finish_goal" do
+        goal = session.goals.create!(description: "Read code")
+        session.events.create!(event_type: "user_message", payload: {"content" => "Done reading"}, timestamp: 1)
+        session.events.create!(event_type: "agent_message", payload: {"content" => "OK"}, timestamp: 2)
+
+        call_count = 0
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return do
+            call_count += 1
+            if call_count == 1
+              {
+                status: 200,
+                body: {
+                  content: [{
+                    type: "tool_use",
+                    id: "toolu_finish_goal_1",
+                    name: "finish_goal",
+                    input: {"goal_id" => goal.id}
+                  }],
+                  stop_reason: "tool_use"
+                }.to_json,
+                headers: {"content-type" => "application/json"}
+              }
+            else
+              {
+                status: 200,
+                body: {
+                  content: [{type: "text", text: "Done"}],
+                  stop_reason: "end_turn"
+                }.to_json,
+                headers: {"content-type" => "application/json"}
+              }
+            end
+          end
+
+        real_client = LLM::Client.new(model: Anima::Settings.fast_model, max_tokens: 128)
+        real_runner = described_class.new(session, client: real_client)
+        real_runner.call
+
+        expect(goal.reload.status).to eq("completed")
+        expect(goal.completed_at).to be_present
       end
     end
 
