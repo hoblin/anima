@@ -259,11 +259,12 @@ RSpec.describe AgentLoop do
   end
 
   describe "tool registry switching" do
-    it "registers spawn_subagent and spawn_specialist for main sessions" do
+    it "registers spawn_subagent, spawn_specialist, and request_feature for main sessions" do
       session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
         expect(registry.registered?("spawn_subagent")).to be true
         expect(registry.registered?("spawn_specialist")).to be true
+        expect(registry.registered?("request_feature")).to be true
         expect(registry.registered?("return_result")).to be false
         "ok"
       end
@@ -271,7 +272,7 @@ RSpec.describe AgentLoop do
       agent_loop.run
     end
 
-    it "registers return_result for sub-agent sessions (no spawning)" do
+    it "registers return_result for sub-agent sessions (no spawning or feature requests)" do
       parent = Session.create!
       child = Session.create!(parent_session: parent, prompt: "sub-agent prompt")
       child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
@@ -281,6 +282,7 @@ RSpec.describe AgentLoop do
         expect(registry.registered?("return_result")).to be true
         expect(registry.registered?("spawn_subagent")).to be false
         expect(registry.registered?("spawn_specialist")).to be false
+        expect(registry.registered?("request_feature")).to be false
         "done"
       end
 

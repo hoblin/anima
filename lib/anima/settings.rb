@@ -148,6 +148,13 @@ module Anima
       # @return [Integer]
       def project_files_max_depth = get("environment", "project_files_max_depth")
 
+      # ─── GitHub ─────────────────────────────────────────────────────
+
+      # Repository for feature requests (+owner/repo+ format).
+      # Falls back to parsing git remote origin when unset.
+      # @return [String]
+      def github_repo = get("github", "repo")
+
       # ─── Analytical Brain ─────────────────────────────────────────
 
       # Maximum tokens per analytical brain response.

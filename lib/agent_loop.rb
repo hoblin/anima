@@ -121,6 +121,7 @@ class AgentLoop
     else
       registry.register(Tools::SpawnSubagent)
       registry.register(Tools::SpawnSpecialist)
+      registry.register(Tools::RequestFeature)
     end
 
     register_mcp_tools(registry)

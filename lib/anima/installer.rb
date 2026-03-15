@@ -150,6 +150,14 @@ module Anima
         # Maximum directory depth for project file scanning.
         project_files_max_depth = 3
 
+        # ─── GitHub ─────────────────────────────────────────────────────
+
+        [github]
+
+        # Repository for agent feature requests (owner/repo format).
+        # Falls back to parsing git remote origin when unset.
+        repo = "hoblin/anima"
+
         # ─── Paths ─────────────────────────────────────────────────────
 
         [paths]
