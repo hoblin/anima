@@ -80,6 +80,10 @@ module Agents
     # @return [Array(Hash, String)] parsed frontmatter and body text
     # @raise [InvalidDefinitionError] if frontmatter is missing or malformed
     def self.parse_frontmatter(content)
+      # Opening "---" must be followed by a newline (not just whitespace).
+      # Non-greedy (.*?\n) captures YAML lines up to the closing "---".
+      # Closing "---" may optionally be followed by a newline before the body.
+      # The /m flag lets (.*) in the body capture across newlines.
       match = content.match(/\A---\s*\n(.*?\n)---\s*\n?(.*)\z/m)
       raise InvalidDefinitionError, "Missing YAML frontmatter" unless match
 

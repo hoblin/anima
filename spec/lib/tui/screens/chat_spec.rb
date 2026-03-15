@@ -1222,6 +1222,57 @@ RSpec.describe TUI::Screens::Chat do
     end
   end
 
+  describe "active_workflow_updated protocol message" do
+    it "updates active workflow for the current session" do
+      msg = {"action" => "active_workflow_updated", "session_id" => 42, "active_workflow" => "feature"}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.session_info[:active_workflow]).to eq("feature")
+    end
+
+    it "ignores active workflow updates for other sessions" do
+      msg = {"action" => "active_workflow_updated", "session_id" => 999, "active_workflow" => "feature"}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.session_info[:active_workflow]).to be_nil
+    end
+
+    it "stores active_workflow from session_changed payload" do
+      msg = {"action" => "session_changed", "session_id" => 99, "message_count" => 5,
+             "active_workflow" => "review_pr"}
+      allow(cable_client).to receive(:update_session_id)
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.session_info[:active_workflow]).to eq("review_pr")
+    end
+
+    it "defaults active_workflow to nil when missing from session_changed" do
+      msg = {"action" => "session_changed", "session_id" => 99, "message_count" => 5}
+      allow(cable_client).to receive(:update_session_id)
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.session_info[:active_workflow]).to be_nil
+    end
+
+    it "clears active workflow on deactivation" do
+      # First activate
+      msg = {"action" => "active_workflow_updated", "session_id" => 42, "active_workflow" => "feature"}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_info[:active_workflow]).to eq("feature")
+
+      # Then deactivate
+      msg = {"action" => "active_workflow_updated", "session_id" => 42, "active_workflow" => nil}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_info[:active_workflow]).to be_nil
+    end
+  end
+
   describe "goals_updated protocol message" do
     it "updates goals for the current session" do
       goals = [{"id" => 1, "description" => "Implement auth", "status" => "active", "sub_goals" => []}]

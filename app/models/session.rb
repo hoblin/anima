@@ -177,12 +177,12 @@ class Session < ApplicationRecord
     save!
   end
 
-  # Assembles a system prompt from active skills and current goals.
-  # Returns nil when neither skills nor goals are present.
+  # Assembles a system prompt from active skills, active workflow, and
+  # current goals. Returns nil when nothing is active.
   #
   # @return [String, nil] composed system prompt, or nil if empty
   def assemble_system_prompt
-    parts = [assemble_skills_section, assemble_goals_section].compact
+    parts = [assemble_expertise_section, assemble_goals_section].compact
     return if parts.empty?
 
     parts.join("\n\n")
@@ -231,7 +231,7 @@ class Session < ApplicationRecord
   # section — the main agent treats them identically as domain knowledge.
   #
   # @return [String, nil] expertise section, or nil when nothing is active
-  def assemble_skills_section
+  def assemble_expertise_section
     sections = active_skills.filter_map do |skill_name|
       definition = Skills::Registry.instance.find(skill_name)
       format_expertise_section(definition, skill_name)
@@ -278,7 +278,9 @@ class Session < ApplicationRecord
   end
 
   # Formats a definition (skill or workflow) as a Markdown section for the
-  # expertise prompt. Extracts the first heading from content for the section title.
+  # expertise prompt. Extracts the first Markdown heading from content for
+  # the section title; falls back to the definition name when content has
+  # no heading.
   #
   # @param definition [Skills::Definition, Workflows::Definition, nil] the definition to format
   # @param fallback_name [String] name to use if content has no heading
