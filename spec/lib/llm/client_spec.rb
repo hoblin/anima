@@ -19,13 +19,13 @@ RSpec.describe LLM::Client do
     }
   end
 
-  describe "constants" do
-    it "defines the default model" do
-      expect(described_class::DEFAULT_MODEL).to eq("claude-sonnet-4-20250514")
+  describe "defaults from Settings" do
+    it "uses Settings.model as default" do
+      expect(client.model).to eq(Anima::Settings.model)
     end
 
-    it "defines the default max_tokens" do
-      expect(described_class::DEFAULT_MAX_TOKENS).to eq(8192)
+    it "uses Settings.max_tokens as default" do
+      expect(client.max_tokens).to eq(Anima::Settings.max_tokens)
     end
   end
 
@@ -567,7 +567,7 @@ RSpec.describe LLM::Client do
       end
     end
 
-    context "when the tool loop exceeds MAX_TOOL_ROUNDS" do
+    context "when the tool loop exceeds max_tool_rounds" do
       let(:tool_use_response) do
         {
           id: "msg_tool",

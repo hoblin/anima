@@ -18,7 +18,7 @@ class CountEventTokensJob < ApplicationJob
     messages = [{role: event.api_role, content: event.payload["content"].to_s}]
 
     token_count = provider.count_tokens(
-      model: LLM::Client::DEFAULT_MODEL,
+      model: Anima::Settings.model,
       messages: messages
     )
 

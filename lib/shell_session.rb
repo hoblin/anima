@@ -16,9 +16,6 @@ require "timeout"
 #   # => {stdout: "/tmp", stderr: "", exit_code: 0}
 #   session.finalize
 class ShellSession
-  COMMAND_TIMEOUT = 30
-  MAX_OUTPUT_BYTES = 100_000
-
   # @return [String, nil] current working directory of the shell process
   attr_reader :pwd
 
@@ -145,7 +142,7 @@ class ShellSession
         while (line = fifo.gets)
           cleaned = line.chomp.delete("\r")
           @stderr_mutex.synchronize do
-            if @stderr_bytes < MAX_OUTPUT_BYTES
+            if @stderr_bytes < Anima::Settings.max_output_bytes
               @stderr_buffer << cleaned
               @stderr_bytes += cleaned.bytesize
             else
@@ -172,8 +169,9 @@ class ShellSession
   def execute_in_pty(command)
     clear_stderr
     marker = "__ANIMA_#{SecureRandom.hex(8)}__"
+    timeout = Anima::Settings.command_timeout
 
-    Timeout.timeout(COMMAND_TIMEOUT) do
+    Timeout.timeout(timeout) do
       # All on one line: run command, capture exit code, ensure newline
       # before marker so output without trailing newline doesn't merge.
       @pty_stdin.puts "#{command}; __anima_ec=$?; echo; echo '#{marker}' $__anima_ec"
@@ -190,7 +188,7 @@ class ShellSession
     end
   rescue Timeout::Error
     recover_from_timeout
-    {error: "Command timed out after #{COMMAND_TIMEOUT} seconds"}
+    {error: "Command timed out after #{timeout} seconds"}
   rescue Errno::EIO
     @alive = false
     {error: "Shell session terminated unexpectedly"}
@@ -260,7 +258,7 @@ class ShellSession
       @stderr_buffer.clear
       @stderr_bytes = 0
       @stderr_truncated = false
-      truncated ? result + "\n\n[Truncated: output exceeded #{MAX_OUTPUT_BYTES} bytes]" : result
+      truncated ? result + "\n\n[Truncated: output exceeded #{Anima::Settings.max_output_bytes} bytes]" : result
     end
   end
 
@@ -274,12 +272,12 @@ class ShellSession
   end
 
   def truncate(output)
-    return output if output.bytesize <= MAX_OUTPUT_BYTES
+    return output if output.bytesize <= Anima::Settings.max_output_bytes
 
-    output.byteslice(0, MAX_OUTPUT_BYTES)
+    output.byteslice(0, Anima::Settings.max_output_bytes)
       .force_encoding("UTF-8")
       .scrub +
-      "\n\n[Truncated: output exceeded #{MAX_OUTPUT_BYTES} bytes]"
+      "\n\n[Truncated: output exceeded #{Anima::Settings.max_output_bytes} bytes]"
   end
 
   def shutdown

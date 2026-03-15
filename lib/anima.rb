@@ -2,6 +2,7 @@
 
 require "pathname"
 require_relative "anima/version"
+require_relative "anima/settings"
 
 module Anima
   class Error < StandardError; end

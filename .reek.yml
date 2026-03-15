@@ -9,6 +9,10 @@ detectors:
   # Bang methods don't need safe counterparts in this codebase
   MissingSafeMethod:
     enabled: false
+  # Nil check in Settings#get is business logic — nil means a missing config key
+  NilCheck:
+    exclude:
+      - "Anima::Settings#get"
   # Private helpers don't need instance state to be valid
   UtilityFunction:
     public_methods_only: true

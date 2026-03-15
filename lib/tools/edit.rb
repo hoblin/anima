@@ -16,8 +16,6 @@ module Tools
   #                "new_text" => "def greet\n  'hello'\nend")
   #   # => "--- app.rb\n+++ app.rb\n@@ -1,3 +1,3 @@\n ..."
   class Edit < Base
-    MAX_FILE_SIZE = 10 * 1024 * 1024 # 10 MB
-
     def self.tool_name = "edit"
 
     def self.description = "Replace exact text in a file. old_text must match exactly one location; " \
@@ -79,9 +77,10 @@ module Tools
       return {error: "Is a directory: #{path}"} if File.directory?(path)
       return {error: "Permission denied: #{path}"} unless File.readable?(path) && File.writable?(path)
       size = File.size(path)
-      if size > MAX_FILE_SIZE
+      max_size = Anima::Settings.max_file_size
+      if size > max_size
         {error: "File is #{size} bytes (#{size / 1_048_576} MB). " \
-                "Max editable size is #{MAX_FILE_SIZE / 1_048_576} MB. Use bash tool with sed instead."}
+                "Max editable size is #{max_size / 1_048_576} MB. Use bash tool with sed instead."}
       end
     end
 

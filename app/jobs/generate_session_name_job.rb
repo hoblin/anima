@@ -2,7 +2,7 @@
 
 # Generates a short, descriptive name for a session using a fast LLM.
 # Enqueued by {Session#schedule_name_generation!} after the first exchange
-# and again every {Session::NAME_GENERATION_INTERVAL} messages so the name
+# and again every {Anima::Settings.name_generation_interval} messages so the name
 # stays relevant as the conversation evolves.
 #
 # Always overwrites the existing name — scheduling guards in the model
@@ -37,7 +37,7 @@ class GenerateSessionNameJob < ApplicationJob
     context = build_context(session)
     return if context.blank?
 
-    client = LLM::Client.new(model: LLM::Client::FAST_MODEL, max_tokens: MAX_TOKENS)
+    client = LLM::Client.new(model: Anima::Settings.fast_model, max_tokens: MAX_TOKENS)
     name = client.chat([{role: "user", content: "#{NAMING_PROMPT}\nConversation:\n#{context}"}])
 
     session.update!(name: name.strip.truncate(255))

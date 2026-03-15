@@ -15,11 +15,6 @@ module LLM
   #   registry.register(Tools::WebGet)
   #   client.chat_with_tools(messages, registry: registry, session_id: session.id)
   class Client
-    DEFAULT_MODEL = "claude-sonnet-4-20250514"
-    FAST_MODEL = "claude-haiku-4-5"
-    DEFAULT_MAX_TOKENS = 8192
-    MAX_TOOL_ROUNDS = 25
-
     # @return [Providers::Anthropic] the underlying API provider
     attr_reader :provider
 
@@ -29,11 +24,11 @@ module LLM
     # @return [Integer] maximum tokens in the response
     attr_reader :max_tokens
 
-    # @param model [String] Anthropic model identifier
-    # @param max_tokens [Integer] maximum tokens in the response
+    # @param model [String] Anthropic model identifier (default from Settings)
+    # @param max_tokens [Integer] maximum tokens in the response (default from Settings)
     # @param provider [Providers::Anthropic, nil] injectable provider instance;
     #   defaults to a new {Providers::Anthropic} using credentials
-    def initialize(model: DEFAULT_MODEL, max_tokens: DEFAULT_MAX_TOKENS, provider: nil)
+    def initialize(model: Anima::Settings.model, max_tokens: Anima::Settings.max_tokens, provider: nil)
       @provider = build_provider(provider)
       @model = model
       @max_tokens = max_tokens
@@ -76,8 +71,9 @@ module LLM
 
       loop do
         rounds += 1
-        if rounds > MAX_TOOL_ROUNDS
-          return "[Tool loop exceeded #{MAX_TOOL_ROUNDS} rounds — halting]"
+        max_rounds = Anima::Settings.max_tool_rounds
+        if rounds > max_rounds
+          return "[Tool loop exceeded #{max_rounds} rounds — halting]"
         end
 
         response = provider.create_message(

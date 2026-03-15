@@ -22,9 +22,6 @@ module Mcp
   #
   # @see MCP::Client::HTTP the built-in HTTP transport this mirrors
   class StdioTransport
-    # Maximum seconds to wait for a JSON-RPC response from the server.
-    RESPONSE_TIMEOUT = 60
-
     # Seconds to wait for graceful SIGTERM shutdown before escalating to SIGKILL.
     GRACEFUL_SHUTDOWN_TIMEOUT = 2
 
@@ -105,7 +102,7 @@ module Mcp
       raise_transport_error("Invalid JSON from server: #{error.message}", request, error)
     rescue Timeout::Error
       stop_process
-      raise_transport_error("No response within #{RESPONSE_TIMEOUT}s", request)
+      raise_transport_error("No response within #{Anima::Settings.mcp_response_timeout}s", request)
     end
 
     def ensure_running
@@ -139,7 +136,7 @@ module Mcp
     def read_response(request)
       request_id = (request[:id] || request["id"]).to_s
 
-      Timeout.timeout(RESPONSE_TIMEOUT) do
+      Timeout.timeout(Anima::Settings.mcp_response_timeout) do
         loop do
           line = @stdout.gets
           raise IOError, "Server process closed stdout" if line.nil?

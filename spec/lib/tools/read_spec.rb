@@ -131,7 +131,7 @@ RSpec.describe Tools::Read do
     end
 
     context "with line count truncation" do
-      it "truncates at MAX_LINES and appends continuation hint" do
+      it "truncates at max_read_lines and appends continuation hint" do
         content = (1..3000).map { |i| "Line #{i}\n" }.join
         path = write_file("large.txt", content)
 
@@ -141,7 +141,7 @@ RSpec.describe Tools::Read do
         expect(result).not_to include("Line 2001\n")
       end
 
-      it "does not truncate when exactly at MAX_LINES" do
+      it "does not truncate when exactly at max_read_lines" do
         content = (1..2000).map { |i| "Line #{i}\n" }.join
         path = write_file("exact.txt", content)
 
@@ -153,7 +153,7 @@ RSpec.describe Tools::Read do
     end
 
     context "with byte size truncation" do
-      it "truncates when accumulated bytes exceed MAX_BYTES" do
+      it "truncates when accumulated bytes exceed max_read_bytes" do
         # Each line is ~1000 bytes, 60 lines = 60KB > 50KB limit
         content = (1..60).map { |i| "L#{i}#{"x" * 998}\n" }.join
         path = write_file("big_lines.txt", content)
@@ -162,28 +162,28 @@ RSpec.describe Tools::Read do
 
         expect(result).to include("[Showing lines")
         expect(result).to include("Use offset=")
-        expect(result.bytesize).to be < Tools::Read::MAX_BYTES * 2
+        expect(result.bytesize).to be < Anima::Settings.max_read_bytes * 2
       end
     end
 
-    context "with a single line exceeding MAX_BYTES" do
+    context "with a single line exceeding max_read_bytes" do
       it "returns an error suggesting bash" do
-        content = "x" * (Tools::Read::MAX_BYTES + 1)
+        content = "x" * (Anima::Settings.max_read_bytes + 1)
         path = write_file("minified.js", content)
 
         result = tool.execute("path" => path)
 
         expect(result).to be_a(Hash)
-        expect(result[:error]).to include("exceeds #{Tools::Read::MAX_BYTES} bytes")
+        expect(result[:error]).to include("exceeds #{Anima::Settings.max_read_bytes} bytes")
         expect(result[:error]).to include("bash tool")
         expect(result[:error]).to include("sed")
       end
     end
 
-    context "with a file exceeding MAX_READ_SIZE" do
+    context "with a file exceeding max_file_size" do
       it "returns an error suggesting bash" do
         path = write_file("huge.log", "x")
-        allow(File).to receive(:size).with(path).and_return(Tools::Read::MAX_READ_SIZE + 1)
+        allow(File).to receive(:size).with(path).and_return(Anima::Settings.max_file_size + 1)
 
         result = tool.execute("path" => path)
 

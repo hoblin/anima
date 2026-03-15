@@ -28,6 +28,7 @@ module Anima
       say "Installing Anima to #{anima_home}..."
       create_directories
       create_config_file
+      create_settings_config
       create_mcp_config
       generate_credentials
       create_systemd_service
@@ -52,6 +53,85 @@ module Anima
         # Anima configuration
         # See https://github.com/hoblin/anima for documentation
       YAML
+      say "  created #{config_path}"
+    end
+
+    def create_settings_config
+      config_path = anima_home.join("config.toml")
+      return if config_path.exist?
+
+      config_path.write(<<~TOML)
+        # Anima Configuration
+        #
+        # Edit settings below to customize Anima's behavior.
+        # Changes take effect immediately — no restart needed.
+
+        # ─── LLM ───────────────────────────────────────────────────────
+
+        [llm]
+
+        # Primary model for conversations.
+        model = "claude-sonnet-4-20250514"
+
+        # Lightweight model for fast tasks (e.g. session naming).
+        fast_model = "claude-haiku-4-5"
+
+        # Maximum tokens per LLM response.
+        max_tokens = 8192
+
+        # Maximum consecutive tool execution rounds per request.
+        max_tool_rounds = 25
+
+        # Context window budget — tokens reserved for conversation history.
+        # Set this based on your model's context window minus system prompt.
+        token_budget = 190_000
+
+        # ─── Timeouts (seconds) ─────────────────────────────────────────
+
+        [timeouts]
+
+        # LLM API request timeout.
+        api = 30
+
+        # Shell command execution timeout.
+        command = 30
+
+        # MCP server response timeout.
+        mcp_response = 60
+
+        # Web fetch request timeout.
+        web_request = 10
+
+        # ─── Shell ──────────────────────────────────────────────────────
+
+        [shell]
+
+        # Maximum bytes of command output before truncation.
+        max_output_bytes = 100_000
+
+        # ─── Tools ──────────────────────────────────────────────────────
+
+        [tools]
+
+        # Maximum file size for read/edit operations (bytes).
+        max_file_size = 10_485_760
+
+        # Maximum lines returned by the read tool.
+        max_read_lines = 2_000
+
+        # Maximum bytes returned by the read tool.
+        max_read_bytes = 50_000
+
+        # Maximum bytes from web GET responses.
+        max_web_response_bytes = 100_000
+
+        # ─── Session ────────────────────────────────────────────────────
+
+        [session]
+
+        # Regenerate session name every N messages.
+        name_generation_interval = 30
+      TOML
       say "  created #{config_path}"
     end
 

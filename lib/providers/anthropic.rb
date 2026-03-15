@@ -7,13 +7,11 @@ module Providers
     include HTTParty
 
     base_uri "https://api.anthropic.com"
-    default_timeout 30
 
     TOKEN_PREFIX = "sk-ant-oat01-"
     TOKEN_MIN_LENGTH = 80
     API_VERSION = "2023-06-01"
     REQUIRED_BETA = "oauth-2025-04-20"
-    VALIDATION_MODEL = "claude-sonnet-4-20250514"
 
     class Error < StandardError; end
     class AuthenticationError < Error; end
@@ -66,7 +64,8 @@ module Providers
       response = self.class.post(
         "/v1/messages",
         body: body.to_json,
-        headers: request_headers
+        headers: request_headers,
+        timeout: Anima::Settings.api_timeout
       )
 
       handle_response(response)
@@ -88,7 +87,8 @@ module Providers
       response = self.class.post(
         "/v1/messages/count_tokens",
         body: body.to_json,
-        headers: request_headers
+        headers: request_headers,
+        timeout: Anima::Settings.api_timeout
       )
 
       result = handle_response(response)
@@ -101,11 +101,12 @@ module Providers
       response = self.class.post(
         "/v1/messages",
         body: {
-          model: VALIDATION_MODEL,
+          model: Anima::Settings.model,
           messages: [{role: "user", content: "Hi"}],
           max_tokens: 1
         }.to_json,
-        headers: request_headers
+        headers: request_headers,
+        timeout: Anima::Settings.api_timeout
       )
 
       case response.code

@@ -50,7 +50,7 @@ RSpec.describe Tools::WebGet do
 
     context "with a large response" do
       before do
-        large_body = "x" * (Tools::WebGet::MAX_RESPONSE_BYTES + 1000)
+        large_body = "x" * (Anima::Settings.max_web_response_bytes + 1000)
         stub_request(:get, "https://example.com/large")
           .to_return(status: 200, body: large_body)
       end
@@ -58,7 +58,7 @@ RSpec.describe Tools::WebGet do
       it "truncates the response" do
         result = tool.execute("url" => "https://example.com/large")
         expect(result).to include("[Truncated:")
-        expect(result.bytesize).to be < Tools::WebGet::MAX_RESPONSE_BYTES + 200
+        expect(result.bytesize).to be < Anima::Settings.max_web_response_bytes + 200
       end
     end
 
