@@ -138,7 +138,8 @@ module Anima
         [analytical_brain]
 
         # Maximum tokens per analytical brain response.
-        max_tokens = 128
+        # Must accommodate multiple tool calls (rename + goals + skills + ready).
+        max_tokens = 4096
 
         # Run the analytical brain synchronously before the main agent on user messages.
         # Ensures activated skills are available for the current response.
