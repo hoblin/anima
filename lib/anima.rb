@@ -10,4 +10,12 @@ module Anima
   def self.gem_root
     @gem_root ||= Pathname.new(File.expand_path("..", __dir__))
   end
+
+  # Boots Rails when CLI commands need access to Rails-managed resources
+  # like encrypted credentials. No-op if Rails is already loaded.
+  def self.boot_rails!
+    return if defined?(Rails)
+
+    require gem_root.join("config", "environment").to_s
+  end
 end

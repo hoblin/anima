@@ -667,12 +667,7 @@ RSpec.describe SessionChannel, type: :channel do
       before do
         allow(Providers::Anthropic).to receive(:validate_token_format!)
         allow(Providers::Anthropic).to receive(:validate_token_api!)
-
-        creds = double("credentials")
-        allow(creds).to receive(:read).and_return("secret_key_base: abc123\n")
-        allow(creds).to receive(:write)
-        allow(creds).to receive(:instance_variable_set)
-        allow(Rails.application).to receive(:credentials).and_return(creds)
+        allow(CredentialStore).to receive(:write)
       end
 
       it "transmits token_saved on success" do
@@ -682,40 +677,11 @@ RSpec.describe SessionChannel, type: :channel do
         expect(saved).to be_present
       end
 
-      it "writes token to encrypted credentials" do
-        creds = Rails.application.credentials
-        expect(creds).to receive(:write) do |yaml_content|
-          parsed = YAML.safe_load(yaml_content)
-          expect(parsed["anthropic"]["subscription_token"]).to eq(valid_token)
-        end
+      it "delegates to CredentialStore" do
+        expect(CredentialStore).to receive(:write)
+          .with("anthropic", "subscription_token" => valid_token)
 
         perform(:save_token, {"token" => valid_token})
-      end
-
-      it "preserves existing credential keys" do
-        creds = Rails.application.credentials
-        expect(creds).to receive(:write) do |yaml_content|
-          parsed = YAML.safe_load(yaml_content)
-          expect(parsed["secret_key_base"]).to eq("abc123")
-          expect(parsed["anthropic"]["subscription_token"]).to eq(valid_token)
-        end
-
-        perform(:save_token, {"token" => valid_token})
-      end
-
-      it "handles missing credentials file gracefully" do
-        creds = Rails.application.credentials
-        allow(creds).to receive(:read).and_raise(ActiveSupport::EncryptedFile::MissingContentError.new("credentials.yml.enc"))
-
-        expect(creds).to receive(:write) do |yaml_content|
-          parsed = YAML.safe_load(yaml_content)
-          expect(parsed["anthropic"]["subscription_token"]).to eq(valid_token)
-        end
-
-        perform(:save_token, {"token" => valid_token})
-
-        saved = transmissions.find { |t| t["action"] == "token_saved" }
-        expect(saved).to be_present
       end
     end
 

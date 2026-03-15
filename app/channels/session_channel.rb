@@ -327,19 +327,7 @@ class SessionChannel < ApplicationCable::Channel
   # @param token [String] validated Anthropic subscription token
   # @return [void]
   def write_anthropic_token(token)
-    creds = Rails.application.credentials
-    existing = begin
-      YAML.safe_load(creds.read) || {}
-    rescue ActiveSupport::EncryptedFile::MissingContentError
-      {}
-    end
-    existing["anthropic"] ||= {}
-    existing["anthropic"]["subscription_token"] = token
-    creds.write(existing.to_yaml)
-    # Rails memoizes the decrypted config in @config. Without clearing it,
-    # subsequent credential reads return stale data. No public API exists
-    # for cache invalidation as of Rails 8.1.
-    creds.instance_variable_set(:@config, nil)
+    CredentialStore.write("anthropic", "subscription_token" => token)
   end
 
   # Serializes a root session with its children for the sessions_list response.

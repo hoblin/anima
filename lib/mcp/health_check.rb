@@ -32,7 +32,7 @@ module Mcp
     rescue Timeout::Error
       {status: :failed, error: "connection timeout"}
     rescue KeyError => key_error
-      {status: :failed, error: "missing env var #{key_error.message}"}
+      {status: :failed, error: "missing credential #{key_error.message}"}
     rescue => error
       {status: :failed, error: error.message}
     end

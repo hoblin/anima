@@ -80,46 +80,58 @@ RSpec.describe Mcp::Config do
       end
     end
 
-    context "with environment variable interpolation" do
+    context "with credential interpolation" do
       before do
         File.write(config_path, <<~TOML)
           [servers.api]
           transport = "http"
-          url = "https://${TEST_MCP_HOST}/mcp"
-          headers = { Authorization = "Bearer ${TEST_MCP_TOKEN}" }
+          url = "https://${credential:mcp_host}/mcp"
+          headers = { Authorization = "Bearer ${credential:mcp_token}" }
         TOML
       end
 
-      it "replaces ${VAR} placeholders in urls" do
-        ENV["TEST_MCP_HOST"] = "api.example.com"
-        ENV["TEST_MCP_TOKEN"] = "secret-123"
+      it "replaces ${credential:key} placeholders in urls" do
+        allow(Mcp::Secrets).to receive(:get).with("mcp_host").and_return("api.example.com")
+        allow(Mcp::Secrets).to receive(:get).with("mcp_token").and_return("secret-123")
 
         servers = config.http_servers
 
         expect(servers.first[:url]).to eq("https://api.example.com/mcp")
-      ensure
-        ENV.delete("TEST_MCP_HOST")
-        ENV.delete("TEST_MCP_TOKEN")
       end
 
-      it "replaces ${VAR} placeholders in headers" do
-        ENV["TEST_MCP_HOST"] = "api.example.com"
-        ENV["TEST_MCP_TOKEN"] = "secret-123"
+      it "replaces ${credential:key} placeholders in headers" do
+        allow(Mcp::Secrets).to receive(:get).with("mcp_host").and_return("api.example.com")
+        allow(Mcp::Secrets).to receive(:get).with("mcp_token").and_return("secret-123")
 
         servers = config.http_servers
 
         expect(servers.first[:headers]["Authorization"]).to eq("Bearer secret-123")
-      ensure
-        ENV.delete("TEST_MCP_HOST")
-        ENV.delete("TEST_MCP_TOKEN")
       end
 
-      it "skips servers with missing env vars and collects a warning" do
-        ENV.delete("TEST_MCP_HOST")
-        ENV.delete("TEST_MCP_TOKEN")
+      it "skips servers with missing credentials and collects a warning" do
+        allow(Mcp::Secrets).to receive(:get).and_return(nil)
 
         expect(config.http_servers).to eq([])
-        expect(config.warnings).to include(match(/api.*unset env var.*TEST_MCP_HOST/))
+        expect(config.warnings).to include(match(/api.*missing credential.*mcp_host/))
+      end
+    end
+
+    context "with multiple credential placeholders in a single value" do
+      before do
+        File.write(config_path, <<~TOML)
+          [servers.multi]
+          transport = "http"
+          url = "https://${credential:mcp_host}:${credential:mcp_port}/mcp"
+        TOML
+      end
+
+      it "interpolates all placeholders in one string" do
+        allow(Mcp::Secrets).to receive(:get).with("mcp_host").and_return("api.example.com")
+        allow(Mcp::Secrets).to receive(:get).with("mcp_port").and_return("8443")
+
+        servers = config.http_servers
+
+        expect(servers.first[:url]).to eq("https://api.example.com:8443/mcp")
       end
     end
 
@@ -227,38 +239,34 @@ RSpec.describe Mcp::Config do
       end
     end
 
-    context "with environment variable interpolation" do
+    context "with credential interpolation" do
       before do
         File.write(config_path, <<~TOML)
           [servers.tool]
           transport = "stdio"
-          command = "${TEST_TOOL_PATH}/my-tool"
-          args = ["--config", "${TEST_CONFIG_DIR}/config.yml"]
-          env = { API_KEY = "${TEST_API_KEY}" }
+          command = "${credential:tool_path}/my-tool"
+          args = ["--config", "${credential:config_dir}/config.yml"]
+          env = { API_KEY = "${credential:api_key}" }
         TOML
       end
 
-      it "interpolates env vars in command, args, and env values" do
-        ENV["TEST_TOOL_PATH"] = "/usr/local/bin"
-        ENV["TEST_CONFIG_DIR"] = "/etc/my-tool"
-        ENV["TEST_API_KEY"] = "secret-abc"
+      it "interpolates credentials in command, args, and env values" do
+        allow(Mcp::Secrets).to receive(:get).with("tool_path").and_return("/usr/local/bin")
+        allow(Mcp::Secrets).to receive(:get).with("config_dir").and_return("/etc/my-tool")
+        allow(Mcp::Secrets).to receive(:get).with("api_key").and_return("secret-abc")
 
         server = config.stdio_servers.first
 
         expect(server[:command]).to eq("/usr/local/bin/my-tool")
         expect(server[:args]).to eq(["--config", "/etc/my-tool/config.yml"])
         expect(server[:env]).to eq({"API_KEY" => "secret-abc"})
-      ensure
-        ENV.delete("TEST_TOOL_PATH")
-        ENV.delete("TEST_CONFIG_DIR")
-        ENV.delete("TEST_API_KEY")
       end
 
-      it "skips servers with missing env vars and collects a warning" do
-        ENV.delete("TEST_TOOL_PATH")
+      it "skips servers with missing credentials and collects a warning" do
+        allow(Mcp::Secrets).to receive(:get).and_return(nil)
 
         expect(config.stdio_servers).to eq([])
-        expect(config.warnings).to include(match(/tool.*unset env var.*TEST_TOOL_PATH/))
+        expect(config.warnings).to include(match(/tool.*missing credential.*tool_path/))
       end
     end
 
@@ -315,15 +323,15 @@ RSpec.describe Mcp::Config do
         expect(tool["args"]).to eq(["--verbose"])
       end
 
-      it "does not interpolate environment variables" do
+      it "does not interpolate credential placeholders" do
         File.write(config_path, <<~TOML)
           [servers.api]
           transport = "http"
-          url = "https://${SOME_HOST}/mcp"
+          url = "https://${credential:some_host}/mcp"
         TOML
 
         servers = config.all_servers
-        expect(servers.first["url"]).to eq("https://${SOME_HOST}/mcp")
+        expect(servers.first["url"]).to eq("https://${credential:some_host}/mcp")
       end
     end
   end

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "thor"
+require_relative "mcp/secrets"
 
 module Anima
   class CLI < Thor
@@ -10,6 +11,9 @@ module Anima
       def self.exit_on_failure?
         true
       end
+
+      desc "secrets SUBCOMMAND", "Manage MCP secrets in encrypted credentials"
+      subcommand "secrets", Secrets
 
       desc "list", "List configured MCP servers with health status"
       def list
@@ -36,11 +40,14 @@ module Anima
 
         Use -e KEY=VALUE to set environment variables (stdio servers).
         Use -H "Header: Value" to set HTTP headers (HTTP servers).
+        Use -s KEY=VALUE to store a secret in encrypted credentials.
       DESC
       option :env, aliases: "-e", type: :string, repeatable: true, banner: "KEY=VALUE",
         desc: "Environment variables (repeatable)"
       option :header, aliases: "-H", type: :string, repeatable: true, banner: "Header: Value",
         desc: "HTTP headers (repeatable)"
+      option :secret, aliases: "-s", type: :string, repeatable: true, banner: "KEY=VALUE",
+        desc: "Store secret in encrypted credentials (repeatable)"
       def add(name, *rest)
         if rest.empty?
           say "Error: missing server URL or command.", :red
@@ -51,6 +58,7 @@ module Anima
           abort_command
         end
 
+        store_secrets(options[:secret])
         settings = build_settings(rest)
         build_config.add_server(name, settings)
         say "Added #{settings["transport"]} server '#{name}' (#{settings_target(settings)}).", :green
@@ -77,6 +85,17 @@ module Anima
       def build_config
         require_relative "../../mcp/config"
         ::Mcp::Config.new
+      end
+
+      # Stores secrets from -s KEY=VALUE flags in encrypted credentials.
+      def store_secrets(secret_strings)
+        return unless secret_strings&.any?
+
+        pairs = parse_key_values(secret_strings, label: "secret")
+        Anima.boot_rails!
+        require_relative "../../mcp/secrets"
+        require_relative "../../credential_store"
+        pairs.each { |key, value| ::Mcp::Secrets.set(key, value) }
       end
 
       # Builds interpolated server lookup keyed by name for health checks.
@@ -136,10 +155,10 @@ module Anima
         end
       end
 
-      def parse_key_values(kv_strings)
+      def parse_key_values(kv_strings, label: "env var")
         kv_strings.to_h do |kv|
           key, value = kv.split("=", 2)
-          raise ArgumentError, "invalid env var format '#{kv}' — expected KEY=VALUE" unless value
+          raise ArgumentError, "invalid #{label} format '#{kv}' — expected KEY=VALUE" unless value
 
           [key, value]
         end
