@@ -106,6 +106,12 @@ RSpec.describe Anima::CLI::Mcp do
           Anima::CLI.start(["mcp", "list"])
         }.to output(/warning:.*MISSING_VAR/).to_stdout
       end
+
+      it "shows config error status for unresolvable servers" do
+        expect {
+          Anima::CLI.start(["mcp", "list"])
+        }.to output(/config error/).to_stdout
+      end
     end
   end
 
@@ -138,6 +144,19 @@ RSpec.describe Anima::CLI::Mcp do
 
         server = config.all_servers.first
         expect(server["headers"]).to eq({"Authorization" => "Bearer secret"})
+      end
+
+      it "preserves colons in header values" do
+        expect {
+          Anima::CLI.start([
+            "mcp", "add",
+            "-H", "Authorization: Bearer: some:token",
+            "api", "https://api.example.com/mcp"
+          ])
+        }.to output(/Added http server 'api'/).to_stdout
+
+        server = config.all_servers.first
+        expect(server["headers"]["Authorization"]).to eq("Bearer: some:token")
       end
     end
 

@@ -43,6 +43,7 @@ module Mcp
       @path = path
       @logger = logger
       @warnings = []
+      @config_cache = nil
     end
 
     # Returns all configured servers with raw (pre-interpolation) settings.
@@ -128,19 +129,26 @@ module Mcp
     private
 
     # Reads the TOML config file, returning an empty hash when missing.
+    # Result is cached for the lifetime of this Config instance; mutating
+    # callers (+add_server+, +remove_server+) invalidate the cache on write.
     #
     # @return [Hash] parsed TOML config
     def load_config
-      return {} unless File.exist?(@path)
-
-      TomlRB.load_file(@path)
+      @config_cache ||= if File.exist?(@path)
+        TomlRB.load_file(@path)
+      else
+        {}
+      end
     end
 
     # Serializes config hash to TOML and writes to disk.
-    # Creates parent directories if needed.
+    # Creates parent directories if needed. Sets restrictive permissions
+    # since config may contain API keys or auth headers.
     def write_config(config)
       FileUtils.mkdir_p(File.dirname(@path))
       File.write(@path, TomlRB.dump(config))
+      File.chmod(0o600, @path)
+      @config_cache = nil
     end
 
     # @raise [ArgumentError] if name contains characters invalid for TOML bare keys

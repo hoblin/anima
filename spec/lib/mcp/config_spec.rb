@@ -381,7 +381,7 @@ RSpec.describe Mcp::Config do
       }.not_to raise_error
     end
 
-    it "writes valid TOML that can be re-read" do
+    it "writes valid TOML that can be re-read for stdio servers" do
       config.add_server("fs", {
         "transport" => "stdio",
         "command" => "mcp-server-filesystem",
@@ -396,6 +396,28 @@ RSpec.describe Mcp::Config do
       expect(server[:command]).to eq("mcp-server-filesystem")
       expect(server[:args]).to eq(["--root", "/workspace"])
       expect(server[:env]).to eq({"DEBUG" => "true"})
+    end
+
+    it "writes valid TOML that can be re-read for HTTP servers with headers" do
+      config.add_server("api", {
+        "transport" => "http",
+        "url" => "https://api.test/mcp",
+        "headers" => {"Authorization" => "Bearer token", "X-Custom" => "value"}
+      })
+
+      reloaded = described_class.new(path: config_path)
+      server = reloaded.http_servers.first
+
+      expect(server[:name]).to eq("api")
+      expect(server[:url]).to eq("https://api.test/mcp")
+      expect(server[:headers]).to eq({"Authorization" => "Bearer token", "X-Custom" => "value"})
+    end
+
+    it "sets restrictive file permissions on write" do
+      config.add_server("test", {"transport" => "http", "url" => "http://test/mcp"})
+
+      mode = File.stat(config_path).mode & 0o777
+      expect(mode).to eq(0o600)
     end
   end
 

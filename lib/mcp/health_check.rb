@@ -10,6 +10,8 @@ module Mcp
   #   result = Mcp::HealthCheck.call(name: "sentry", url: "https://mcp.sentry.dev/mcp", headers: {})
   #   result #=> { status: :connected, tools: 5 }
   class HealthCheck
+    # Health check probe timeout in seconds. Balances responsiveness
+    # (CLI shouldn't hang) vs. giving slow servers a fair chance.
     TIMEOUT = 5
 
     # @param server [Hash] interpolated server config with symbol keys
