@@ -251,13 +251,10 @@ module Anima
     def create_systemd_service
       service_dir = Pathname.new(File.expand_path("~/.config/systemd/user"))
       service_path = service_dir.join("anima.service")
-
-      return if service_path.exist?
-
       FileUtils.mkdir_p(service_dir)
-      anima_bin = File.join(Gem.bindir, "anima")
 
-      service_path.write(<<~UNIT)
+      anima_bin = File.join(Gem.bindir, "anima")
+      unit_content = <<~UNIT
         [Unit]
         Description=Anima - Personal AI Agent
         After=network.target
@@ -272,7 +269,18 @@ module Anima
         WantedBy=default.target
       UNIT
 
-      say "  created #{service_path}"
+      if service_path.exist?
+        if service_path.read == unit_content
+          say "  anima.service unchanged"
+        else
+          service_path.write(unit_content)
+          say "  updated #{service_path}"
+        end
+      else
+        service_path.write(unit_content)
+        say "  created #{service_path}"
+      end
+
       system("systemctl", "--user", "daemon-reload", err: File::NULL, out: File::NULL)
       system("systemctl", "--user", "enable", "--now", "anima.service", err: File::NULL, out: File::NULL)
       say "  enabled and started anima.service"

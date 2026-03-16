@@ -158,12 +158,32 @@ RSpec.describe Anima::Installer do
         .with("systemctl", "--user", "enable", "--now", "anima.service", err: File::NULL, out: File::NULL).ordered
     end
 
-    it "skips creation when service already exists" do
+    it "updates service file when content has changed" do
+      service_path.write("old content")
+
+      installer.create_systemd_service
+
+      expect(service_path.read).to include("anima start -e production")
+    end
+
+    it "preserves service file when content is unchanged" do
+      installer.create_systemd_service
+      original = service_path.read
+
+      installer.create_systemd_service
+
+      expect(service_path.read).to eq(original)
+    end
+
+    it "always runs daemon-reload and enable even when service exists" do
       service_path.write("existing")
 
       installer.create_systemd_service
 
-      expect(service_path.read).to eq("existing")
+      expect(installer).to have_received(:system)
+        .with("systemctl", "--user", "daemon-reload", err: File::NULL, out: File::NULL)
+      expect(installer).to have_received(:system)
+        .with("systemctl", "--user", "enable", "--now", "anima.service", err: File::NULL, out: File::NULL)
     end
   end
 end
