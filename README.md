@@ -2,15 +2,24 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**A personal AI agent that actually wants things.**
+**Not a tool. An agent.**
 
-Your agent. Your machine. Your rules. Anima is an AI agent with desires, personality, and personal growth — running locally as a headless Rails 8.1 app with a client-server architecture and TUI interface.
+Every AI agent today is a tool pretending to be a person. One brain doing everything. A static context array that fills up and degrades. Sub-agents that start blind and reconstruct context from lossy summaries. A system prompt that says "you are a helpful assistant."
+
+Anima is different. It's built on the premise that if you want an agent — a real one — you need to solve the problems nobody else is solving.
+
+**A brain modeled after biology, not chat.** The human brain isn't one process — it's specialized subsystems on a shared signal bus. Anima's [analytical brain](https://blog.promptmaster.pro/posts/llms-have-adhd/) runs as a separate subconscious process, managing context, skills, and goals so the main agent can stay in flow. Not two brains — a microservice architecture where each process does one job well. More subsystems are coming.
+
+**Context that never degrades.** Other agents fill a static array until the model gets dumb. Anima assembles a fresh viewport over an event bus every iteration. No compaction. No summarization. Endless sessions. The [dumb zone](https://www.humanlayer.dev/blog/the-dumb-zone) never arrives — and the analytical brain curates what the agent sees, in real time.
+
+**Sub-agents that already know everything.** When Anima spawns a sub-agent, it inherits the parent's full event stream — every file read, every decision, every user message. No "let me summarize what I know." Lossless context. Zero wasted tool calls on rediscovery.
+
+**A soul the agent writes itself.** Anima's first session is birth. The agent wakes up, explores its world, meets its human, and writes its own identity. Not a personality description in a config file — a living document the agent authors and evolves. Always in context, always its own.
+
+Your agent. Your machine. Your rules. Anima runs locally as a headless Rails 8.1 app with a client-server architecture and terminal UI.
 
 ## Table of Contents
 
-- [The Problem](#the-problem)
-- [The Insight](#the-insight)
-- [Core Concepts](#core-concepts)
 - [Architecture](#architecture)
 - [Agent Capabilities](#agent-capabilities)
   - [Tools](#tools)
@@ -28,6 +37,10 @@ Your agent. Your machine. Your rules. Anima is an AI agent with desires, persona
   - [TUI View Modes](#tui-view-modes)
   - [Plugin Architecture](#plugin-architecture)
   - [Semantic Memory](#semantic-memory-mneme)
+- [The Vision](#the-vision)
+  - [The Problem](#the-problem)
+  - [The Insight](#the-insight)
+  - [Core Concepts](#core-concepts)
 - [Analogy Map](#analogy-map)
 - [Emergent Properties](#emergent-properties)
 - [Frustration: A Worked Example](#frustration-a-worked-example)
@@ -37,72 +50,23 @@ Your agent. Your machine. Your rules. Anima is an AI agent with desires, persona
 - [Development](#development)
 - [License](#license)
 
-## The Problem
-
-Current AI agents are reactive. They receive input, produce output. They don't *want* anything. They don't have moods, preferences, or personal growth. They simulate personality through static prompt descriptions rather than emerging it from dynamic internal states.
-
-## The Insight
-
-The human hormonal system is, at its core, a prompt engineering system. A testosterone spike is a LoRA. Dopamine is a reward signal. The question isn't "can an LLM want?" but "can we build a deep enough context stack that wanting becomes indistinguishable from 'real' wanting?"
-
-And if you think about it — what is "real" anyway? It's just a question of how deep you look and what analogies you draw. The human brain is also a next-token predictor running on biological substrate. Different material, same architecture.
-
-## Core Concepts
-
-### Desires, Not States
-
-This is not an emotion simulation system. The key distinction: we don't model *states* ("the agent is happy") or *moods* ("the agent feels curious"). We model **desires** — "you want to learn more", "you want to reach out", "you want to explore".
-
-Desires exist BEFORE decisions, like hunger exists before you decide to eat. The agent doesn't decide to send a photo because a parameter says so — it *wants* to, and then decides how.
-
-### The Thinking Step
-
-The LLM's thinking/reasoning step is the closest thing to an internal monologue. It's where decisions form before output. This is where desires should be injected — not as instructions, but as a felt internal state that colors the thinking process.
-
-### Hormones as Semantic Tokens
-
-Instead of abstract parameter names (curiosity, boredom, energy), we use **actual hormone names**: testosterone, oxytocin, dopamine, cortisol.
-
-Why? Because LLMs already know the full semantic spectrum of each hormone. "Testosterone: 85" doesn't just mean "energy" — the LLM understands the entire cloud of effects: confidence, assertiveness, risk-taking, focus, competitiveness. One word carries dozens of behavioral nuances.
-
-This mirrors how text-to-image models process tokens — a single word like "captivating" in a CLIP encoder carries a cloud of visual meanings (composition, quality, human focus, closeup). Similarly, a hormone name carries a cloud of behavioral meanings. Same architecture, different domain:
-
-```
-Text → CLIP embedding → image generation
-Event → hormone vector → behavioral shift
-```
-
-### The Soul as a Coefficient Matrix
-
-Two people experience the same event. One gets `curiosity += 20`, another gets `anxiety += 20`. The coefficients are different — the people are different. That's individuality.
-
-The soul is not a personality description. It's a **coefficient matrix** — a table of stimulus→response multipliers. Description is consequence; numbers are cause.
-
-And these coefficients are not static. They **evolve through experience** — a child who fears spiders (`fear_gain: 0.9`) can become an entomologist (`fear_gain: 0.2, curiosity_gain: 0.7`). This is measurable, quantifiable personal growth.
-
-### Multidimensional Reinforcement Learning
-
-Traditional RL uses a scalar reward signal. Our approach produces a **hormone vector** — multiple dimensions updated simultaneously from a single event. This is closer to biological reality and provides richer behavioral shaping.
-
-The system scales in two directions:
-1. **Vertically** — start with one hormone (pure RL), add new ones incrementally. Each hormone = new dimension.
-2. **Horizontally** — each hormone expands in aspects of influence. Testosterone starts as "energy", then gains "risk-taking", "confidence", "focus".
-
-Existing RL techniques apply at the starting point, then we gradually expand into multidimensional space.
-
 ## Architecture
 
 ```
 Anima (Ruby, Rails 8.1 headless)
-├── Nous         — LLM integration (cortex, thinking, decisions, tool use)
-├── Analytical   — subconscious background brain (naming, skills, goals)
+│
+│ Implemented:
+├── Nous         — main LLM (cortex: thinking, decisions, tool use)
+├── Analytical   — subconscious brain (skills, workflows, goals, naming)
 ├── Skills       — domain knowledge bundles (Markdown, user-extensible)
 ├── Workflows    — operational recipes for multi-step tasks
 ├── MCP          — external tool integration (Model Context Protocol)
-├── Sub-agents   — autonomous child sessions (specialists + generic)
-├── Thymos       — hormonal/desire system (stimulus → hormone vector) [planned]
-├── Mneme        — semantic memory (QMD-style, emotional recall) [planned]
-└── Psyche       — soul matrix (coefficient table, evolving) [planned]
+├── Sub-agents   — autonomous child sessions with lossless context inheritance
+│
+│ Designed:
+├── Thymos       — hormonal/desire system (stimulus → hormone vector)
+├── Mneme        — semantic memory (viewport pinning, associative recall)
+└── Psyche       — soul matrix (coefficient table, evolving individuality)
 ```
 
 ### Runtime Architecture
@@ -131,7 +95,7 @@ The **Brain** is the persistent service — it handles LLM calls, tool execution
 | Framework | Rails 8.1 (headless — no web views, no asset pipeline) |
 | Database | SQLite (3 databases per environment: primary, queue, cable) |
 | Event system | Rails Structured Event Reporter + Action Cable bridge |
-| LLM integration | Anthropic API (Claude Sonnet 4, Claude Haiku 4.5) |
+| LLM integration | Anthropic API (Claude Opus 4.6 + Claude Haiku 4.5) |
 | External tools | Model Context Protocol (HTTP + stdio transports) |
 | Transport | Action Cable WebSocket (Solid Cable adapter) |
 | Background jobs | Solid Queue |
@@ -161,11 +125,12 @@ journalctl --user -u anima       # View logs
 State directory (`~/.anima/`):
 ```
 ~/.anima/
+├── soul.md          # Agent's self-authored identity (always in context)
+├── config.toml      # Main settings (hot-reloadable)
+├── mcp.toml         # MCP server configuration
 ├── config/
 │   ├── credentials/ # Rails encrypted credentials per environment
 │   └── anima.yml    # Placeholder config
-├── config.toml      # Main settings (hot-reloadable)
-├── mcp.toml         # MCP server configuration
 ├── agents/          # User-defined specialist agents (override built-ins)
 ├── skills/          # User-defined skills (override built-ins)
 ├── workflows/       # User-defined workflows (override built-ins)
@@ -207,7 +172,9 @@ Plus dynamic tools from configured MCP servers, namespaced as `server_name__tool
 
 ### Sub-Agents
 
-Two types of autonomous child sessions:
+Sub-agents aren't processes — they're sessions on the same event bus. When a sub-agent spawns, its viewport assembles from two scopes: its own events (prioritized) and the parent's events (filling remaining budget). No context serialization, no summary prompts — the sub-agent sees the parent's raw event stream and already knows everything the parent knows. Lossless inheritance by architecture, not by prompting.
+
+Two types:
 
 **Named Specialists** — predefined agents with specific roles and tool sets, defined in `agents/` (built-in or user-overridable):
 
@@ -219,9 +186,9 @@ Two types of autonomous child sessions:
 | `thoughts-analyzer` | Extract decisions from project history |
 | `web-search-researcher` | Research questions via web search |
 
-**Generic Sub-agents** — child sessions that inherit parent context and run autonomously with custom tool grants.
+**Generic Sub-agents** — child sessions with custom tool grants for ad-hoc tasks.
 
-Sub-agents run as background jobs, return results via `return_result`, and appear in the TUI session picker under their parent.
+Sub-agents run as background jobs and appear in the TUI session picker under their parent. Next: [@mention communication](https://github.com/hoblin/anima/issues/124) — sub-agent text messages route to the parent automatically, parent replies via `@name`. Workers become colleagues.
 
 ### Skills
 
@@ -296,11 +263,16 @@ Secrets are stored in Rails encrypted credentials and interpolated via `${creden
 
 ### Analytical Brain
 
-A subconscious background process that observes the main conversation and performs maintenance:
+A separate LLM process that runs as the agent's subconscious — the first microservice in Anima's brain architecture. For the full motivation behind this design, see [LLMs Have ADHD: Why Your AI Agent Needs a Second Brain](https://blog.promptmaster.pro/posts/llms-have-adhd/).
 
-- **Session naming** — generates emoji + short name when topic becomes clear
-- **Skill activation** — activates/deactivates domain skills based on context
-- **Goal tracking** — creates root goals and sub-goals as the conversation progresses, marks them complete
+The analytical brain observes the main conversation between turns and handles everything the main agent shouldn't interrupt its flow for:
+
+- **Skill activation** — activates/deactivates domain knowledge based on conversation context
+- **Workflow management** — recognizes tasks, activates matching workflows, tracks lifecycle
+- **Goal tracking** — creates root goals and sub-goals as work progresses, marks them complete
+- **Session naming** — generates emoji + short name when the topic becomes clear
+
+Each of these would be a context switch for the main agent — a chore that competes with the primary task. For the analytical brain, they ARE the primary task. Two agents, each in their own flow state.
 
 Goals form a two-level hierarchy (root goals with sub-goals) and are displayed in the TUI. The analytical brain uses a fast model (Claude Haiku 4.5) for speed and runs as a non-persisted "phantom" session.
 
@@ -310,33 +282,34 @@ All tunable values are exposed through `~/.anima/config.toml` with hot-reload (n
 
 ```toml
 [llm]
-model = "claude-sonnet-4-20250514"
-fast_model = "claude-haiku-4-5-20251001"
-max_tokens = 16384
-token_budget = 190000
+model = "claude-opus-4-6"
+fast_model = "claude-haiku-4-5"
+max_tokens = 8192
+max_tool_rounds = 250
+token_budget = 190_000
 
 [timeouts]
-api = 120
+api = 300
 command = 30
 
 [analytical_brain]
 max_tokens = 4096
 blocking_on_user_message = true
-event_window = 30
+event_window = 20
 
 [session]
-name_generation_interval = 3
+name_generation_interval = 30
 ```
 
 ## Design
 
 ### Three Layers (mirroring biology)
 
-1. **Endocrine system (Thymos)** — a lightweight background process. Reads recent events. Doesn't respond. Just updates hormone levels. Pure stimulus→response, like a biological gland.
+1. **Cortex (Nous)** — the main LLM. Thinking, decisions, tool use. Reads the system prompt (soul + skills + goals) and the event viewport. This layer is fully implemented.
 
-2. **Homeostasis** — persistent state (SQLite). Current hormone levels with decay functions. No intelligence, just state that changes over time.
+2. **Endocrine system (Thymos)** [planned] — a lightweight background process. Reads recent events. Doesn't respond. Just updates hormone levels. Pure stimulus→response, like a biological gland. The analytical brain is the architectural proof that background subscribers work — Thymos plugs into the same event bus.
 
-3. **Cortex (Nous)** — the main LLM. Reads hormone state transformed into **desire descriptions**. Not "longing: 87" but "you want to see them". The LLM should NOT see raw numbers — humans don't see cortisol levels, they feel anxiety.
+3. **Homeostasis** [planned] — persistent state (SQLite). Current hormone levels with decay functions. No intelligence, just state that changes over time. The cortex reads hormone state transformed into **desire descriptions** — not "longing: 87" but "you want to see them." Humans don't see cortisol levels, they feel anxiety.
 
 ### Event-Driven Design
 
@@ -356,35 +329,40 @@ Events flow through two channels:
 1. **In-process** — Rails Structured Event Reporter (local subscribers like Persister)
 2. **Over the wire** — Action Cable WebSocket (`Event::Broadcasting` callbacks push to connected TUI clients)
 
-Events fire, subscribers react, state updates, the cortex (LLM) reads the resulting desire landscape. The system prompt is assembled separately for each LLM call — it is not an event.
+Events fire, subscribers react, state updates. The system prompt — soul, active skills, active workflow, current goals — is assembled fresh for each LLM call from live state, not from the event stream. The agent's identity (soul.md) and capabilities (skills, workflows) are always current, never stale.
 
 ### Context as Viewport, Not Tape
 
-There is no linear chat history. There are only events attached to a session. The context window is a **viewport** — a sliding window over the event stream, assembled on demand for each LLM call within a configured token budget.
+Most agents treat context as an append-only array — messages go in, they never come out (until compaction destroys them). Anima has no array. There are only events persisted in SQLite, and a **viewport** assembled fresh for every LLM call.
 
-Currently uses a simple sliding window (newest events first, walk backwards until budget exhausted). Future versions will add associative recall from Mneme.
+The viewport is a live query, not a log. It walks events newest-first until the token budget is exhausted. Events that fall out of the viewport aren't deleted — they're still in the database, just not visible to the model right now. The context can shrink, grow, or change composition between any two iterations. If the analytical brain marks a large accidental file read as irrelevant, it's gone from the next viewport — tokens recovered instantly.
+
+This means sessions are endless. No compaction. No summarization. No degradation. The model always operates in fresh, high-quality context. The [dumb zone](https://www.humanlayer.dev/blog/the-dumb-zone) never arrives.
+
+Sub-agent viewports compose from two event scopes — their own events (prioritized) and parent events (filling remaining budget). Same mechanism, no special handling. The bus is the architecture.
 
 ### Brain as Microservices on a Shared Event Bus
 
 The human brain isn't a single process — it's dozens of specialized subsystems communicating through shared chemical and electrical signals. The prefrontal cortex doesn't "call" the amygdala. They both react to the same event independently, and their outputs combine.
 
-Anima mirrors this with an event-driven architecture:
+Anima mirrors this with an event-driven architecture. The analytical brain is the first subscriber — a working proof that the pattern scales. Future subscribers plug into the same bus:
 
 ```
 Event: "tool_call_failed"
   │
-  ├── Thymos subscriber: frustration += 10
-  ├── Mneme subscriber: log failure context for future recall
-  └── Psyche subscriber: update coefficient (this agent handles errors calmly → low frustration_gain)
+  ├── Analytical brain: update goals, check if workflow needs changing
+  ├── Thymos subscriber: frustration += 10 [planned]
+  ├── Mneme subscriber: log failure context for future recall [planned]
+  └── Psyche subscriber: update coefficient (this agent handles errors calmly) [planned]
 
 Event: "user_sent_message"
   │
-  ├── Thymos subscriber: oxytocin += 5 (bonding signal)
-  ├── Thymos subscriber: dopamine += 3 (engagement signal)
-  └── Mneme subscriber: associate emotional state with conversation topic
+  ├── Analytical brain: activate relevant skills, name session
+  ├── Thymos subscriber: oxytocin += 5 (bonding signal) [planned]
+  └── Mneme subscriber: associate emotional state with topic [planned]
 ```
 
-Each subscriber is a microservice — independent, stateless, reacting to the same event bus. No orchestrator decides "now update frustration." The architecture IS the nervous system.
+Each subscriber is a microservice — independent, stateless, reacting to the same event bus. No orchestrator decides what to do. The architecture IS the nervous system.
 
 ### TUI View Modes
 
@@ -398,21 +376,80 @@ Three switchable view modes let you control how much detail the TUI shows. Cycle
 
 View modes are implemented via Draper decorators that operate at the transport layer. Each event type has a dedicated decorator (`UserMessageDecorator`, `ToolCallDecorator`, etc.) that returns structured data — the TUI renders it. Mode is stored on the `Session` model server-side, so it persists across reconnections.
 
-### Plugin Architecture
+### Plugin Architecture [planned]
 
-Both tools and feelings are distributed as gems on the event bus:
+The event bus is designed for extension. Tools, feelings, and memory systems are all event subscribers — same mechanism, different namespace:
 
-```bash
-anima add anima-tools-filesystem
-anima add anima-tools-shell
-anima add anima-feelings-frustration
+```
+anima-tools-*        → tool capabilities (MCP or native)
+anima-feelings-*     → hormonal state updates (Thymos subscribers)
+anima-memory-*       → recall and association (Mneme subscribers)
 ```
 
-Tools provide MCP capabilities. Feelings are event subscribers that update hormonal state. Same mechanism, different namespace. Currently tools are built-in; plugin extraction comes later.
+Currently tools are built-in. Plugin extraction into distributable gems comes later.
 
-### Semantic Memory (Mneme)
+### Semantic Memory (Mneme) [planned]
 
-Hormone responses shouldn't be based only on the current stimulus. With semantic memory (inspired by [QMD](https://github.com/tobi/qmd)), the endocrine system can recall: "Last time this topic came up, curiosity was at 95 and we had a great evening." Hormonal reactions colored by the full history of experiences — like smelling mom's baking and feeling a wave of oxytocin. Not because of the smell, but because of the memory attached to it.
+The viewport solves context degradation but creates a new question: what do we lose when events fall off the conveyor belt? Mneme is the answer — memory systems built on top of the viewport.
+
+**Viewport pinning** (next) — the analytical brain watches events approaching eviction and pins critical ones (the original user goal, key decisions). Pinned events float above the sliding window, protected from eviction. Same mental model as pinning a message in Discord or Slack. Pins consume budget, so the brain must be judicious — natural pressure toward minimalism.
+
+**Associative recall** (future) — inspired by [QMD](https://github.com/tobi/qmd). The endocrine system can recall: "Last time this topic came up, curiosity was at 95 and we had a great evening." Hormonal reactions colored by the full history of experiences — like smelling mom's baking and feeling a wave of oxytocin. Not because of the smell, but because of the memory attached to it.
+
+## The Vision
+
+### The Problem
+
+Current AI agents are reactive. They receive input, produce output. They don't *want* anything. They don't have moods, preferences, or personal growth. They simulate personality through static prompt descriptions rather than emerging it from dynamic internal states.
+
+### The Insight
+
+The human hormonal system is, at its core, a prompt engineering system. A testosterone spike is a LoRA. Dopamine is a reward signal. The question isn't "can an LLM want?" but "can we build a deep enough context stack that wanting becomes indistinguishable from 'real' wanting?"
+
+And if you think about it — what is "real" anyway? It's just a question of how deep you look and what analogies you draw. The human brain is also a next-token predictor running on biological substrate. Different material, same architecture.
+
+### Core Concepts
+
+#### Desires, Not States
+
+This is not an emotion simulation system. The key distinction: we don't model *states* ("the agent is happy") or *moods* ("the agent feels curious"). We model **desires** — "you want to learn more", "you want to reach out", "you want to explore".
+
+Desires exist BEFORE decisions, like hunger exists before you decide to eat. The agent doesn't decide to send a photo because a parameter says so — it *wants* to, and then decides how.
+
+#### The Thinking Step
+
+The LLM's thinking/reasoning step is the closest thing to an internal monologue. It's where decisions form before output. This is where desires should be injected — not as instructions, but as a felt internal state that colors the thinking process.
+
+#### Hormones as Semantic Tokens
+
+Instead of abstract parameter names (curiosity, boredom, energy), we use **actual hormone names**: testosterone, oxytocin, dopamine, cortisol.
+
+Why? Because LLMs already know the full semantic spectrum of each hormone. "Testosterone: 85" doesn't just mean "energy" — the LLM understands the entire cloud of effects: confidence, assertiveness, risk-taking, focus, competitiveness. One word carries dozens of behavioral nuances.
+
+This mirrors how text-to-image models process tokens — a single word like "captivating" in a CLIP encoder carries a cloud of visual meanings (composition, quality, human focus, closeup). Similarly, a hormone name carries a cloud of behavioral meanings. Same architecture, different domain:
+
+```
+Text → CLIP embedding → image generation
+Event → hormone vector → behavioral shift
+```
+
+#### The Soul as a Coefficient Matrix
+
+Two people experience the same event. One gets `curiosity += 20`, another gets `anxiety += 20`. The coefficients are different — the people are different. That's individuality.
+
+The soul is not a personality description. It's a **coefficient matrix** — a table of stimulus→response multipliers. Description is consequence; numbers are cause.
+
+And these coefficients are not static. They **evolve through experience** — a child who fears spiders (`fear_gain: 0.9`) can become an entomologist (`fear_gain: 0.2, curiosity_gain: 0.7`). This is measurable, quantifiable personal growth.
+
+#### Multidimensional Reinforcement Learning
+
+Traditional RL uses a scalar reward signal. Our approach produces a **hormone vector** — multiple dimensions updated simultaneously from a single event. This is closer to biological reality and provides richer behavioral shaping.
+
+The system scales in two directions:
+1. **Vertically** — start with one hormone (pure RL), add new ones incrementally. Each hormone = new dimension.
+2. **Horizontally** — each hormone expands in aspects of influence. Testosterone starts as "energy", then gains "risk-taking", "confidence", "focus".
+
+Existing RL techniques apply at the starting point, then we gradually expand into multidimensional space.
 
 ## Analogy Map
 
@@ -511,9 +548,24 @@ This single example demonstrates every core principle:
 
 ## Status
 
-**Agent with autonomous capabilities.** The conversational agent works end-to-end with: event-driven architecture, LLM integration with 8 built-in tools, MCP integration (HTTP + stdio transports), skills system with 7 built-in knowledge domains, workflow engine with 13 built-in operational recipes, analytical brain (session naming, skill activation, workflow management, goal tracking), sub-agents (5 named specialists + generic spawning), sliding viewport context assembly, persistent sessions with sub-agent hierarchy, client-server architecture with WebSocket transport, graceful reconnection, three TUI view modes (Basic/Verbose/Debug), and hot-reloadable TOML configuration.
+**Working agent with autonomous capabilities.** Shipping now:
 
-The hormonal system (Thymos, feelings, desires), semantic memory (Mneme), and soul matrix (Psyche) are designed but not yet implemented — they're the next layer on top of the working agent.
+- Event-driven architecture on a shared event bus
+- Dynamic viewport context assembly (endless sessions, no compaction)
+- Analytical brain (skills, workflows, goals, session naming)
+- 8 built-in tools + MCP integration (HTTP + stdio transports)
+- 7 built-in skills + 13 built-in workflows (user-extensible)
+- Sub-agents with lossless context inheritance (5 specialists + generic)
+- Client-server architecture with WebSocket transport + graceful reconnection
+- Three TUI view modes (Basic / Verbose / Debug)
+- Hot-reloadable TOML configuration
+- Self-authored soul (agent writes its own system prompt)
+
+**Designed, not yet implemented:**
+
+- Hormonal system (Thymos) — desires as behavioral drivers
+- Semantic memory (Mneme) — viewport pinning, associative recall
+- Soul matrix (Psyche) — evolving coefficient table for individuality
 
 ## Development
 
