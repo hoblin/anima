@@ -86,7 +86,7 @@ module Anima
         [llm]
 
         # Primary model for conversations.
-        model = "claude-sonnet-4-20250514"
+        model = "claude-opus-4-6"
 
         # Lightweight model for fast tasks (e.g. session naming).
         fast_model = "claude-haiku-4-5"
