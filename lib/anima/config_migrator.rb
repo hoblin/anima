@@ -20,13 +20,19 @@ module Anima
     ANIMA_HOME = File.expand_path("~/.anima")
     TEMPLATE_PATH = File.expand_path("../../templates/config.toml", __dir__).freeze
 
+    # A single config key that was added during migration.
+    # @!attribute [r] section [String] TOML section name
+    # @!attribute [r] key [String] key name within the section
+    # @!attribute [r] value [Object] default value from the template
     Addition = Data.define(:section, :key, :value)
+
+    # Outcome of a migration run.
+    # @!attribute [r] status [Symbol] :not_found, :up_to_date, or :updated
+    # @!attribute [r] additions [Array<Addition>] keys that were added
     Result = Data.define(:status, :additions)
 
     # Section separator pattern used in the template (e.g. "# ─── LLM ───...").
     SEPARATOR_PATTERN = /^# ─── /
-
-    attr_reader :config_path
 
     # @param config_path [String] path to the user's config.toml
     # @param template_path [String] path to the default config template
@@ -60,7 +66,7 @@ module Anima
 
     # Replace template placeholders with actual paths.
     def resolve_template
-      File.read(@template_path.to_s).gsub("{{ANIMA_HOME}}", @anima_home)
+      File.read(@template_path.to_s).gsub("{{ANIMA_HOME}}") { @anima_home }
     end
 
     # Compare user config against template defaults.

@@ -1,7 +1,7 @@
 ## [Unreleased]
 
 ### Added
-- `anima update` command — upgrades the gem and merges new config keys into existing `config.toml` without overwriting user-customized values; `--migrate-only` flag to skip gem upgrade (#155)
+- `anima update` command — upgrades the gem and merges new config keys into existing `config.toml` without overwriting user-customized values — `--migrate-only` flag to skip gem upgrade (#155)
 - Directory-based skills format — `skills/skill-name/SKILL.md` with optional `references/` and `examples/` subdirectories alongside flat `.md` files (#152)
 - Import 6 marketplace skills: activerecord, rspec, draper-decorators, dragonruby, ratatui-ruby, mcp-server (#152)
 - Tmux-style focus switching — `Ctrl+A ↑` enters chat scrolling mode with yellow border, `Escape` returns to input; arrow keys and Page Up/Down scroll chat, mouse scroll works in both modes (#87)

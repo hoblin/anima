@@ -76,7 +76,7 @@ module Anima
       return if config_path.exist?
 
       template = File.read(File.join(TEMPLATE_DIR, "config.toml"))
-      config_path.write(template.gsub("{{ANIMA_HOME}}", anima_home.to_s))
+      config_path.write(template.gsub("{{ANIMA_HOME}}") { anima_home.to_s })
       say "  created #{config_path}"
     end
 

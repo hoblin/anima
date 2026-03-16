@@ -24,7 +24,7 @@ RSpec.describe Anima::ConfigMigrator do
   end
 
   def full_default_config
-    File.read(template_path).gsub("{{ANIMA_HOME}}", anima_home)
+    File.read(template_path).gsub("{{ANIMA_HOME}}") { anima_home }
   end
 
   describe "#run" do
