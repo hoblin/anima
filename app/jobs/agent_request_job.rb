@@ -64,6 +64,7 @@ class AgentRequestJob < ApplicationJob
     session.schedule_analytical_brain!
   ensure
     release_processing(session_id)
+    clear_interrupt(session_id)
     agent_loop&.finalize
   end
 
@@ -94,6 +95,11 @@ class AgentRequestJob < ApplicationJob
   # Clears the processing flag so the session can accept new jobs.
   def release_processing(session_id)
     Session.where(id: session_id).update_all(processing: false)
+  end
+
+  # Clears any stale interrupt flag left by user Escape presses.
+  def clear_interrupt(session_id)
+    Session.where(id: session_id, interrupt_requested: true).update_all(interrupt_requested: false)
   end
 
   # Emits a system message before each retry so the user sees

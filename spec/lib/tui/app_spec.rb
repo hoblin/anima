@@ -510,6 +510,53 @@ RSpec.describe TUI::App do
         expect(chat).not_to have_received(:switch_session)
         expect(chat.chat_focused).to be false
       end
+
+      it "sends interrupt when loading and input is empty" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.instance_variable_set(:@loading, true)
+        allow(chat).to receive(:interrupt_execution)
+        allow(chat).to receive(:switch_session)
+
+        app.send(:handle_event, key_event(code: "esc", esc?: true))
+
+        expect(chat).to have_received(:interrupt_execution)
+        expect(chat).not_to have_received(:switch_session)
+      end
+
+      it "clears input when input is not empty" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.instance_variable_get(:@input_buffer).insert("some text")
+        allow(chat).to receive(:clear_input).and_call_original
+        allow(chat).to receive(:switch_session)
+
+        app.send(:handle_event, key_event(code: "esc", esc?: true))
+
+        expect(chat).to have_received(:clear_input)
+        expect(chat.input).to eq("")
+      end
+
+      it "prefers interrupt over clear input when loading with empty input" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.instance_variable_set(:@loading, true)
+        allow(chat).to receive(:interrupt_execution)
+
+        app.send(:handle_event, key_event(code: "esc", esc?: true))
+
+        expect(chat).to have_received(:interrupt_execution)
+      end
+
+      it "clears input even when loading if input is not empty" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.instance_variable_set(:@loading, true)
+        chat.instance_variable_get(:@input_buffer).insert("text")
+        allow(chat).to receive(:interrupt_execution)
+        allow(chat).to receive(:clear_input).and_call_original
+
+        app.send(:handle_event, key_event(code: "esc", esc?: true))
+
+        expect(chat).not_to have_received(:interrupt_execution)
+        expect(chat).to have_received(:clear_input)
+      end
     end
 
     describe "view mode picker" do

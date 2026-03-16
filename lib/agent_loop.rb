@@ -65,7 +65,11 @@ class AgentLoop
   # propagate — designed for callers like {AgentRequestJob} that handle
   # retries and need errors to bubble up.
   #
-  # @return [String] the agent's response text
+  # When the user interrupts, +chat_with_tools+ returns nil. Tool results
+  # are already persisted; no agent message is emitted so the conversation
+  # ends at the interrupted tool result.
+  #
+  # @return [String, nil] the agent's response text, or nil when interrupted
   # @raise [Providers::Anthropic::TransientError] on retryable network/server errors
   # @raise [Providers::Anthropic::AuthenticationError] on auth failures
   def run
@@ -82,6 +86,8 @@ class AgentLoop
     options[:system] = prompt if prompt
 
     response = @client.chat_with_tools(messages, registry: @registry, session_id: @session.id, **options)
+    return unless response
+
     Events::Bus.emit(Events::AgentMessage.new(content: response, session_id: @session.id))
     response
   end

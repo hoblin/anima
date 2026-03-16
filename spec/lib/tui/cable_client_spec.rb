@@ -191,6 +191,23 @@ RSpec.describe TUI::CableClient do
     end
   end
 
+  describe "#interrupt" do
+    let(:ws) { double("WebSocket") }
+
+    before { client.instance_variable_set(:@ws, ws) }
+
+    it "sends an interrupt_execution action" do
+      sent = nil
+      allow(ws).to receive(:send) { |msg| sent = JSON.parse(msg) }
+
+      client.interrupt
+
+      expect(sent["command"]).to eq("message")
+      data = JSON.parse(sent["data"])
+      expect(data["action"]).to eq("interrupt_execution")
+    end
+  end
+
   describe "#switch_session" do
     let(:ws) { double("WebSocket") }
 

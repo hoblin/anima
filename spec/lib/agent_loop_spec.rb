@@ -184,6 +184,25 @@ RSpec.describe AgentLoop do
       Events::Bus.unsubscribe(collector)
     end
 
+    context "when interrupted by user" do
+      before do
+        session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+        allow(client).to receive(:chat_with_tools).and_return(nil)
+      end
+
+      it "returns nil without emitting an agent message" do
+        collector = Events::Subscribers::MessageCollector.new
+        Events::Bus.subscribe(collector)
+
+        result = agent_loop.run
+
+        expect(result).to be_nil
+        agent_messages = collector.messages.select { |m| m[:role] == "assistant" }
+        expect(agent_messages).to be_empty
+        Events::Bus.unsubscribe(collector)
+      end
+    end
+
     context "transient errors propagate for retry logic" do
       it "raises TransientError" do
         allow(client).to receive(:chat_with_tools)
