@@ -391,6 +391,7 @@ module TUI
         return nil
       end
 
+      # Escape key priority: unfocus chat > interrupt tools > clear input > parent session
       if event.esc?
         chat = @screens[:chat]
         if chat.chat_focused

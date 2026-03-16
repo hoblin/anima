@@ -612,7 +612,7 @@ RSpec.describe LLM::Client do
         tool_responses = events.select { |e| e[:payload][:type] == "tool_response" }
         expect(tool_responses.size).to eq(2)
         tool_responses.each do |resp|
-          expect(resp[:payload][:content]).to eq("Stopped by user")
+          expect(resp[:payload][:content]).to eq(LLM::Client::INTERRUPT_MESSAGE)
           expect(resp[:payload][:success]).to be false
         end
       ensure
@@ -662,7 +662,7 @@ RSpec.describe LLM::Client do
         expect(tool_responses.size).to eq(2)
         expect(tool_responses[0][:payload][:content]).to eq("first result")
         expect(tool_responses[0][:payload][:success]).to be true
-        expect(tool_responses[1][:payload][:content]).to eq("Stopped by user")
+        expect(tool_responses[1][:payload][:content]).to eq(LLM::Client::INTERRUPT_MESSAGE)
         expect(tool_responses[1][:payload][:success]).to be false
       ensure
         Events::Bus.unsubscribe(subscriber)
@@ -675,6 +675,41 @@ RSpec.describe LLM::Client do
 
         # Only one API call should have been made (the initial one that returned tool_use)
         expect(WebMock).to have_requested(:post, "https://api.anthropic.com/v1/messages").once
+      end
+
+      context "with a single tool_use in the response" do
+        let(:tool_use_response) do
+          {
+            id: "msg_tool",
+            type: "message",
+            role: "assistant",
+            content: [
+              {type: "tool_use", id: "toolu_single", name: "web_get", input: {url: "https://only.com"}}
+            ],
+            model: "claude-sonnet-4-20250514",
+            stop_reason: "tool_use",
+            usage: {input_tokens: 20, output_tokens: 30}
+          }
+        end
+
+        it "interrupts the single tool without executing it" do
+          session.update_column(:interrupt_requested, true)
+
+          events = []
+          subscriber = double("sub")
+          allow(subscriber).to receive(:emit) { |e| events << e }
+          Events::Bus.subscribe(subscriber)
+
+          result = client.chat_with_tools(messages, registry: registry, session_id: session.id)
+
+          expect(result).to be_nil
+          tool_responses = events.select { |e| e[:payload][:type] == "tool_response" }
+          expect(tool_responses.size).to eq(1)
+          expect(tool_responses[0][:payload][:content]).to eq(LLM::Client::INTERRUPT_MESSAGE)
+          expect(tool_responses[0][:payload][:success]).to be false
+        ensure
+          Events::Bus.unsubscribe(subscriber)
+        end
       end
     end
 

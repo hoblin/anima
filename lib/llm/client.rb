@@ -15,6 +15,9 @@ module LLM
   #   registry.register(Tools::WebGet)
   #   client.chat_with_tools(messages, registry: registry, session_id: session.id)
   class Client
+    # Synthetic tool_result message when a tool is skipped due to user interrupt.
+    INTERRUPT_MESSAGE = "Stopped by user"
+
     # @return [Providers::Anthropic] the underlying API provider
     attr_reader :provider
 
@@ -131,8 +134,8 @@ module LLM
 
     # Executes all tool_use blocks from a response, emitting events for each.
     # Checks for user interrupt between tools — remaining tools receive
-    # synthetic "Stopped by user" results to satisfy the API's tool_use/tool_result
-    # pairing requirement.
+    # synthetic results to satisfy the Anthropic API's tool_use/tool_result
+    # pairing requirement (a missing result permanently breaks the conversation).
     #
     # @param response [Hash] Anthropic API response with tool_use content blocks
     # @param registry [Tools::Registry] tool registry for dispatch
@@ -144,7 +147,8 @@ module LLM
 
       tool_uses.each_with_index do |tool_use, index|
         if interrupted?(session_id)
-          results.concat(interrupt_remaining_tools(tool_uses[index..], session_id))
+          remaining = tool_uses[index..]
+          results.concat(interrupt_remaining_tools(remaining, session_id)) if remaining&.any?
           break
         end
         results << execute_single_tool(tool_use, registry, session_id)
@@ -162,9 +166,10 @@ module LLM
       tool_uses.map { |tool_use| interrupt_tool(tool_use, session_id) }
     end
 
-    # Executes a single tool and always returns a tool_result — even if
-    # the tool raises. The LLM requires every tool_use to have a matching
-    # tool_result; a missing result breaks the conversation permanently.
+    # Executes a single tool and always returns a tool_result — even if the
+    # tool raises. Per the Anthropic tool-use protocol, every tool_use must
+    # have a matching tool_result; a missing result permanently corrupts the
+    # conversation history and breaks the session.
     def execute_single_tool(tool_use, registry, session_id)
       name = tool_use["name"]
       id = tool_use["id"]
@@ -209,24 +214,32 @@ module LLM
       input = tool_use["input"] || {}
 
       Events::Bus.emit(Events::ToolCall.new(
-        content: "Calling #{name}", tool_name: name,
+        content: "Skipped #{name} (interrupted)", tool_name: name,
         tool_input: input, tool_use_id: id, session_id: session_id
       ))
 
       Events::Bus.emit(Events::ToolResponse.new(
-        content: "Stopped by user", tool_name: name, tool_use_id: id,
+        content: INTERRUPT_MESSAGE, tool_name: name, tool_use_id: id,
         success: false, session_id: session_id
       ))
 
-      {type: "tool_result", tool_use_id: id, content: "Stopped by user"}
+      {type: "tool_result", tool_use_id: id, content: INTERRUPT_MESSAGE}
     end
 
+    # Checks the database for a pending interrupt flag on the session.
+    #
+    # @param session_id [Integer, String] session to check
     # @return [Boolean] whether the session has a pending interrupt request
     def interrupted?(session_id)
       Session.where(id: session_id, interrupt_requested: true).exists?
     end
 
-    # Clears the interrupt flag after the loop has stopped.
+    # Clears the interrupt flag so the agent loop can continue with pending
+    # messages. Also cleared by {AgentRequestJob#clear_interrupt} as a safety
+    # net for unexpected exits.
+    #
+    # @param session_id [Integer, String] session to clear
+    # @return [void]
     def clear_interrupt!(session_id)
       Session.where(id: session_id).update_all(interrupt_requested: false)
     end

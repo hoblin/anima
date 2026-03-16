@@ -87,14 +87,14 @@ class SessionChannel < ApplicationCable::Channel
   # receive synthetic "Stopped by user" results to satisfy the API's
   # tool_use/tool_result pairing requirement.
   #
+  # Atomic: a single UPDATE with WHERE avoids the read-then-write race where
+  # the session could finish processing between the SELECT and UPDATE.
   # No-op if the session isn't currently processing.
   #
   # @param _data [Hash] unused
   def interrupt_execution(_data)
-    session = Session.find_by(id: @current_session_id)
-    return unless session&.processing?
-
-    session.update_column(:interrupt_requested, true)
+    Session.where(id: @current_session_id, processing: true)
+      .update_all(interrupt_requested: true)
   end
 
   # Returns recent root sessions with nested child metadata for session picker UI.

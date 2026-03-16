@@ -97,7 +97,9 @@ class AgentRequestJob < ApplicationJob
     Session.where(id: session_id).update_all(processing: false)
   end
 
-  # Clears any stale interrupt flag left by user Escape presses.
+  # Safety-net clearing of the interrupt flag. The primary clear happens in
+  # {LLM::Client#clear_interrupt!} after handling the interrupt; this ensures
+  # the flag is reset even if the job crashes before reaching that code path.
   def clear_interrupt(session_id)
     Session.where(id: session_id, interrupt_requested: true).update_all(interrupt_requested: false)
   end
