@@ -91,8 +91,9 @@ class EventDecorator < ApplicationDecorator
 
   # Dispatches to the render method for the given view mode.
   #
-  # @param mode [String] one of "basic", "verbose", "debug"
-  # @return [Hash, nil] structured event data, or nil to hide the event
+  # @param mode [String] one of "basic", "verbose", "debug", "brain"
+  # @return [Hash, String, nil] structured event data (basic/verbose/debug),
+  #   plain string (brain), or nil to hide the event
   # @raise [ArgumentError] if the mode is not a valid view mode
   def render(mode)
     method = RENDER_DISPATCH[mode]
