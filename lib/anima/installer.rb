@@ -95,7 +95,7 @@ module Anima
         max_tokens = 8192
 
         # Maximum consecutive tool execution rounds per request.
-        max_tool_rounds = 25
+        max_tool_rounds = 500
 
         # Context window budget — tokens reserved for conversation history.
         # Set this based on your model's context window minus system prompt.
