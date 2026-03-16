@@ -574,7 +574,7 @@ module TUI
 
         meta = []
         meta << "[#{format_ns_timestamp(data["timestamp"])}]" if data["timestamp"]
-        header = meta.empty? ? "#{THOUGHT_BUBBLE}" : "#{meta.join(" ")} #{THOUGHT_BUBBLE}"
+        header = meta.empty? ? THOUGHT_BUBBLE : "#{meta.join(" ")} #{THOUGHT_BUBBLE}"
 
         content_lines = data["content"].to_s.split("\n", -1)
         lines = [tui.line(spans: [tui.span(content: "#{header} #{content_lines.first}", style: style)])]
