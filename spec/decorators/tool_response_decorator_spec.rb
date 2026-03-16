@@ -22,6 +22,17 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
 
       expect(decorator.render_basic).to be_nil
     end
+
+    it "returns nil for think tool responses" do
+      event = session.events.create!(
+        event_type: "tool_response",
+        payload: {"content" => "OK", "tool_name" => "think", "success" => true},
+        timestamp: 1
+      )
+      decorator = EventDecorator.for(event)
+
+      expect(decorator.render_basic).to be_nil
+    end
   end
 
   describe "#render_verbose" do
@@ -122,6 +133,30 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
         role: :tool_response, content: "success output", success: true, timestamp: nil
       })
     end
+
+    context "think tool" do
+      it "returns nil for think responses (noise suppression)" do
+        event = session.events.create!(
+          event_type: "tool_response",
+          payload: {"content" => "OK", "tool_name" => "think", "success" => true},
+          timestamp: 1
+        )
+        decorator = EventDecorator.for(event)
+
+        expect(decorator.render_verbose).to be_nil
+      end
+
+      it "returns nil for think responses via hash payload" do
+        decorator = EventDecorator.for(
+          type: "tool_response",
+          content: "OK",
+          tool_name: "think",
+          success: true
+        )
+
+        expect(decorator.render_verbose).to be_nil
+      end
+    end
   end
 
   describe "#render_debug" do
@@ -203,6 +238,72 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       expect(result[:content]).to eq("output text")
       expect(result[:tool_use_id]).to eq("toolu_hash")
       expect(result[:tokens]).to be_positive
+    end
+
+    context "think tool" do
+      it "shows think responses in debug mode (for completeness)" do
+        event = session.events.create!(
+          event_type: "tool_response",
+          payload: {
+            "content" => "OK", "tool_name" => "think",
+            "success" => true, "tool_use_id" => "toolu_think_r1"
+          },
+          timestamp: 1,
+          tool_use_id: "toolu_think_r1"
+        )
+        decorator = EventDecorator.for(event)
+        result = decorator.render_debug
+
+        expect(result[:role]).to eq(:tool_response)
+        expect(result[:content]).to eq("OK")
+        expect(result[:tool_use_id]).to eq("toolu_think_r1")
+      end
+    end
+  end
+
+  describe "#render_brain" do
+    it "returns ✅ for successful tool responses" do
+      event = session.events.create!(
+        event_type: "tool_response",
+        payload: {"content" => "file1.rb\nfile2.rb", "tool_name" => "bash", "success" => true},
+        timestamp: 1
+      )
+      decorator = EventDecorator.for(event)
+
+      expect(decorator.render_brain).to eq("\u2705")
+    end
+
+    it "returns ❌ for failed tool responses" do
+      event = session.events.create!(
+        event_type: "tool_response",
+        payload: {"content" => "command not found", "tool_name" => "bash", "success" => false},
+        timestamp: 1
+      )
+      decorator = EventDecorator.for(event)
+
+      expect(decorator.render_brain).to eq("\u274C")
+    end
+
+    it "returns nil for think tool responses" do
+      event = session.events.create!(
+        event_type: "tool_response",
+        payload: {"content" => "OK", "tool_name" => "think", "success" => true},
+        timestamp: 1
+      )
+      decorator = EventDecorator.for(event)
+
+      expect(decorator.render_brain).to be_nil
+    end
+
+    it "defaults to ✅ when success field is missing" do
+      event = session.events.create!(
+        event_type: "tool_response",
+        payload: {"content" => "output", "tool_name" => "bash"},
+        timestamp: 1
+      )
+      decorator = EventDecorator.for(event)
+
+      expect(decorator.render_brain).to eq("\u2705")
     end
   end
 end

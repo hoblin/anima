@@ -196,4 +196,63 @@ RSpec.describe EventDecorator, type: :decorator do
       expect(decorator.send(:truncate_lines, "", max_lines: 3)).to eq("")
     end
   end
+
+  describe "#render_brain" do
+    it "returns nil by default in base class" do
+      stub_decorator = Class.new(described_class) { def render_basic = nil }
+      source = described_class.send(:wrap_source, {type: "user_message", content: "hi"})
+      decorator = stub_decorator.new(source)
+
+      expect(decorator.render_brain).to be_nil
+    end
+
+    it "dispatches via render for brain mode" do
+      event = session.events.create!(event_type: "user_message", payload: {"content" => "hello"}, timestamp: 1)
+      decorator = described_class.for(event)
+
+      expect(decorator.render("brain")).to eq("User: hello")
+    end
+  end
+
+  describe "#truncate_middle (private)" do
+    let(:decorator) do
+      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      described_class.for(event)
+    end
+
+    it "returns short text unchanged" do
+      expect(decorator.send(:truncate_middle, "short text")).to eq("short text")
+    end
+
+    it "returns text unchanged when exactly at max_chars" do
+      text = "x" * 500
+      expect(decorator.send(:truncate_middle, text)).to eq(text)
+    end
+
+    it "truncates long text by cutting the middle" do
+      text = "START#{"x" * 500}END"
+      result = decorator.send(:truncate_middle, text, max_chars: 100)
+
+      expect(result.length).to be <= 100
+      expect(result).to start_with("START")
+      expect(result).to end_with("END")
+      expect(result).to include("[...truncated...]")
+    end
+
+    it "preserves both start and end of text" do
+      text = "The user asked about OAuth config." + ("x" * 500) + "Final conclusion: config is wrong."
+      result = decorator.send(:truncate_middle, text, max_chars: 200)
+
+      expect(result).to include("The user asked about OAuth")
+      expect(result).to include("config is wrong.")
+    end
+
+    it "handles nil text" do
+      expect(decorator.send(:truncate_middle, nil)).to eq("")
+    end
+
+    it "handles empty text" do
+      expect(decorator.send(:truncate_middle, "")).to eq("")
+    end
+  end
 end

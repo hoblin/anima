@@ -94,7 +94,7 @@ class AgentLoop
 
   # Tool classes available to all sessions by default.
   # @return [Array<Class<Tools::Base>>]
-  STANDARD_TOOLS = [Tools::Bash, Tools::Read, Tools::Write, Tools::Edit, Tools::WebGet].freeze
+  STANDARD_TOOLS = [Tools::Bash, Tools::Read, Tools::Write, Tools::Edit, Tools::WebGet, Tools::Think].freeze
 
   # Name-to-class mapping for tool restriction validation and registry building.
   # @return [Hash{String => Class<Tools::Base>}]

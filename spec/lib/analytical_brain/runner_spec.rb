@@ -272,7 +272,7 @@ RSpec.describe AnalyticalBrain::Runner do
         session.events.create!(event_type: "agent_message", payload: {"content" => "Here are the files."}, timestamp: 4)
       end
 
-      it "includes tool events in the transcript" do
+      it "includes tool call with name and params in transcript" do
         captured_messages = nil
         allow(client).to receive(:chat_with_tools) { |msgs, **_opts|
           captured_messages = msgs
@@ -282,9 +282,68 @@ RSpec.describe AnalyticalBrain::Runner do
         runner.call
 
         content = captured_messages.first[:content]
-        expect(content).to include("Tool call: bash")
-        expect(content).to include("Tool result:")
-        expect(content).to include("file1.rb")
+        expect(content).to include('Tool call: bash({"command":"ls"})')
+      end
+
+      it "shows tool result as success/failure indicator only" do
+        captured_messages = nil
+        allow(client).to receive(:chat_with_tools) { |msgs, **_opts|
+          captured_messages = msgs
+          "Done"
+        }
+
+        runner.call
+
+        content = captured_messages.first[:content]
+        expect(content).to include("\u2705")
+        expect(content).not_to include("file1.rb")
+      end
+    end
+
+    context "with think tool events" do
+      before do
+        session.events.create!(event_type: "user_message", payload: {"content" => "Fix the auth bug"}, timestamp: 1)
+        session.events.create!(
+          event_type: "tool_call",
+          payload: {"content" => "thinking", "tool_name" => "think",
+                    "tool_input" => {"thoughts" => "Three auth failures all in OAuth — config issue, not individual tests.",
+                                     "visibility" => "inner"},
+                    "tool_use_id" => "t_think"},
+          timestamp: 2
+        )
+        session.events.create!(
+          event_type: "tool_response",
+          payload: {"content" => "OK", "tool_name" => "think", "tool_use_id" => "t_think"},
+          timestamp: 3
+        )
+      end
+
+      it "shows full think text in transcript (not just tool name)" do
+        captured_messages = nil
+        allow(client).to receive(:chat_with_tools) { |msgs, **_opts|
+          captured_messages = msgs
+          "Done"
+        }
+
+        runner.call
+
+        content = captured_messages.first[:content]
+        expect(content).to include("Think: Three auth failures all in OAuth")
+        expect(content).not_to include("Tool call: think")
+      end
+
+      it "excludes think tool responses from transcript" do
+        captured_messages = nil
+        allow(client).to receive(:chat_with_tools) { |msgs, **_opts|
+          captured_messages = msgs
+          "Done"
+        }
+
+        runner.call
+
+        content = captured_messages.first[:content]
+        expect(content).not_to include("\u2705")
+        expect(content).not_to include("\u274C")
       end
     end
 
