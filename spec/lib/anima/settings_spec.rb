@@ -9,7 +9,7 @@ RSpec.describe Anima::Settings do
         "model" => "claude-sonnet-4-20250514",
         "fast_model" => "claude-haiku-4-5",
         "max_tokens" => 8192,
-        "max_tool_rounds" => 25,
+        "max_tool_rounds" => 500,
         "token_budget" => 190_000
       },
       "timeouts" => {"api" => 300, "command" => 30, "mcp_response" => 60, "web_request" => 10},
@@ -30,7 +30,7 @@ RSpec.describe Anima::Settings do
       expect(described_class.model).to eq("claude-sonnet-4-20250514")
       expect(described_class.fast_model).to eq("claude-haiku-4-5")
       expect(described_class.max_tokens).to eq(8192)
-      expect(described_class.max_tool_rounds).to eq(25)
+      expect(described_class.max_tool_rounds).to eq(500)
       expect(described_class.token_budget).to eq(190_000)
     end
 
