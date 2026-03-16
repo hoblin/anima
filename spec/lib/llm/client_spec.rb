@@ -567,6 +567,152 @@ RSpec.describe LLM::Client do
       end
     end
 
+    context "when the user interrupts during tool execution" do
+      let(:tool_use_response) do
+        {
+          id: "msg_tool",
+          type: "message",
+          role: "assistant",
+          content: [
+            {type: "tool_use", id: "toolu_int1", name: "web_get", input: {url: "https://first.com"}},
+            {type: "tool_use", id: "toolu_int2", name: "web_get", input: {url: "https://second.com"}}
+          ],
+          model: "claude-sonnet-4-20250514",
+          stop_reason: "tool_use",
+          usage: {input_tokens: 20, output_tokens: 30}
+        }
+      end
+
+      before do
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_return(
+            status: 200,
+            body: tool_use_response.to_json,
+            headers: {"content-type" => "application/json"}
+          )
+      end
+
+      it "returns nil when interrupted after tools" do
+        session.update_column(:interrupt_requested, true)
+
+        result = client.chat_with_tools(messages, registry: registry, session_id: session.id)
+        expect(result).to be_nil
+      end
+
+      it "creates synthetic 'Stopped by user' tool_results for interrupted tools" do
+        session.update_column(:interrupt_requested, true)
+
+        events = []
+        subscriber = double("sub")
+        allow(subscriber).to receive(:emit) { |e| events << e }
+        Events::Bus.subscribe(subscriber)
+
+        client.chat_with_tools(messages, registry: registry, session_id: session.id)
+
+        tool_responses = events.select { |e| e[:payload][:type] == "tool_response" }
+        expect(tool_responses.size).to eq(2)
+        tool_responses.each do |resp|
+          expect(resp[:payload][:content]).to eq(LLM::Client::INTERRUPT_MESSAGE)
+          expect(resp[:payload][:success]).to be false
+        end
+      ensure
+        Events::Bus.unsubscribe(subscriber)
+      end
+
+      it "emits ToolCall events for interrupted tools" do
+        session.update_column(:interrupt_requested, true)
+
+        events = []
+        subscriber = double("sub")
+        allow(subscriber).to receive(:emit) { |e| events << e }
+        Events::Bus.subscribe(subscriber)
+
+        client.chat_with_tools(messages, registry: registry, session_id: session.id)
+
+        tool_calls = events.select { |e| e[:payload][:type] == "tool_call" }
+        expect(tool_calls.size).to eq(2)
+        expect(tool_calls.map { |e| e[:payload][:tool_use_id] }).to eq(%w[toolu_int1 toolu_int2])
+      ensure
+        Events::Bus.unsubscribe(subscriber)
+      end
+
+      it "clears the interrupt flag" do
+        session.update_column(:interrupt_requested, true)
+
+        client.chat_with_tools(messages, registry: registry, session_id: session.id)
+
+        expect(session.reload.interrupt_requested?).to be false
+      end
+
+      it "executes first tool then interrupts remaining when flag arrives mid-execution" do
+        sid = session.id
+        tool_class.define_method(:execute) do |_input|
+          Session.where(id: sid).update_all(interrupt_requested: true)
+          "first result"
+        end
+
+        events = []
+        subscriber = double("sub")
+        allow(subscriber).to receive(:emit) { |e| events << e }
+        Events::Bus.subscribe(subscriber)
+
+        client.chat_with_tools(messages, registry: registry, session_id: session.id)
+
+        tool_responses = events.select { |e| e[:payload][:type] == "tool_response" }
+        expect(tool_responses.size).to eq(2)
+        expect(tool_responses[0][:payload][:content]).to eq("first result")
+        expect(tool_responses[0][:payload][:success]).to be true
+        expect(tool_responses[1][:payload][:content]).to eq(LLM::Client::INTERRUPT_MESSAGE)
+        expect(tool_responses[1][:payload][:success]).to be false
+      ensure
+        Events::Bus.unsubscribe(subscriber)
+      end
+
+      it "does not make another LLM API call after interrupt" do
+        session.update_column(:interrupt_requested, true)
+
+        client.chat_with_tools(messages, registry: registry, session_id: session.id)
+
+        # Only one API call should have been made (the initial one that returned tool_use)
+        expect(WebMock).to have_requested(:post, "https://api.anthropic.com/v1/messages").once
+      end
+
+      context "with a single tool_use in the response" do
+        let(:tool_use_response) do
+          {
+            id: "msg_tool",
+            type: "message",
+            role: "assistant",
+            content: [
+              {type: "tool_use", id: "toolu_single", name: "web_get", input: {url: "https://only.com"}}
+            ],
+            model: "claude-sonnet-4-20250514",
+            stop_reason: "tool_use",
+            usage: {input_tokens: 20, output_tokens: 30}
+          }
+        end
+
+        it "interrupts the single tool without executing it" do
+          session.update_column(:interrupt_requested, true)
+
+          events = []
+          subscriber = double("sub")
+          allow(subscriber).to receive(:emit) { |e| events << e }
+          Events::Bus.subscribe(subscriber)
+
+          result = client.chat_with_tools(messages, registry: registry, session_id: session.id)
+
+          expect(result).to be_nil
+          tool_responses = events.select { |e| e[:payload][:type] == "tool_response" }
+          expect(tool_responses.size).to eq(1)
+          expect(tool_responses[0][:payload][:content]).to eq(LLM::Client::INTERRUPT_MESSAGE)
+          expect(tool_responses[0][:payload][:success]).to be false
+        ensure
+          Events::Bus.unsubscribe(subscriber)
+        end
+      end
+    end
+
     context "when the tool loop exceeds max_tool_rounds" do
       let(:tool_use_response) do
         {

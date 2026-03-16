@@ -383,6 +383,38 @@ RSpec.describe SessionChannel, type: :channel do
     end
   end
 
+  describe "#interrupt_execution" do
+    let!(:session) { Session.create!(id: session_id) }
+
+    before { subscribe(session_id: session_id) }
+
+    context "when session is processing" do
+      before { session.update!(processing: true) }
+
+      it "sets interrupt_requested on the session" do
+        perform(:interrupt_execution, {})
+
+        expect(session.reload.interrupt_requested?).to be true
+      end
+    end
+
+    context "when session is not processing" do
+      it "does not set interrupt_requested" do
+        perform(:interrupt_execution, {})
+
+        expect(session.reload.interrupt_requested?).to be false
+      end
+    end
+
+    context "when session does not exist" do
+      before { session.destroy! }
+
+      it "is a no-op" do
+        expect { perform(:interrupt_execution, {}) }.not_to raise_error
+      end
+    end
+  end
+
   describe "#list_sessions" do
     before do
       subscribe(session_id: session_id)

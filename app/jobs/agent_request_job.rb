@@ -64,6 +64,7 @@ class AgentRequestJob < ApplicationJob
     session.schedule_analytical_brain!
   ensure
     release_processing(session_id)
+    clear_interrupt(session_id)
     agent_loop&.finalize
   end
 
@@ -94,6 +95,13 @@ class AgentRequestJob < ApplicationJob
   # Clears the processing flag so the session can accept new jobs.
   def release_processing(session_id)
     Session.where(id: session_id).update_all(processing: false)
+  end
+
+  # Safety-net clearing of the interrupt flag. The primary clear happens in
+  # {LLM::Client#clear_interrupt!} after handling the interrupt; this ensures
+  # the flag is reset even if the job crashes before reaching that code path.
+  def clear_interrupt(session_id)
+    Session.where(id: session_id, interrupt_requested: true).update_all(interrupt_requested: false)
   end
 
   # Emits a system message before each retry so the user sees

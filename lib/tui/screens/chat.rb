@@ -167,6 +167,21 @@ module TUI
         @cable_client.change_view_mode(mode)
       end
 
+      # Sends an interrupt request to the server to stop the current tool chain.
+      # Called when Escape is pressed with empty input during active processing.
+      #
+      # @return [void]
+      def interrupt_execution
+        @cable_client.interrupt
+      end
+
+      # Clears the input buffer. Used when Escape is pressed with non-empty input.
+      #
+      # @return [void]
+      def clear_input
+        @input_buffer.clear
+      end
+
       # Clears the authentication_required flag after the App has consumed it.
       # @return [void]
       def clear_authentication_required

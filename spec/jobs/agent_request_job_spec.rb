@@ -268,6 +268,35 @@ RSpec.describe AgentRequestJob do
       expect { described_class.perform_now(session.id) }.not_to raise_error
     end
 
+    it "clears interrupt_requested flag after completion" do
+      session.update_column(:interrupt_requested, true)
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return(
+          status: 200,
+          body: {content: [{type: "text", text: "ok"}], stop_reason: "end_turn"}.to_json,
+          headers: {"content-type" => "application/json"}
+        )
+
+      described_class.perform_now(session.id)
+
+      expect(session.reload.interrupt_requested?).to be false
+    end
+
+    it "clears interrupt_requested flag even on error" do
+      session.update_column(:interrupt_requested, true)
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return(status: 401, body: {error: {message: "unauthorized"}}.to_json,
+          headers: {"content-type" => "application/json"})
+
+      described_class.perform_now(session.id)
+
+      expect(session.reload.interrupt_requested?).to be false
+    end
+
     it "clears processing flag even on error" do
       session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 

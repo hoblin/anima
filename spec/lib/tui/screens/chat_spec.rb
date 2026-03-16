@@ -1093,6 +1093,25 @@ RSpec.describe TUI::Screens::Chat do
     end
   end
 
+  describe "#interrupt_execution" do
+    before { allow(cable_client).to receive(:interrupt) }
+
+    it "sends interrupt via WebSocket protocol" do
+      screen.interrupt_execution
+      expect(cable_client).to have_received(:interrupt)
+    end
+  end
+
+  describe "#clear_input" do
+    it "clears the input buffer" do
+      screen.instance_variable_get(:@input_buffer).insert("hello world")
+      expect(screen.input).to eq("hello world")
+
+      screen.clear_input
+      expect(screen.input).to eq("")
+    end
+  end
+
   describe "#new_session" do
     it "sends create_session via WebSocket protocol" do
       screen.new_session

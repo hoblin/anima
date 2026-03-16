@@ -134,6 +134,14 @@ module TUI
       send_action("recall_pending", {"event_id" => event_id})
     end
 
+    # Requests interruption of the current tool execution. The server sets
+    # an interrupt flag that the LLM client checks between tool calls.
+    #
+    # @return [void]
+    def interrupt
+      send_action("interrupt_execution", {})
+    end
+
     # Sends an Anthropic subscription token to the brain for validation and storage.
     # The token flows directly from TUI input to encrypted credentials — never
     # enters the LLM context window.
