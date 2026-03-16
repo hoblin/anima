@@ -87,6 +87,29 @@ RSpec.describe Anima::Installer do
       expect(soul_path.read).to eq("I am who I chose to be.")
     end
 
+    it "creates config.toml from template with resolved paths" do
+      installer.run
+
+      config_path = tmp_home.join("config.toml")
+      expect(config_path).to exist
+
+      content = config_path.read
+      expect(content).to include("[llm]")
+      expect(content).to include("soul = \"#{tmp_home.join("soul.md")}\"")
+      expect(content).not_to include("{{ANIMA_HOME}}")
+      expect { TomlRB.parse(content) }.not_to raise_error
+    end
+
+    it "does not overwrite existing config.toml on re-run" do
+      FileUtils.mkdir_p(tmp_home)
+      config_path = tmp_home.join("config.toml")
+      config_path.write("[llm]\nmodel = \"custom-model\"\n")
+
+      installer.run
+
+      expect(config_path.read).to include('model = "custom-model"')
+    end
+
     it "creates mcp.toml config file" do
       installer.run
 
