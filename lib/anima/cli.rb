@@ -20,6 +20,38 @@ module Anima
       Installer.new.run
     end
 
+    desc "update", "Upgrade gem and migrate config"
+    option :migrate_only, type: :boolean, default: false, desc: "Skip gem upgrade, only migrate config"
+    def update
+      unless options[:migrate_only]
+        say "Upgrading anima-core gem..."
+        unless system("gem", "update", "anima-core")
+          say "Gem update failed.", :red
+          exit 1
+        end
+
+        # Re-exec with the updated gem so migration uses the new template.
+        exec(File.join(Gem.bindir, "anima"), "update", "--migrate-only")
+      end
+
+      say "Migrating configuration..."
+      require_relative "config_migrator"
+      result = Anima::ConfigMigrator.new.run
+
+      case result.status
+      when :not_found
+        say "Config file not found. Run 'anima install' first.", :red
+        exit 1
+      when :up_to_date
+        say "Config is already up to date."
+      when :updated
+        result.additions.each do |addition|
+          say "  added [#{addition.section}] #{addition.key} = #{addition.value.inspect}"
+        end
+        say "Config updated. Changes take effect immediately — no restart needed."
+      end
+    end
+
     # Start the Anima brain server (Puma + Solid Queue) via Foreman.
     # Environment precedence: -e flag > RAILS_ENV env var > "development".
     # Requires prior installation (~/.anima must exist).

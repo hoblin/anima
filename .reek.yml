@@ -16,11 +16,13 @@ detectors:
   # Rescue blocks naturally reference the error object more than self.
   # EnvironmentProbe assembles output from local data structures — not envy.
   # Brain transcript builds from event collection — the method's entire purpose.
+  # ConfigMigrator text processing methods naturally reference local line arrays.
   FeatureEnvy:
     exclude:
       - "AnalyticalBrainJob#perform"
       - "EnvironmentProbe"
       - "AnalyticalBrain::Runner#build_messages"
+      - "Anima::ConfigMigrator"
   # Private helpers don't need instance state to be valid.
   # ActiveJob#perform is always a utility function by design.
   # No-op tools (Think, EverythingIsReady) don't need instance state — by design.

@@ -191,7 +191,7 @@ module Anima
         value = config.dig(section, key)
         if value.nil?
           raise MissingSettingError,
-            "[#{section}] #{key} is not set in #{config_path}. Run `anima install` to create the config file."
+            "[#{section}] #{key} is not set in #{config_path}. Run `anima update` to add missing settings."
         end
         value
       end

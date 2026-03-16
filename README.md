@@ -174,7 +174,7 @@ State directory (`~/.anima/`):
 └── tmp/
 ```
 
-Updates: `gem update anima-core` — next launch runs pending migrations automatically.
+Updates: `anima update` — upgrades the gem and merges new config settings into your existing `config.toml` without overwriting customized values. Use `anima update --migrate-only` to skip the gem upgrade and only add missing config keys.
 
 ### Authentication Setup
 
