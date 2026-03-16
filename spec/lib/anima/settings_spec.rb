@@ -12,7 +12,7 @@ RSpec.describe Anima::Settings do
         "max_tool_rounds" => 25,
         "token_budget" => 190_000
       },
-      "timeouts" => {"api" => 30, "command" => 30, "mcp_response" => 60, "web_request" => 10},
+      "timeouts" => {"api" => 300, "command" => 30, "mcp_response" => 60, "web_request" => 10},
       "shell" => {"max_output_bytes" => 100_000},
       "tools" => {"max_file_size" => 10_485_760, "max_read_lines" => 2_000, "max_read_bytes" => 50_000, "max_web_response_bytes" => 100_000},
       "paths" => {"soul" => "/home/test/.anima/soul.md"},
@@ -35,7 +35,7 @@ RSpec.describe Anima::Settings do
     end
 
     it "reads timeout settings" do
-      expect(described_class.api_timeout).to eq(30)
+      expect(described_class.api_timeout).to eq(300)
       expect(described_class.command_timeout).to eq(30)
       expect(described_class.mcp_response_timeout).to eq(60)
       expect(described_class.web_request_timeout).to eq(10)

@@ -106,7 +106,7 @@ module Anima
         [timeouts]
 
         # LLM API request timeout.
-        api = 30
+        api = 300
 
         # Shell command execution timeout.
         command = 30
