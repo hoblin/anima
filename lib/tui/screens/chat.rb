@@ -21,6 +21,8 @@ module TUI
       RETURN_ARROW = "\u21A9"
       ERROR_ICON = "\u274C"
 
+      THOUGHT_BUBBLE = "\u{1F4AD}"
+
       ROLE_COLORS = {"user" => "green", "assistant" => "cyan"}.freeze
 
       # Intentionally duplicated from Session::VIEW_MODES to keep the TUI
@@ -449,6 +451,8 @@ module TUI
           render_tool_call_entry(tui, data)
         when "tool_response"
           render_tool_response_entry(tui, data)
+        when "think"
+          render_think_entry(tui, data)
         when "system"
           render_system_entry(tui, data)
         when "system_prompt"
@@ -554,6 +558,27 @@ module TUI
         data["content"].to_s.split("\n").each do |line|
           lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)])
         end
+        lines
+      end
+
+      # Renders a think event — the agent's inner reasoning between tool calls.
+      # "aloud" thoughts use yellow (narration for the user), "inner" thoughts
+      # use dark_gray (visible only in verbose/debug, dimmed to signal internality).
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param data [Hash] structured data with "content", "visibility", optional "timestamp", "tool_use_id"
+      # @return [Array<RatatuiRuby::Widgets::Line>]
+      def render_think_entry(tui, data)
+        aloud = data["visibility"] == "aloud"
+        color = aloud ? "yellow" : "dark_gray"
+        style = tui.style(fg: color)
+
+        meta = []
+        meta << "[#{format_ns_timestamp(data["timestamp"])}]" if data["timestamp"]
+        header = meta.empty? ? THOUGHT_BUBBLE : "#{meta.join(" ")} #{THOUGHT_BUBBLE}"
+
+        content_lines = data["content"].to_s.split("\n", -1)
+        lines = [tui.line(spans: [tui.span(content: "#{header} #{content_lines.first}", style: style)])]
+        content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)]) }
         lines
       end
 

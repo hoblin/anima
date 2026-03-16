@@ -1,15 +1,21 @@
 # frozen_string_literal: true
 
 # Base decorator for {Event} records, providing multi-resolution rendering
-# for the TUI. Each event type has a dedicated subclass that implements
-# rendering methods for each view mode (basic, verbose, debug).
+# for the TUI and analytical brain. Each event type has a dedicated subclass
+# that implements rendering methods for each view mode:
 #
-# Decorators return structured hashes (not pre-formatted strings) so that
+# - **basic** / **verbose** / **debug** — TUI display modes returning structured hashes
+# - **brain** — analytical brain transcript returning plain strings (or nil to skip)
+#
+# TUI decorators return structured hashes (not pre-formatted strings) so that
 # the TUI can style and lay out content based on semantic role, without
 # fragile regex parsing. The TUI receives structured data via ActionCable
 # and formats it for display.
 #
-# Subclasses must override {#render_basic}. Verbose and debug modes
+# Brain mode returns condensed single-line strings for the analytical brain's
+# event transcript. Returns nil to exclude an event from the brain's view.
+#
+# Subclasses must override {#render_basic}. Verbose, debug, and brain modes
 # delegate to basic until subclasses provide their own implementations.
 #
 # @example Decorate an Event AR model
@@ -29,6 +35,7 @@ class EventDecorator < ApplicationDecorator
   TOOL_ICON = "\u{1F527}"
   RETURN_ARROW = "\u21A9"
   ERROR_ICON = "\u274C"
+  MIDDLE_TRUNCATION_MARKER = "\n[...truncated...]\n"
 
   DECORATOR_MAP = {
     "user_message" => "UserMessageDecorator",
@@ -77,14 +84,16 @@ class EventDecorator < ApplicationDecorator
   RENDER_DISPATCH = {
     "basic" => :render_basic,
     "verbose" => :render_verbose,
-    "debug" => :render_debug
+    "debug" => :render_debug,
+    "brain" => :render_brain
   }.freeze
   private_constant :RENDER_DISPATCH
 
   # Dispatches to the render method for the given view mode.
   #
-  # @param mode [String] one of "basic", "verbose", "debug"
-  # @return [Hash, nil] structured event data, or nil to hide the event
+  # @param mode [String] one of "basic", "verbose", "debug", "brain"
+  # @return [Hash, String, nil] structured event data (basic/verbose/debug),
+  #   plain string (brain), or nil to hide the event
   # @raise [ArgumentError] if the mode is not a valid view mode
   def render(mode)
     method = RENDER_DISPATCH[mode]
@@ -111,6 +120,14 @@ class EventDecorator < ApplicationDecorator
   # @return [Hash, nil] structured event data, or nil to hide the event
   def render_debug
     render_basic
+  end
+
+  # Analytical brain view — condensed single-line string for the brain's
+  # event transcript. Returns nil to exclude from the brain's context.
+  # Subclasses override to provide event-type-specific formatting.
+  # @return [String, nil] formatted transcript line, or nil to skip
+  def render_brain
+    nil
   end
 
   private
@@ -153,6 +170,23 @@ class EventDecorator < ApplicationDecorator
     return str unless lines.size > max_lines
 
     lines.first(max_lines).push("...").join("\n")
+  end
+
+  # Truncates long text by cutting the middle, preserving the start and end
+  # so context and conclusions aren't lost. Used for brain transcripts where
+  # both the opening (intent) and closing (result) matter.
+  #
+  # @param text [String, nil] text to truncate
+  # @param max_chars [Integer] maximum character length before truncation
+  # @return [String] original text or start + marker + end
+  def truncate_middle(text, max_chars: 500)
+    str = text.to_s
+    return str if str.length <= max_chars
+
+    keep = max_chars - MIDDLE_TRUNCATION_MARKER.length
+    head = keep / 2
+    tail = keep - head
+    "#{str[0, head]}#{MIDDLE_TRUNCATION_MARKER}#{str[-tail, tail]}"
   end
 
   # Normalizes input to something Draper can wrap.

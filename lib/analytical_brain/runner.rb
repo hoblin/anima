@@ -129,7 +129,7 @@ module AnalyticalBrain
       events = recent_events
       return [] if events.empty?
 
-      transcript = events.filter_map { |event| format_event(event) }.join("\n")
+      transcript = events.filter_map { |event| EventDecorator.for(event)&.render("brain") }.join("\n")
       content = <<~MSG.strip
         The main session is working on this:
         ```
@@ -149,24 +149,6 @@ module AnalyticalBrain
         .limit(Anima::Settings.analytical_brain_event_window)
         .to_a
         .reverse
-    end
-
-    # Formats a single event for the analytical brain's transcript.
-    # User/agent messages get 500 chars to preserve conversation context;
-    # tool responses get 200 chars to reduce noise from verbose outputs.
-    #
-    # @param event [Event]
-    # @return [String, nil] formatted line, or nil for unhandled event types
-    def format_event(event)
-      payload = event.payload
-      summary = payload["content"].to_s.truncate(500)
-
-      case event.event_type
-      when "user_message" then "User: #{summary}"
-      when "agent_message" then "Assistant: #{summary}"
-      when "tool_call" then "Tool call: #{payload["tool_name"]}"
-      when "tool_response" then "Tool result: #{summary.truncate(200)}"
-      end
     end
 
     # Builds the system prompt with current session state, skills catalog,

@@ -22,6 +22,58 @@ RSpec.describe ToolCallDecorator, type: :decorator do
 
       expect(decorator.render_basic).to be_nil
     end
+
+    context "think tool" do
+      it "returns nil for inner thoughts (default)" do
+        event = session.events.create!(
+          event_type: "tool_call",
+          payload: {"content" => "thinking", "tool_name" => "think", "tool_input" => {"thoughts" => "Planning next step"}},
+          timestamp: 1
+        )
+        decorator = EventDecorator.for(event)
+
+        expect(decorator.render_basic).to be_nil
+      end
+
+      it "returns nil for explicitly inner thoughts" do
+        event = session.events.create!(
+          event_type: "tool_call",
+          payload: {"content" => "thinking", "tool_name" => "think",
+                    "tool_input" => {"thoughts" => "Planning next step", "visibility" => "inner"}},
+          timestamp: 1
+        )
+        decorator = EventDecorator.for(event)
+
+        expect(decorator.render_basic).to be_nil
+      end
+
+      it "returns structured hash for aloud thoughts" do
+        event = session.events.create!(
+          event_type: "tool_call",
+          payload: {"content" => "thinking aloud", "tool_name" => "think",
+                    "tool_input" => {"thoughts" => "Checking the config first.", "visibility" => "aloud"}},
+          timestamp: 1
+        )
+        decorator = EventDecorator.for(event)
+
+        expect(decorator.render_basic).to eq({
+          role: :think, content: "Checking the config first.", visibility: "aloud"
+        })
+      end
+
+      it "works with hash payloads for aloud thoughts" do
+        decorator = EventDecorator.for(
+          type: "tool_call",
+          content: "thinking",
+          tool_name: "think",
+          tool_input: {"thoughts" => "Narrating", "visibility" => "aloud"}
+        )
+
+        expect(decorator.render_basic).to eq({
+          role: :think, content: "Narrating", visibility: "aloud"
+        })
+      end
+    end
   end
 
   describe "#render_verbose" do
@@ -102,6 +154,50 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       expect(decorator.render_verbose).to eq({
         role: :tool_call, tool: "bash", input: "$ ls -la", timestamp: nil
       })
+    end
+
+    context "think tool" do
+      it "returns think role with inner visibility" do
+        event = session.events.create!(
+          event_type: "tool_call",
+          payload: {"content" => "thinking", "tool_name" => "think",
+                    "tool_input" => {"thoughts" => "I should check the logs", "visibility" => "inner"}},
+          timestamp: 1
+        )
+        decorator = EventDecorator.for(event)
+
+        expect(decorator.render_verbose).to eq({
+          role: :think, content: "I should check the logs", visibility: "inner", timestamp: 1
+        })
+      end
+
+      it "returns think role with aloud visibility" do
+        event = session.events.create!(
+          event_type: "tool_call",
+          payload: {"content" => "thinking", "tool_name" => "think",
+                    "tool_input" => {"thoughts" => "Checking the logs now", "visibility" => "aloud"}},
+          timestamp: 1
+        )
+        decorator = EventDecorator.for(event)
+
+        expect(decorator.render_verbose).to eq({
+          role: :think, content: "Checking the logs now", visibility: "aloud", timestamp: 1
+        })
+      end
+
+      it "defaults to inner visibility when not specified" do
+        event = session.events.create!(
+          event_type: "tool_call",
+          payload: {"content" => "thinking", "tool_name" => "think",
+                    "tool_input" => {"thoughts" => "Planning"}},
+          timestamp: 1
+        )
+        decorator = EventDecorator.for(event)
+
+        expect(decorator.render_verbose).to eq({
+          role: :think, content: "Planning", visibility: "inner", timestamp: 1
+        })
+      end
     end
   end
 
@@ -188,6 +284,89 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       expect(result[:tool]).to eq("bash")
       expect(result[:tool_use_id]).to eq("toolu_hash")
       expect(result[:input]).to eq(JSON.pretty_generate({"command" => "ls"}))
+    end
+
+    context "think tool" do
+      it "returns think role with full metadata" do
+        event = session.events.create!(
+          event_type: "tool_call",
+          payload: {
+            "content" => "thinking", "tool_name" => "think",
+            "tool_input" => {"thoughts" => "Auth failures suggest config issue", "visibility" => "inner"},
+            "tool_use_id" => "toolu_think_1"
+          },
+          timestamp: 1,
+          tool_use_id: "toolu_think_1"
+        )
+        decorator = EventDecorator.for(event)
+
+        expect(decorator.render_debug).to eq({
+          role: :think,
+          content: "Auth failures suggest config issue",
+          visibility: "inner",
+          tool_use_id: "toolu_think_1",
+          timestamp: 1
+        })
+      end
+
+      it "includes aloud visibility in debug mode" do
+        event = session.events.create!(
+          event_type: "tool_call",
+          payload: {
+            "content" => "thinking aloud", "tool_name" => "think",
+            "tool_input" => {"thoughts" => "Narrating for user", "visibility" => "aloud"},
+            "tool_use_id" => "toolu_think_2"
+          },
+          timestamp: 1,
+          tool_use_id: "toolu_think_2"
+        )
+        decorator = EventDecorator.for(event)
+
+        expect(decorator.render_debug).to eq({
+          role: :think,
+          content: "Narrating for user",
+          visibility: "aloud",
+          tool_use_id: "toolu_think_2",
+          timestamp: 1
+        })
+      end
+    end
+  end
+
+  describe "#render_brain" do
+    it "returns tool name with params for regular tool calls" do
+      event = session.events.create!(
+        event_type: "tool_call",
+        payload: {"content" => "calling bash", "tool_name" => "bash",
+                  "tool_input" => {"command" => "ls -la"}},
+        timestamp: 1
+      )
+      decorator = EventDecorator.for(event)
+
+      expect(decorator.render_brain).to eq('Tool call: bash({"command":"ls -la"})')
+    end
+
+    it "returns full think text for think tool calls" do
+      event = session.events.create!(
+        event_type: "tool_call",
+        payload: {"content" => "thinking", "tool_name" => "think",
+                  "tool_input" => {"thoughts" => "OAuth config is wrong, not individual tests."}},
+        timestamp: 1
+      )
+      decorator = EventDecorator.for(event)
+
+      expect(decorator.render_brain).to eq("Think: OAuth config is wrong, not individual tests.")
+    end
+
+    it "handles nil tool_input for regular tools" do
+      event = session.events.create!(
+        event_type: "tool_call",
+        payload: {"content" => "calling", "tool_name" => "bash", "tool_input" => nil},
+        timestamp: 1
+      )
+      decorator = EventDecorator.for(event)
+
+      expect(decorator.render_brain).to eq("Tool call: bash({})")
     end
   end
 end
