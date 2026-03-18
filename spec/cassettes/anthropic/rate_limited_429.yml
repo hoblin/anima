@@ -1,0 +1,39 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Hi"}],"max_tokens":1}'
+    headers:
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <ANTHROPIC_API_KEY>
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+  response:
+    status:
+      code: 429
+      message: Too Many Requests
+    headers:
+      Content-Type:
+      - application/json
+      Request-Id:
+      - req_01ERR429
+      Retry-After:
+      - '30'
+      Anthropic-Ratelimit-Requests-Limit:
+      - '50'
+      Anthropic-Ratelimit-Requests-Remaining:
+      - '0'
+      Anthropic-Ratelimit-Requests-Reset:
+      - '2026-03-16T08:00:00Z'
+    body:
+      encoding: UTF-8
+      string: '{"type":"error","error":{"type":"rate_limit_error","message":"Number of request tokens has exceeded your per-minute rate limit"}}'
+  recorded_at: Sun, 16 Mar 2026 07:55:38 GMT
+recorded_with: VCR 6.4.0

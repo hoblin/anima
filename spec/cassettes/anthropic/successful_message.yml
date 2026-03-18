@@ -1,0 +1,31 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Hi"}],"max_tokens":1}'
+    headers:
+      Content-Type:
+      - application/json
+      Authorization:
+      - Bearer <ANTHROPIC_API_KEY>
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+      Request-Id:
+      - req_01ABC123
+    body:
+      encoding: UTF-8
+      string: '{"id":"msg_01ABC","type":"message","role":"assistant","content":[{"type":"text","text":"Hello!"}],"model":"claude-sonnet-4-20250514","stop_reason":"end_turn","stop_sequence":null,"usage":{"input_tokens":8,"output_tokens":1,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}'
+  recorded_at: Sun, 16 Mar 2026 07:55:38 GMT
+recorded_with: VCR 6.4.0

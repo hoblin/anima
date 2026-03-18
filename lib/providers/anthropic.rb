@@ -121,6 +121,8 @@ module Providers
       else
         handle_response(response)
       end
+    rescue Errno::ECONNRESET, Net::ReadTimeout, Net::OpenTimeout, SocketError, EOFError => e
+      raise TransientError, "#{e.class}: #{e.message}"
     end
 
     private

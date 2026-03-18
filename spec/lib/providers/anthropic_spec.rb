@@ -383,6 +383,144 @@ RSpec.describe Providers::Anthropic do
     end
   end
 
+  describe "#validate_credentials!" do
+    it "returns true on 200 response" do
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return(
+          status: 200,
+          body: {content: [{type: "text", text: "Hi"}]}.to_json,
+          headers: {"content-type" => "application/json"}
+        )
+
+      expect(provider.validate_credentials!).to be true
+    end
+
+    it "raises AuthenticationError on 401" do
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return(
+          status: 401,
+          body: {error: {message: "invalid api key"}}.to_json,
+          headers: {"content-type" => "application/json"}
+        )
+
+      expect { provider.validate_credentials! }
+        .to raise_error(Providers::Anthropic::AuthenticationError, /Token rejected/)
+    end
+
+    it "raises AuthenticationError on 403" do
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return(
+          status: 403,
+          body: {error: {message: "forbidden"}}.to_json,
+          headers: {"content-type" => "application/json"}
+        )
+
+      expect { provider.validate_credentials! }
+        .to raise_error(Providers::Anthropic::AuthenticationError, /not authorized/)
+    end
+
+    it "raises ServerError on 500 (not AuthenticationError)" do
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return(status: 500, body: "Internal Server Error")
+
+      expect { provider.validate_credentials! }
+        .to raise_error(Providers::Anthropic::ServerError, /server error/)
+    end
+
+    it "raises ServerError on 529 overloaded" do
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return(status: 529, body: "Overloaded")
+
+      expect { provider.validate_credentials! }
+        .to raise_error(Providers::Anthropic::ServerError, /server error/)
+    end
+
+    it "raises RateLimitError on 429" do
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .to_return(
+          status: 429,
+          body: {error: {message: "rate limited"}}.to_json,
+          headers: {"content-type" => "application/json"}
+        )
+
+      expect { provider.validate_credentials! }
+        .to raise_error(Providers::Anthropic::RateLimitError, /Rate limit/)
+    end
+
+    context "network errors are wrapped as TransientError" do
+      it "wraps Errno::ECONNRESET" do
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_raise(Errno::ECONNRESET.new("Connection reset by peer"))
+
+        expect { provider.validate_credentials! }
+          .to raise_error(Providers::Anthropic::TransientError, /ECONNRESET/)
+      end
+
+      it "wraps Net::ReadTimeout" do
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_raise(Net::ReadTimeout.new("Net::ReadTimeout"))
+
+        expect { provider.validate_credentials! }
+          .to raise_error(Providers::Anthropic::TransientError, /ReadTimeout/)
+      end
+
+      it "wraps Net::OpenTimeout" do
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_raise(Net::OpenTimeout.new("Net::OpenTimeout"))
+
+        expect { provider.validate_credentials! }
+          .to raise_error(Providers::Anthropic::TransientError, /OpenTimeout/)
+      end
+
+      it "wraps SocketError" do
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_raise(SocketError.new("getaddrinfo: Name or service not known"))
+
+        expect { provider.validate_credentials! }
+          .to raise_error(Providers::Anthropic::TransientError, /SocketError/)
+      end
+
+      it "wraps EOFError" do
+        stub_request(:post, "https://api.anthropic.com/v1/messages")
+          .to_raise(EOFError.new("end of file reached"))
+
+        expect { provider.validate_credentials! }
+          .to raise_error(Providers::Anthropic::TransientError, /EOFError/)
+      end
+    end
+  end
+
+  describe "#validate_credentials! with VCR", :vcr do
+    it "handles successful validation", vcr: "anthropic/successful_message" do
+      expect(provider.validate_credentials!).to be true
+    end
+
+    it "raises ServerError on 500", vcr: "anthropic/server_error_500" do
+      expect { provider.validate_credentials! }
+        .to raise_error(Providers::Anthropic::ServerError)
+    end
+
+    it "raises AuthenticationError on 401", vcr: "anthropic/unauthorized_401" do
+      expect { provider.validate_credentials! }
+        .to raise_error(Providers::Anthropic::AuthenticationError)
+    end
+
+    it "raises RateLimitError on 429", vcr: "anthropic/rate_limited_429" do
+      expect { provider.validate_credentials! }
+        .to raise_error(Providers::Anthropic::RateLimitError)
+    end
+
+    it "raises ServerError on 529 overloaded", vcr: "anthropic/overloaded_529" do
+      expect { provider.validate_credentials! }
+        .to raise_error(Providers::Anthropic::ServerError)
+    end
+
+    it "raises AuthenticationError on 403", vcr: "anthropic/forbidden_403" do
+      expect { provider.validate_credentials! }
+        .to raise_error(Providers::Anthropic::AuthenticationError)
+    end
+  end
+
   describe "error class hierarchy" do
     it "AuthenticationError inherits from Error" do
       expect(Providers::Anthropic::AuthenticationError).to be < Providers::Anthropic::Error

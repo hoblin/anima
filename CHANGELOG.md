@@ -10,6 +10,7 @@
 - TUI `MessageStore` ID-indexed updates — events with `action: "update"` replace existing entries in-place (O(1) lookup) without changing display order
 - `CountEventTokensJob` triggers broadcast — uses `update!` so token count updates push to connected clients in real time
 - Connection status constants in `CableClient` — replaces magic strings with named constants for protocol message types
+- VCR test infrastructure for recording and replaying external HTTP interactions — cassettes for Anthropic API success, 401, 403, 429, 500, and 529 responses; `spec/support/vcr.rb` auto-loaded via `rails_helper.rb`; API keys filtered from cassettes; `:new_episodes` in dev, `:none` in CI (#190)
 
 ### Changed
 - Connection status indicator simplified — emoji-only `🟢` for normal state, descriptive text only for abnormal states (#80)
@@ -18,6 +19,7 @@
 - `SessionChannel` history includes event IDs for client-side correlation
 
 ### Fixed
+- API 500 errors no longer trigger the token re-entry prompt loop — transient errors (5xx, 429, timeout, network) during token validation save the token and show a warning instead of blocking the user; `validate_credentials!` now wraps network exceptions as `TransientError` consistently with `create_message`/`count_tokens` (#190)
 - TUI showed empty chat on reconnect — message store was cleared _after_ history arrived because `confirm_subscription` comes after `transmit` in Action Cable protocol; now clears on "subscribing" before history (#82)
 
 ## [0.2.1] - 2026-03-13

@@ -6,6 +6,8 @@ require_relative "../config/environment"
 require "rspec/rails"
 require "webmock/rspec"
 
+Dir[Rails.root.join("spec/support/**/*.rb")].each { |f| require f }
+
 # Ensure test database schema is current (critical for CI where db/schema.rb is gitignored).
 ActiveRecord::Tasks::DatabaseTasks.prepare_all
 
