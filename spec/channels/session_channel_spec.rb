@@ -720,18 +720,14 @@ RSpec.describe SessionChannel, type: :channel do
         allow(CredentialStore).to receive(:write)
       end
 
-      it "transmits token_saved on success" do
+      it "saves the token and transmits token_saved without warning" do
         perform(:save_token, {"token" => valid_token})
 
         saved = transmissions.find { |t| t["action"] == "token_saved" }
         expect(saved).to be_present
-      end
-
-      it "delegates to CredentialStore" do
-        expect(CredentialStore).to receive(:write)
+        expect(saved).not_to have_key("warning")
+        expect(CredentialStore).to have_received(:write)
           .with("anthropic", "subscription_token" => valid_token)
-
-        perform(:save_token, {"token" => valid_token})
       end
     end
 
@@ -773,6 +769,60 @@ RSpec.describe SessionChannel, type: :channel do
         error = transmissions.find { |t| t["action"] == "token_error" }
         expect(error).to be_present
         expect(error["message"]).to include("401")
+      end
+    end
+
+    context "with transient API failure (server error, timeout, network)" do
+      before do
+        allow(Providers::Anthropic).to receive(:validate_token_format!)
+        allow(CredentialStore).to receive(:write)
+      end
+
+      it "saves the token on ServerError and transmits token_saved with warning" do
+        allow(Providers::Anthropic).to receive(:validate_token_api!)
+          .and_raise(Providers::Anthropic::ServerError, "Anthropic server error (500): Internal Server Error")
+
+        perform(:save_token, {"token" => valid_token})
+
+        saved = transmissions.find { |t| t["action"] == "token_saved" }
+        expect(saved).to be_present
+        expect(saved["warning"]).to include("could not be verified")
+        expect(CredentialStore).to have_received(:write)
+          .with("anthropic", "subscription_token" => valid_token)
+      end
+
+      it "saves the token on RateLimitError and transmits token_saved with warning" do
+        allow(Providers::Anthropic).to receive(:validate_token_api!)
+          .and_raise(Providers::Anthropic::RateLimitError, "Rate limit exceeded")
+
+        perform(:save_token, {"token" => valid_token})
+
+        saved = transmissions.find { |t| t["action"] == "token_saved" }
+        expect(saved).to be_present
+        expect(saved["warning"]).to include("could not be verified")
+      end
+
+      it "saves the token on TransientError (network) and transmits token_saved with warning" do
+        allow(Providers::Anthropic).to receive(:validate_token_api!)
+          .and_raise(Providers::Anthropic::TransientError, "Errno::ECONNRESET: Connection reset by peer")
+
+        perform(:save_token, {"token" => valid_token})
+
+        saved = transmissions.find { |t| t["action"] == "token_saved" }
+        expect(saved).to be_present
+        expect(saved["warning"]).to include("could not be verified")
+        expect(CredentialStore).to have_received(:write)
+          .with("anthropic", "subscription_token" => valid_token)
+      end
+
+      it "does not transmit token_error on transient failures" do
+        allow(Providers::Anthropic).to receive(:validate_token_api!)
+          .and_raise(Providers::Anthropic::ServerError, "Anthropic server error (500)")
+
+        perform(:save_token, {"token" => valid_token})
+
+        error = transmissions.find { |t| t["action"] == "token_error" }
+        expect(error).to be_nil
       end
     end
   end

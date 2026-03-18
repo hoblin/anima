@@ -1,0 +1,1 @@
+spec/cassettes/**/* -diff linguist-generated=true

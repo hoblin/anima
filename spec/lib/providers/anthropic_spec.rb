@@ -2,6 +2,23 @@
 
 require "rails_helper"
 
+RSpec.shared_examples "wraps network errors as TransientError" do
+  [
+    [Errno::ECONNRESET, "Connection reset by peer", /ECONNRESET/],
+    [Net::ReadTimeout, "Net::ReadTimeout", /ReadTimeout/],
+    [Net::OpenTimeout, "Net::OpenTimeout", /OpenTimeout/],
+    [SocketError, "getaddrinfo: Name or service not known", /SocketError/],
+    [EOFError, "end of file reached", /EOFError/]
+  ].each do |error_class, message, pattern|
+    it "wraps #{error_class}" do
+      VCR.turned_off do
+        stub_request(request_method, request_url).to_raise(error_class.new(message))
+        expect { perform_request }.to raise_error(Providers::Anthropic::TransientError, pattern)
+      end
+    end
+  end
+end
+
 RSpec.describe Providers::Anthropic do
   let(:valid_token) { "sk-ant-oat01-#{"a" * 68}" }
   let(:provider) { described_class.new(valid_token) }
@@ -252,57 +269,15 @@ RSpec.describe Providers::Anthropic do
       }.to raise_error(Providers::Anthropic::Error, /Unexpected response/)
     end
 
-    context "network errors are wrapped as TransientError" do
-      it "wraps Errno::ECONNRESET" do
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_raise(Errno::ECONNRESET.new("Connection reset by peer"))
-
-        expect {
-          provider.create_message(
-            model: "claude-sonnet-4-20250514",
-            messages: [{role: "user", content: "Hi"}],
-            max_tokens: 100
-          )
-        }.to raise_error(Providers::Anthropic::TransientError, /ECONNRESET/)
-      end
-
-      it "wraps Net::ReadTimeout" do
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_raise(Net::ReadTimeout.new("Net::ReadTimeout"))
-
-        expect {
-          provider.create_message(
-            model: "claude-sonnet-4-20250514",
-            messages: [{role: "user", content: "Hi"}],
-            max_tokens: 100
-          )
-        }.to raise_error(Providers::Anthropic::TransientError, /ReadTimeout/)
-      end
-
-      it "wraps SocketError" do
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_raise(SocketError.new("getaddrinfo: Name or service not known"))
-
-        expect {
-          provider.create_message(
-            model: "claude-sonnet-4-20250514",
-            messages: [{role: "user", content: "Hi"}],
-            max_tokens: 100
-          )
-        }.to raise_error(Providers::Anthropic::TransientError, /SocketError/)
-      end
-
-      it "wraps EOFError" do
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_raise(EOFError.new("end of file reached"))
-
-        expect {
-          provider.create_message(
-            model: "claude-sonnet-4-20250514",
-            messages: [{role: "user", content: "Hi"}],
-            max_tokens: 100
-          )
-        }.to raise_error(Providers::Anthropic::TransientError, /EOFError/)
+    include_examples "wraps network errors as TransientError" do
+      let(:request_method) { :post }
+      let(:request_url) { "https://api.anthropic.com/v1/messages" }
+      let(:perform_request) do
+        provider.create_message(
+          model: "claude-sonnet-4-20250514",
+          messages: [{role: "user", content: "Hi"}],
+          max_tokens: 100
+        )
       end
     end
   end
@@ -370,16 +345,48 @@ RSpec.describe Providers::Anthropic do
       }.to raise_error(Providers::Anthropic::Error, /Bad request/)
     end
 
-    it "wraps network errors as TransientError" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages/count_tokens")
-        .to_raise(Errno::ECONNRESET.new("Connection reset by peer"))
-
-      expect {
+    include_examples "wraps network errors as TransientError" do
+      let(:request_method) { :post }
+      let(:request_url) { "https://api.anthropic.com/v1/messages/count_tokens" }
+      let(:perform_request) do
         provider.count_tokens(
           model: "claude-sonnet-4-20250514",
           messages: [{role: "user", content: "Hi"}]
         )
-      }.to raise_error(Providers::Anthropic::TransientError, /ECONNRESET/)
+      end
+    end
+  end
+
+  describe "#validate_credentials!" do
+    it "returns true on 200", vcr: "anthropic/models_200" do
+      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
+      real_provider = described_class.new(real_token)
+      expect(real_provider.validate_credentials!).to be true
+    end
+
+    it "raises AuthenticationError on 401", vcr: "anthropic/models_401" do
+      expect { provider.validate_credentials! }
+        .to raise_error(Providers::Anthropic::AuthenticationError, /Token rejected/)
+    end
+
+    it "raises AuthenticationError on 403", vcr: "anthropic/models_403" do
+      expect { provider.validate_credentials! }
+        .to raise_error(Providers::Anthropic::AuthenticationError, /not authorized/)
+    end
+
+    it "raises ServerError on 500", vcr: "anthropic/models_500" do
+      expect { provider.validate_credentials! }
+        .to raise_error(Providers::Anthropic::ServerError)
+    end
+
+    it "raises ServerError on 529", vcr: "anthropic/models_529" do
+      expect { provider.validate_credentials! }
+        .to raise_error(Providers::Anthropic::ServerError)
+    end
+
+    it "raises RateLimitError on 429", vcr: "anthropic/models_429" do
+      expect { provider.validate_credentials! }
+        .to raise_error(Providers::Anthropic::RateLimitError)
     end
   end
 

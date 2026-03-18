@@ -97,6 +97,7 @@ module TUI
       @token_setup_active = false
       @token_input_buffer = InputBuffer.new
       @token_setup_error = nil
+      @token_setup_warning = nil
       @token_setup_status = :idle
       @shutdown_requested = false
       @previous_signal_handlers = {}
@@ -898,6 +899,7 @@ module TUI
       @token_setup_active = true
       @token_input_buffer.clear
       @token_setup_error = nil
+      @token_setup_warning = nil
       @token_setup_status = :idle
     end
 
@@ -907,6 +909,7 @@ module TUI
       @token_setup_active = false
       @token_input_buffer.clear
       @token_setup_error = nil
+      @token_setup_warning = nil
       @token_setup_status = :idle
     end
 
@@ -933,9 +936,11 @@ module TUI
       if result[:success]
         @token_setup_status = :success
         @token_setup_error = nil
+        @token_setup_warning = result[:warning]
       else
         @token_setup_status = :error
         @token_setup_error = result[:message]
+        @token_setup_warning = nil
       end
     end
 
@@ -1087,9 +1092,15 @@ module TUI
       end
 
       if @token_setup_status == :success
-        lines << tui.line(spans: [
-          tui.span(content: "Token saved and validated!", style: tui.style(fg: "green", modifiers: [:bold]))
-        ])
+        lines << if @token_setup_warning
+          tui.line(spans: [
+            tui.span(content: "Token saved (API unavailable, validation skipped)", style: tui.style(fg: "yellow", modifiers: [:bold]))
+          ])
+        else
+          tui.line(spans: [
+            tui.span(content: "Token saved and validated!", style: tui.style(fg: "green", modifiers: [:bold]))
+          ])
+        end
         lines << tui.line(spans: [tui.span(content: "")])
       end
 
@@ -1110,7 +1121,7 @@ module TUI
     def token_status_display
       case @token_setup_status
       when :success
-        ["Valid", "green"]
+        @token_setup_warning ? ["Saved (unverified)", "yellow"] : ["Valid", "green"]
       when :validating
         ["Validating...", "yellow"]
       when :error

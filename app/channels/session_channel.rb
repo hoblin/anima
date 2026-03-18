@@ -141,10 +141,18 @@ class SessionChannel < ApplicationCable::Channel
     token = data["token"].to_s.strip
 
     Providers::Anthropic.validate_token_format!(token)
-    Providers::Anthropic.validate_token_api!(token)
-    write_anthropic_token(token)
 
-    transmit({"action" => "token_saved"})
+    warning = begin
+      Providers::Anthropic.validate_token_api!(token)
+      nil
+    rescue Providers::Anthropic::TransientError => transient
+      # Token format is valid but API is temporarily unavailable (500, timeout, etc.).
+      # Save the token to break the prompt loop — it will work once the API recovers.
+      "Token saved but could not be verified — #{transient.message}"
+    end
+
+    write_anthropic_token(token)
+    transmit({"action" => "token_saved", "warning" => warning}.compact)
   rescue Providers::Anthropic::TokenFormatError, Providers::Anthropic::AuthenticationError => error
     transmit({"action" => "token_error", "message" => error.message})
   end
