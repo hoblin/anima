@@ -1,0 +1,91 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://api.anthropic.com/v1/models
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Wed, 18 Mar 2026 17:01:52 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '44'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - proxy;dur=44
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      X-Robots-Tag:
+      - none
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJkYXRhIjpbeyJ0eXBlIjoibW9kZWwiLCJpZCI6ImNsYXVkZS1zb25uZXQt
+        NC02IiwiZGlzcGxheV9uYW1lIjoiQ2xhdWRlIFNvbm5ldCA0LjYiLCJjcmVh
+        dGVkX2F0IjoiMjAyNi0wMi0xN1QwMDowMDowMFoifSx7InR5cGUiOiJtb2Rl
+        bCIsImlkIjoiY2xhdWRlLW9wdXMtNC02IiwiZGlzcGxheV9uYW1lIjoiQ2xh
+        dWRlIE9wdXMgNC42IiwiY3JlYXRlZF9hdCI6IjIwMjYtMDItMDRUMDA6MDA6
+        MDBaIn0seyJ0eXBlIjoibW9kZWwiLCJpZCI6ImNsYXVkZS1vcHVzLTQtNS0y
+        MDI1MTEwMSIsImRpc3BsYXlfbmFtZSI6IkNsYXVkZSBPcHVzIDQuNSIsImNy
+        ZWF0ZWRfYXQiOiIyMDI1LTExLTI0VDAwOjAwOjAwWiJ9LHsidHlwZSI6Im1v
+        ZGVsIiwiaWQiOiJjbGF1ZGUtaGFpa3UtNC01LTIwMjUxMDAxIiwiZGlzcGxh
+        eV9uYW1lIjoiQ2xhdWRlIEhhaWt1IDQuNSIsImNyZWF0ZWRfYXQiOiIyMDI1
+        LTEwLTE1VDAwOjAwOjAwWiJ9LHsidHlwZSI6Im1vZGVsIiwiaWQiOiJjbGF1
+        ZGUtc29ubmV0LTQtNS0yMDI1MDkyOSIsImRpc3BsYXlfbmFtZSI6IkNsYXVk
+        ZSBTb25uZXQgNC41IiwiY3JlYXRlZF9hdCI6IjIwMjUtMDktMjlUMDA6MDA6
+        MDBaIn0seyJ0eXBlIjoibW9kZWwiLCJpZCI6ImNsYXVkZS1vcHVzLTQtMS0y
+        MDI1MDgwNSIsImRpc3BsYXlfbmFtZSI6IkNsYXVkZSBPcHVzIDQuMSIsImNy
+        ZWF0ZWRfYXQiOiIyMDI1LTA4LTA1VDAwOjAwOjAwWiJ9LHsidHlwZSI6Im1v
+        ZGVsIiwiaWQiOiJjbGF1ZGUtb3B1cy00LTIwMjUwNTE0IiwiZGlzcGxheV9u
+        YW1lIjoiQ2xhdWRlIE9wdXMgNCIsImNyZWF0ZWRfYXQiOiIyMDI1LTA1LTIy
+        VDAwOjAwOjAwWiJ9LHsidHlwZSI6Im1vZGVsIiwiaWQiOiJjbGF1ZGUtc29u
+        bmV0LTQtMjAyNTA1MTQiLCJkaXNwbGF5X25hbWUiOiJDbGF1ZGUgU29ubmV0
+        IDQiLCJjcmVhdGVkX2F0IjoiMjAyNS0wNS0yMlQwMDowMDowMFoifSx7InR5
+        cGUiOiJtb2RlbCIsImlkIjoiY2xhdWRlLTMtaGFpa3UtMjAyNDAzMDciLCJk
+        aXNwbGF5X25hbWUiOiJDbGF1ZGUgSGFpa3UgMyIsImNyZWF0ZWRfYXQiOiIy
+        MDI0LTAzLTA3VDAwOjAwOjAwWiJ9XSwiaGFzX21vcmUiOmZhbHNlLCJmaXJz
+        dF9pZCI6ImNsYXVkZS1zb25uZXQtNC02IiwibGFzdF9pZCI6ImNsYXVkZS0z
+        LWhhaWt1LTIwMjQwMzA3In0=
+  recorded_at: Wed, 18 Mar 2026 17:01:52 GMT
+recorded_with: VCR 6.4.0

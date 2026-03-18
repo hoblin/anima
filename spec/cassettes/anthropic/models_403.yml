@@ -1,0 +1,29 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://api.anthropic.com/v1/models
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 403
+      message: Forbidden
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: '{"type":"error","error":{"type":"forbidden_error","message":"Your API key does not have permission to use the specified resource."}}'
+  recorded_at: Wed, 18 Mar 2026 16:50:23 GMT
+recorded_with: VCR 6.4.0 (hand-crafted, cannot trigger 403 on demand)

@@ -114,7 +114,7 @@ module Providers
       raise TransientError, "#{network_error.class}: #{network_error.message}"
     end
 
-    # Verify the token is accepted by Anthropic by sending a minimal API request.
+    # Verify the token is accepted by Anthropic using the free models endpoint.
     # Returns +true+ on success; raises typed exceptions on failure so callers
     # can distinguish permanent auth problems from transient outages.
     #
@@ -124,13 +124,8 @@ module Providers
     # @raise [ServerError] on 5xx
     # @raise [TransientError] on network-level failures
     def validate_credentials!
-      response = self.class.post(
-        "/v1/messages",
-        body: {
-          model: Anima::Settings.model,
-          messages: [{role: "user", content: "Hi"}],
-          max_tokens: 1
-        }.to_json,
+      response = self.class.get(
+        "/v1/models",
         headers: request_headers,
         timeout: Anima::Settings.api_timeout
       )
