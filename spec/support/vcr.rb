@@ -27,7 +27,7 @@ VCR.configure do |config|
 
   # :new_episodes in dev (record new requests, replay existing), :none in CI (all must be pre-recorded).
   # Override with VCR_MODE=rec to force re-recording: VCR_MODE=rec bundle exec rspec spec/path:42
-  record_mode = if ENV["VCR_MODE"] =~ /rec/i
+  record_mode = if /rec/i.match?(ENV["VCR_MODE"])
     :all
   elsif ENV["CI"]
     :none
