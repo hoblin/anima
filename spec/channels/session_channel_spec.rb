@@ -720,19 +720,14 @@ RSpec.describe SessionChannel, type: :channel do
         allow(CredentialStore).to receive(:write)
       end
 
-      it "transmits token_saved on success without warning" do
+      it "saves the token and transmits token_saved without warning" do
         perform(:save_token, {"token" => valid_token})
 
         saved = transmissions.find { |t| t["action"] == "token_saved" }
         expect(saved).to be_present
         expect(saved).not_to have_key("warning")
-      end
-
-      it "delegates to CredentialStore" do
-        expect(CredentialStore).to receive(:write)
+        expect(CredentialStore).to have_received(:write)
           .with("anthropic", "subscription_token" => valid_token)
-
-        perform(:save_token, {"token" => valid_token})
       end
     end
 

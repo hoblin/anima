@@ -9,9 +9,7 @@ VCR.configure do |config|
   config.ignore_localhost = true
 
   config.filter_sensitive_data("<ANTHROPIC_API_KEY>") do
-    CredentialStore.read("anthropic", "subscription_token")
-  rescue
-    "sk-ant-oat01-filtered"
+    CredentialStore.read("anthropic", "subscription_token") || "sk-ant-oat01-filtered"
   end
 
   # Filter Authorization header directly so new cassettes never leak tokens.

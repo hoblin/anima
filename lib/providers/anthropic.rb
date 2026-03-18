@@ -46,6 +46,13 @@ module Providers
         true
       end
 
+      # Validate a token against the live Anthropic API.
+      # Delegates to {#validate_credentials!} on a throwaway instance.
+      #
+      # @param token [String] Anthropic API token to validate
+      # @return [true] when the API accepts the token
+      # @raise [TransientError] on network failures or server errors (retryable)
+      # @raise [AuthenticationError] on 401/403 (permanent)
       def validate_token_api!(token)
         provider = new(token)
         provider.validate_credentials!
@@ -58,6 +65,16 @@ module Providers
       @token = token || self.class.fetch_token
     end
 
+    # Send a message to the Anthropic API and return the parsed response.
+    #
+    # @param model [String] Anthropic model identifier
+    # @param messages [Array<Hash>] conversation messages
+    # @param max_tokens [Integer] maximum tokens in the response
+    # @param options [Hash] additional parameters (e.g. +system:+, +tools:+)
+    # @return [Hash] parsed API response
+    # @raise [TransientError] on network failures or server errors (retryable)
+    # @raise [AuthenticationError] on 401/403 (permanent)
+    # @raise [Error] on other API errors
     def create_message(model:, messages:, max_tokens:, **options)
       body = {model: model, messages: messages, max_tokens: max_tokens}.merge(options)
 
@@ -69,8 +86,8 @@ module Providers
       )
 
       handle_response(response)
-    rescue Errno::ECONNRESET, Net::ReadTimeout, Net::OpenTimeout, SocketError, EOFError => e
-      raise TransientError, "#{e.class}: #{e.message}"
+    rescue Errno::ECONNRESET, Net::ReadTimeout, Net::OpenTimeout, SocketError, EOFError => network_error
+      raise TransientError, "#{network_error.class}: #{network_error.message}"
     end
 
     # Count tokens in a message payload without creating a message.
@@ -93,10 +110,19 @@ module Providers
 
       result = handle_response(response)
       result["input_tokens"]
-    rescue Errno::ECONNRESET, Net::ReadTimeout, Net::OpenTimeout, SocketError, EOFError => e
-      raise TransientError, "#{e.class}: #{e.message}"
+    rescue Errno::ECONNRESET, Net::ReadTimeout, Net::OpenTimeout, SocketError, EOFError => network_error
+      raise TransientError, "#{network_error.class}: #{network_error.message}"
     end
 
+    # Verify the token is accepted by Anthropic by sending a minimal API request.
+    # Returns +true+ on success; raises typed exceptions on failure so callers
+    # can distinguish permanent auth problems from transient outages.
+    #
+    # @return [true] when the API accepts the token
+    # @raise [AuthenticationError] on 401 (invalid token) or 403 (restricted credential)
+    # @raise [RateLimitError] on 429
+    # @raise [ServerError] on 5xx
+    # @raise [TransientError] on network-level failures
     def validate_credentials!
       response = self.class.post(
         "/v1/messages",
@@ -121,8 +147,8 @@ module Providers
       else
         handle_response(response)
       end
-    rescue Errno::ECONNRESET, Net::ReadTimeout, Net::OpenTimeout, SocketError, EOFError => e
-      raise TransientError, "#{e.class}: #{e.message}"
+    rescue Errno::ECONNRESET, Net::ReadTimeout, Net::OpenTimeout, SocketError, EOFError => network_error
+      raise TransientError, "#{network_error.class}: #{network_error.message}"
     end
 
     private
