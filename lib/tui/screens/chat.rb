@@ -246,7 +246,7 @@ module TUI
             @authentication_required = true
           when "token_saved"
             @authentication_required = false
-            @token_save_result = {success: true, warning: msg["warning"]}
+            @token_save_result = {success: true, warning: msg["warning"]}.compact
           when "token_error"
             @token_save_result = {success: false, message: msg["message"]}
           when "error"
