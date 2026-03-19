@@ -5,8 +5,9 @@ http_interactions:
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Reply
-        with the single word OK"}],"max_tokens":8192,"temperature":0.0,"system":[{"type":"text","text":"You
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Remember
+        the number 42"},{"role":"assistant","content":"Got it, I''ll remember 42."},{"role":"user","content":"What
+        number did I just say?"}],"max_tokens":8192,"system":[{"type":"text","text":"You
         are Claude Code, Anthropic''s official CLI for Claude."}]}'
     headers:
       Authorization:
@@ -29,7 +30,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 19 Mar 2026 20:14:47 GMT
+      - Thu, 19 Mar 2026 20:26:15 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -49,7 +50,7 @@ http_interactions:
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1773986400'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.92'
+      - '0.93'
       Anthropic-Ratelimit-Unified-7d-Surpassed-Threshold:
       - '0.75'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
@@ -77,11 +78,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '902'
+      - '966'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - proxy;dur=902
+      - proxy;dur=967
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -96,14 +97,15 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxNGRjdDVxVGRka2FYZHdXcTdVMVk5eiIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxV040MTZzUUtMdFozN2hTeEtUTHhYUSIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6Ik9LIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9z
-        ZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyNywiY2Fj
-        aGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0
-        X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lu
-        cHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0s
-        Im91dHB1dF90b2tlbnMiOjQsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwi
-        aW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFpbGFibGUifX0=
-  recorded_at: Thu, 19 Mar 2026 20:14:47 GMT
+        dGV4dCI6IllvdSBzYWlkIHRoZSBudW1iZXIgNDIuIn1dLCJzdG9wX3JlYXNv
+        biI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsi
+        aW5wdXRfdG9rZW5zIjo0OCwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5z
+        IjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRp
+        b24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFs
+        XzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjEwLCJzZXJ2
+        aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJub3RfYXZh
+        aWxhYmxlIn19
+  recorded_at: Thu, 19 Mar 2026 20:26:15 GMT
 recorded_with: VCR 6.4.0

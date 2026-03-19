@@ -1,0 +1,23 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: ''
+    headers:
+      Content-Type:
+      - application/json
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Content-Type:
+      - application/json
+    body:
+      encoding: UTF-8
+      string: '{"id":"msg_loop","type":"message","role":"assistant","content":[{"type":"tool_use","id":"toolu_loop","name":"web_get","input":{"url":"https://example.com"}}],"model":"claude-sonnet-4-20250514","stop_reason":"tool_use","usage":{"input_tokens":10,"output_tokens":10}}'
+  recorded_at: Thu, 19 Mar 2026 20:30:00 GMT
+recorded_with: VCR 6.4.0 (hand-crafted, simulates infinite tool loop)

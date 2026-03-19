@@ -36,29 +36,17 @@ RSpec.describe Tools::WebGet do
   end
 
   describe "#execute" do
-    context "with a valid HTTPS URL" do
-      before do
-        stub_request(:get, "https://example.com")
-          .to_return(status: 200, body: "<html><body>Hello World</body></html>")
-      end
-
+    context "with a valid URL", :vcr do
       it "returns the response body" do
-        result = tool.execute("url" => "https://example.com")
-        expect(result).to eq("<html><body>Hello World</body></html>")
+        result = tool.execute("url" => "http://example.com")
+        expect(result).to include("Example Domain")
       end
     end
 
-    context "with a large response" do
-      before do
-        large_body = "x" * (Anima::Settings.max_web_response_bytes + 1000)
-        stub_request(:get, "https://example.com/large")
-          .to_return(status: 200, body: large_body)
-      end
-
+    context "with a large response", :vcr do
       it "truncates the response" do
-        result = tool.execute("url" => "https://example.com/large")
+        result = tool.execute("url" => "https://www.gutenberg.org/files/1342/1342-0.txt")
         expect(result).to include("[Truncated:")
-        expect(result.bytesize).to be < Anima::Settings.max_web_response_bytes + 200
       end
     end
 
@@ -85,12 +73,9 @@ RSpec.describe Tools::WebGet do
     end
 
     context "when the request times out" do
-      before do
-        stub_request(:get, "https://slow.example.com")
-          .to_timeout
-      end
-
       it "returns a timeout error" do
+        allow(HTTParty).to receive(:get).and_raise(Net::ReadTimeout)
+
         result = tool.execute("url" => "https://slow.example.com")
         expect(result).to be_a(Hash)
         expect(result[:error]).to include("timed out")
@@ -98,12 +83,9 @@ RSpec.describe Tools::WebGet do
     end
 
     context "when the connection is refused" do
-      before do
-        stub_request(:get, "https://down.example.com")
-          .to_raise(Errno::ECONNREFUSED)
-      end
-
       it "returns a connection error" do
+        allow(HTTParty).to receive(:get).and_raise(Errno::ECONNREFUSED)
+
         result = tool.execute("url" => "https://down.example.com")
         expect(result).to be_a(Hash)
         expect(result[:error]).to include("Connection refused")

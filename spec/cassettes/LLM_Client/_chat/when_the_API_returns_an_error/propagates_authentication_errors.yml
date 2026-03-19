@@ -2,10 +2,10 @@
 http_interactions:
 - request:
     method: post
-    uri: https://api.anthropic.com/v1/messages/count_tokens
+    uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Hello"}],"system":[{"type":"text","text":"You
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Hi"}],"max_tokens":8192,"system":[{"type":"text","text":"You
         are Claude Code, Anthropic''s official CLI for Claude."}]}'
     headers:
       Authorization:
@@ -24,41 +24,46 @@ http_interactions:
       - Ruby
   response:
     status:
-      code: 200
-      message: OK
+      code: 401
+      message: Unauthorized
     headers:
       Date:
-      - Thu, 19 Mar 2026 20:14:49 GMT
+      - Thu, 19 Mar 2026 20:26:16 GMT
       Content-Type:
       - application/json
-      Content-Length:
-      - '19'
+      Transfer-Encoding:
+      - chunked
       Connection:
       - keep-alive
+      X-Should-Retry:
+      - 'false'
       Request-Id:
       - "<REQUEST_ID>"
       Strict-Transport-Security:
       - max-age=31536000; includeSubDomains; preload
-      Anthropic-Organization-Id:
-      - "<ANTHROPIC_ORG_ID>"
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '59'
+      - '14'
+      Vary:
+      - Accept-Encoding
       Server-Timing:
-      - proxy;dur=59
-      Cf-Cache-Status:
-      - DYNAMIC
+      - proxy;dur=14
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
       X-Robots-Tag:
       - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
       Cf-Ray:
       - "<CF_RAY>"
     body:
-      encoding: UTF-8
-      string: '{"input_tokens":22}'
-  recorded_at: Thu, 19 Mar 2026 20:14:49 GMT
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJ0eXBlIjoiZXJyb3IiLCJlcnJvciI6eyJ0eXBlIjoiYXV0aGVudGljYXRp
+        b25fZXJyb3IiLCJtZXNzYWdlIjoiSW52YWxpZCBiZWFyZXIgdG9rZW4ifSwi
+        cmVxdWVzdF9pZCI6InJlcV8wMTFDWkQ0ckpKTjdKWGdhQXhlTjc4eVMifQ==
+  recorded_at: Thu, 19 Mar 2026 20:26:16 GMT
 recorded_with: VCR 6.4.0

@@ -2,12 +2,11 @@
 http_interactions:
 - request:
     method: post
-    uri: https://api.anthropic.com/v1/messages/count_tokens
+    uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Hi"}],"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
-        are helpful"}]}'
+      string: '{"model":"bad-model","messages":[{"role":"user","content":"Hi"}],"max_tokens":8192,"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -25,17 +24,19 @@ http_interactions:
       - Ruby
   response:
     status:
-      code: 200
-      message: OK
+      code: 404
+      message: Not Found
     headers:
       Date:
-      - Thu, 19 Mar 2026 20:14:50 GMT
+      - Thu, 19 Mar 2026 20:14:48 GMT
       Content-Type:
       - application/json
-      Content-Length:
-      - '19'
+      Transfer-Encoding:
+      - chunked
       Connection:
       - keep-alive
+      X-Should-Retry:
+      - 'false'
       Request-Id:
       - "<REQUEST_ID>"
       Strict-Transport-Security:
@@ -45,9 +46,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '76'
+      - '32'
+      Vary:
+      - Accept-Encoding
       Server-Timing:
-      - proxy;dur=76
+      - proxy;dur=32
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -59,7 +62,10 @@ http_interactions:
       Cf-Ray:
       - "<CF_RAY>"
     body:
-      encoding: UTF-8
-      string: '{"input_tokens":25}'
-  recorded_at: Thu, 19 Mar 2026 20:14:50 GMT
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJ0eXBlIjoiZXJyb3IiLCJlcnJvciI6eyJ0eXBlIjoibm90X2ZvdW5kX2Vy
+        cm9yIiwibWVzc2FnZSI6Im1vZGVsOiBiYWQtbW9kZWwifSwicmVxdWVzdF9p
+        ZCI6InJlcV8wMTFDWkQzeVluTFRWaVdzTUZhNld5dVgifQ==
+  recorded_at: Thu, 19 Mar 2026 20:14:48 GMT
 recorded_with: VCR 6.4.0

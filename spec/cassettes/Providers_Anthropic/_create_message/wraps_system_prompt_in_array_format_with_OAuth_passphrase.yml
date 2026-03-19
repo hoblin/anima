@@ -6,7 +6,7 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Reply
-        with the single word OK"}],"max_tokens":100,"system":[{"type":"text","text":"You
+        with the single word OK"}],"max_tokens":8192,"system":[{"type":"text","text":"You
         are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
         are helpful"}],"temperature":0.0}'
     headers:
@@ -30,7 +30,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 19 Mar 2026 17:47:17 GMT
+      - Thu, 19 Mar 2026 20:14:46 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -44,7 +44,7 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1773954000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.12'
+      - '0.19'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed_warning
       Anthropic-Ratelimit-Unified-7d-Reset:
@@ -78,11 +78,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '4513'
+      - '974'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - proxy;dur=4513
+      - proxy;dur=974
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -97,7 +97,7 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxVXNNM05WSENmVDY1S1hVam8ybm81ViIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxU2doUldhNFhXelkzWDk2dldmeHRQbiIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6Ik9LIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9z
         ZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjozMCwiY2Fj
@@ -106,5 +106,5 @@ http_interactions:
         cHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0s
         Im91dHB1dF90b2tlbnMiOjQsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwi
         aW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFpbGFibGUifX0=
-  recorded_at: Thu, 19 Mar 2026 17:47:17 GMT
+  recorded_at: Thu, 19 Mar 2026 20:14:46 GMT
 recorded_with: VCR 6.4.0

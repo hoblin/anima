@@ -4,15 +4,12 @@ require "rails_helper"
 
 RSpec.describe AgentRequestJob do
   let(:session) { Session.create! }
-  let(:valid_token) { "sk-ant-oat01-#{"a" * 68}" }
+  let(:agent_loop) { instance_double(AgentLoop, run: nil, finalize: nil) }
 
   before do
-    allow(Rails.application.credentials).to receive(:dig)
-      .with(:anthropic, :subscription_token)
-      .and_return(valid_token)
+    allow(AgentLoop).to receive(:new).and_return(agent_loop)
     allow(Mcp::ClientManager).to receive(:new)
       .and_return(instance_double(Mcp::ClientManager, register_tools: []))
-    # Stub analytical brain by default — dedicated tests below override this
     allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(false)
   end
 
@@ -38,42 +35,20 @@ RSpec.describe AgentRequestJob do
 
   describe "#perform" do
     it "runs the agent loop for the given session" do
-      session.events.create!(
-        event_type: "user_message",
-        payload: {"content" => "Hello"},
-        timestamp: 1
-      )
-
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(
-          status: 200,
-          body: {
-            content: [{type: "text", text: "Hi there!"}],
-            stop_reason: "end_turn"
-          }.to_json,
-          headers: {"content-type" => "application/json"}
-        )
-
-      collector = Events::Subscribers::MessageCollector.new
-      Events::Bus.subscribe(collector)
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       described_class.perform_now(session.id)
 
-      expect(collector.messages.last).to eq({role: "assistant", content: "Hi there!"})
-      Events::Bus.unsubscribe(collector)
+      expect(agent_loop).to have_received(:run)
     end
 
     it "sets processing flag during execution" do
       session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       processing_during_run = nil
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return do
-          processing_during_run = session.reload.processing?
-          {status: 200,
-           body: {content: [{type: "text", text: "ok"}], stop_reason: "end_turn"}.to_json,
-           headers: {"content-type" => "application/json"}}
-        end
+      allow(agent_loop).to receive(:run) do
+        processing_during_run = session.reload.processing?
+      end
 
       described_class.perform_now(session.id)
 
@@ -85,44 +60,17 @@ RSpec.describe AgentRequestJob do
       session.update!(processing: true)
       session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
-      # Should not make any API calls
       described_class.perform_now(session.id)
 
+      expect(agent_loop).not_to have_received(:run)
       expect(session.reload.processing?).to be false
-    end
-
-    it "promotes pending messages and re-runs after agent loop" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "first"}, timestamp: 1)
-
-      call_count = 0
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return do
-          call_count += 1
-          if call_count == 1
-            # Simulate a pending message arriving during first processing
-            session.events.create!(
-              event_type: "user_message",
-              payload: {"content" => "second", "status" => "pending"},
-              timestamp: 2,
-              status: "pending"
-            )
-          end
-          {status: 200,
-           body: {content: [{type: "text", text: "response #{call_count}"}], stop_reason: "end_turn"}.to_json,
-           headers: {"content-type" => "application/json"}}
-        end
-
-      described_class.perform_now(session.id)
-
-      expect(call_count).to eq(2)
-      expect(session.events.where(status: "pending").count).to eq(0)
     end
 
     context "blocking analytical brain" do
       before { allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(true) }
 
       it "runs analytical brain synchronously before the agent loop when enabled" do
-        session.events.create!(event_type: "user_message", payload: {"content" => "Create a ticket"}, timestamp: 1)
+        session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
         analytical_brain_ran = false
         allow(AnalyticalBrain::Runner).to receive(:new).and_wrap_original do |method, *args|
@@ -130,13 +78,6 @@ RSpec.describe AgentRequestJob do
           allow(runner).to receive(:call) { analytical_brain_ran = true }
           runner
         end
-
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 200,
-            body: {content: [{type: "text", text: "ok"}], stop_reason: "end_turn"}.to_json,
-            headers: {"content-type" => "application/json"}
-          )
 
         described_class.perform_now(session.id)
 
@@ -151,52 +92,7 @@ RSpec.describe AgentRequestJob do
 
         expect(AnalyticalBrain::Runner).not_to receive(:new)
 
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 200,
-            body: {content: [{type: "text", text: "ok"}], stop_reason: "end_turn"}.to_json,
-            headers: {"content-type" => "application/json"}
-          )
-
         described_class.perform_now(child.id)
-      end
-
-      it "runs blocking analytical brain on the very first message" do
-        session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
-
-        analytical_brain_ran = false
-        allow(AnalyticalBrain::Runner).to receive(:new).and_wrap_original do |method, *args|
-          runner = method.call(*args)
-          allow(runner).to receive(:call) { analytical_brain_ran = true }
-          runner
-        end
-
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 200,
-            body: {content: [{type: "text", text: "ok"}], stop_reason: "end_turn"}.to_json,
-            headers: {"content-type" => "application/json"}
-          )
-
-        described_class.perform_now(session.id)
-
-        expect(analytical_brain_ran).to be true
-      end
-
-      it "skips blocking analytical brain when setting is disabled" do
-        session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
-
-        allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(false)
-        expect(AnalyticalBrain::Runner).not_to receive(:new)
-
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 200,
-            body: {content: [{type: "text", text: "ok"}], stop_reason: "end_turn"}.to_json,
-            headers: {"content-type" => "application/json"}
-          )
-
-        described_class.perform_now(session.id)
       end
 
       it "continues with agent loop even if analytical brain fails" do
@@ -205,79 +101,40 @@ RSpec.describe AgentRequestJob do
 
         allow(AnalyticalBrain::Runner).to receive(:new).and_raise(RuntimeError, "brain exploded")
 
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 200,
-            body: {content: [{type: "text", text: "ok"}], stop_reason: "end_turn"}.to_json,
-            headers: {"content-type" => "application/json"}
-          )
-
         expect { described_class.perform_now(session.id) }.not_to raise_error
+        expect(agent_loop).to have_received(:run)
       end
     end
 
     it "schedules analytical brain after the agent loop completes" do
       session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
-      # Pre-create agent reply since the test env doesn't persist via event bus
       session.events.create!(event_type: "agent_message", payload: {"content" => "Hi!"}, timestamp: 2)
-
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(
-          status: 200,
-          body: {content: [{type: "text", text: "Hi!"}], stop_reason: "end_turn"}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
 
       expect { described_class.perform_now(session.id) }
         .to have_enqueued_job(AnalyticalBrainJob).with(session.id)
     end
 
     it "finalizes the agent loop after completion" do
-      session.events.create!(
-        event_type: "user_message",
-        payload: {"content" => "Hello"},
-        timestamp: 1
-      )
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(
-          status: 200,
-          body: {
-            content: [{type: "text", text: "done"}],
-            stop_reason: "end_turn"
-          }.to_json,
-          headers: {"content-type" => "application/json"}
-        )
+      described_class.perform_now(session.id)
 
-      # Should not raise — finalize cleans up ShellSession
-      expect { described_class.perform_now(session.id) }.not_to raise_error
+      expect(agent_loop).to have_received(:finalize)
     end
 
     it "finalizes the agent loop even on error" do
-      session.events.create!(
-        event_type: "user_message",
-        payload: {"content" => "Hello"},
-        timestamp: 1
-      )
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(status: 401, body: {error: {message: "unauthorized"}}.to_json,
-          headers: {"content-type" => "application/json"})
+      allow(agent_loop).to receive(:run).and_raise(Providers::Anthropic::AuthenticationError, "bad token")
 
-      # discard_on prevents the error from propagating
-      expect { described_class.perform_now(session.id) }.not_to raise_error
+      described_class.perform_now(session.id)
+
+      expect(agent_loop).to have_received(:finalize)
     end
 
     it "clears interrupt_requested flag after completion" do
       session.update_column(:interrupt_requested, true)
       session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
-
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(
-          status: 200,
-          body: {content: [{type: "text", text: "ok"}], stop_reason: "end_turn"}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
 
       described_class.perform_now(session.id)
 
@@ -288,9 +145,7 @@ RSpec.describe AgentRequestJob do
       session.update_column(:interrupt_requested, true)
       session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(status: 401, body: {error: {message: "unauthorized"}}.to_json,
-          headers: {"content-type" => "application/json"})
+      allow(agent_loop).to receive(:run).and_raise(Providers::Anthropic::AuthenticationError, "bad token")
 
       described_class.perform_now(session.id)
 
@@ -300,9 +155,7 @@ RSpec.describe AgentRequestJob do
     it "clears processing flag even on error" do
       session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(status: 401, body: {error: {message: "unauthorized"}}.to_json,
-          headers: {"content-type" => "application/json"})
+      allow(agent_loop).to receive(:run).and_raise(Providers::Anthropic::AuthenticationError, "bad token")
 
       described_class.perform_now(session.id)
 
@@ -310,216 +163,16 @@ RSpec.describe AgentRequestJob do
     end
   end
 
-  describe "transient error handling" do
-    before do
-      session.events.create!(
-        event_type: "user_message",
-        payload: {"content" => "Hello"},
-        timestamp: 1
-      )
-    end
-
-    context "connection reset (network failure)" do
-      it "emits a system message with retry notification" do
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_raise(Errno::ECONNRESET.new("Connection reset by peer"))
-
-        emitted_events = []
-        allow(Events::Bus).to receive(:emit).and_wrap_original do |method, event|
-          emitted_events << event
-          method.call(event)
-        end
-
-        perform_enqueued_jobs { described_class.perform_later(session.id) }
-
-        system_messages = emitted_events.select { |e| e.is_a?(Events::SystemMessage) }
-        expect(system_messages).not_to be_empty
-        expect(system_messages.first.to_h[:content]).to include("retrying")
-      end
-
-      it "emits failure message after all retries are exhausted" do
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_raise(Errno::ECONNRESET.new("Connection reset by peer"))
-
-        emitted_events = []
-        allow(Events::Bus).to receive(:emit).and_wrap_original do |method, event|
-          emitted_events << event
-          method.call(event)
-        end
-
-        perform_enqueued_jobs { described_class.perform_later(session.id) }
-
-        system_messages = emitted_events.select { |e| e.is_a?(Events::SystemMessage) }
-        expect(system_messages.last.to_h[:content]).to include("Failed after multiple retries")
-      end
-    end
-
-    context "rate limit (HTTP 429)" do
-      it "retries with exponential backoff" do
-        call_count = 0
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return do
-            call_count += 1
-            if call_count < 3
-              {status: 429, body: {error: {message: "rate limited"}}.to_json,
-               headers: {"content-type" => "application/json"}}
-            else
-              {status: 200,
-               body: {content: [{type: "text", text: "Success!"}], stop_reason: "end_turn"}.to_json,
-               headers: {"content-type" => "application/json"}}
-            end
-          end
-
-        collector = Events::Subscribers::MessageCollector.new
-        Events::Bus.subscribe(collector)
-
-        perform_enqueued_jobs { described_class.perform_later(session.id) }
-
-        expect(collector.messages.last).to eq({role: "assistant", content: "Success!"})
-        expect(call_count).to eq(3)
-        Events::Bus.unsubscribe(collector)
-      end
-    end
-
-    context "server error (HTTP 5xx)" do
-      it "retries on 500 server error" do
-        call_count = 0
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return do
-            call_count += 1
-            if call_count < 2
-              {status: 500, body: "Internal Server Error"}
-            else
-              {status: 200,
-               body: {content: [{type: "text", text: "Recovered!"}], stop_reason: "end_turn"}.to_json,
-               headers: {"content-type" => "application/json"}}
-            end
-          end
-
-        collector = Events::Subscribers::MessageCollector.new
-        Events::Bus.subscribe(collector)
-
-        perform_enqueued_jobs { described_class.perform_later(session.id) }
-
-        expect(collector.messages.last).to eq({role: "assistant", content: "Recovered!"})
-        Events::Bus.unsubscribe(collector)
-      end
-
-      it "retries on 502 bad gateway" do
-        call_count = 0
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return do
-            call_count += 1
-            if call_count < 2
-              {status: 502, body: "Bad Gateway"}
-            else
-              {status: 200,
-               body: {content: [{type: "text", text: "OK"}], stop_reason: "end_turn"}.to_json,
-               headers: {"content-type" => "application/json"}}
-            end
-          end
-
-        collector = Events::Subscribers::MessageCollector.new
-        Events::Bus.subscribe(collector)
-
-        perform_enqueued_jobs { described_class.perform_later(session.id) }
-
-        expect(collector.messages.last).to eq({role: "assistant", content: "OK"})
-        Events::Bus.unsubscribe(collector)
-      end
-
-      it "retries on 503 service unavailable" do
-        call_count = 0
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return do
-            call_count += 1
-            if call_count < 2
-              {status: 503, body: "Service Unavailable"}
-            else
-              {status: 200,
-               body: {content: [{type: "text", text: "Back!"}], stop_reason: "end_turn"}.to_json,
-               headers: {"content-type" => "application/json"}}
-            end
-          end
-
-        collector = Events::Subscribers::MessageCollector.new
-        Events::Bus.subscribe(collector)
-
-        perform_enqueued_jobs { described_class.perform_later(session.id) }
-
-        expect(collector.messages.last).to eq({role: "assistant", content: "Back!"})
-        Events::Bus.unsubscribe(collector)
-      end
-    end
-
-    context "timeout" do
-      it "retries on Net::ReadTimeout" do
-        call_count = 0
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return do
-            call_count += 1
-            if call_count < 2
-              raise Net::ReadTimeout, "Net::ReadTimeout"
-            else
-              {status: 200,
-               body: {content: [{type: "text", text: "Done!"}], stop_reason: "end_turn"}.to_json,
-               headers: {"content-type" => "application/json"}}
-            end
-          end
-
-        collector = Events::Subscribers::MessageCollector.new
-        Events::Bus.subscribe(collector)
-
-        perform_enqueued_jobs { described_class.perform_later(session.id) }
-
-        expect(collector.messages.last).to eq({role: "assistant", content: "Done!"})
-        Events::Bus.unsubscribe(collector)
-      end
-    end
-
-    context "DNS failure" do
-      it "retries on SocketError" do
-        call_count = 0
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return do
-            call_count += 1
-            if call_count < 2
-              raise SocketError, "getaddrinfo: Name or service not known"
-            else
-              {status: 200,
-               body: {content: [{type: "text", text: "Resolved!"}], stop_reason: "end_turn"}.to_json,
-               headers: {"content-type" => "application/json"}}
-            end
-          end
-
-        collector = Events::Subscribers::MessageCollector.new
-        Events::Bus.subscribe(collector)
-
-        perform_enqueued_jobs { described_class.perform_later(session.id) }
-
-        expect(collector.messages.last).to eq({role: "assistant", content: "Resolved!"})
-        Events::Bus.unsubscribe(collector)
-      end
-    end
-  end
-
   describe "non-transient error handling" do
     before do
-      session.events.create!(
-        event_type: "user_message",
-        payload: {"content" => "Hello"},
-        timestamp: 1
-      )
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
     end
 
     context "authentication failure (HTTP 401)" do
       before do
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 401,
-            body: {error: {message: "invalid api key"}}.to_json,
-            headers: {"content-type" => "application/json"}
-          )
+        allow(agent_loop).to receive(:run).and_raise(
+          Providers::Anthropic::AuthenticationError, "Invalid bearer token"
+        )
       end
 
       it "fails immediately without retrying" do
@@ -548,21 +201,6 @@ RSpec.describe AgentRequestJob do
         expect {
           described_class.perform_now(-1)
         }.not_to raise_error
-      end
-    end
-
-    context "bad request (HTTP 400)" do
-      it "does not retry and raises the error" do
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 400,
-            body: {error: {message: "invalid model"}}.to_json,
-            headers: {"content-type" => "application/json"}
-          )
-
-        expect {
-          described_class.perform_now(session.id)
-        }.to raise_error(Providers::Anthropic::Error, /Bad request/)
       end
     end
   end

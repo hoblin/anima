@@ -1,0 +1,59 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: http://example.com/
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Thu, 19 Mar 2026 21:00:15 GMT
+      Content-Type:
+      - text/html
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Last-Modified:
+      - Tue, 17 Mar 2026 17:24:13 GMT
+      Allow:
+      - GET, HEAD
+      Age:
+      - '8581'
+      Cf-Cache-Status:
+      - HIT
+      Vary:
+      - Accept-Encoding
+      Server:
+      - cloudflare
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        PCFkb2N0eXBlIGh0bWw+PGh0bWwgbGFuZz0iZW4iPjxoZWFkPjx0aXRsZT5F
+        eGFtcGxlIERvbWFpbjwvdGl0bGU+PG1ldGEgbmFtZT0idmlld3BvcnQiIGNv
+        bnRlbnQ9IndpZHRoPWRldmljZS13aWR0aCwgaW5pdGlhbC1zY2FsZT0xIj48
+        c3R5bGU+Ym9keXtiYWNrZ3JvdW5kOiNlZWU7d2lkdGg6NjB2dzttYXJnaW46
+        MTV2aCBhdXRvO2ZvbnQtZmFtaWx5OnN5c3RlbS11aSxzYW5zLXNlcmlmfWgx
+        e2ZvbnQtc2l6ZToxLjVlbX1kaXZ7b3BhY2l0eTowLjh9YTpsaW5rLGE6dmlz
+        aXRlZHtjb2xvcjojMzQ4fTwvc3R5bGU+PC9oZWFkPjxib2R5PjxkaXY+PGgx
+        PkV4YW1wbGUgRG9tYWluPC9oMT48cD5UaGlzIGRvbWFpbiBpcyBmb3IgdXNl
+        IGluIGRvY3VtZW50YXRpb24gZXhhbXBsZXMgd2l0aG91dCBuZWVkaW5nIHBl
+        cm1pc3Npb24uIEF2b2lkIHVzZSBpbiBvcGVyYXRpb25zLjwvcD48cD48YSBo
+        cmVmPSJodHRwczovL2lhbmEub3JnL2RvbWFpbnMvZXhhbXBsZSI+TGVhcm4g
+        bW9yZTwvYT48L3A+PC9kaXY+PC9ib2R5PjwvaHRtbD4K
+  recorded_at: Thu, 19 Mar 2026 21:00:15 GMT
+recorded_with: VCR 6.4.0

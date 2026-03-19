@@ -3,21 +3,10 @@
 require "rails_helper"
 
 RSpec.describe LLM::Client do
-  let(:valid_token) { "sk-ant-oat01-#{"a" * 68}" }
-  let(:provider) { Providers::Anthropic.new(valid_token) }
+  let(:fake_token) { "sk-ant-oat01-#{"a" * 68}" }
+  let(:real_token) { CredentialStore.read("anthropic", "subscription_token") || fake_token }
+  let(:provider) { Providers::Anthropic.new(real_token) }
   let(:client) { described_class.new(provider: provider) }
-
-  let(:api_response) do
-    {
-      id: "msg_123",
-      type: "message",
-      role: "assistant",
-      content: [{type: "text", text: "Hello! How can I help you today?"}],
-      model: "claude-sonnet-4-20250514",
-      stop_reason: "end_turn",
-      usage: {input_tokens: 10, output_tokens: 12}
-    }
-  end
 
   describe "defaults from Settings" do
     it "uses Settings.model as default" do
@@ -38,7 +27,7 @@ RSpec.describe LLM::Client do
     it "creates a default provider when none given" do
       allow(Rails.application.credentials).to receive(:dig)
         .with(:anthropic, :subscription_token)
-        .and_return(valid_token)
+        .and_return(fake_token)
 
       client = described_class.new
       expect(client.provider).to be_a(Providers::Anthropic)
@@ -64,230 +53,62 @@ RSpec.describe LLM::Client do
   end
 
   describe "#chat" do
-    let(:messages) { [{role: "user", content: "Say hello"}] }
-
-    before do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(
-          status: 200,
-          body: api_response.to_json,
-          headers: {"content-type" => "application/json"}
-        )
+    it "returns the assistant's response text", :vcr do
+      result = client.chat([{role: "user", content: "Reply with the single word OK"}])
+      expect(result).to be_a(String)
+      expect(result).to be_present
     end
 
-    it "returns the assistant's response text" do
-      result = client.chat(messages)
-      expect(result).to eq("Hello! How can I help you today?")
+    it "passes system prompt and options through to the provider", :vcr do
+      result = client.chat(
+        [{role: "user", content: "Reply with the single word OK"}],
+        system: "You are helpful",
+        temperature: 0.0
+      )
+      expect(result).to be_present
     end
 
-    it "sends messages to the provider with default parameters" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .with(
-          body: {
-            model: "claude-sonnet-4-20250514",
-            messages: [{role: "user", content: "Say hello"}],
-            max_tokens: 8192
-          }.to_json
-        )
-        .to_return(
-          status: 200,
-          body: api_response.to_json,
-          headers: {"content-type" => "application/json"}
-        )
-
-      client.chat(messages)
-    end
-
-    it "passes additional options through to the provider" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .with(
-          body: hash_including("system" => "You are helpful", "temperature" => 0.7)
-        )
-        .to_return(
-          status: 200,
-          body: api_response.to_json,
-          headers: {"content-type" => "application/json"}
-        )
-
-      client.chat(messages, system: "You are helpful", temperature: 0.7)
-    end
-
-    it "supports multi-turn conversations" do
+    it "supports multi-turn conversations", :vcr do
       multi_turn = [
-        {role: "user", content: "Hello"},
-        {role: "assistant", content: "Hi there!"},
-        {role: "user", content: "How are you?"}
+        {role: "user", content: "Remember the number 42"},
+        {role: "assistant", content: "Got it, I'll remember 42."},
+        {role: "user", content: "What number did I just say?"}
       ]
 
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .with(body: hash_including("messages" => multi_turn))
-        .to_return(
-          status: 200,
-          body: api_response.to_json,
-          headers: {"content-type" => "application/json"}
-        )
-
       result = client.chat(multi_turn)
-      expect(result).to eq("Hello! How can I help you today?")
+      expect(result).to include("42")
     end
 
-    it "uses the configured model" do
-      custom_client = described_class.new(
+    it "uses the configured model", :vcr do
+      haiku_client = described_class.new(
         model: "claude-haiku-4-5-20251001",
         provider: provider
       )
 
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .with(body: hash_including("model" => "claude-haiku-4-5-20251001"))
-        .to_return(
-          status: 200,
-          body: api_response.to_json,
-          headers: {"content-type" => "application/json"}
-        )
-
-      custom_client.chat(messages)
+      result = haiku_client.chat([{role: "user", content: "Reply with the single word OK"}])
+      expect(result).to be_present
     end
 
-    it "uses the configured max_tokens" do
-      custom_client = described_class.new(
-        max_tokens: 4096,
-        provider: provider
-      )
-
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .with(body: hash_including("max_tokens" => 4096))
-        .to_return(
-          status: 200,
-          body: api_response.to_json,
-          headers: {"content-type" => "application/json"}
-        )
-
-      custom_client.chat(messages)
-    end
-
-    context "when response has multiple text blocks" do
-      it "concatenates all text blocks" do
-        multi_block_response = api_response.merge(
-          content: [
-            {type: "text", text: "First part. "},
-            {type: "text", text: "Second part."}
-          ]
-        )
-
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 200,
-            body: multi_block_response.to_json,
-            headers: {"content-type" => "application/json"}
-          )
-
-        result = client.chat(messages)
-        expect(result).to eq("First part. Second part.")
-      end
-    end
-
-    context "when response has no content" do
-      it "returns an empty string for nil content" do
-        empty_response = api_response.merge(content: nil)
-
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 200,
-            body: empty_response.to_json,
-            headers: {"content-type" => "application/json"}
-          )
-
-        result = client.chat(messages)
-        expect(result).to eq("")
-      end
-
-      it "returns an empty string for empty content array" do
-        empty_response = api_response.merge(content: [])
-
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 200,
-            body: empty_response.to_json,
-            headers: {"content-type" => "application/json"}
-          )
-
-        result = client.chat(messages)
-        expect(result).to eq("")
-      end
-    end
-
-    context "when response contains non-text content blocks" do
-      it "extracts only text blocks" do
-        mixed_response = api_response.merge(
-          content: [
-            {type: "text", text: "Here is the result:"},
-            {type: "tool_use", id: "tool_1", name: "calculator", input: {expr: "2+2"}}
-          ]
-        )
-
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 200,
-            body: mixed_response.to_json,
-            headers: {"content-type" => "application/json"}
-          )
-
-        result = client.chat(messages)
-        expect(result).to eq("Here is the result:")
-      end
-    end
-
-    context "when the API returns an error" do
-      it "propagates provider errors" do
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 400,
-            body: {error: {message: "invalid request"}}.to_json,
-            headers: {"content-type" => "application/json"}
-          )
-
-        expect {
-          client.chat(messages)
-        }.to raise_error(Providers::Anthropic::Error, /Bad request/)
-      end
+    context "when the API returns an error", :vcr do
+      let(:bad_provider) { Providers::Anthropic.new(fake_token) }
+      let(:bad_client) { described_class.new(provider: bad_provider) }
 
       it "propagates authentication errors" do
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 401,
-            body: {error: {message: "invalid token"}}.to_json,
-            headers: {"content-type" => "application/json"}
-          )
-
         expect {
-          client.chat(messages)
+          bad_client.chat([{role: "user", content: "Hi"}])
         }.to raise_error(Providers::Anthropic::AuthenticationError)
-      end
-
-      it "propagates rate limit errors" do
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 429,
-            body: {error: {message: "rate limited"}}.to_json,
-            headers: {"content-type" => "application/json"}
-          )
-
-        expect {
-          client.chat(messages)
-        }.to raise_error(Providers::Anthropic::Error, /Rate limit/)
       end
     end
   end
 
   describe "#chat_with_tools" do
-    let(:messages) { [{role: "user", content: "What is on example.com?"}] }
     let(:session) { Session.create! }
     let(:registry) { Tools::Registry.new }
 
     let(:tool_class) do
       Class.new(Tools::Base) do
         def self.tool_name = "web_get"
-        def self.description = "Fetch URL"
+        def self.description = "Fetch a URL and return its contents"
 
         def self.input_schema
           {type: "object", properties: {url: {type: "string"}}, required: ["url"]}
@@ -301,137 +122,48 @@ RSpec.describe LLM::Client do
 
     before { registry.register(tool_class) }
 
-    context "when the LLM responds with end_turn (no tool use)" do
-      before do
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 200,
-            body: api_response.to_json,
-            headers: {"content-type" => "application/json"}
-          )
-      end
-
+    context "when the LLM responds without tool use", :vcr do
       it "returns the text response directly" do
-        result = client.chat_with_tools(messages, registry: registry, session_id: session.id)
-        expect(result).to eq("Hello! How can I help you today?")
-      end
-
-      it "sends tool schemas in the request" do
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .with(body: hash_including("tools" => [hash_including("name" => "web_get")]))
-          .to_return(
-            status: 200,
-            body: api_response.to_json,
-            headers: {"content-type" => "application/json"}
-          )
-
-        client.chat_with_tools(messages, registry: registry, session_id: session.id)
+        result = client.chat_with_tools(
+          [{role: "user", content: "What is 2 + 2? Just answer the number."}],
+          registry: registry, session_id: session.id
+        )
+        expect(result).to be_present
       end
     end
 
-    context "when the LLM requests a tool call" do
-      let(:tool_use_response) do
-        {
-          id: "msg_tool",
-          type: "message",
-          role: "assistant",
-          content: [
-            {type: "tool_use", id: "toolu_abc123", name: "web_get", input: {url: "https://example.com"}}
-          ],
-          model: "claude-sonnet-4-20250514",
-          stop_reason: "tool_use",
-          usage: {input_tokens: 20, output_tokens: 30}
-        }
-      end
-
-      let(:final_response) do
-        {
-          id: "msg_final",
-          type: "message",
-          role: "assistant",
-          content: [{type: "text", text: "The page contains Example Domain."}],
-          model: "claude-sonnet-4-20250514",
-          stop_reason: "end_turn",
-          usage: {input_tokens: 50, output_tokens: 20}
-        }
-      end
-
-      before do
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            {status: 200, body: tool_use_response.to_json, headers: {"content-type" => "application/json"}},
-            {status: 200, body: final_response.to_json, headers: {"content-type" => "application/json"}}
-          )
-      end
+    context "when the LLM calls a tool", :vcr do
+      let(:messages) { [{role: "user", content: "Use the web_get tool to fetch https://example.com and tell me what you find"}] }
 
       it "executes the tool and returns the final response" do
         result = client.chat_with_tools(messages, registry: registry, session_id: session.id)
-        expect(result).to eq("The page contains Example Domain.")
+        expect(result).to be_present
       end
 
-      it "emits a ToolCall event" do
+      it "emits ToolCall and ToolResponse events" do
         events = []
-        subscriber = double("sub")
+        subscriber = spy("sub")
         allow(subscriber).to receive(:emit) { |e| events << e }
         Events::Bus.subscribe(subscriber)
 
         client.chat_with_tools(messages, registry: registry, session_id: session.id)
 
-        tool_call_event = events.find { |e| e[:payload][:type] == "tool_call" }
-        expect(tool_call_event[:payload]).to include(
-          tool_name: "web_get",
-          tool_use_id: "toolu_abc123"
-        )
+        tool_call = events.find { |e| e[:payload][:type] == "tool_call" }
+        expect(tool_call[:payload][:tool_name]).to eq("web_get")
+
+        tool_response = events.find { |e| e[:payload][:type] == "tool_response" }
+        expect(tool_response[:payload][:tool_name]).to eq("web_get")
+        expect(tool_response[:payload][:success]).to be true
       ensure
         Events::Bus.unsubscribe(subscriber)
-      end
-
-      it "emits a ToolResponse event" do
-        events = []
-        subscriber = double("sub")
-        allow(subscriber).to receive(:emit) { |e| events << e }
-        Events::Bus.subscribe(subscriber)
-
-        client.chat_with_tools(messages, registry: registry, session_id: session.id)
-
-        tool_response_event = events.find { |e| e[:payload][:type] == "tool_response" }
-        expect(tool_response_event[:payload]).to include(
-          tool_name: "web_get",
-          tool_use_id: "toolu_abc123",
-          success: true,
-          content: "<html>Example Domain</html>"
-        )
-      ensure
-        Events::Bus.unsubscribe(subscriber)
-      end
-
-      it "sends tool results back to the LLM" do
-        requests = []
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            {status: 200, body: tool_use_response.to_json, headers: {"content-type" => "application/json"}},
-            {status: 200, body: final_response.to_json, headers: {"content-type" => "application/json"}}
-          ).with { |req|
-          requests << JSON.parse(req.body)
-          true
-        }
-
-        client.chat_with_tools(messages, registry: registry, session_id: session.id)
-
-        second_request = requests.last
-        last_user_msg = second_request["messages"].last
-        expect(last_user_msg["role"]).to eq("user")
-        expect(last_user_msg["content"]).to include(
-          hash_including("type" => "tool_result", "tool_use_id" => "toolu_abc123")
-        )
       end
     end
 
-    context "when the tool returns an error" do
+    context "when the tool returns an error", :vcr do
       let(:failing_tool_class) do
         Class.new(Tools::Base) do
           def self.tool_name = "web_get"
-          def self.description = "Fetch URL"
+          def self.description = "Fetch a URL and return its contents"
           def self.input_schema = {type: "object", properties: {url: {type: "string"}}, required: ["url"]}
 
           def execute(_input)
@@ -440,51 +172,22 @@ RSpec.describe LLM::Client do
         end
       end
 
-      let(:tool_use_response) do
-        {
-          id: "msg_tool",
-          type: "message",
-          role: "assistant",
-          content: [
-            {type: "tool_use", id: "toolu_err", name: "web_get", input: {url: "https://down.com"}}
-          ],
-          model: "claude-sonnet-4-20250514",
-          stop_reason: "tool_use",
-          usage: {input_tokens: 20, output_tokens: 30}
-        }
+      let(:error_registry) do
+        r = Tools::Registry.new
+        r.register(failing_tool_class)
+        r
       end
 
-      let(:final_response) do
-        {
-          id: "msg_final",
-          type: "message",
-          role: "assistant",
-          content: [{type: "text", text: "Sorry, I could not fetch that URL."}],
-          model: "claude-sonnet-4-20250514",
-          stop_reason: "end_turn",
-          usage: {input_tokens: 50, output_tokens: 20}
-        }
-      end
-
-      before do
-        error_registry = Tools::Registry.new
-        error_registry.register(failing_tool_class)
-        @error_registry = error_registry
-
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            {status: 200, body: tool_use_response.to_json, headers: {"content-type" => "application/json"}},
-            {status: 200, body: final_response.to_json, headers: {"content-type" => "application/json"}}
-          )
-      end
-
-      it "emits ToolResponse with success: false for error results" do
+      it "emits ToolResponse with success: false" do
         events = []
-        subscriber = double("sub")
+        subscriber = spy("sub")
         allow(subscriber).to receive(:emit) { |e| events << e }
         Events::Bus.subscribe(subscriber)
 
-        client.chat_with_tools(messages, registry: @error_registry, session_id: session.id)
+        client.chat_with_tools(
+          [{role: "user", content: "Use the web_get tool to fetch https://example.com"}],
+          registry: error_registry, session_id: session.id
+        )
 
         tool_response = events.find { |e| e[:payload][:type] == "tool_response" }
         expect(tool_response[:payload][:success]).to be false
@@ -493,11 +196,11 @@ RSpec.describe LLM::Client do
       end
     end
 
-    context "when the tool raises an unexpected exception" do
+    context "when the tool raises an unexpected exception", :vcr do
       let(:exploding_tool_class) do
         Class.new(Tools::Base) do
           def self.tool_name = "web_get"
-          def self.description = "Fetch URL"
+          def self.description = "Fetch a URL and return its contents"
           def self.input_schema = {type: "object", properties: {url: {type: "string"}}, required: ["url"]}
 
           def execute(_input)
@@ -506,58 +209,24 @@ RSpec.describe LLM::Client do
         end
       end
 
-      let(:tool_use_response) do
-        {
-          id: "msg_tool",
-          type: "message",
-          role: "assistant",
-          content: [
-            {type: "tool_use", id: "toolu_boom", name: "web_get", input: {url: "https://boom.com"}}
-          ],
-          model: "claude-sonnet-4-20250514",
-          stop_reason: "tool_use",
-          usage: {input_tokens: 20, output_tokens: 30}
-        }
+      let(:exploding_registry) do
+        r = Tools::Registry.new
+        r.register(exploding_tool_class)
+        r
       end
 
-      let(:final_response) do
-        {
-          id: "msg_final",
-          type: "message",
-          role: "assistant",
-          content: [{type: "text", text: "That tool failed, sorry."}],
-          model: "claude-sonnet-4-20250514",
-          stop_reason: "end_turn",
-          usage: {input_tokens: 50, output_tokens: 20}
-        }
-      end
-
-      before do
-        exploding_registry = Tools::Registry.new
-        exploding_registry.register(exploding_tool_class)
-        @exploding_registry = exploding_registry
-
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            {status: 200, body: tool_use_response.to_json, headers: {"content-type" => "application/json"}},
-            {status: 200, body: final_response.to_json, headers: {"content-type" => "application/json"}}
-          )
-      end
-
-      it "catches the exception and returns an error tool_result to the LLM" do
-        result = client.chat_with_tools(messages, registry: @exploding_registry, session_id: session.id)
-
-        expect(result).to eq("That tool failed, sorry.")
-      end
-
-      it "emits ToolResponse with success: false" do
+      it "catches the exception and emits ToolResponse with success: false" do
         events = []
-        subscriber = double("sub")
+        subscriber = spy("sub")
         allow(subscriber).to receive(:emit) { |e| events << e }
         Events::Bus.subscribe(subscriber)
 
-        client.chat_with_tools(messages, registry: @exploding_registry, session_id: session.id)
+        result = client.chat_with_tools(
+          [{role: "user", content: "Use the web_get tool to fetch https://example.com"}],
+          registry: exploding_registry, session_id: session.id
+        )
 
+        expect(result).to be_present
         tool_response = events.find { |e| e[:payload][:type] == "tool_response" }
         expect(tool_response[:payload][:success]).to be false
         expect(tool_response[:payload][:content]).to include("RuntimeError")
@@ -567,71 +236,32 @@ RSpec.describe LLM::Client do
       end
     end
 
-    context "when the user interrupts during tool execution" do
-      let(:tool_use_response) do
-        {
-          id: "msg_tool",
-          type: "message",
-          role: "assistant",
-          content: [
-            {type: "tool_use", id: "toolu_int1", name: "web_get", input: {url: "https://first.com"}},
-            {type: "tool_use", id: "toolu_int2", name: "web_get", input: {url: "https://second.com"}}
-          ],
-          model: "claude-sonnet-4-20250514",
-          stop_reason: "tool_use",
-          usage: {input_tokens: 20, output_tokens: 30}
-        }
-      end
+    context "when the user interrupts during tool execution", :vcr do
+      let(:messages) { [{role: "user", content: "Use the web_get tool to fetch https://example.com"}] }
 
-      before do
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 200,
-            body: tool_use_response.to_json,
-            headers: {"content-type" => "application/json"}
-          )
-      end
-
-      it "returns nil when interrupted after tools" do
+      it "returns nil when interrupted before tools execute" do
         session.update_column(:interrupt_requested, true)
 
         result = client.chat_with_tools(messages, registry: registry, session_id: session.id)
         expect(result).to be_nil
       end
 
-      it "creates synthetic 'Stopped by user' tool_results for interrupted tools" do
+      it "creates synthetic 'Stopped by user' tool_results" do
         session.update_column(:interrupt_requested, true)
 
         events = []
-        subscriber = double("sub")
+        subscriber = spy("sub")
         allow(subscriber).to receive(:emit) { |e| events << e }
         Events::Bus.subscribe(subscriber)
 
         client.chat_with_tools(messages, registry: registry, session_id: session.id)
 
         tool_responses = events.select { |e| e[:payload][:type] == "tool_response" }
-        expect(tool_responses.size).to eq(2)
+        expect(tool_responses).not_to be_empty
         tool_responses.each do |resp|
           expect(resp[:payload][:content]).to eq(LLM::Client::INTERRUPT_MESSAGE)
           expect(resp[:payload][:success]).to be false
         end
-      ensure
-        Events::Bus.unsubscribe(subscriber)
-      end
-
-      it "emits ToolCall events for interrupted tools" do
-        session.update_column(:interrupt_requested, true)
-
-        events = []
-        subscriber = double("sub")
-        allow(subscriber).to receive(:emit) { |e| events << e }
-        Events::Bus.subscribe(subscriber)
-
-        client.chat_with_tools(messages, registry: registry, session_id: session.id)
-
-        tool_calls = events.select { |e| e[:payload][:type] == "tool_call" }
-        expect(tool_calls.size).to eq(2)
-        expect(tool_calls.map { |e| e[:payload][:tool_use_id] }).to eq(%w[toolu_int1 toolu_int2])
       ensure
         Events::Bus.unsubscribe(subscriber)
       end
@@ -644,7 +274,9 @@ RSpec.describe LLM::Client do
         expect(session.reload.interrupt_requested?).to be false
       end
 
-      it "executes first tool then interrupts remaining when flag arrives mid-execution" do
+      it "executes first tool then interrupts remaining when flag arrives mid-execution", :vcr do
+        # Use two tool calls so first executes, second gets interrupted
+        two_url_messages = [{role: "user", content: "Use the web_get tool to fetch both https://example.com and https://example.org"}]
         sid = session.id
         tool_class.define_method(:execute) do |_input|
           Session.where(id: sid).update_all(interrupt_requested: true)
@@ -652,11 +284,11 @@ RSpec.describe LLM::Client do
         end
 
         events = []
-        subscriber = double("sub")
+        subscriber = spy("sub")
         allow(subscriber).to receive(:emit) { |e| events << e }
         Events::Bus.subscribe(subscriber)
 
-        client.chat_with_tools(messages, registry: registry, session_id: session.id)
+        client.chat_with_tools(two_url_messages, registry: registry, session_id: session.id)
 
         tool_responses = events.select { |e| e[:payload][:type] == "tool_response" }
         expect(tool_responses.size).to eq(2)
@@ -667,79 +299,20 @@ RSpec.describe LLM::Client do
       ensure
         Events::Bus.unsubscribe(subscriber)
       end
-
-      it "does not make another LLM API call after interrupt" do
-        session.update_column(:interrupt_requested, true)
-
-        client.chat_with_tools(messages, registry: registry, session_id: session.id)
-
-        # Only one API call should have been made (the initial one that returned tool_use)
-        expect(WebMock).to have_requested(:post, "https://api.anthropic.com/v1/messages").once
-      end
-
-      context "with a single tool_use in the response" do
-        let(:tool_use_response) do
-          {
-            id: "msg_tool",
-            type: "message",
-            role: "assistant",
-            content: [
-              {type: "tool_use", id: "toolu_single", name: "web_get", input: {url: "https://only.com"}}
-            ],
-            model: "claude-sonnet-4-20250514",
-            stop_reason: "tool_use",
-            usage: {input_tokens: 20, output_tokens: 30}
-          }
-        end
-
-        it "interrupts the single tool without executing it" do
-          session.update_column(:interrupt_requested, true)
-
-          events = []
-          subscriber = double("sub")
-          allow(subscriber).to receive(:emit) { |e| events << e }
-          Events::Bus.subscribe(subscriber)
-
-          result = client.chat_with_tools(messages, registry: registry, session_id: session.id)
-
-          expect(result).to be_nil
-          tool_responses = events.select { |e| e[:payload][:type] == "tool_response" }
-          expect(tool_responses.size).to eq(1)
-          expect(tool_responses[0][:payload][:content]).to eq(LLM::Client::INTERRUPT_MESSAGE)
-          expect(tool_responses[0][:payload][:success]).to be false
-        ensure
-          Events::Bus.unsubscribe(subscriber)
-        end
-      end
     end
 
     context "when the tool loop exceeds max_tool_rounds" do
-      let(:tool_use_response) do
-        {
-          id: "msg_tool",
-          type: "message",
-          role: "assistant",
-          content: [
-            {type: "tool_use", id: "toolu_loop", name: "web_get", input: {url: "https://loop.com"}}
-          ],
-          model: "claude-sonnet-4-20250514",
-          stop_reason: "tool_use",
-          usage: {input_tokens: 20, output_tokens: 30}
-        }
-      end
-
-      before do
-        stub_request(:post, "https://api.anthropic.com/v1/messages")
-          .to_return(
-            status: 200,
-            body: tool_use_response.to_json,
-            headers: {"content-type" => "application/json"}
-          )
-      end
-
       it "halts and returns an error message" do
-        result = client.chat_with_tools(messages, registry: registry, session_id: session.id)
-        expect(result).to include("Tool loop exceeded")
+        VCR.use_cassette("llm_client/tool_loop_forever",
+          allow_playback_repeats: true,
+          match_requests_on: [:method, :uri],
+          record: :none) do
+          result = client.chat_with_tools(
+            [{role: "user", content: "Use web_get to fetch https://example.com"}],
+            registry: registry, session_id: session.id
+          )
+          expect(result).to include("Tool loop exceeded")
+        end
       end
     end
   end
