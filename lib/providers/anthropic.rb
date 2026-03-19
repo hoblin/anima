@@ -154,20 +154,16 @@ module Providers
 
     private
 
-    # Converts +options[:system]+ from a plain string to the array-of-blocks
-    # format required by Anthropic for OAuth tokens. Prepends the mandatory
-    # passphrase as the first block; the model follows the last identity
-    # instruction, so the caller's prompt takes precedence.
+    # Wraps the system parameter in the array-of-blocks format required by
+    # Anthropic for OAuth tokens. The passphrase block is always present;
+    # the caller's prompt (if any) is appended as the second block.
     #
     # @param options [Hash] mutable options hash (modified in place)
     # @return [void]
     def wrap_system_prompt!(options)
-      return unless (prompt = options[:system])
-
-      options[:system] = [
-        {type: "text", text: OAUTH_PASSPHRASE},
-        {type: "text", text: prompt}
-      ]
+      blocks = [{type: "text", text: OAUTH_PASSPHRASE}]
+      blocks << {type: "text", text: options[:system]} if options[:system]
+      options[:system] = blocks
     end
 
     def request_headers

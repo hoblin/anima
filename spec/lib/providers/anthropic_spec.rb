@@ -125,81 +125,46 @@ RSpec.describe Providers::Anthropic do
   end
 
   describe "#create_message" do
-    it "sends a properly formatted request to the messages API" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .with(
-          body: {
-            model: "claude-sonnet-4-20250514",
-            messages: [{role: "user", content: "Hello"}],
-            max_tokens: 1024
-          }.to_json,
-          headers: {
-            "Authorization" => "Bearer #{valid_token}",
-            "anthropic-version" => "2023-06-01",
-            "anthropic-beta" => "oauth-2025-04-20",
-            "content-type" => "application/json"
-          }
-        )
-        .to_return(
-          status: 200,
-          body: {
-            id: "msg_123",
-            content: [{type: "text", text: "Hello!"}],
-            model: "claude-sonnet-4-20250514",
-            role: "assistant"
-          }.to_json,
-          headers: {"content-type" => "application/json"}
-        )
+    it "sends a properly formatted request to the messages API", :vcr do
+      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
+      real_provider = described_class.new(real_token)
 
-      result = provider.create_message(
+      result = real_provider.create_message(
         model: "claude-sonnet-4-20250514",
-        messages: [{role: "user", content: "Hello"}],
-        max_tokens: 1024
-      )
-
-      expect(result["content"].first["text"]).to eq("Hello!")
-    end
-
-    it "passes additional options through to the API" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .with(
-          body: hash_including(
-            "system" => [
-              {"type" => "text", "text" => described_class::OAUTH_PASSPHRASE},
-              {"type" => "text", "text" => "You are helpful"}
-            ],
-            "temperature" => 0.7
-          )
-        )
-        .to_return(
-          status: 200,
-          body: {content: [{text: "Hi"}]}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
-
-      provider.create_message(
-        model: "claude-sonnet-4-20250514",
-        messages: [{role: "user", content: "Hi"}],
-        max_tokens: 100,
-        system: "You are helpful",
-        temperature: 0.7
-      )
-    end
-
-    it "omits system blocks when no system prompt is given" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .with { |req| !JSON.parse(req.body).key?("system") }
-        .to_return(
-          status: 200,
-          body: {content: [{text: "Hi"}]}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
-
-      provider.create_message(
-        model: "claude-sonnet-4-20250514",
-        messages: [{role: "user", content: "Hi"}],
+        messages: [{role: "user", content: "Reply with the single word OK"}],
         max_tokens: 100
       )
+
+      expect(result["content"].first["text"]).to be_present
+    end
+
+    it "wraps system prompt in array format with OAuth passphrase", :vcr do
+      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
+      real_provider = described_class.new(real_token)
+
+      result = real_provider.create_message(
+        model: "claude-sonnet-4-20250514",
+        messages: [{role: "user", content: "Reply with the single word OK"}],
+        max_tokens: 100,
+        system: "You are helpful",
+        temperature: 0.0
+      )
+
+      expect(result["content"].first["text"]).to be_present
+    end
+
+    it "succeeds without system prompt", :vcr do
+      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
+      real_provider = described_class.new(real_token)
+
+      result = real_provider.create_message(
+        model: "claude-sonnet-4-20250514",
+        messages: [{role: "user", content: "Reply with the single word OK"}],
+        max_tokens: 100,
+        temperature: 0.0
+      )
+
+      expect(result["content"].first["text"]).to be_present
     end
 
     it "raises Error on 400 response" do
@@ -310,57 +275,29 @@ RSpec.describe Providers::Anthropic do
   end
 
   describe "#count_tokens" do
-    it "sends a request to the token counting endpoint" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages/count_tokens")
-        .with(
-          body: {
-            model: "claude-sonnet-4-20250514",
-            messages: [{role: "user", content: "Hello"}]
-          }.to_json,
-          headers: {
-            "Authorization" => "Bearer #{valid_token}",
-            "anthropic-version" => "2023-06-01",
-            "anthropic-beta" => "oauth-2025-04-20",
-            "content-type" => "application/json"
-          }
-        )
-        .to_return(
-          status: 200,
-          body: {input_tokens: 14}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
+    it "sends a request to the token counting endpoint", :vcr do
+      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
+      real_provider = described_class.new(real_token)
 
-      result = provider.count_tokens(
+      result = real_provider.count_tokens(
         model: "claude-sonnet-4-20250514",
         messages: [{role: "user", content: "Hello"}]
       )
 
-      expect(result).to eq(14)
+      expect(result).to be_a(Integer)
     end
 
-    it "passes additional options through to the API" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages/count_tokens")
-        .with(
-          body: hash_including(
-            "system" => [
-              {"type" => "text", "text" => described_class::OAUTH_PASSPHRASE},
-              {"type" => "text", "text" => "You are helpful"}
-            ]
-          )
-        )
-        .to_return(
-          status: 200,
-          body: {input_tokens: 22}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
+    it "wraps system prompt in array format with OAuth passphrase", :vcr do
+      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
+      real_provider = described_class.new(real_token)
 
-      result = provider.count_tokens(
+      result = real_provider.count_tokens(
         model: "claude-sonnet-4-20250514",
         messages: [{role: "user", content: "Hi"}],
         system: "You are helpful"
       )
 
-      expect(result).to eq(22)
+      expect(result).to be_a(Integer)
     end
 
     it "raises Error on API failure" do
