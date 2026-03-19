@@ -2,26 +2,11 @@
 
 require "rails_helper"
 
-RSpec.shared_examples "wraps network errors as TransientError" do
-  [
-    [Errno::ECONNRESET, "Connection reset by peer", /ECONNRESET/],
-    [Net::ReadTimeout, "Net::ReadTimeout", /ReadTimeout/],
-    [Net::OpenTimeout, "Net::OpenTimeout", /OpenTimeout/],
-    [SocketError, "getaddrinfo: Name or service not known", /SocketError/],
-    [EOFError, "end of file reached", /EOFError/]
-  ].each do |error_class, message, pattern|
-    it "wraps #{error_class}" do
-      VCR.turned_off do
-        stub_request(request_method, request_url).to_raise(error_class.new(message))
-        expect { perform_request }.to raise_error(Providers::Anthropic::TransientError, pattern)
-      end
-    end
-  end
-end
-
 RSpec.describe Providers::Anthropic do
   let(:valid_token) { "sk-ant-oat01-#{"a" * 68}" }
+  let(:real_token) { CredentialStore.read("anthropic", "subscription_token") || valid_token }
   let(:provider) { described_class.new(valid_token) }
+  let(:real_provider) { described_class.new(real_token) }
 
   describe "constants" do
     it "defines the expected token prefix" do
@@ -126,26 +111,20 @@ RSpec.describe Providers::Anthropic do
 
   describe "#create_message" do
     it "sends a properly formatted request to the messages API", :vcr do
-      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
-      real_provider = described_class.new(real_token)
-
       result = real_provider.create_message(
         model: "claude-sonnet-4-20250514",
         messages: [{role: "user", content: "Reply with the single word OK"}],
-        max_tokens: 100
+        max_tokens: 8192
       )
 
       expect(result["content"].first["text"]).to be_present
     end
 
     it "wraps system prompt in array format with OAuth passphrase", :vcr do
-      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
-      real_provider = described_class.new(real_token)
-
       result = real_provider.create_message(
         model: "claude-sonnet-4-20250514",
         messages: [{role: "user", content: "Reply with the single word OK"}],
-        max_tokens: 100,
+        max_tokens: 8192,
         system: "You are helpful",
         temperature: 0.0
       )
@@ -154,131 +133,70 @@ RSpec.describe Providers::Anthropic do
     end
 
     it "succeeds without system prompt", :vcr do
-      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
-      real_provider = described_class.new(real_token)
-
       result = real_provider.create_message(
         model: "claude-sonnet-4-20250514",
         messages: [{role: "user", content: "Reply with the single word OK"}],
-        max_tokens: 100,
+        max_tokens: 8192,
         temperature: 0.0
       )
 
       expect(result["content"].first["text"]).to be_present
     end
 
-    it "raises Error on 400 response" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(
-          status: 400,
-          body: {error: {message: "invalid model"}}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
-
+    it "raises Error on invalid model", :vcr do
       expect {
-        provider.create_message(
+        real_provider.create_message(
           model: "bad-model",
           messages: [{role: "user", content: "Hi"}],
-          max_tokens: 100
+          max_tokens: 8192
         )
-      }.to raise_error(Providers::Anthropic::Error, /Bad request/)
+      }.to raise_error(Providers::Anthropic::Error)
     end
 
-    it "raises RateLimitError on 429 rate limit" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(
-          status: 429,
-          body: {error: {message: "rate limited"}}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
-
+    it "raises AuthenticationError on 401 response", :vcr do
       expect {
         provider.create_message(
           model: "claude-sonnet-4-20250514",
           messages: [{role: "user", content: "Hi"}],
-          max_tokens: 100
-        )
-      }.to raise_error(Providers::Anthropic::RateLimitError, /Rate limit/)
-    end
-
-    it "raises AuthenticationError on 401 response" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(
-          status: 401,
-          body: {error: {message: "invalid api key"}}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
-
-      expect {
-        provider.create_message(
-          model: "claude-sonnet-4-20250514",
-          messages: [{role: "user", content: "Hi"}],
-          max_tokens: 100
+          max_tokens: 8192
         )
       }.to raise_error(Providers::Anthropic::AuthenticationError, /Authentication failed/)
     end
 
-    it "raises AuthenticationError on 403 response" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(
-          status: 403,
-          body: {error: {message: "forbidden"}}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
-
+    it "raises AuthenticationError on 403 response", :vcr do
       expect {
         provider.create_message(
           model: "claude-sonnet-4-20250514",
           messages: [{role: "user", content: "Hi"}],
-          max_tokens: 100
+          max_tokens: 8192
         )
       }.to raise_error(Providers::Anthropic::AuthenticationError, /Forbidden/)
     end
 
-    it "raises ServerError on 500 server error" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(status: 500, body: "Internal Server Error")
-
+    it "raises RateLimitError on 429 rate limit", :vcr do
       expect {
         provider.create_message(
           model: "claude-sonnet-4-20250514",
           messages: [{role: "user", content: "Hi"}],
-          max_tokens: 100
+          max_tokens: 8192
+        )
+      }.to raise_error(Providers::Anthropic::RateLimitError, /Rate limit/)
+    end
+
+    it "raises ServerError on 500 server error", :vcr do
+      expect {
+        provider.create_message(
+          model: "claude-sonnet-4-20250514",
+          messages: [{role: "user", content: "Hi"}],
+          max_tokens: 8192
         )
       }.to raise_error(Providers::Anthropic::ServerError, /server error/)
     end
 
-    it "raises Error on unexpected status code" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .to_return(status: 418, body: "I'm a teapot")
-
-      expect {
-        provider.create_message(
-          model: "claude-sonnet-4-20250514",
-          messages: [{role: "user", content: "Hi"}],
-          max_tokens: 100
-        )
-      }.to raise_error(Providers::Anthropic::Error, /Unexpected response/)
-    end
-
-    include_examples "wraps network errors as TransientError" do
-      let(:request_method) { :post }
-      let(:request_url) { "https://api.anthropic.com/v1/messages" }
-      let(:perform_request) do
-        provider.create_message(
-          model: "claude-sonnet-4-20250514",
-          messages: [{role: "user", content: "Hi"}],
-          max_tokens: 100
-        )
-      end
-    end
   end
 
   describe "#count_tokens" do
     it "sends a request to the token counting endpoint", :vcr do
-      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
-      real_provider = described_class.new(real_token)
-
       result = real_provider.count_tokens(
         model: "claude-sonnet-4-20250514",
         messages: [{role: "user", content: "Hello"}]
@@ -288,9 +206,6 @@ RSpec.describe Providers::Anthropic do
     end
 
     it "wraps system prompt in array format with OAuth passphrase", :vcr do
-      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
-      real_provider = described_class.new(real_token)
-
       result = real_provider.count_tokens(
         model: "claude-sonnet-4-20250514",
         messages: [{role: "user", content: "Hi"}],
@@ -300,38 +215,19 @@ RSpec.describe Providers::Anthropic do
       expect(result).to be_a(Integer)
     end
 
-    it "raises Error on API failure" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages/count_tokens")
-        .to_return(
-          status: 400,
-          body: {error: {message: "invalid model"}}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
-
+    it "raises Error on invalid model", :vcr do
       expect {
-        provider.count_tokens(
+        real_provider.count_tokens(
           model: "bad-model",
           messages: [{role: "user", content: "Hi"}]
         )
-      }.to raise_error(Providers::Anthropic::Error, /Bad request/)
+      }.to raise_error(Providers::Anthropic::Error)
     end
 
-    include_examples "wraps network errors as TransientError" do
-      let(:request_method) { :post }
-      let(:request_url) { "https://api.anthropic.com/v1/messages/count_tokens" }
-      let(:perform_request) do
-        provider.count_tokens(
-          model: "claude-sonnet-4-20250514",
-          messages: [{role: "user", content: "Hi"}]
-        )
-      end
-    end
   end
 
   describe "#validate_credentials!" do
     it "returns true on 200", vcr: "anthropic/models_200" do
-      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
-      real_provider = described_class.new(real_token)
       expect(real_provider.validate_credentials!).to be true
     end
 

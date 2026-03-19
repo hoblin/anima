@@ -6,7 +6,7 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Reply
-        with the single word OK"}],"max_tokens":100,"system":[{"type":"text","text":"You
+        with the single word OK"}],"max_tokens":8192,"system":[{"type":"text","text":"You
         are Claude Code, Anthropic''s official CLI for Claude."}]}'
     headers:
       Authorization:
@@ -29,7 +29,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 19 Mar 2026 17:51:28 GMT
+      - Thu, 19 Mar 2026 20:14:45 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -43,7 +43,7 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1773954000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.12'
+      - '0.19'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed_warning
       Anthropic-Ratelimit-Unified-7d-Reset:
@@ -77,26 +77,26 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2507'
+      - '1965'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - proxy;dur=2507
-      Cf-Cache-Status:
-      - DYNAMIC
+      - proxy;dur=1965
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
       X-Robots-Tag:
       - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
       Cf-Ray:
       - "<CF_RAY>"
     body:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxVEJ6UWlQQVo2em5GVTdRRTU3THR3dCIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxTkRpcVQ4V3BoWUJWWjN0RFRrdHR1biIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6Ik9LIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9z
         ZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyNywiY2Fj
@@ -105,5 +105,5 @@ http_interactions:
         cHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0s
         Im91dHB1dF90b2tlbnMiOjQsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwi
         aW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFpbGFibGUifX0=
-  recorded_at: Thu, 19 Mar 2026 17:51:28 GMT
+  recorded_at: Thu, 19 Mar 2026 20:14:45 GMT
 recorded_with: VCR 6.4.0
