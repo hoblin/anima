@@ -1,0 +1,69 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Hi"}],"max_tokens":8192,"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 401
+      message: Unauthorized
+    headers:
+      Date:
+      - Thu, 19 Mar 2026 20:26:16 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      X-Should-Retry:
+      - 'false'
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '14'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - proxy;dur=14
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJ0eXBlIjoiZXJyb3IiLCJlcnJvciI6eyJ0eXBlIjoiYXV0aGVudGljYXRp
+        b25fZXJyb3IiLCJtZXNzYWdlIjoiSW52YWxpZCBiZWFyZXIgdG9rZW4ifSwi
+        cmVxdWVzdF9pZCI6InJlcV8wMTFDWkQ0ckpKTjdKWGdhQXhlTjc4eVMifQ==
+  recorded_at: Thu, 19 Mar 2026 20:26:16 GMT
+recorded_with: VCR 6.4.0

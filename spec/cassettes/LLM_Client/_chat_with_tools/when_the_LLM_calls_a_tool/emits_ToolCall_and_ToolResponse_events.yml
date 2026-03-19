@@ -1,0 +1,238 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Use
+        the web_get tool to fetch https://example.com and tell me what you find"}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
+        a URL and return its contents","input_schema":{"type":"object","properties":{"url":{"type":"string"}},"required":["url"]}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Thu, 19 Mar 2026 20:26:28 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed_warning
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1773954000'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.19'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed_warning
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1773986400'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.93'
+      Anthropic-Ratelimit-Unified-7d-Surpassed-Threshold:
+      - '0.75'
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
+      - '1773997200'
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
+      - '0.18'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - seven_day
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1773986400'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '1394'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - proxy;dur=1394
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      X-Robots-Tag:
+      - none
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
+        XzAxNWI1VkVxbWROYWVndllZUWc4ZFlrdCIsInR5cGUiOiJtZXNzYWdlIiwi
+        cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
+        dGV4dCI6IkknbGwgZmV0Y2ggdGhlIGNvbnRlbnRzIG9mIGh0dHBzOi8vZXhh
+        bXBsZS5jb20gZm9yIHlvdS4ifSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoi
+        dG9vbHVfMDE5ZlE5alQ3eVNVMktTR2l3Z2pxd0J6IiwibmFtZSI6IndlYl9n
+        ZXQiLCJpbnB1dCI6eyJ1cmwiOiJodHRwczovL2V4YW1wbGUuY29tIn0sImNh
+        bGxlciI6eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29s
+        X3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rv
+        a2VucyI6NDEwLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNh
+        Y2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJl
+        cGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5w
+        dXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6NzIsInNlcnZpY2VfdGll
+        ciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFpbGFibGUi
+        fX0=
+  recorded_at: Thu, 19 Mar 2026 20:26:28 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Use
+        the web_get tool to fetch https://example.com and tell me what you find"},{"role":"assistant","content":[{"type":"text","text":"I''ll
+        fetch the contents of https://example.com for you."},{"type":"tool_use","id":"toolu_019fQ9jT7ySU2KSGiwgjqwBz","name":"web_get","input":{"url":"https://example.com"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_019fQ9jT7ySU2KSGiwgjqwBz","content":"\u003chtml\u003eExample
+        Domain\u003c/html\u003e"}]}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
+        a URL and return its contents","input_schema":{"type":"object","properties":{"url":{"type":"string"}},"required":["url"]}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Thu, 19 Mar 2026 20:26:32 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed_warning
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1773954000'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.19'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed_warning
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1773986400'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.93'
+      Anthropic-Ratelimit-Unified-7d-Surpassed-Threshold:
+      - '0.75'
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
+      - '1773997200'
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
+      - '0.18'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - seven_day
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1773986400'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '4034'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - proxy;dur=4034
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
+        XzAxUUxqNEhKWVpwQ3U2N3gzZkFORFBmaCIsInR5cGUiOiJtZXNzYWdlIiwi
+        cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
+        dGV4dCI6IlRoZSB3ZWJzaXRlIGh0dHBzOi8vZXhhbXBsZS5jb20gcmV0dXJu
+        cyBhIHZlcnkgc2ltcGxlIEhUTUwgcGFnZSB3aXRoIGp1c3QgdGhlIHRpdGxl
+        IFwiRXhhbXBsZSBEb21haW5cIi4gVGhpcyBpcyBhY3R1YWxseSB0aGUgd2Vs
+        bC1rbm93biBleGFtcGxlIGRvbWFpbiB0aGF0J3MgcmVzZXJ2ZWQgYnkgdGhl
+        IEludGVybmV0IEFzc2lnbmVkIE51bWJlcnMgQXV0aG9yaXR5IChJQU5BKSBm
+        b3IgdXNlIGluIGRvY3VtZW50YXRpb24gYW5kIGV4YW1wbGVzLiBJdCdzIGNv
+        bW1vbmx5IHVzZWQgYXMgYSBwbGFjZWhvbGRlciBkb21haW4gaW4gdGVjaG5p
+        Y2FsIGRvY3VtZW50YXRpb24sIHR1dG9yaWFscywgYW5kIHRlc3Rpbmcgc2Nl
+        bmFyaW9zLlxuXG5UaGUgcmVzcG9uc2Ugc2hvd3MgbWluaW1hbCBIVE1MIGNv
+        bnRlbnQgLSBqdXN0IGEgYmFzaWMgSFRNTCBzdHJ1Y3R1cmUgd2l0aCBcIkV4
+        YW1wbGUgRG9tYWluXCIgYXMgdGhlIHRpdGxlLiBUaGlzIGRvbWFpbiBpcyBp
+        bnRlbnRpb25hbGx5IGtlcHQgc2ltcGxlIGFuZCBpcyB3aWRlbHkgdXNlZCBh
+        Y3Jvc3MgdGhlIGludGVybmV0IGNvbW11bml0eSBmb3IgZWR1Y2F0aW9uYWwg
+        YW5kIHRlc3RpbmcgcHVycG9zZXMuIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90
+        dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9r
+        ZW5zIjo1MDAsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2Fj
+        aGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVw
+        aGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1
+        dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoxMTYsInNlcnZpY2VfdGll
+        ciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFpbGFibGUi
+        fX0=
+  recorded_at: Thu, 19 Mar 2026 20:26:32 GMT
+recorded_with: VCR 6.4.0
