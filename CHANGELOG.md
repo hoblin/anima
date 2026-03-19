@@ -19,6 +19,7 @@
 - `SessionChannel` history includes event IDs for client-side correlation
 
 ### Fixed
+- OAuth tokens rejected without Claude Code identity prefix — Anthropic now requires the `system` parameter in array format with an exact passphrase as the first block for Sonnet/Opus via OAuth subscription tokens; without it, `/v1/messages` returns 400 (#233)
 - API 500 errors no longer trigger the token re-entry prompt loop — transient errors (5xx, 429, timeout, network) during token validation save the token and show a warning instead of blocking the user; `validate_credentials!` now wraps network exceptions as `TransientError` consistently with `create_message`/`count_tokens` (#190)
 - TUI showed empty chat on reconnect — message store was cleared _after_ history arrived because `confirm_subscription` comes after `transmit` in Action Cable protocol; now clears on "subscribing" before history (#82)
 

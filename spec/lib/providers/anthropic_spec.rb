@@ -39,6 +39,11 @@ RSpec.describe Providers::Anthropic do
     it "requires the OAuth beta header" do
       expect(described_class::REQUIRED_BETA).to eq("oauth-2025-04-20")
     end
+
+    it "defines the OAuth passphrase for system prompt prefixing" do
+      expect(described_class::OAUTH_PASSPHRASE)
+        .to eq("You are Claude Code, Anthropic's official CLI for Claude.")
+    end
   end
 
   describe ".validate_token_format!" do
@@ -158,7 +163,13 @@ RSpec.describe Providers::Anthropic do
     it "passes additional options through to the API" do
       stub_request(:post, "https://api.anthropic.com/v1/messages")
         .with(
-          body: hash_including("system" => "You are helpful", "temperature" => 0.7)
+          body: hash_including(
+            "system" => [
+              {"type" => "text", "text" => described_class::OAUTH_PASSPHRASE},
+              {"type" => "text", "text" => "You are helpful"}
+            ],
+            "temperature" => 0.7
+          )
         )
         .to_return(
           status: 200,
@@ -172,6 +183,22 @@ RSpec.describe Providers::Anthropic do
         max_tokens: 100,
         system: "You are helpful",
         temperature: 0.7
+      )
+    end
+
+    it "omits system blocks when no system prompt is given" do
+      stub_request(:post, "https://api.anthropic.com/v1/messages")
+        .with { |req| !JSON.parse(req.body).key?("system") }
+        .to_return(
+          status: 200,
+          body: {content: [{text: "Hi"}]}.to_json,
+          headers: {"content-type" => "application/json"}
+        )
+
+      provider.create_message(
+        model: "claude-sonnet-4-20250514",
+        messages: [{role: "user", content: "Hi"}],
+        max_tokens: 100
       )
     end
 
@@ -313,7 +340,14 @@ RSpec.describe Providers::Anthropic do
 
     it "passes additional options through to the API" do
       stub_request(:post, "https://api.anthropic.com/v1/messages/count_tokens")
-        .with(body: hash_including("system" => "You are helpful"))
+        .with(
+          body: hash_including(
+            "system" => [
+              {"type" => "text", "text" => described_class::OAUTH_PASSPHRASE},
+              {"type" => "text", "text" => "You are helpful"}
+            ]
+          )
+        )
         .to_return(
           status: 200,
           body: {input_tokens: 22}.to_json,
