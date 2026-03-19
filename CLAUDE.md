@@ -77,6 +77,10 @@ Always clean up tmux sessions when done. Use `anima-test` as the session name fo
 
 Analytical brain debug log (dev only): `tail -f log/analytical_brain.log`
 
+## VCR over WebMock
+
+Use VCR cassettes for all HTTP tests — never `stub_request`. Add `:vcr` metadata (bare symbol, no cassette path) and VCR auto-names cassettes from the spec description. Use a real token via `CredentialStore` for happy-path tests. Re-record with `VCR_MODE=rec bundle exec rspec spec/path`.
+
 ## GitHub sub-issues
 
 Use the REST API to manage sub-issues on epics:
