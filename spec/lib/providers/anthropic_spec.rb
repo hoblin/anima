@@ -74,7 +74,6 @@ RSpec.describe Providers::Anthropic do
         expect(described_class.fetch_token).to eq(fake_token)
       end
     end
-
   end
 
   describe "#initialize" do
@@ -176,7 +175,6 @@ RSpec.describe Providers::Anthropic do
         )
       }.to raise_error(Providers::Anthropic::ServerError, /server error/)
     end
-
   end
 
   describe "#count_tokens" do
@@ -207,7 +205,6 @@ RSpec.describe Providers::Anthropic do
         )
       }.to raise_error(Providers::Anthropic::Error)
     end
-
   end
 
   describe "#validate_credentials!" do
