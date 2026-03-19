@@ -161,8 +161,9 @@ module Providers
     # @param options [Hash] mutable options hash (modified in place)
     # @return [void]
     def wrap_system_prompt!(options)
+      prompt = options[:system]
       blocks = [{type: "text", text: OAUTH_PASSPHRASE}]
-      blocks << {type: "text", text: options[:system]} if options[:system]
+      blocks << {type: "text", text: prompt} if prompt
       options[:system] = blocks
     end
 

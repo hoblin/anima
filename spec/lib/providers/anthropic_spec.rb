@@ -361,6 +361,33 @@ RSpec.describe Providers::Anthropic do
     end
   end
 
+  describe "#wrap_system_prompt!" do
+    let(:passphrase_block) { {type: "text", text: described_class::OAUTH_PASSPHRASE} }
+
+    it "always includes the passphrase as the first block" do
+      options = {system: "You are helpful"}
+      provider.send(:wrap_system_prompt!, options)
+
+      expect(options[:system]).to be_an(Array)
+      expect(options[:system].first).to eq(passphrase_block)
+    end
+
+    it "appends the caller's system prompt as the second block" do
+      options = {system: "You are helpful"}
+      provider.send(:wrap_system_prompt!, options)
+
+      expect(options[:system].last).to eq({type: "text", text: "You are helpful"})
+      expect(options[:system].length).to eq(2)
+    end
+
+    it "produces a single-element array when no system prompt is provided" do
+      options = {}
+      provider.send(:wrap_system_prompt!, options)
+
+      expect(options[:system]).to eq([passphrase_block])
+    end
+  end
+
   describe "error class hierarchy" do
     it "AuthenticationError inherits from Error" do
       expect(Providers::Anthropic::AuthenticationError).to be < Providers::Anthropic::Error
