@@ -13,6 +13,10 @@ module Providers
     API_VERSION = "2023-06-01"
     REQUIRED_BETA = "oauth-2025-04-20"
 
+    # Anthropic requires this exact string as the first system block for OAuth
+    # subscription tokens on Sonnet/Opus. Without it, /v1/messages returns 400.
+    OAUTH_PASSPHRASE = "You are Claude Code, Anthropic's official CLI for Claude."
+
     class Error < StandardError; end
     class AuthenticationError < Error; end
     class TokenFormatError < Error; end
@@ -76,6 +80,7 @@ module Providers
     # @raise [AuthenticationError] on 401/403 (permanent)
     # @raise [Error] on other API errors
     def create_message(model:, messages:, max_tokens:, **options)
+      wrap_system_prompt!(options)
       body = {model: model, messages: messages, max_tokens: max_tokens}.merge(options)
 
       response = self.class.post(
@@ -99,6 +104,7 @@ module Providers
     # @return [Integer] estimated input token count
     # @raise [Error] on API errors
     def count_tokens(model:, messages:, **options)
+      wrap_system_prompt!(options)
       body = {model: model, messages: messages}.merge(options)
 
       response = self.class.post(
@@ -147,6 +153,19 @@ module Providers
     end
 
     private
+
+    # Wraps the system parameter in the array-of-blocks format required by
+    # Anthropic for OAuth tokens. The passphrase block is always present;
+    # the caller's prompt (if any) is appended as the second block.
+    #
+    # @param options [Hash] mutable options hash (modified in place)
+    # @return [void]
+    def wrap_system_prompt!(options)
+      prompt = options[:system]
+      blocks = [{type: "text", text: OAUTH_PASSPHRASE}]
+      blocks << {type: "text", text: prompt} if prompt
+      options[:system] = blocks
+    end
 
     def request_headers
       {

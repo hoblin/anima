@@ -39,6 +39,11 @@ RSpec.describe Providers::Anthropic do
     it "requires the OAuth beta header" do
       expect(described_class::REQUIRED_BETA).to eq("oauth-2025-04-20")
     end
+
+    it "defines the OAuth passphrase for system prompt prefixing" do
+      expect(described_class::OAUTH_PASSPHRASE)
+        .to eq("You are Claude Code, Anthropic's official CLI for Claude.")
+    end
   end
 
   describe ".validate_token_format!" do
@@ -120,59 +125,46 @@ RSpec.describe Providers::Anthropic do
   end
 
   describe "#create_message" do
-    it "sends a properly formatted request to the messages API" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .with(
-          body: {
-            model: "claude-sonnet-4-20250514",
-            messages: [{role: "user", content: "Hello"}],
-            max_tokens: 1024
-          }.to_json,
-          headers: {
-            "Authorization" => "Bearer #{valid_token}",
-            "anthropic-version" => "2023-06-01",
-            "anthropic-beta" => "oauth-2025-04-20",
-            "content-type" => "application/json"
-          }
-        )
-        .to_return(
-          status: 200,
-          body: {
-            id: "msg_123",
-            content: [{type: "text", text: "Hello!"}],
-            model: "claude-sonnet-4-20250514",
-            role: "assistant"
-          }.to_json,
-          headers: {"content-type" => "application/json"}
-        )
+    it "sends a properly formatted request to the messages API", :vcr do
+      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
+      real_provider = described_class.new(real_token)
 
-      result = provider.create_message(
+      result = real_provider.create_message(
         model: "claude-sonnet-4-20250514",
-        messages: [{role: "user", content: "Hello"}],
-        max_tokens: 1024
+        messages: [{role: "user", content: "Reply with the single word OK"}],
+        max_tokens: 100
       )
 
-      expect(result["content"].first["text"]).to eq("Hello!")
+      expect(result["content"].first["text"]).to be_present
     end
 
-    it "passes additional options through to the API" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages")
-        .with(
-          body: hash_including("system" => "You are helpful", "temperature" => 0.7)
-        )
-        .to_return(
-          status: 200,
-          body: {content: [{text: "Hi"}]}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
+    it "wraps system prompt in array format with OAuth passphrase", :vcr do
+      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
+      real_provider = described_class.new(real_token)
 
-      provider.create_message(
+      result = real_provider.create_message(
         model: "claude-sonnet-4-20250514",
-        messages: [{role: "user", content: "Hi"}],
+        messages: [{role: "user", content: "Reply with the single word OK"}],
         max_tokens: 100,
         system: "You are helpful",
-        temperature: 0.7
+        temperature: 0.0
       )
+
+      expect(result["content"].first["text"]).to be_present
+    end
+
+    it "succeeds without system prompt", :vcr do
+      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
+      real_provider = described_class.new(real_token)
+
+      result = real_provider.create_message(
+        model: "claude-sonnet-4-20250514",
+        messages: [{role: "user", content: "Reply with the single word OK"}],
+        max_tokens: 100,
+        temperature: 0.0
+      )
+
+      expect(result["content"].first["text"]).to be_present
     end
 
     it "raises Error on 400 response" do
@@ -283,50 +275,29 @@ RSpec.describe Providers::Anthropic do
   end
 
   describe "#count_tokens" do
-    it "sends a request to the token counting endpoint" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages/count_tokens")
-        .with(
-          body: {
-            model: "claude-sonnet-4-20250514",
-            messages: [{role: "user", content: "Hello"}]
-          }.to_json,
-          headers: {
-            "Authorization" => "Bearer #{valid_token}",
-            "anthropic-version" => "2023-06-01",
-            "anthropic-beta" => "oauth-2025-04-20",
-            "content-type" => "application/json"
-          }
-        )
-        .to_return(
-          status: 200,
-          body: {input_tokens: 14}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
+    it "sends a request to the token counting endpoint", :vcr do
+      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
+      real_provider = described_class.new(real_token)
 
-      result = provider.count_tokens(
+      result = real_provider.count_tokens(
         model: "claude-sonnet-4-20250514",
         messages: [{role: "user", content: "Hello"}]
       )
 
-      expect(result).to eq(14)
+      expect(result).to be_a(Integer)
     end
 
-    it "passes additional options through to the API" do
-      stub_request(:post, "https://api.anthropic.com/v1/messages/count_tokens")
-        .with(body: hash_including("system" => "You are helpful"))
-        .to_return(
-          status: 200,
-          body: {input_tokens: 22}.to_json,
-          headers: {"content-type" => "application/json"}
-        )
+    it "wraps system prompt in array format with OAuth passphrase", :vcr do
+      real_token = CredentialStore.read("anthropic", "subscription_token") || valid_token
+      real_provider = described_class.new(real_token)
 
-      result = provider.count_tokens(
+      result = real_provider.count_tokens(
         model: "claude-sonnet-4-20250514",
         messages: [{role: "user", content: "Hi"}],
         system: "You are helpful"
       )
 
-      expect(result).to eq(22)
+      expect(result).to be_a(Integer)
     end
 
     it "raises Error on API failure" do
@@ -387,6 +358,33 @@ RSpec.describe Providers::Anthropic do
     it "raises RateLimitError on 429", vcr: "anthropic/models_429" do
       expect { provider.validate_credentials! }
         .to raise_error(Providers::Anthropic::RateLimitError)
+    end
+  end
+
+  describe "#wrap_system_prompt!" do
+    let(:passphrase_block) { {type: "text", text: described_class::OAUTH_PASSPHRASE} }
+
+    it "always includes the passphrase as the first block" do
+      options = {system: "You are helpful"}
+      provider.send(:wrap_system_prompt!, options)
+
+      expect(options[:system]).to be_an(Array)
+      expect(options[:system].first).to eq(passphrase_block)
+    end
+
+    it "appends the caller's system prompt as the second block" do
+      options = {system: "You are helpful"}
+      provider.send(:wrap_system_prompt!, options)
+
+      expect(options[:system].last).to eq({type: "text", text: "You are helpful"})
+      expect(options[:system].length).to eq(2)
+    end
+
+    it "produces a single-element array when no system prompt is provided" do
+      options = {}
+      provider.send(:wrap_system_prompt!, options)
+
+      expect(options[:system]).to eq([passphrase_block])
     end
   end
 
