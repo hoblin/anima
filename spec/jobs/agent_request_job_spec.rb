@@ -4,8 +4,10 @@ require "rails_helper"
 
 RSpec.describe AgentRequestJob do
   let(:session) { Session.create! }
+  let(:agent_loop) { instance_double(AgentLoop, run: nil, finalize: nil) }
 
   before do
+    allow(AgentLoop).to receive(:new).and_return(agent_loop)
     allow(Mcp::ClientManager).to receive(:new)
       .and_return(instance_double(Mcp::ClientManager, register_tools: []))
     allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(false)
@@ -32,53 +34,43 @@ RSpec.describe AgentRequestJob do
   end
 
   describe "#perform" do
-    it "runs the agent loop for the given session", :vcr do
-      session.events.create!(event_type: "user_message", payload: {"content" => "Reply with the single word OK"}, timestamp: 1)
-
-      collector = Events::Subscribers::MessageCollector.new
-      Events::Bus.subscribe(collector)
+    it "runs the agent loop for the given session" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       described_class.perform_now(session.id)
 
-      expect(collector.messages.last[:role]).to eq("assistant")
-      expect(collector.messages.last[:content]).to be_present
-    ensure
-      Events::Bus.unsubscribe(collector)
+      expect(agent_loop).to have_received(:run)
     end
 
-    it "sets processing flag during execution", :vcr do
-      session.events.create!(event_type: "user_message", payload: {"content" => "Reply with the single word OK"}, timestamp: 1)
+    it "sets processing flag during execution" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
-      processing_states = []
-      collector = Events::Subscribers::MessageCollector.new
-      allow(collector).to receive(:emit).and_wrap_original do |method, event|
-        processing_states << session.reload.processing?
-        method.call(event)
+      processing_during_run = nil
+      allow(agent_loop).to receive(:run) do
+        processing_during_run = session.reload.processing?
       end
-      Events::Bus.subscribe(collector)
 
       described_class.perform_now(session.id)
 
-      expect(processing_states).to include(true)
+      expect(processing_during_run).to be true
       expect(session.reload.processing?).to be false
-    ensure
-      Events::Bus.unsubscribe(collector)
     end
 
-    it "skips execution when session is already processing", :vcr do
+    it "skips execution when session is already processing" do
       session.update!(processing: true)
       session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       described_class.perform_now(session.id)
 
+      expect(agent_loop).not_to have_received(:run)
       expect(session.reload.processing?).to be false
     end
 
     context "blocking analytical brain" do
       before { allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(true) }
 
-      it "runs analytical brain synchronously before the agent loop when enabled", :vcr do
-        session.events.create!(event_type: "user_message", payload: {"content" => "Reply with the single word OK"}, timestamp: 1)
+      it "runs analytical brain synchronously before the agent loop when enabled" do
+        session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
         analytical_brain_ran = false
         allow(AnalyticalBrain::Runner).to receive(:new).and_wrap_original do |method, *args|
@@ -92,74 +84,78 @@ RSpec.describe AgentRequestJob do
         expect(analytical_brain_ran).to be true
       end
 
-      it "skips blocking analytical brain for sub-agent sessions", :vcr do
+      it "skips blocking analytical brain for sub-agent sessions" do
         parent = Session.create!
         child = Session.create!(parent_session: parent, prompt: "sub-agent")
-        child.events.create!(event_type: "user_message", payload: {"content" => "Reply with the single word OK"}, timestamp: 1)
-        child.events.create!(event_type: "agent_message", payload: {"content" => "OK"}, timestamp: 2)
+        child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
+        child.events.create!(event_type: "agent_message", payload: {"content" => "done"}, timestamp: 2)
 
         expect(AnalyticalBrain::Runner).not_to receive(:new)
 
         described_class.perform_now(child.id)
       end
 
-      it "continues with agent loop even if analytical brain fails", :vcr do
-        session.events.create!(event_type: "user_message", payload: {"content" => "Reply with the single word OK"}, timestamp: 1)
-        session.events.create!(event_type: "agent_message", payload: {"content" => "OK"}, timestamp: 2)
+      it "continues with agent loop even if analytical brain fails" do
+        session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+        session.events.create!(event_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
 
         allow(AnalyticalBrain::Runner).to receive(:new).and_raise(RuntimeError, "brain exploded")
 
         expect { described_class.perform_now(session.id) }.not_to raise_error
+        expect(agent_loop).to have_received(:run)
       end
     end
 
-    it "schedules analytical brain after the agent loop completes", :vcr do
-      session.events.create!(event_type: "user_message", payload: {"content" => "Reply with the single word OK"}, timestamp: 1)
-      session.events.create!(event_type: "agent_message", payload: {"content" => "OK"}, timestamp: 2)
+    it "schedules analytical brain after the agent loop completes" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+      session.events.create!(event_type: "agent_message", payload: {"content" => "Hi!"}, timestamp: 2)
 
       expect { described_class.perform_now(session.id) }
         .to have_enqueued_job(AnalyticalBrainJob).with(session.id)
     end
 
-    it "finalizes the agent loop after completion", :vcr do
-      session.events.create!(event_type: "user_message", payload: {"content" => "Reply with the single word OK"}, timestamp: 1)
+    it "finalizes the agent loop after completion" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
-      expect { described_class.perform_now(session.id) }.not_to raise_error
+      described_class.perform_now(session.id)
+
+      expect(agent_loop).to have_received(:finalize)
     end
 
-    it "finalizes the agent loop even on error", :vcr do
-      session.events.create!(event_type: "user_message", payload: {"content" => "Reply with the single word OK"}, timestamp: 1)
+    it "finalizes the agent loop even on error" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
-      # Use a provider with fake token to trigger 401
-      allow(Providers::Anthropic).to receive(:fetch_token).and_return("sk-ant-oat01-#{"a" * 68}")
+      allow(agent_loop).to receive(:run).and_raise(Providers::Anthropic::AuthenticationError, "bad token")
 
-      expect { described_class.perform_now(session.id) }.not_to raise_error
+      described_class.perform_now(session.id)
+
+      expect(agent_loop).to have_received(:finalize)
     end
 
-    it "clears interrupt_requested flag after completion", :vcr do
+    it "clears interrupt_requested flag after completion" do
       session.update_column(:interrupt_requested, true)
-      session.events.create!(event_type: "user_message", payload: {"content" => "Reply with the single word OK"}, timestamp: 1)
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       described_class.perform_now(session.id)
 
       expect(session.reload.interrupt_requested?).to be false
     end
 
-    it "clears interrupt_requested flag even on error", :vcr do
+    it "clears interrupt_requested flag even on error" do
       session.update_column(:interrupt_requested, true)
-      session.events.create!(event_type: "user_message", payload: {"content" => "Reply with the single word OK"}, timestamp: 1)
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
-      allow(Providers::Anthropic).to receive(:fetch_token).and_return("sk-ant-oat01-#{"a" * 68}")
+      allow(agent_loop).to receive(:run).and_raise(Providers::Anthropic::AuthenticationError, "bad token")
 
       described_class.perform_now(session.id)
 
       expect(session.reload.interrupt_requested?).to be false
     end
 
-    it "clears processing flag even on error", :vcr do
-      session.events.create!(event_type: "user_message", payload: {"content" => "Reply with the single word OK"}, timestamp: 1)
+    it "clears processing flag even on error" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
-      allow(Providers::Anthropic).to receive(:fetch_token).and_return("sk-ant-oat01-#{"a" * 68}")
+      allow(agent_loop).to receive(:run).and_raise(Providers::Anthropic::AuthenticationError, "bad token")
 
       described_class.perform_now(session.id)
 
@@ -172,9 +168,11 @@ RSpec.describe AgentRequestJob do
       session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
     end
 
-    context "authentication failure (HTTP 401)", :vcr do
+    context "authentication failure (HTTP 401)" do
       before do
-        allow(Providers::Anthropic).to receive(:fetch_token).and_return("sk-ant-oat01-#{"a" * 68}")
+        allow(agent_loop).to receive(:run).and_raise(
+          Providers::Anthropic::AuthenticationError, "Invalid bearer token"
+        )
       end
 
       it "fails immediately without retrying" do

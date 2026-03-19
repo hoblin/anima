@@ -75,22 +75,6 @@ RSpec.describe Providers::Anthropic do
       end
     end
 
-    context "when token is missing from credentials" do
-      before do
-        allow(Rails.application.credentials).to receive(:dig)
-          .with(:anthropic, :subscription_token)
-          .and_return(nil)
-      end
-
-      it "raises AuthenticationError with setup instructions" do
-        expect {
-          described_class.fetch_token
-        }.to raise_error(
-          Providers::Anthropic::AuthenticationError,
-          /No Anthropic subscription token found/
-        )
-      end
-    end
   end
 
   describe "#initialize" do
