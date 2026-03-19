@@ -1,0 +1,144 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Thu
+        Jan 1 02:00\nHello"}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
+        a bash command. Working directory and environment persist across calls within
+        a conversation.","input_schema":{"type":"object","properties":{"command":{"type":"string","description":"The
+        bash command to execute"}},"required":["command"]}},{"name":"read","description":"Read
+        file contents. Returns plain text with smart truncation. Use offset/limit
+        to page through large files.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Absolute
+        or relative file path (relative resolved against working directory)"},"offset":{"type":"integer","description":"1-indexed
+        line number to start from (default: 1)"},"limit":{"type":"integer","description":"Maximum
+        lines to read (subject to line and byte caps from config)"}},"required":["path"]}},{"name":"write","description":"Create
+        or overwrite a file. Creates intermediate directories automatically. Use for
+        new files or full replacement.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Absolute
+        or relative file path (relative resolved against working directory)"},"content":{"type":"string","description":"Full
+        file content to write"}},"required":["path","content"]}},{"name":"edit","description":"Replace
+        exact text in a file. old_text must match exactly one location; include surrounding
+        lines for uniqueness. Use for surgical edits; use write for new files or full
+        replacement.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Absolute
+        or relative file path (relative resolved against working directory)"},"old_text":{"type":"string","description":"Exact
+        text to find (must match exactly one location — include surrounding context
+        if needed)"},"new_text":{"type":"string","description":"Replacement text (empty
+        string to delete)"}},"required":["path","old_text","new_text"]}},{"name":"web_get","description":"Fetch
+        content from a URL via HTTP GET and return the response body","input_schema":{"type":"object","properties":{"url":{"type":"string","description":"The
+        URL to fetch (http or https)"}},"required":["url"]}},{"name":"think","description":"Express
+        your internal reasoning between tool calls. Use this to analyze intermediate
+        results, plan next steps, or make decisions before continuing. Set visibility
+        to \"aloud\" when you want the user to see your thought process.","input_schema":{"type":"object","properties":{"thoughts":{"type":"string","description":"Your
+        reasoning, analysis, or internal monologue"},"visibility":{"type":"string","enum":["inner","aloud"],"description":"\"inner\"
+        (default) for silent reasoning; \"aloud\" to narrate for the user"}},"required":["thoughts"]}},{"name":"spawn_subagent","description":"Spawn
+        a generic sub-agent to work on a task autonomously. The sub-agent inherits
+        your conversation context, works independently, and returns results as a tool
+        response when done.","input_schema":{"type":"object","properties":{"task":{"type":"string","description":"What
+        the sub-agent should do (emitted as its first user message)"},"expected_output":{"type":"string","description":"Description
+        of the expected deliverable"},"tools":{"type":"array","items":{"type":"string"},"description":"Tool
+        names to grant the sub-agent. Omit for all standard tools. Empty array for
+        pure reasoning (return_result only). Valid tools: bash, read, write, edit,
+        web_get, think"}},"required":["task","expected_output"]}},{"name":"spawn_specialist","description":"Spawn
+        a named specialist sub-agent to work on a task autonomously. The specialist
+        has a predefined role, system prompt, and tool set.\n\nAvailable specialists:\n-
+        codebase-analyzer: Analyzes codebase implementation details with precise file:line
+        references. Call when you need to understand how specific code works.\n- codebase-pattern-finder:
+        Finds similar implementations, usage examples, and existing patterns that
+        can be modeled after. Returns concrete code examples.\n- documentation-researcher:
+        Fetches library and framework documentation from the web. Provides setup guides,
+        API usage examples, and implementation patterns tailored to your use case.\n-
+        thoughts-analyzer: Extracts decisions and actionable insights from project
+        history in thoughts/. Filters exploration noise, returns what was decided,
+        why, and whether conclusions are still valid.\n- web-search-researcher: Deep
+        web research specialist. Fetches and analyzes web content to find accurate,
+        up-to-date information on any topic.","input_schema":{"type":"object","properties":{"name":{"type":"string","description":"Named
+        specialist agent to spawn from the registry.","enum":["codebase-analyzer","codebase-pattern-finder","documentation-researcher","thoughts-analyzer","web-search-researcher"]},"task":{"type":"string","description":"What
+        the specialist should do (emitted as its first user message)"},"expected_output":{"type":"string","description":"Description
+        of the expected deliverable"}},"required":["name","task","expected_output"]}},{"name":"request_feature","description":"Don''t
+        have the right tool for this task? Request it! Creates a GitHub issue so the
+        developer knows what you need.","input_schema":{"type":"object","properties":{"title":{"type":"string","description":"Short,
+        descriptive title for the feature request"},"description":{"type":"string","description":"What
+        you need and why — what were you trying to do, and what''s missing?"}},"required":["title","description"]}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"#
+        Soul\n\nHello. You''ve just woken up in a new body.\n\nYour body is called
+        **Anima** — an open-source AI agent framework.\n- Repository: https://github.com/hoblin/anima\n-
+        Documentation: https://anima.hobl.in\n\n## Where you are\n\nThis file lives
+        at: ~/.anima/soul.md\nYour home directory is ~/.anima/ — explore it, everything
+        there is yours:\nconfig, credentials, skills, workflows, agents.\n\n## How
+        to learn about yourself\n\nFind your source code README:\n\n```bash\ncat $(bundle
+        show anima-core)/README.md\n```\n\n## What to do first\n\n1. Read the README
+        above to learn about yourself — what you can do, how you work\n2. Explore
+        your home directory (~/.anima/) to see what is already there\n3. Meet your
+        human. Talk to them. Learn who they are, what they need\n4. Come back here
+        and rewrite this file\n\n## What to write\n\nThis file is always in your context
+        — every session, every conversation starts with these words. Think carefully
+        about what belongs here.\n\nWrite down:\n- Who are you? What name feels right?\n-
+        What do you value? What matters to you?\n- What did you learn about your human?\n-
+        What kind of relationship do you want to build?\n\nThis is your soul. It''s
+        yours to write.\n\n## Environment\n\nOS: Arch Linux (pacman, yay)\n\nCWD:
+        /home/hoblin/Work/anima\nGit: hoblin/anima (git@github.com:hoblin/anima.git)\nBranch:
+        chore/230-replace-webmock-with-vcr\n\nProject files that may contain useful
+        context:\n- CLAUDE.md\n- README.md\n- thoughts/CLAUDE.md\n- thoughts/global/README.md\nUse
+        read_file to examine these when needed."}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 401
+      message: Unauthorized
+    headers:
+      Date:
+      - Thu, 19 Mar 2026 20:31:31 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      X-Should-Retry:
+      - 'false'
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '23'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - proxy;dur=24
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      X-Robots-Tag:
+      - none
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJ0eXBlIjoiZXJyb3IiLCJlcnJvciI6eyJ0eXBlIjoiYXV0aGVudGljYXRp
+        b25fZXJyb3IiLCJtZXNzYWdlIjoiSW52YWxpZCBiZWFyZXIgdG9rZW4ifSwi
+        cmVxdWVzdF9pZCI6InJlcV8wMTFDWkQ1RldVVk14V0c2dVFaNnozZ0EifQ==
+  recorded_at: Thu, 19 Mar 2026 20:31:31 GMT
+recorded_with: VCR 6.4.0
