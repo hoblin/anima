@@ -3,9 +3,9 @@
 require "rails_helper"
 
 RSpec.describe Providers::Anthropic do
-  let(:valid_token) { "sk-ant-oat01-#{"a" * 68}" }
-  let(:real_token) { CredentialStore.read("anthropic", "subscription_token") || valid_token }
-  let(:provider) { described_class.new(valid_token) }
+  let(:fake_token) { "sk-ant-oat01-#{"a" * 68}" }
+  let(:real_token) { CredentialStore.read("anthropic", "subscription_token") || fake_token }
+  let(:provider) { described_class.new(fake_token) }
   let(:real_provider) { described_class.new(real_token) }
 
   describe "constants" do
@@ -33,7 +33,7 @@ RSpec.describe Providers::Anthropic do
 
   describe ".validate_token_format!" do
     it "accepts a valid token" do
-      expect(described_class.validate_token_format!(valid_token)).to be true
+      expect(described_class.validate_token_format!(fake_token)).to be true
     end
 
     it "rejects a token with wrong prefix" do
@@ -67,11 +67,11 @@ RSpec.describe Providers::Anthropic do
       before do
         allow(Rails.application.credentials).to receive(:dig)
           .with(:anthropic, :subscription_token)
-          .and_return(valid_token)
+          .and_return(fake_token)
       end
 
       it "returns the token" do
-        expect(described_class.fetch_token).to eq(valid_token)
+        expect(described_class.fetch_token).to eq(fake_token)
       end
     end
 
@@ -95,17 +95,17 @@ RSpec.describe Providers::Anthropic do
 
   describe "#initialize" do
     it "accepts a token argument" do
-      provider = described_class.new(valid_token)
-      expect(provider.token).to eq(valid_token)
+      provider = described_class.new(fake_token)
+      expect(provider.token).to eq(fake_token)
     end
 
     it "fetches token from credentials when no argument given" do
       allow(Rails.application.credentials).to receive(:dig)
         .with(:anthropic, :subscription_token)
-        .and_return(valid_token)
+        .and_return(fake_token)
 
       provider = described_class.new
-      expect(provider.token).to eq(valid_token)
+      expect(provider.token).to eq(fake_token)
     end
   end
 
