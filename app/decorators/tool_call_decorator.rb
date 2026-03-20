@@ -93,7 +93,6 @@ class ToolCallDecorator < EventDecorator
   # @return [String] formatted input preview
   def format_input
     input = payload["tool_input"]
-    json = input.to_json
     case payload["tool_name"]
     when "bash"
       "$ #{input&.dig("command")}"
@@ -102,7 +101,7 @@ class ToolCallDecorator < EventDecorator
     when "read", "edit", "write"
       input&.dig("file_path").to_s
     else
-      truncate_lines(json, max_lines: 2)
+      truncate_lines(input.to_json, max_lines: 2)
     end
   end
 end

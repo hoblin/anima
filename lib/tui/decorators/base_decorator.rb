@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "../formatting"
+
 module TUI
   module Decorators
     # Client-side decorator layer for per-tool TUI rendering.
@@ -18,7 +20,9 @@ module TUI
     #   decorator = TUI::Decorators::BaseDecorator.for(data)
     #   lines = decorator.render(tui)
     class BaseDecorator
-      TOOL_ICON = "\u{1F527}"   # wrench
+      include Formatting
+
+      ICON = "\u{1F527}"        # wrench
       CHECKMARK = "\u2713"
       RETURN_ARROW = "\u21A9"
       ERROR_ICON = "\u274C"
@@ -60,7 +64,7 @@ module TUI
         style = tui.style(fg: color)
         header = build_call_header
         lines = [tui.line(spans: [tui.span(content: header, style: style)])]
-        data["input"].to_s.split("\n").each do |line|
+        data["input"].to_s.split("\n", -1).each do |line|
           lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)])
         end
         lines
@@ -82,7 +86,7 @@ module TUI
         meta_parts << format_token_label(tokens, data["estimated"]) if tokens
         prefix = "  #{RETURN_ARROW} #{meta_parts.join(" ")} "
 
-        content_lines = data["content"].to_s.split("\n")
+        content_lines = data["content"].to_s.split("\n", -1)
         style = tui.style(fg: response_color)
         lines = [tui.line(spans: [tui.span(content: "#{prefix}#{content_lines.first}", style: style)])]
         content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: "    #{line}", style: style)]) }
@@ -101,7 +105,7 @@ module TUI
       # Icon for this tool type. Subclasses override with tool-specific icons.
       # @return [String]
       def icon
-        TOOL_ICON
+        ICON
       end
 
       # Color for tool call headers. Subclasses override for tool-specific colors.
@@ -130,19 +134,6 @@ module TUI
         header = "#{prefix} #{data["tool"]}"
         header += " [#{tool_id}]" if tool_id
         header
-      end
-
-      def format_token_label(tokens, estimated)
-        return "" unless tokens
-
-        label = estimated ? "~#{tokens}" : tokens.to_s
-        "[#{label} tok]"
-      end
-
-      def format_ns_timestamp(ns)
-        return "--:--:--" unless ns
-
-        Time.at(ns / 1_000_000_000.0).strftime("%H:%M:%S")
       end
 
       # Resolves the tool name from the data hash.

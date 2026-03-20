@@ -31,6 +31,7 @@ detectors:
     exclude:
       - "AnalyticalBrainJob#perform"
       - "Tools::Think#execute"
+      - "TUI::Formatting"
   # Session model is the core domain object — methods grow naturally.
   # Mcp CLI accumulates subcommand helpers across add/remove/list/secrets.
   # EnvironmentProbe probes multiple orthogonal facets (OS, Git, project files).

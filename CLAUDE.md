@@ -10,6 +10,8 @@ Research spikes should describe what we need, not where to look. Prescribing sol
 
 Always fix flaky tests. Never skip, mark pending, or work around them — fix the root cause.
 
+Run `standardrb` without `--no-fix` so it auto-corrects trivial formatting issues.
+
 Do not add "defense-in-depth" rescue clauses or fallback logic. Silently swallowing exceptions hides bugs, violates the Single Responsibility Principle, and masks missing business logic. Let exceptions propagate — they signal that a use case is not covered. Fix the gap in logic instead of papering over it.
 
 There is no such thing as deprecated code or backward compatibility in this project. Orphaned code should be deleted right away.

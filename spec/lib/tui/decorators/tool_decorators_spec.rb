@@ -50,6 +50,14 @@ RSpec.describe "Tool-specific decorators" do
       style = lines.first[:spans].first[:style]
       expect(style[:fg]).to eq("yellow")
     end
+
+    it "renders response in default white" do
+      data = {"role" => "tool_response", "tool" => "edit", "content" => "edited", "success" => true}
+      lines = described_class.new(data).render_response(tui)
+
+      style = lines.first[:spans].first[:style]
+      expect(style[:fg]).to eq("white")
+    end
   end
 
   describe TUI::Decorators::WriteDecorator do
@@ -64,6 +72,14 @@ RSpec.describe "Tool-specific decorators" do
       style = lines.first[:spans].first[:style]
       expect(style[:fg]).to eq("yellow")
     end
+
+    it "renders response in default white" do
+      data = {"role" => "tool_response", "tool" => "write", "content" => "written", "success" => true}
+      lines = described_class.new(data).render_response(tui)
+
+      style = lines.first[:spans].first[:style]
+      expect(style[:fg]).to eq("white")
+    end
   end
 
   describe TUI::Decorators::WebGetDecorator do
@@ -77,6 +93,14 @@ RSpec.describe "Tool-specific decorators" do
 
       style = lines.first[:spans].first[:style]
       expect(style[:fg]).to eq("blue")
+    end
+
+    it "renders response in default white" do
+      data = {"role" => "tool_response", "tool" => "web_get", "content" => "page content", "success" => true}
+      lines = described_class.new(data).render_response(tui)
+
+      style = lines.first[:spans].first[:style]
+      expect(style[:fg]).to eq("white")
     end
   end
 end

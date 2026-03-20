@@ -8,10 +8,13 @@ require_relative "../decorators/edit_decorator"
 require_relative "../decorators/write_decorator"
 require_relative "../decorators/web_get_decorator"
 require_relative "../decorators/think_decorator"
+require_relative "../formatting"
 
 module TUI
   module Screens
     class Chat
+      include Formatting
+
       MIN_INPUT_HEIGHT = 3
       PRINTABLE_CHAR = /\A[[:print:]]\z/
 
@@ -539,26 +542,6 @@ module TUI
           lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)])
         end
         lines
-      end
-
-      # Formats a token count for display, with tilde prefix for estimates.
-      # @param tokens [Integer, nil] token count
-      # @param estimated [Boolean] whether the count is an estimate
-      # @return [String] formatted label, e.g. "[42 tok]" or "[~28 tok]"
-      def format_token_label(tokens, estimated)
-        return "" unless tokens
-
-        label = estimated ? "~#{tokens}" : tokens.to_s
-        "[#{label} tok]"
-      end
-
-      # Converts nanosecond-precision timestamp to human-readable HH:MM:SS.
-      # @param ns [Integer, nil] nanosecond timestamp
-      # @return [String] formatted time, or "--:--:--" when nil
-      def format_ns_timestamp(ns)
-        return "--:--:--" unless ns
-
-        Time.at(ns / 1_000_000_000.0).strftime("%H:%M:%S")
       end
 
       def build_chat_message_lines(tui, msg)
