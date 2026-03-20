@@ -1268,6 +1268,40 @@ RSpec.describe TUI::App do
         expect(icon).to eq("\u2713") # ✓
         expect(color).to eq("green")
       end
+
+      it "returns active icon when sub_goals key is nil" do
+        goal = {"status" => "active", "sub_goals" => nil}
+        icon, color = app.send(:goal_icon_and_color, goal)
+        expect(icon).to eq("\u25CF") # ●
+        expect(color).to eq("cyan")
+      end
+
+      it "returns active icon when sub_goals key is absent" do
+        goal = {"status" => "active"}
+        icon, color = app.send(:goal_icon_and_color, goal)
+        expect(icon).to eq("\u25CF") # ●
+        expect(color).to eq("cyan")
+      end
+    end
+
+    describe "#child_icon_and_color" do
+      it "returns running icon for processing child" do
+        icon, color = app.send(:child_icon_and_color, {"processing" => true})
+        expect(icon).to eq("\u25CF") # ●
+        expect(color).to eq("yellow")
+      end
+
+      it "returns idle icon for non-processing child" do
+        icon, color = app.send(:child_icon_and_color, {"processing" => false})
+        expect(icon).to eq("\u25CC") # ◌
+        expect(color).to eq("green")
+      end
+
+      it "returns idle icon when processing key is nil" do
+        icon, color = app.send(:child_icon_and_color, {"processing" => nil})
+        expect(icon).to eq("\u25CC") # ◌
+        expect(color).to eq("green")
+      end
     end
 
     describe "#hud_goals_section" do

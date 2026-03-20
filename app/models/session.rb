@@ -228,8 +228,8 @@ class Session < ApplicationRecord
   end
 
   # Broadcasts child session list to all clients subscribed to the parent
-  # session. Called when a child session's processing state changes so the
-  # HUD sub-agents section updates in real time.
+  # session. Called when a child session is created or its processing state
+  # changes so the HUD sub-agents section updates in real time.
   #
   # Queries children via FK directly (avoids loading the parent record) and
   # selects only the columns needed for the HUD payload.

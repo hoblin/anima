@@ -303,6 +303,9 @@ module TUI
 
     # Returns the status icon and color for a goal.
     # Active goals with some completed sub-goals show as in-progress (◐).
+    #
+    # @param goal [Hash] goal data with "status" and optional "sub_goals" keys
+    # @return [Array(String, String)] icon and color pair
     def goal_icon_and_color(goal)
       if goal["status"] == "completed"
         [GOAL_ICON_COMPLETED, "green"]
@@ -314,7 +317,7 @@ module TUI
     end
 
     # Builds the skills line with brain emoji.
-    # @return [RatatuiRuby::Widgets::Line, nil]
+    # @return [Array<RatatuiRuby::Widgets::Line>, nil]
     def hud_skills_line(tui, session)
       skills = session[:active_skills]
       return if skills.nil? || skills.empty?
@@ -329,7 +332,7 @@ module TUI
     end
 
     # Builds the workflow line with scroll emoji.
-    # @return [RatatuiRuby::Widgets::Line, nil]
+    # @return [Array<RatatuiRuby::Widgets::Line>, nil]
     def hud_workflow_line(tui, session)
       workflow = session[:active_workflow]
       return if workflow.nil? || workflow.empty?
