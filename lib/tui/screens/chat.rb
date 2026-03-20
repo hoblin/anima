@@ -16,7 +16,6 @@ module TUI
       include Formatting
 
       MIN_INPUT_HEIGHT = 3
-      FLASH_TIMEOUT = 5 # seconds before auto-dismiss
       FLASH_HEIGHT = 3  # border + content + border
       PRINTABLE_CHAR = /\A[[:print:]]\z/
 
@@ -421,7 +420,7 @@ module TUI
       # @param content [String] message text
       # @param type [Symbol] :error, :warning, or :info
       def add_flash(content, type = :info)
-        @flash_messages << {content: content, type: type, expires_at: Time.now + FLASH_TIMEOUT}
+        @flash_messages << {content: content, type: type, expires_at: Time.now + Anima::Settings.flash_timeout}
       end
 
       # Removes expired flash messages from the queue.

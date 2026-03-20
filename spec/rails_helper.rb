@@ -33,6 +33,7 @@ RSpec.configure do |config|
       "paths" => {"soul" => Rails.root.join("templates/soul.md").to_s},
       "session" => {"name_generation_interval" => 30},
       "analytical_brain" => {"max_tokens" => 4096, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "event_window" => 20},
+      "tui" => {"flash_timeout" => 5},
       "environment" => {"project_files" => ["CLAUDE.md", "AGENTS.md", "README.md", "CONTRIBUTING.md"], "project_files_max_depth" => 3}
     )
   end

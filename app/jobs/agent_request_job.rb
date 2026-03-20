@@ -41,12 +41,18 @@ class AgentRequestJob < ApplicationJob
   # @param error_message [String] human-readable error for the flash notification
   def self.bounce_back_user_event(session_id, error_message)
     session = Session.find_by(id: session_id)
-    return unless session
+    unless session
+      Rails.logger.warn("bounce_back: session #{session_id} not found — cannot restore user input")
+      return
+    end
 
     last_user_event = session.events
       .where(event_type: "user_message", status: nil)
       .order(id: :desc).first
-    return unless last_user_event
+    unless last_user_event
+      Rails.logger.warn("bounce_back: no unprocessed user_message in session #{session_id}")
+      return
+    end
 
     content = last_user_event.payload["content"]
     event_id = last_user_event.id

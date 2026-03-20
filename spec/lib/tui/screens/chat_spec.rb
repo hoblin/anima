@@ -1774,7 +1774,7 @@ RSpec.describe TUI::Screens::Chat do
       flash = screen.flash_messages.first
       expect(flash[:content]).to include("Auth failed")
       expect(flash[:type]).to eq(:error)
-      expect(flash[:expires_at]).to be > Time.now
+      expect(flash[:expires_at]).to be_within(1).of(Time.now + Anima::Settings.flash_timeout)
     end
 
     it "handles bounce without event_id gracefully" do
@@ -1807,6 +1807,14 @@ RSpec.describe TUI::Screens::Chat do
       expect(screen.flash_messages.size).to eq(1)
 
       screen.handle_event(key_event(code: "a"))
+      expect(screen.flash_messages).to be_empty
+    end
+
+    it "dismisses flash on paste event" do
+      screen.send(:add_flash, "Test flash", :info)
+      expect(screen.flash_messages.size).to eq(1)
+
+      screen.handle_event(paste_event(content: "pasted text"))
       expect(screen.flash_messages).to be_empty
     end
 
