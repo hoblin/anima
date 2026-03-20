@@ -79,6 +79,7 @@ module Tools
         prompt: "#{GENERIC_PROMPT}\n#{EXPECTED_DELIVERABLE_PREFIX}#{expected_output}",
         granted_tools: granted_tools
       )
+      child.broadcast_children_update_to_parent
       Events::Bus.emit(Events::UserMessage.new(content: task, session_id: child.id))
       AgentRequestJob.perform_later(child.id)
       child

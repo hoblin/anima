@@ -197,12 +197,12 @@ class SessionChannel < ApplicationCable::Channel
   # client can handle both paths with a single code path.
   #
   # Payload: session_id, name, parent_session_id, message_count,
-  # view_mode, active_skills, goals.
+  # view_mode, active_skills, goals, children (when present).
   #
   # @param session [Session] the session to announce
   # @return [void]
   def transmit_session_changed(session)
-    transmit({
+    payload = {
       "action" => "session_changed",
       "session_id" => session.id,
       "name" => session.name,
@@ -212,7 +212,14 @@ class SessionChannel < ApplicationCable::Channel
       "active_skills" => session.active_skills,
       "active_workflow" => session.active_workflow,
       "goals" => session.goals_summary
-    })
+    }
+
+    children = session.child_sessions.order(:created_at)
+    if children.any?
+      payload["children"] = children.map { |child| {"id" => child.id, "name" => child.name, "processing" => child.processing?} }
+    end
+
+    transmit(payload)
   end
 
   # Switches the channel to a different session: stops current stream,

@@ -97,6 +97,7 @@ module Tools
         granted_tools: definition.tools,
         name: definition.name
       )
+      child.broadcast_children_update_to_parent
       Events::Bus.emit(Events::UserMessage.new(content: task, session_id: child.id))
       AgentRequestJob.perform_later(child.id)
       child
