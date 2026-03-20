@@ -106,6 +106,15 @@ RSpec.describe Tools::SpawnSubagent do
       expect(AgentRequestJob).to have_been_enqueued.with(child.id)
     end
 
+    it "broadcasts children update to parent session" do
+      expect(ActionCable.server).to receive(:broadcast).with(
+        "session_#{parent_session.id}",
+        hash_including("action" => "children_updated", "session_id" => parent_session.id)
+      )
+
+      tool.execute(input)
+    end
+
     it "returns confirmation with child session ID" do
       result = tool.execute(input)
 

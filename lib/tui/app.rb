@@ -369,6 +369,9 @@ module TUI
     end
 
     # Returns the activity icon and color for a child session.
+    #
+    # @param child [Hash] child session data with "processing" key
+    # @return [Array(String, String)] icon and color pair
     def child_icon_and_color(child)
       if child["processing"]
         [CHILD_ICON_RUNNING, "yellow"]

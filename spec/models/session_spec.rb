@@ -92,6 +92,58 @@ RSpec.describe Session do
     end
   end
 
+  describe "#broadcast_children_update_to_parent" do
+    it "broadcasts children list to parent session stream" do
+      parent = Session.create!
+      child_a = Session.create!(parent_session: parent, prompt: "agent A", name: "analyzer")
+      child_b = Session.create!(parent_session: parent, prompt: "agent B", name: "reviewer", processing: true)
+
+      expect(ActionCable.server).to receive(:broadcast).with(
+        "session_#{parent.id}",
+        {
+          "action" => "children_updated",
+          "session_id" => parent.id,
+          "children" => [
+            {"id" => child_a.id, "name" => "analyzer", "processing" => false},
+            {"id" => child_b.id, "name" => "reviewer", "processing" => true}
+          ]
+        }
+      )
+
+      child_a.broadcast_children_update_to_parent
+    end
+
+    it "does nothing for root sessions" do
+      root = Session.create!
+
+      expect(ActionCable.server).not_to receive(:broadcast)
+
+      root.broadcast_children_update_to_parent
+    end
+
+    it "handles deleted parent gracefully" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "task")
+      parent.destroy!
+
+      # Broadcasts to the stream (no crash) — stream has no subscribers
+      expect { child.broadcast_children_update_to_parent }.not_to raise_error
+    end
+
+    it "selects only needed columns for payload" do
+      parent = Session.create!
+      Session.create!(parent_session: parent, prompt: "task", name: "worker")
+
+      payload = nil
+      allow(ActionCable.server).to receive(:broadcast) { |_, data| payload = data }
+
+      Session.last.broadcast_children_update_to_parent
+
+      child_data = payload["children"].first
+      expect(child_data.keys).to contain_exactly("id", "name", "processing")
+    end
+  end
+
   describe ".root_sessions" do
     it "returns only sessions without a parent" do
       root = Session.create!

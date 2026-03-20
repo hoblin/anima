@@ -214,7 +214,7 @@ class SessionChannel < ApplicationCable::Channel
       "goals" => session.goals_summary
     }
 
-    children = session.child_sessions.order(:created_at)
+    children = session.child_sessions.order(:created_at).select(:id, :name, :processing)
     if children.any?
       payload["children"] = children.map { |child| {"id" => child.id, "name" => child.name, "processing" => child.processing?} }
     end

@@ -1102,6 +1102,22 @@ RSpec.describe TUI::Screens::Chat do
     end
   end
 
+  describe "#input_title" do
+    it "returns 'Input' by default" do
+      expect(screen.send(:input_title)).to eq("Input")
+    end
+
+    it "shows HUD hint when hud_hint is true" do
+      screen.hud_hint = true
+      expect(screen.send(:input_title)).to eq("Input  Ctrl+A H HUD")
+    end
+
+    it "returns 'Disconnected' when not connected" do
+      allow(cable_client).to receive(:status).and_return(:disconnected)
+      expect(screen.send(:input_title)).to eq("Disconnected")
+    end
+  end
+
   describe "#clear_input" do
     it "clears the input buffer" do
       screen.instance_variable_get(:@input_buffer).insert("hello world")
