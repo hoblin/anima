@@ -66,6 +66,42 @@ RSpec.describe AgentRequestJob do
       expect(session.reload.processing?).to be false
     end
 
+    context "parent session broadcasts" do
+      let(:parent) { Session.create! }
+      let(:child) { Session.create!(parent_session: parent, prompt: "task") }
+
+      it "broadcasts children_updated when claiming processing" do
+        child.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+
+        expect(ActionCable.server).to receive(:broadcast).with(
+          "session_#{parent.id}",
+          hash_including("action" => "children_updated")
+        ).at_least(:once)
+
+        described_class.perform_now(child.id)
+      end
+
+      it "broadcasts children_updated when releasing processing" do
+        child.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+
+        broadcasts = []
+        allow(ActionCable.server).to receive(:broadcast) { |stream, data| broadcasts << data }
+
+        described_class.perform_now(child.id)
+
+        children_updates = broadcasts.select { |b| b["action"] == "children_updated" }
+        expect(children_updates.size).to be >= 2 # claim + release
+      end
+
+      it "does not broadcast for root sessions" do
+        session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+
+        expect(ActionCable.server).not_to receive(:broadcast)
+
+        described_class.perform_now(session.id)
+      end
+    end
+
     context "blocking analytical brain" do
       before { allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(true) }
 

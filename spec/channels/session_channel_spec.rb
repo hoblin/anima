@@ -160,6 +160,27 @@ RSpec.describe SessionChannel, type: :channel do
       expect(changed["parent_session_id"]).to eq(parent.id)
     end
 
+    it "includes children in session_changed for parent sessions" do
+      parent = Session.create!(id: session_id)
+      child = Session.create!(parent_session: parent, prompt: "task", name: "analyzer", processing: true)
+
+      subscribe(session_id: session_id)
+
+      changed = transmissions.find { |t| t["action"] == "session_changed" }
+      expect(changed["children"]).to eq([
+        {"id" => child.id, "name" => "analyzer", "processing" => true}
+      ])
+    end
+
+    it "omits children key when session has no children" do
+      Session.create!(id: session_id)
+
+      subscribe(session_id: session_id)
+
+      changed = transmissions.find { |t| t["action"] == "session_changed" }
+      expect(changed).not_to have_key("children")
+    end
+
     it "snapshots viewport event IDs on subscription" do
       session = Session.create!(id: session_id)
       e1 = session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)

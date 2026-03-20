@@ -227,6 +227,27 @@ class Session < ApplicationRecord
     promoted
   end
 
+  # Broadcasts child session list to all clients subscribed to the parent
+  # session. Called when a child session is created or its processing state
+  # changes so the HUD sub-agents section updates in real time.
+  #
+  # Queries children via FK directly (avoids loading the parent record) and
+  # selects only the columns needed for the HUD payload.
+  #
+  # @return [void]
+  def broadcast_children_update_to_parent
+    return unless parent_session_id
+
+    children = Session.where(parent_session_id: parent_session_id)
+      .order(:created_at)
+      .select(:id, :name, :processing)
+    ActionCable.server.broadcast("session_#{parent_session_id}", {
+      "action" => "children_updated",
+      "session_id" => parent_session_id,
+      "children" => children.map { |child| {"id" => child.id, "name" => child.name, "processing" => child.processing?} }
+    })
+  end
+
   private
 
   # Reads the soul file — the agent's self-authored identity.

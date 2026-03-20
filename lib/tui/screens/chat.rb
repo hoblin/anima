@@ -38,6 +38,7 @@ module TUI
       attr_reader :message_store, :scroll_offset, :session_info, :view_mode, :sessions_list,
         :authentication_required, :token_save_result, :parent_session_id,
         :chat_focused
+      attr_accessor :hud_hint
 
       # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
       # @param message_store [TUI::MessageStore, nil] injectable for testing
@@ -52,7 +53,7 @@ module TUI
         @max_scroll = 0
         @input_scroll_offset = 0
         @view_mode = "basic"
-        @session_info = {id: cable_client.session_id || 0, message_count: 0, active_skills: [], active_workflow: nil, goals: []}
+        @session_info = {id: cable_client.session_id || 0, message_count: 0, active_skills: [], active_workflow: nil, goals: [], children: []}
         @sessions_list = nil
         @parent_session_id = nil
         @authentication_required = false
@@ -244,6 +245,8 @@ module TUI
             handle_active_workflow_updated(msg)
           when "goals_updated"
             handle_goals_updated(msg)
+          when "children_updated"
+            handle_children_updated(msg)
           when "sessions_list"
             @sessions_list = msg["sessions"]
           when "user_message_recalled"
@@ -317,7 +320,7 @@ module TUI
         @view_mode = msg["view_mode"] if msg["view_mode"]
         @session_info = {id: new_id, name: msg["name"], message_count: msg["message_count"] || 0,
                          active_skills: msg["active_skills"] || [], active_workflow: msg["active_workflow"],
-                         goals: msg["goals"] || []}
+                         goals: msg["goals"] || [], children: msg["children"] || []}
         @parent_session_id = msg["parent_session_id"]
         @input_buffer.clear
         @loading = false
@@ -358,6 +361,14 @@ module TUI
         return unless msg["session_id"] == @session_info[:id]
 
         @session_info[:goals] = msg["goals"] || []
+      end
+
+      # Updates the children list when a sub-agent is spawned or its
+      # processing state changes. Only applies to the current session.
+      def handle_children_updated(msg)
+        return unless msg["session_id"] == @session_info[:id]
+
+        @session_info[:children] = msg["children"] || []
       end
 
       # Handles server broadcast of view mode change. Clears the message store
@@ -590,9 +601,7 @@ module TUI
           scroll: [input_scroll, 0],
           block: tui.block(
             title: title,
-            titles: disabled ? [] : [
-              {content: "Enter send", position: :bottom, alignment: :center}
-            ],
+            titles: input_bottom_titles(disabled),
             borders: [:all],
             border_type: :rounded,
             border_style: styles[:border]
@@ -629,6 +638,16 @@ module TUI
         else
           "Input"
         end
+      end
+
+      def input_bottom_titles(disabled)
+        return [] if disabled
+
+        command_hint = @hud_hint ? "C-a → h HUD" : "C-a command"
+        [
+          {content: command_hint, position: :bottom, alignment: :left},
+          {content: "Enter send", position: :bottom, alignment: :center}
+        ]
       end
 
       # Builds input text as pre-wrapped Line objects for the Paragraph widget.

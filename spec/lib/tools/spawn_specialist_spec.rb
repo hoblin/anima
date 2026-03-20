@@ -121,6 +121,15 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(child.name).to eq("analyzer")
     end
 
+    it "broadcasts children update to parent session" do
+      expect(ActionCable.server).to receive(:broadcast).with(
+        "session_#{parent_session.id}",
+        hash_including("action" => "children_updated", "session_id" => parent_session.id)
+      )
+
+      tool.execute(input)
+    end
+
     it "sets parent reference on child session" do
       tool.execute(input)
 

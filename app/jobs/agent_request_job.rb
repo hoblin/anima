@@ -88,13 +88,18 @@ class AgentRequestJob < ApplicationJob
 
   # Sets the session's processing flag atomically. Returns true if this
   # job claimed the lock, false if another job already holds it.
+  # Broadcasts the state change to the parent session's HUD.
   def claim_processing(session_id)
-    Session.where(id: session_id, processing: false).update_all(processing: true) == 1
+    claimed = Session.where(id: session_id, processing: false).update_all(processing: true) == 1
+    Session.find_by(id: session_id)&.broadcast_children_update_to_parent if claimed
+    claimed
   end
 
   # Clears the processing flag so the session can accept new jobs.
+  # Broadcasts the state change to the parent session's HUD.
   def release_processing(session_id)
     Session.where(id: session_id).update_all(processing: false)
+    Session.find_by(id: session_id)&.broadcast_children_update_to_parent
   end
 
   # Safety-net clearing of the interrupt flag. The primary clear happens in

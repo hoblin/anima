@@ -1,13 +1,16 @@
 ## [Unreleased]
 
 ### Added
+- HUD toggle — collapsible info panel via `C-a → h` with redesigned layout: session name, goals with descriptions and status icons (`●` active, `◐` in-progress, `✓` completed), skills, workflow, sub-agents with activity indicators (`●` running, `◌` idle), and a bottom status bar showing connection state and view mode; panel occupies 1/3 screen width when visible, input border shows `C-a → h HUD` hint when hidden (#226)
+- Real-time sub-agent tracking — HUD displays child sessions with processing state; broadcasts flow from `SpawnSubagent`/`SpawnSpecialist` on creation and `AgentRequestJob` on processing state changes (#226)
+- `session_changed` payload now includes `children` array for sessions with sub-agents (#226)
 - Client-side TUI decorator layer — per-tool rendering with tool-specific icons, colors, and formatting; `BaseDecorator` factory dispatches to `BashDecorator`, `ReadDecorator`, `EditDecorator`, `WriteDecorator`, `WebGetDecorator`, and `ThinkDecorator` (#227)
 - Server-side `ToolResponseDecorator` now includes `tool` field in verbose/debug output for client-side per-tool dispatch (#227)
 - Server-side `ToolCallDecorator#format_input` extended with tool-specific formatting for `read`, `edit`, and `write` (#227)
 - `anima update` command — upgrades the gem and merges new config keys into existing `config.toml` without overwriting user-customized values — `--migrate-only` flag to skip gem upgrade (#155)
 - Directory-based skills format — `skills/skill-name/SKILL.md` with optional `references/` and `examples/` subdirectories alongside flat `.md` files (#152)
 - Import 6 marketplace skills: activerecord, rspec, draper-decorators, dragonruby, ratatui-ruby, mcp-server (#152)
-- Tmux-style focus switching — `Ctrl+A ↑` enters chat scrolling mode with yellow border, `Escape` returns to input; arrow keys and Page Up/Down scroll chat, mouse scroll works in both modes (#87)
+- Tmux-style focus switching — `C-a ↑` enters chat scrolling mode with yellow border, `Escape` returns to input; arrow keys and Page Up/Down scroll chat, mouse scroll works in both modes (#87)
 - Bash-style input history — press ↑ at top of input to recall previous messages, ↓ to navigate forward; original draft restored when exiting history (#87)
 - Real-time event broadcasting via `Event::Broadcasting` concern — `after_create_commit` and `after_update_commit` callbacks broadcast decorated payloads with database ID and action type to the session's ActionCable stream (#91)
 - TUI `MessageStore` ID-indexed updates — events with `action: "update"` replace existing entries in-place (O(1) lookup) without changing display order
@@ -29,7 +32,7 @@
 ## [0.2.1] - 2026-03-13
 
 ### Added
-- TUI view mode switching via `Ctrl+a → v` — cycle between Basic, Verbose, and Debug (#75)
+- TUI view mode switching via `C-a → v` — cycle between Basic, Verbose, and Debug (#75)
 - Draper EventDecorator hierarchy — structured data decorators for all event types (#74)
 - Decorators return structured hashes (not strings) for transport-layer filtering (#86)
 - Basic mode tool call counter — inline `🔧 Tools: X/Y ✓` aggregation (#73)
@@ -60,7 +63,7 @@
 - `Session` model — owns an ordered event stream
 - `Event` model — polymorphic type, JSON payload, auto-incrementing position
 - `Events::Subscribers::Persister` — writes all events to SQLite as they flow through the bus
-- TUI resumes last session on startup, `Ctrl+a > n` creates a new session
+- TUI resumes last session on startup, `C-a → n` creates a new session
 - Event system using Rails Structured Event Reporter (`Rails.event`)
 - Five event types: `system_message`, `user_message`, `agent_message`, `tool_call`, `tool_response`
 - `Events::Bus` — thin wrapper around `Rails.event` for emitting and subscribing to Anima events
@@ -69,11 +72,11 @@
 - TUI chat screen with LLM integration — in-memory message array, threaded API calls
 - Chat input with character validation, backspace, Enter to submit
 - Loading indicator — "Thinking" status bar mode, grayed-out input during LLM calls
-- New session command (`Ctrl+a > n`) clears conversation
+- New session command (`C-a → n`) clears conversation
 - Error handling — API failures displayed inline as chat messages
 - Anthropic API subscription token authentication
 - LLM client (raw HTTP to Anthropic API)
-- TUI scaffold with RatatuiRuby — tmux-style `Ctrl+a` command mode, sidebar, status bar
+- TUI scaffold with RatatuiRuby — tmux-style `C-a` command mode, sidebar, status bar
 - Headless Rails 8.1 app (API-only, no views/assets)
 - `anima install` command — creates ~/.anima/ tree, per-environment credentials, systemd user service
 - `anima start` command — runs db:prepare and boots Rails via Foreman
