@@ -93,13 +93,20 @@ class ToolCallDecorator < EventDecorator
   # @return [String] formatted input preview
   def format_input
     input = payload["tool_input"]
+    json = input.to_json
     case payload["tool_name"]
     when "bash"
       "$ #{input&.dig("command")}"
-    when "web_get"
+    when "web_get", "web_fetch"
       "GET #{input&.dig("url")}"
+    when "read_file", "edit_file", "write"
+      input&.dig("file_path").to_s
+    when "list_files"
+      input&.dig("path") || input&.dig("pattern") || json
+    when "search_files"
+      input&.dig("pattern") || input&.dig("query") || json
     else
-      truncate_lines(input.to_json, max_lines: 2)
+      truncate_lines(json, max_lines: 2)
     end
   end
 end

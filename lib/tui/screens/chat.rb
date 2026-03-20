@@ -1,6 +1,15 @@
 # frozen_string_literal: true
 
 require_relative "../input_buffer"
+require_relative "../decorators/base_decorator"
+require_relative "../decorators/bash_decorator"
+require_relative "../decorators/read_file_decorator"
+require_relative "../decorators/edit_file_decorator"
+require_relative "../decorators/write_decorator"
+require_relative "../decorators/web_fetch_decorator"
+require_relative "../decorators/list_files_decorator"
+require_relative "../decorators/search_files_decorator"
+require_relative "../decorators/think_decorator"
 
 module TUI
   module Screens
@@ -18,10 +27,6 @@ module TUI
       TOOL_ICON = "\u{1F527}"
       CLOCK_ICON = "\u{1F552}"
       CHECKMARK = "\u2713"
-      RETURN_ARROW = "\u21A9"
-      ERROR_ICON = "\u274C"
-
-      THOUGHT_BUBBLE = "\u{1F4AD}"
 
       ROLE_COLORS = {"user" => "green", "assistant" => "cyan"}.freeze
 
@@ -450,8 +455,10 @@ module TUI
         ]
       end
 
-      # Renders structured event data from the server. Uses the role field
-      # for styling — no string parsing or regex needed.
+      # Renders structured event data from the server. Tool-related roles
+      # (tool_call, tool_response, think) are dispatched to per-tool
+      # client-side decorators for tool-specific icons, colors, and formatting.
+      # Other roles are rendered inline.
       # @param tui [RatatuiRuby] TUI rendering API
       # @param entry [Hash] entry shaped `{type: :rendered, data: Hash}`
       # @return [Array<RatatuiRuby::Widgets::Line>] rendered lines + blank separator
@@ -462,12 +469,8 @@ module TUI
         lines = case role
         when "user", "assistant"
           render_conversation_entry(tui, data, role)
-        when "tool_call"
-          render_tool_call_entry(tui, data)
-        when "tool_response"
-          render_tool_response_entry(tui, data)
-        when "think"
-          render_think_entry(tui, data)
+        when "tool_call", "tool_response", "think"
+          Decorators::BaseDecorator.for(data).render(tui)
         when "system"
           render_system_entry(tui, data)
         when "system_prompt"
@@ -508,42 +511,6 @@ module TUI
         lines
       end
 
-      # Renders a tool invocation with tool name, optional tool_use_id, and indented input.
-      # @param tui [RatatuiRuby] TUI rendering API
-      # @param data [Hash] structured data with "tool", "input", and optional "tool_use_id"
-      # @return [Array<RatatuiRuby::Widgets::Line>]
-      def render_tool_call_entry(tui, data)
-        style = tui.style(fg: "white")
-        header = "#{TOOL_ICON} #{data["tool"]}"
-        header += " [#{data["tool_use_id"]}]" if data["tool_use_id"]
-
-        lines = [tui.line(spans: [tui.span(content: header, style: style)])]
-        data["input"].to_s.split("\n").each do |line|
-          lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)])
-        end
-        lines
-      end
-
-      # Renders tool output with success/failure indicator, optional tool_use_id and token count.
-      # @param tui [RatatuiRuby] TUI rendering API
-      # @param data [Hash] structured data with "content", "success", and optional
-      #   "tool_use_id", "tokens", "estimated"
-      # @return [Array<RatatuiRuby::Widgets::Line>]
-      def render_tool_response_entry(tui, data)
-        indicator = (data["success"] == false) ? ERROR_ICON : CHECKMARK
-        meta_parts = []
-        meta_parts << "[#{data["tool_use_id"]}]" if data["tool_use_id"]
-        meta_parts << indicator
-        meta_parts << format_token_label(data["tokens"], data["estimated"]) if data["tokens"]
-        prefix = "  #{RETURN_ARROW} #{meta_parts.join(" ")} "
-
-        content_lines = data["content"].to_s.split("\n")
-        style = tui.style(fg: "white")
-        lines = [tui.line(spans: [tui.span(content: "#{prefix}#{content_lines.first}", style: style)])]
-        content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: "    #{line}", style: style)]) }
-        lines
-      end
-
       # Renders a system message with optional timestamp prefix.
       # @param tui [RatatuiRuby] TUI rendering API
       # @param data [Hash] structured data with "content" and optional "timestamp"
@@ -573,27 +540,6 @@ module TUI
         data["content"].to_s.split("\n").each do |line|
           lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)])
         end
-        lines
-      end
-
-      # Renders a think event — the agent's inner reasoning between tool calls.
-      # "aloud" thoughts use yellow (narration for the user), "inner" thoughts
-      # use dark_gray (visible only in verbose/debug, dimmed to signal internality).
-      # @param tui [RatatuiRuby] TUI rendering API
-      # @param data [Hash] structured data with "content", "visibility", optional "timestamp", "tool_use_id"
-      # @return [Array<RatatuiRuby::Widgets::Line>]
-      def render_think_entry(tui, data)
-        aloud = data["visibility"] == "aloud"
-        color = aloud ? "yellow" : "dark_gray"
-        style = tui.style(fg: color)
-
-        meta = []
-        meta << "[#{format_ns_timestamp(data["timestamp"])}]" if data["timestamp"]
-        header = meta.empty? ? THOUGHT_BUBBLE : "#{meta.join(" ")} #{THOUGHT_BUBBLE}"
-
-        content_lines = data["content"].to_s.split("\n", -1)
-        lines = [tui.line(spans: [tui.span(content: "#{header} #{content_lines.first}", style: style)])]
-        content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)]) }
         lines
       end
 
