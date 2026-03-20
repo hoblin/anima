@@ -1,6 +1,9 @@
 ## [Unreleased]
 
 ### Added
+- HUD toggle — collapsible info panel via `Ctrl+A H` with redesigned layout: session name, goals with descriptions and status icons (`●` active, `◐` in-progress, `✓` completed), skills, workflow, sub-agents with activity indicators (`●` running, `◌` idle), and a bottom status bar showing connection state and view mode; panel occupies 1/3 screen width when visible, `[H] Info` hint shown in input title when hidden (#226)
+- Real-time sub-agent tracking — HUD displays child sessions with processing state; broadcasts flow from `SpawnSubagent`/`SpawnSpecialist` on creation and `AgentRequestJob` on processing state changes (#226)
+- `session_changed` payload now includes `children` array for sessions with sub-agents (#226)
 - Client-side TUI decorator layer — per-tool rendering with tool-specific icons, colors, and formatting; `BaseDecorator` factory dispatches to `BashDecorator`, `ReadDecorator`, `EditDecorator`, `WriteDecorator`, `WebGetDecorator`, and `ThinkDecorator` (#227)
 - Server-side `ToolResponseDecorator` now includes `tool` field in verbose/debug output for client-side per-tool dispatch (#227)
 - Server-side `ToolCallDecorator#format_input` extended with tool-specific formatting for `read`, `edit`, and `write` (#227)

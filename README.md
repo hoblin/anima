@@ -199,7 +199,7 @@ Domain knowledge bundles loaded from Markdown files. Skills provide specialized 
 - **Override:** User skills with the same name replace built-in ones
 - **Format:** Flat files (`skill-name.md`) or directories (`skill-name/SKILL.md` with `examples/` and `references/`)
 
-Active skills are displayed in the TUI info panel.
+Active skills are displayed in the TUI HUD panel (toggle with `Ctrl+A H`).
 
 ### Workflows
 
@@ -223,7 +223,7 @@ description: "Capture findings or context as a persistent note."
 You are tasked with capturing content as a persistent note...
 ```
 
-The active workflow is shown in the TUI info panel with a 🔄 indicator. The full lifecycle — activation, goal creation, execution, deactivation — is managed by the analytical brain using judgment, not hardcoded triggers.
+The active workflow is shown in the TUI HUD panel with a 📜 indicator. The full lifecycle — activation, goal creation, execution, deactivation — is managed by the analytical brain using judgment, not hardcoded triggers.
 
 ### MCP Integration
 
@@ -364,9 +364,11 @@ Event: "user_sent_message"
 
 Each subscriber is a microservice — independent, stateless, reacting to the same event bus. No orchestrator decides what to do. The architecture IS the nervous system.
 
-### TUI View Modes
+### TUI HUD & View Modes
 
-Three switchable view modes let you control how much detail the TUI shows. Cycle with `Ctrl+a → v`:
+The right-side HUD panel shows session state at a glance: session name, goals (with status icons), active skills, workflow, and sub-agents. Toggle with `Ctrl+A H`; when hidden, `[H] Info` appears in the input title.
+
+Three switchable view modes let you control how much detail the TUI shows. Cycle with `Ctrl+A V`:
 
 | Mode | What you see |
 |------|-------------|
@@ -562,6 +564,7 @@ This single example demonstrates every core principle:
 - 7 built-in skills + 13 built-in workflows (user-extensible)
 - Sub-agents with lossless context inheritance (5 specialists + generic)
 - Client-server architecture with WebSocket transport + graceful reconnection
+- Collapsible HUD panel with goals, skills, workflow, and sub-agent tracking
 - Three TUI view modes (Basic / Verbose / Debug)
 - Hot-reloadable TOML configuration
 - Self-authored soul (agent writes its own system prompt)

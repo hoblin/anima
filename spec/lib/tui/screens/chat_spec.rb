@@ -1155,7 +1155,7 @@ RSpec.describe TUI::Screens::Chat do
     it "updates session info including name" do
       allow(cable_client).to receive(:drain_messages).and_return([session_changed_msg])
       screen.send(:process_incoming_messages)
-      expect(screen.session_info).to eq({id: 99, name: nil, message_count: 5, active_skills: [], active_workflow: nil, goals: []})
+      expect(screen.session_info).to eq({id: 99, name: nil, message_count: 5, active_skills: [], active_workflow: nil, goals: [], children: []})
     end
 
     it "stores session name from session_changed payload" do
@@ -1327,6 +1327,44 @@ RSpec.describe TUI::Screens::Chat do
       screen.send(:process_incoming_messages)
 
       expect(screen.session_info[:goals]).to eq([])
+    end
+  end
+
+  describe "children_updated protocol message" do
+    it "updates children for the current session" do
+      children = [{"id" => 101, "name" => "api-scout", "processing" => true}]
+      msg = {"action" => "children_updated", "session_id" => 42, "children" => children}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.session_info[:children]).to eq(children)
+    end
+
+    it "ignores children updates for other sessions" do
+      msg = {"action" => "children_updated", "session_id" => 999, "children" => [{"id" => 101}]}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.session_info[:children]).to eq([])
+    end
+
+    it "stores children from session_changed payload" do
+      children = [{"id" => 101, "name" => "scout", "processing" => false}]
+      msg = {"action" => "session_changed", "session_id" => 99, "message_count" => 5, "children" => children}
+      allow(cable_client).to receive(:update_session_id)
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.session_info[:children]).to eq(children)
+    end
+
+    it "defaults children to empty array when missing from session_changed" do
+      msg = {"action" => "session_changed", "session_id" => 99, "message_count" => 5}
+      allow(cable_client).to receive(:update_session_id)
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.session_info[:children]).to eq([])
     end
   end
 

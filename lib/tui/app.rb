@@ -12,6 +12,7 @@ module TUI
 
     COMMAND_KEYS = {
       "a" => :anthropic_token,
+      "h" => :toggle_hud,
       "n" => :new_session,
       "s" => :session_picker,
       "v" => :view_mode,
@@ -21,7 +22,8 @@ module TUI
     MENU_LABELS = (COMMAND_KEYS.map { |key, action| "[#{key}] #{action.to_s.tr("_", " ").capitalize}" } +
       ["[\u2191] Scroll chat", "[\u2193] Return to input"]).freeze
 
-    SIDEBAR_WIDTH = 28
+    # HUD occupies 1/3 of screen width, clamped to a usable minimum.
+    HUD_MIN_WIDTH = 24
 
     # Picker entry prefix width: "[N]" (3) + marker (1) + space (1) = 5
     PICKER_PREFIX_WIDTH = 5
@@ -77,6 +79,8 @@ module TUI
 
     attr_reader :current_screen, :command_mode, :session_picker_active,
       :view_mode_picker_active
+    # @return [Boolean] true when the HUD info panel is visible
+    attr_reader :hud_visible
     # @return [Boolean] true when the token setup popup overlay is visible
     attr_reader :token_setup_active
     # @return [Boolean] true when graceful shutdown has been requested via signal
@@ -92,6 +96,7 @@ module TUI
       @session_picker_page = 0
       @session_picker_mode = :root
       @session_picker_parent_id = nil
+      @hud_visible = true
       @view_mode_picker_active = false
       @view_mode_picker_index = 0
       @token_setup_active = false
@@ -131,17 +136,24 @@ module TUI
     private
 
     def render(frame, tui)
-      content_area, sidebar = tui.split(
-        frame.area,
-        direction: :horizontal,
-        constraints: [
-          tui.constraint_fill(1),
-          tui.constraint_length(SIDEBAR_WIDTH)
-        ]
-      )
+      @screens[:chat].hud_hint = !@hud_visible
 
-      @screens[@current_screen].render(frame, content_area, tui)
-      render_sidebar(frame, sidebar, tui)
+      if @hud_visible
+        hud_width = [frame.area.width / 3, HUD_MIN_WIDTH].max
+        content_area, sidebar = tui.split(
+          frame.area,
+          direction: :horizontal,
+          constraints: [
+            tui.constraint_fill(1),
+            tui.constraint_length(hud_width)
+          ]
+        )
+
+        @screens[@current_screen].render(frame, content_area, tui)
+        render_sidebar(frame, sidebar, tui)
+      else
+        @screens[@current_screen].render(frame, frame.area, tui)
+      end
 
       check_token_setup_signals
       render_token_setup_popup(frame, frame.area, tui) if @token_setup_active
@@ -172,10 +184,72 @@ module TUI
       frame.render_widget(menu, area)
     end
 
+    # HUD status icons for goal progress and sub-agent activity.
+    GOAL_ICON_ACTIVE = "\u25CF"       # ●
+    GOAL_ICON_IN_PROGRESS = "\u25D0"  # ◐
+    GOAL_ICON_COMPLETED = "\u2713"    # ✓
+    CHILD_ICON_RUNNING = "\u25CF"     # ●
+    CHILD_ICON_IDLE = "\u25CC"        # ◌
+
     def render_info(frame, area, tui)
       session = @screens[:chat].session_info
-      view_mode = @screens[:chat].view_mode
 
+      # Split into main content area and bottom status bar
+      main_area, status_area = tui.split(
+        area,
+        direction: :vertical,
+        constraints: [
+          tui.constraint_fill(1),
+          tui.constraint_length(3)
+        ]
+      )
+
+      render_hud_content(frame, main_area, tui, session)
+      render_hud_status_bar(frame, status_area, tui)
+    end
+
+    # Renders the main HUD content: session name, goals, skills,
+    # workflow, and sub-agents.
+    def render_hud_content(frame, area, tui, session)
+      session_label = session[:name] || "##{session[:id]}"
+
+      lines = [
+        tui.line(spans: [
+          tui.span(content: "\u{1F4CB} ", style: tui.style(fg: "dark_gray")),
+          tui.span(content: session_label, style: tui.style(fg: "cyan", modifiers: [:bold]))
+        ]),
+        hud_goals_section(tui, session),
+        hud_skills_line(tui, session),
+        hud_workflow_line(tui, session),
+        hud_children_section(tui, session),
+        interaction_state_line(tui)
+      ].flatten.compact
+
+      content = tui.paragraph(
+        text: lines,
+        block: tui.block(
+          borders: [:left, :top, :right],
+          border_type: :rounded,
+          border_style: {fg: "white"}
+        )
+      )
+      frame.render_widget(content, area)
+    end
+
+    # Renders the bottom status bar: connection state and model name.
+    def render_hud_status_bar(frame, area, tui)
+      cable_status = @cable_client.status
+      style = STATUS_STYLES.fetch(cable_status, STATUS_STYLES[:disconnected])
+
+      status_label = if cable_status == :reconnecting
+        attempt = @cable_client.reconnect_attempt
+        max = CableClient::MAX_RECONNECT_ATTEMPTS
+        "#{style[:label]} (#{attempt}/#{max})"
+      else
+        style[:label]
+      end
+
+      view_mode = @screens[:chat].view_mode
       mode_label = view_mode.capitalize
       mode_color = case view_mode
       when "verbose" then "yellow"
@@ -183,110 +257,127 @@ module TUI
       else "cyan"
       end
 
-      session_label = session[:name] || "##{session[:id]}"
-
-      lines = [
-        tui.line(spans: [
-          tui.span(content: "Anima v#{Anima::VERSION}", style: tui.style(fg: "white"))
-        ]),
-        tui.line(spans: [tui.span(content: "")]),
-        if session[:name]
+      bar = tui.paragraph(
+        text: [
           tui.line(spans: [
-            tui.span(content: session_label, style: tui.style(fg: "cyan", modifiers: [:bold]))
+            tui.span(content: status_label, style: tui.style(fg: style[:color], modifiers: [:bold])),
+            tui.span(content: " \u2502 ", style: tui.style(fg: "dark_gray")),
+            tui.span(content: mode_label, style: tui.style(fg: mode_color, modifiers: [:bold]))
           ])
-        else
-          tui.line(spans: [
-            tui.span(content: "Session ", style: tui.style(fg: "dark_gray")),
-            tui.span(content: session_label, style: tui.style(fg: "cyan", modifiers: [:bold]))
-          ])
-        end,
-        tui.line(spans: [
-          tui.span(content: "Messages ", style: tui.style(fg: "dark_gray")),
-          tui.span(content: session[:message_count].to_s, style: tui.style(fg: "cyan"))
-        ]),
-        active_skills_line(tui, session),
-        active_workflow_line(tui, session),
-        goals_line(tui, session),
-        tui.line(spans: [tui.span(content: "")]),
-        tui.line(spans: [
-          tui.span(content: "Mode ", style: tui.style(fg: "dark_gray")),
-          tui.span(content: mode_label, style: tui.style(fg: mode_color, modifiers: [:bold]))
-        ]),
-        interaction_state_line(tui),
-        tui.line(spans: [tui.span(content: "")]),
-        connection_status_line(tui),
-        tui.line(spans: [tui.span(content: "")]),
-        tui.line(spans: [
-          tui.span(content: "Ctrl+a", style: tui.style(fg: "cyan", modifiers: [:bold])),
-          tui.span(content: " command mode", style: tui.style(fg: "dark_gray"))
-        ])
-      ].compact
-
-      info = tui.paragraph(
-        text: lines,
+        ],
         block: tui.block(
-          title: "Info",
-          borders: [:all],
+          borders: [:left, :bottom, :right],
           border_type: :rounded,
           border_style: {fg: "white"}
         )
       )
-      frame.render_widget(info, area)
+      frame.render_widget(bar, area)
     end
 
-    # Builds the active skills line for the info panel.
-    # Returns nil when no skills are active so the line is hidden entirely.
-    # @param tui [RatatuiRuby] TUI rendering context
-    # @param session [Hash] session info hash containing :active_skills array
-    # @return [RatatuiRuby::Widgets::Line, nil] styled skills line, or nil when empty
-    def active_skills_line(tui, session)
-      skills = session[:active_skills]
-      return if skills.nil? || skills.empty?
-
-      label = skills.join(", ")
-      tui.line(spans: [
-        tui.span(content: "\u{1F4DA} ", style: tui.style(fg: "dark_gray")),
-        tui.span(content: label, style: tui.style(fg: "yellow"))
-      ])
-    end
-
-    # Builds the active workflow line for the info panel.
-    # Returns nil when no workflow is active so the line is hidden entirely.
-    # @param tui [RatatuiRuby] TUI rendering context
-    # @param session [Hash] session info hash containing :active_workflow string
-    # @return [RatatuiRuby::Widgets::Line, nil] styled workflow line, or nil when empty
-    def active_workflow_line(tui, session)
-      workflow = session[:active_workflow]
-      return if workflow.nil? || workflow.empty?
-
-      tui.line(spans: [
-        tui.span(content: "\u{1F504} ", style: tui.style(fg: "dark_gray")),
-        tui.span(content: workflow, style: tui.style(fg: "magenta"))
-      ])
-    end
-
-    # Builds the active goals line for the info panel.
-    # Returns nil when no goals exist so the line is hidden entirely.
-    # Shows root goal count with active/completed breakdown.
-    # @param tui [RatatuiRuby] TUI rendering context
-    # @param session [Hash] session info hash containing :goals array
-    # @return [RatatuiRuby::Widgets::Line, nil] styled goals line, or nil when empty
-    def goals_line(tui, session)
+    # Builds goal lines with status icons and descriptions.
+    # Root goals show as individual lines. A root goal with some completed
+    # sub-goals shows the ◐ (in-progress) icon.
+    #
+    # @return [Array<RatatuiRuby::Widgets::Line>, nil]
+    def hud_goals_section(tui, session)
       goal_list = session[:goals]
       return if goal_list.nil? || goal_list.empty?
 
-      active = goal_list.count { |g| g["status"] == "active" }
-      completed = goal_list.count { |g| g["status"] == "completed" }
-      label = "#{active} active"
-      label += ", #{completed} done" if completed > 0
-      tui.line(spans: [
-        tui.span(content: "\u{1F3AF} ", style: tui.style(fg: "dark_gray")),
-        tui.span(content: label, style: tui.style(fg: "green"))
-      ])
+      lines = [
+        tui.line(spans: [tui.span(content: "")]),
+        tui.line(spans: [
+          tui.span(content: "\u{1F3AF} Goals", style: tui.style(fg: "dark_gray"))
+        ])
+      ]
+
+      goal_list.each do |goal|
+        icon, color = goal_icon_and_color(goal)
+        lines << tui.line(spans: [
+          tui.span(content: "  #{icon} ", style: tui.style(fg: color)),
+          tui.span(content: goal["description"].to_s, style: tui.style(fg: "white"))
+        ])
+      end
+
+      lines
     end
 
-    # Builds the interaction state line for the info panel.
-    # Shows "Scrolling" when chat pane is focused, or "Thinking..." during LLM processing.
+    # Returns the status icon and color for a goal.
+    # Active goals with some completed sub-goals show as in-progress (◐).
+    def goal_icon_and_color(goal)
+      if goal["status"] == "completed"
+        [GOAL_ICON_COMPLETED, "green"]
+      elsif goal["sub_goals"]&.any? { |sg| sg["status"] == "completed" }
+        [GOAL_ICON_IN_PROGRESS, "yellow"]
+      else
+        [GOAL_ICON_ACTIVE, "cyan"]
+      end
+    end
+
+    # Builds the skills line with brain emoji.
+    # @return [RatatuiRuby::Widgets::Line, nil]
+    def hud_skills_line(tui, session)
+      skills = session[:active_skills]
+      return if skills.nil? || skills.empty?
+
+      [
+        tui.line(spans: [tui.span(content: "")]),
+        tui.line(spans: [
+          tui.span(content: "\u{1F9E0} ", style: tui.style(fg: "dark_gray")),
+          tui.span(content: skills.join(", "), style: tui.style(fg: "yellow"))
+        ])
+      ]
+    end
+
+    # Builds the workflow line with scroll emoji.
+    # @return [RatatuiRuby::Widgets::Line, nil]
+    def hud_workflow_line(tui, session)
+      workflow = session[:active_workflow]
+      return if workflow.nil? || workflow.empty?
+
+      [
+        tui.line(spans: [tui.span(content: "")]),
+        tui.line(spans: [
+          tui.span(content: "\u{1F4DC} ", style: tui.style(fg: "dark_gray")),
+          tui.span(content: workflow, style: tui.style(fg: "magenta"))
+        ])
+      ]
+    end
+
+    # Builds the sub-agents section with activity indicators.
+    # @return [Array<RatatuiRuby::Widgets::Line>, nil]
+    def hud_children_section(tui, session)
+      children = session[:children]
+      return if children.nil? || children.empty?
+
+      lines = [
+        tui.line(spans: [tui.span(content: "")]),
+        tui.line(spans: [
+          tui.span(content: "\u{1F465} Sub-agents", style: tui.style(fg: "dark_gray"))
+        ])
+      ]
+
+      children.each do |child|
+        icon, color = child_icon_and_color(child)
+        name = child["name"] || "sub-agent"
+        lines << tui.line(spans: [
+          tui.span(content: "  #{icon} ", style: tui.style(fg: color)),
+          tui.span(content: "@#{name}", style: tui.style(fg: "white"))
+        ])
+      end
+
+      lines
+    end
+
+    # Returns the activity icon and color for a child session.
+    def child_icon_and_color(child)
+      if child["processing"]
+        [CHILD_ICON_RUNNING, "yellow"]
+      else
+        [CHILD_ICON_IDLE, "green"]
+      end
+    end
+
+    # Shows "Scrolling" when chat pane is focused, "Thinking..." during LLM processing.
     def interaction_state_line(tui)
       if @screens[:chat].chat_focused
         tui.line(spans: [
@@ -296,31 +387,7 @@ module TUI
         tui.line(spans: [
           tui.span(content: "Thinking...", style: tui.style(fg: "magenta", modifiers: [:bold]))
         ])
-      else
-        tui.line(spans: [tui.span(content: "")])
       end
-    end
-
-    # Builds the connection status line for the info panel.
-    # Shows a single emoji for the normal (subscribed) state; adds descriptive
-    # text only when something requires attention.
-    # @param tui [RatatuiRuby] TUI rendering context
-    # @return [RatatuiRuby::Widgets::Line] styled status line with emoji indicator
-    def connection_status_line(tui)
-      cable_status = @cable_client.status
-      style = STATUS_STYLES.fetch(cable_status, STATUS_STYLES[:disconnected])
-
-      label = if cable_status == :reconnecting
-        attempt = @cable_client.reconnect_attempt
-        max = CableClient::MAX_RECONNECT_ATTEMPTS
-        "#{style[:label]} (#{attempt}/#{max})"
-      else
-        style[:label]
-      end
-
-      tui.line(spans: [
-        tui.span(content: label, style: tui.style(fg: style[:color], modifiers: [:bold]))
-      ])
     end
 
     def chat_loading?
@@ -365,6 +432,9 @@ module TUI
         :quit
       when :anthropic_token
         activate_token_setup
+        nil
+      when :toggle_hud
+        @hud_visible = !@hud_visible
         nil
       when :new_session
         @screens[:chat].new_session
