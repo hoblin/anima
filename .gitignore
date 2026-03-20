@@ -11,6 +11,7 @@
 *.gem
 Gemfile.lock
 .mcp.json
+.claude/
 
 # Rails
 db/*.sqlite3
