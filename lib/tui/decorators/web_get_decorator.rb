@@ -2,9 +2,9 @@
 
 module TUI
   module Decorators
-    # Renders web_fetch/web_get tool calls and responses.
+    # Renders web_get tool calls and responses.
     # Calls show the URL with a globe icon.
-    class WebFetchDecorator < BaseDecorator
+    class WebGetDecorator < BaseDecorator
       ICON = "\u{1F310}" # globe with meridians
 
       def icon

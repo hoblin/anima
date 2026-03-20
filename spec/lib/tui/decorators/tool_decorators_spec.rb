@@ -5,7 +5,7 @@ require "tui/decorators/base_decorator"
 require "tui/decorators/read_file_decorator"
 require "tui/decorators/edit_file_decorator"
 require "tui/decorators/write_decorator"
-require "tui/decorators/web_fetch_decorator"
+require "tui/decorators/web_get_decorator"
 require "tui/decorators/list_files_decorator"
 require "tui/decorators/search_files_decorator"
 
@@ -68,14 +68,14 @@ RSpec.describe "Tool-specific decorators" do
     end
   end
 
-  describe TUI::Decorators::WebFetchDecorator do
+  describe TUI::Decorators::WebGetDecorator do
     it "renders with globe icon in blue" do
-      data = {"role" => "tool_call", "tool" => "web_fetch", "input" => "GET https://example.com"}
+      data = {"role" => "tool_call", "tool" => "web_get", "input" => "GET https://example.com"}
       lines = described_class.new(data).render_call(tui)
 
       header = lines.first[:spans].first[:content]
       expect(header).to include("\u{1F310}") # globe icon
-      expect(header).to include("web_fetch")
+      expect(header).to include("web_get")
 
       style = lines.first[:spans].first[:style]
       expect(style[:fg]).to eq("blue")

@@ -97,7 +97,7 @@ class ToolCallDecorator < EventDecorator
     case payload["tool_name"]
     when "bash"
       "$ #{input&.dig("command")}"
-    when "web_get", "web_fetch"
+    when "web_get"
       "GET #{input&.dig("url")}"
     when "read_file", "edit_file", "write"
       input&.dig("file_path").to_s

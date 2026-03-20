@@ -1,7 +1,7 @@
 ## [Unreleased]
 
 ### Added
-- Client-side TUI decorator layer — per-tool rendering with tool-specific icons, colors, and formatting; `BaseDecorator` factory dispatches to `BashDecorator`, `ReadFileDecorator`, `EditFileDecorator`, `WriteDecorator`, `WebFetchDecorator`, `ListFilesDecorator`, `SearchFilesDecorator`, and `ThinkDecorator` (#227)
+- Client-side TUI decorator layer — per-tool rendering with tool-specific icons, colors, and formatting; `BaseDecorator` factory dispatches to `BashDecorator`, `ReadFileDecorator`, `EditFileDecorator`, `WriteDecorator`, `WebGetDecorator`, `ListFilesDecorator`, `SearchFilesDecorator`, and `ThinkDecorator` (#227)
 - Server-side `ToolResponseDecorator` now includes `tool` field in verbose/debug output for client-side per-tool dispatch (#227)
 - Server-side `ToolCallDecorator#format_input` extended with tool-specific formatting for `read_file`, `edit_file`, `write`, `list_files`, and `search_files` (#227)
 - `anima update` command — upgrades the gem and merges new config keys into existing `config.toml` without overwriting user-customized values — `--migrate-only` flag to skip gem upgrade (#155)

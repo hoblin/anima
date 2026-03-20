@@ -6,7 +6,7 @@ require "tui/decorators/bash_decorator"
 require "tui/decorators/read_file_decorator"
 require "tui/decorators/edit_file_decorator"
 require "tui/decorators/write_decorator"
-require "tui/decorators/web_fetch_decorator"
+require "tui/decorators/web_get_decorator"
 require "tui/decorators/list_files_decorator"
 require "tui/decorators/search_files_decorator"
 require "tui/decorators/think_decorator"
@@ -47,16 +47,10 @@ RSpec.describe TUI::Decorators::BaseDecorator do
       expect(described_class.for(data)).to be_a(TUI::Decorators::WriteDecorator)
     end
 
-    it "returns WebFetchDecorator for web_fetch tool calls" do
-      data = {"role" => "tool_call", "tool" => "web_fetch", "input" => "GET https://example.com"}
-
-      expect(described_class.for(data)).to be_a(TUI::Decorators::WebFetchDecorator)
-    end
-
-    it "returns WebFetchDecorator for web_get tool calls" do
+    it "returns WebGetDecorator for web_get tool calls" do
       data = {"role" => "tool_call", "tool" => "web_get", "input" => "GET https://example.com"}
 
-      expect(described_class.for(data)).to be_a(TUI::Decorators::WebFetchDecorator)
+      expect(described_class.for(data)).to be_a(TUI::Decorators::WebGetDecorator)
     end
 
     it "returns ListFilesDecorator for list_files tool calls" do

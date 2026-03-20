@@ -7,7 +7,7 @@ module TUI
     # Mirrors the server's Draper architecture but with a different
     # specialization axis: server decorators are uniform per EVENT TYPE
     # (tool_call, tool_result, message), while client decorators are
-    # unique per TOOL NAME (bash, read_file, web_fetch) — determining
+    # unique per TOOL NAME (bash, read_file, web_get) — determining
     # how each tool looks on screen.
     #
     # The factory dispatches on the +tool+ field in the structured data
@@ -164,7 +164,7 @@ module TUI
         when "read_file" then ReadFileDecorator
         when "edit_file" then EditFileDecorator
         when "write" then WriteDecorator
-        when "web_fetch", "web_get" then WebFetchDecorator
+        when "web_get" then WebGetDecorator
         when "list_files" then ListFilesDecorator
         when "search_files" then SearchFilesDecorator
         else self
