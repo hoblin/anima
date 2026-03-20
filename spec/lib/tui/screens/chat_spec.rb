@@ -1714,4 +1714,111 @@ RSpec.describe TUI::Screens::Chat do
       ])
     end
   end
+
+  describe "bounce_back message processing" do
+    let(:user_event) do
+      {
+        "type" => "user_message",
+        "content" => "Hello, world!",
+        "action" => "create",
+        "id" => 99,
+        "rendered" => {"basic" => {"role" => "user", "content" => "Hello, world!"}}
+      }
+    end
+
+    before do
+      # Simulate a user message already in the store
+      allow(cable_client).to receive(:drain_messages).and_return([user_event])
+      screen.send(:process_incoming_messages)
+    end
+
+    it "removes the bounced event from the message store" do
+      expect(screen.messages.size).to eq(1)
+
+      allow(cable_client).to receive(:drain_messages).and_return([
+        {"action" => "bounce_back", "event_id" => 99, "content" => "Hello, world!", "message" => "Auth failed"}
+      ])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.messages).to be_empty
+    end
+
+    it "restores the bounced content to the input buffer" do
+      allow(cable_client).to receive(:drain_messages).and_return([
+        {"action" => "bounce_back", "event_id" => 99, "content" => "Hello, world!", "message" => "Auth failed"}
+      ])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.input).to eq("Hello, world!")
+    end
+
+    it "clears loading state" do
+      # Set loading
+      screen.instance_variable_set(:@loading, true)
+
+      allow(cable_client).to receive(:drain_messages).and_return([
+        {"action" => "bounce_back", "event_id" => 99, "content" => "Hello, world!", "message" => "Auth failed"}
+      ])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.loading?).to be false
+    end
+
+    it "adds a flash notification with the error message" do
+      allow(cable_client).to receive(:drain_messages).and_return([
+        {"action" => "bounce_back", "event_id" => 99, "content" => "Hello, world!", "message" => "Auth failed"}
+      ])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.flash_messages.size).to eq(1)
+      flash = screen.flash_messages.first
+      expect(flash[:content]).to include("Auth failed")
+      expect(flash[:type]).to eq(:error)
+      expect(flash[:expires_at]).to be > Time.now
+    end
+
+    it "handles bounce without event_id gracefully" do
+      allow(cable_client).to receive(:drain_messages).and_return([
+        {"action" => "bounce_back", "content" => "Hello!", "message" => "Error"}
+      ])
+      screen.send(:process_incoming_messages)
+
+      # Original event stays (no matching ID to remove)
+      expect(screen.messages.size).to eq(1)
+      expect(screen.input).to eq("Hello!")
+      expect(screen.flash_messages.size).to eq(1)
+    end
+  end
+
+  describe "flash messages" do
+    it "expires flash messages after timeout" do
+      screen.send(:add_flash, "Test flash", :info)
+      expect(screen.flash_messages.size).to eq(1)
+
+      # Set expiry to the past
+      screen.flash_messages.first[:expires_at] = Time.now - 1
+
+      screen.send(:expire_flash_messages)
+      expect(screen.flash_messages).to be_empty
+    end
+
+    it "dismisses flash on keypress" do
+      screen.send(:add_flash, "Test flash", :info)
+      expect(screen.flash_messages.size).to eq(1)
+
+      screen.handle_event(key_event(code: "a"))
+      expect(screen.flash_messages).to be_empty
+    end
+
+    it "clears flash messages on session change" do
+      screen.send(:add_flash, "Test flash", :info)
+
+      allow(cable_client).to receive(:drain_messages).and_return([
+        {"action" => "session_changed", "session_id" => 99, "message_count" => 0}
+      ])
+      screen.send(:process_incoming_messages)
+
+      expect(screen.flash_messages).to be_empty
+    end
+  end
 end

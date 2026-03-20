@@ -299,6 +299,9 @@ event_window = 20
 
 [session]
 name_generation_interval = 30
+
+[tui]
+flash_timeout = 5
 ```
 
 ## Design

@@ -18,25 +18,46 @@ class AgentRequestJob < ApplicationJob
 
   retry_on Providers::Anthropic::TransientError,
     wait: :polynomially_longer, attempts: 5 do |job, error|
-    Events::Bus.emit(Events::SystemMessage.new(
-      content: "Failed after multiple retries: #{error.message}",
-      session_id: job.arguments.first
-    ))
+    bounce_back_user_event(job.arguments.first, error.message)
   end
 
   discard_on ActiveRecord::RecordNotFound
   discard_on Providers::Anthropic::AuthenticationError do |job, error|
     session_id = job.arguments.first
-    # Persistent system message for the event log
-    Events::Bus.emit(Events::SystemMessage.new(
-      content: "Authentication failed: #{error.message}",
-      session_id: session_id
-    ))
+    bounce_back_user_event(session_id, "Authentication failed: #{error.message}")
     # Transient signal to trigger TUI token setup popup (not persisted)
     ActionCable.server.broadcast(
       "session_#{session_id}",
       {"action" => "authentication_required", "message" => error.message}
     )
+  end
+
+  # Removes the last unprocessed user message from the session and broadcasts
+  # a bounce_back signal so TUI clients can restore the text to the input field.
+  # Called when LLM dispatch fails permanently (authentication) or after all
+  # retries are exhausted (transient errors).
+  #
+  # @param session_id [Integer] session that owns the orphan event
+  # @param error_message [String] human-readable error for the flash notification
+  def self.bounce_back_user_event(session_id, error_message)
+    session = Session.find_by(id: session_id)
+    return unless session
+
+    last_user_event = session.events
+      .where(event_type: "user_message", status: nil)
+      .order(id: :desc).first
+    return unless last_user_event
+
+    content = last_user_event.payload["content"]
+    event_id = last_user_event.id
+    last_user_event.destroy!
+
+    ActionCable.server.broadcast("session_#{session_id}", {
+      "action" => "bounce_back",
+      "content" => content,
+      "event_id" => event_id,
+      "message" => error_message
+    })
   end
 
   # @param session_id [Integer] ID of the session to process

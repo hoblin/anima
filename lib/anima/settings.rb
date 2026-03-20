@@ -126,6 +126,12 @@ module Anima
       # @return [Integer]
       def max_web_response_bytes = get("tools", "max_web_response_bytes")
 
+      # ─── TUI ─────────────────────────────────────────────────────
+
+      # Seconds before flash notifications auto-dismiss.
+      # @return [Integer]
+      def flash_timeout = get("tui", "flash_timeout")
+
       # ─── Session ────────────────────────────────────────────────────
 
       # Regenerate session name every N messages.

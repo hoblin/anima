@@ -1,6 +1,9 @@
 ## [Unreleased]
 
 ### Added
+- Bounce Back — failed events return to client input; when LLM dispatch fails (authentication, network, rate limit), the orphan user_message event is deleted and a `bounce_back` signal restores the original text to the TUI input field (#236)
+- Flash notifications — reusable TUI overlay for transient messages; color-coded by type (error: red, warning: yellow, info: cyan); auto-dismisses after configurable timeout or on keypress; renders at the top of the chat area (#236)
+- `[tui] flash_timeout` setting in `config.toml` — controls flash notification auto-dismiss duration in seconds (default: 5) (#236)
 - HUD toggle — collapsible info panel via `C-a → h` with redesigned layout: session name, goals with descriptions and status icons (`●` active, `◐` in-progress, `✓` completed), skills, workflow, sub-agents with activity indicators (`●` running, `◌` idle), and a bottom status bar showing connection state and view mode; panel occupies 1/3 screen width when visible, input border shows `C-a → h HUD` hint when hidden (#226)
 - Real-time sub-agent tracking — HUD displays child sessions with processing state; broadcasts flow from `SpawnSubagent`/`SpawnSpecialist` on creation and `AgentRequestJob` on processing state changes (#226)
 - `session_changed` payload now includes `children` array for sessions with sub-agents (#226)

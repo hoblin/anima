@@ -211,19 +211,6 @@ RSpec.describe AgentRequestJob do
         )
       end
 
-      it "fails immediately without retrying" do
-        emitted_events = []
-        allow(Events::Bus).to receive(:emit).and_wrap_original do |method, event|
-          emitted_events << event
-          method.call(event)
-        end
-
-        described_class.perform_now(session.id)
-
-        system_messages = emitted_events.select { |e| e.is_a?(Events::SystemMessage) }
-        expect(system_messages.last.to_h[:content]).to include("Authentication failed")
-      end
-
       it "broadcasts authentication_required signal via ActionCable" do
         expect {
           described_class.perform_now(session.id)
@@ -238,6 +225,97 @@ RSpec.describe AgentRequestJob do
           described_class.perform_now(-1)
         }.not_to raise_error
       end
+    end
+  end
+
+  describe "bounce back" do
+    let!(:user_event) do
+      session.events.create!(
+        event_type: "user_message",
+        payload: {"type" => "user_message", "content" => "Hello"},
+        timestamp: 1
+      )
+    end
+
+    context "on authentication failure" do
+      before do
+        allow(agent_loop).to receive(:run).and_raise(
+          Providers::Anthropic::AuthenticationError, "Invalid bearer token"
+        )
+      end
+
+      it "deletes the orphan user_message event" do
+        described_class.perform_now(session.id)
+
+        expect(Event.find_by(id: user_event.id)).to be_nil
+      end
+
+      it "broadcasts bounce_back with original content and error" do
+        expect {
+          described_class.perform_now(session.id)
+        }.to have_broadcasted_to("session_#{session.id}")
+          .with(a_hash_including(
+            "action" => "bounce_back",
+            "content" => "Hello",
+            "event_id" => user_event.id,
+            "message" => a_string_including("Authentication failed")
+          ))
+      end
+
+      it "preserves system_message events (only deletes user_message)" do
+        system_event = session.events.create!(
+          event_type: "system_message",
+          payload: {"type" => "system_message", "content" => "Retrying..."},
+          timestamp: 2
+        )
+
+        described_class.perform_now(session.id)
+
+        expect(Event.find_by(id: system_event.id)).to be_present
+      end
+    end
+
+    context "on exhausted transient retries" do
+      it "deletes the orphan user_message event via bounce_back_user_event" do
+        described_class.bounce_back_user_event(session.id, "Connection refused")
+
+        expect(Event.find_by(id: user_event.id)).to be_nil
+      end
+
+      it "broadcasts bounce_back with original content" do
+        expect {
+          described_class.bounce_back_user_event(session.id, "Connection refused")
+        }.to have_broadcasted_to("session_#{session.id}")
+          .with(a_hash_including(
+            "action" => "bounce_back",
+            "content" => "Hello",
+            "event_id" => user_event.id,
+            "message" => "Connection refused"
+          ))
+      end
+    end
+
+    it "does not bounce when no user_message exists" do
+      user_event.destroy!
+
+      expect {
+        described_class.bounce_back_user_event(session.id, "Error")
+      }.not_to raise_error
+    end
+
+    it "only bounces the most recent user_message" do
+      older_event = session.events.create!(
+        event_type: "user_message",
+        payload: {"type" => "user_message", "content" => "Older"},
+        timestamp: 0
+      )
+
+      described_class.bounce_back_user_event(session.id, "Error")
+
+      # Most recent (user_event) should be deleted (higher id)
+      expect(Event.find_by(id: user_event.id)).to be_nil
+      # Older one should remain
+      expect(Event.find_by(id: older_event.id)).to be_present
     end
   end
 end

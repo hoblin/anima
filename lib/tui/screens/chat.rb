@@ -16,6 +16,8 @@ module TUI
       include Formatting
 
       MIN_INPUT_HEIGHT = 3
+      FLASH_TIMEOUT = 5 # seconds before auto-dismiss
+      FLASH_HEIGHT = 3  # border + content + border
       PRINTABLE_CHAR = /\A[[:print:]]\z/
 
       ROLE_USER = "user"
@@ -37,7 +39,7 @@ module TUI
 
       attr_reader :message_store, :scroll_offset, :session_info, :view_mode, :sessions_list,
         :authentication_required, :token_save_result, :parent_session_id,
-        :chat_focused
+        :chat_focused, :flash_messages
       attr_accessor :hud_hint
 
       # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
@@ -62,6 +64,7 @@ module TUI
         @input_history = []
         @history_index = nil
         @saved_input = nil
+        @flash_messages = []
       end
 
       def messages
@@ -80,6 +83,7 @@ module TUI
 
       def render(frame, area, tui)
         process_incoming_messages
+        expire_flash_messages
 
         input_height = calculate_input_height(tui, area.width, area.height)
 
@@ -94,6 +98,7 @@ module TUI
 
         render_messages(frame, chat_area, tui)
         render_input(frame, input_area, tui)
+        render_flash(frame, chat_area, tui)
       end
 
       # Dispatches keyboard, mouse, and paste events. Supports two focus
@@ -105,8 +110,12 @@ module TUI
       # regardless of focus mode.
       def handle_event(event)
         return handle_mouse_event(event) if event.mouse?
-        return handle_paste_event(event) if event.paste?
+        if event.paste?
+          dismiss_flash if @flash_messages.any?
+          return handle_paste_event(event)
+        end
         return handle_scroll_key(event) if event.page_up? || event.page_down?
+        dismiss_flash if @flash_messages.any? && event.key?
 
         return handle_chat_focused_event(event) if @chat_focused
 
@@ -258,6 +267,8 @@ module TUI
             @token_save_result = {success: true, warning: msg["warning"]}.compact
           when "token_error"
             @token_save_result = {success: false, message: msg["message"]}
+          when "bounce_back"
+            handle_bounce_back(msg)
           when "error"
             # Silently ignored — no user-facing error display yet
           else
@@ -317,6 +328,7 @@ module TUI
         new_id = msg["session_id"]
         @cable_client.update_session_id(new_id)
         @message_store.clear
+        @flash_messages.clear
         @view_mode = msg["view_mode"] if msg["view_mode"]
         @session_info = {id: new_id, name: msg["name"], message_count: msg["message_count"] || 0,
                          active_skills: msg["active_skills"] || [], active_workflow: msg["active_workflow"],
@@ -382,6 +394,86 @@ module TUI
         @loading = false
         @scroll_offset = 0
         @auto_scroll = true
+      end
+
+      # Handles a bounce_back signal from the server: the LLM never received
+      # the user's message, so the event was deleted server-side. Removes
+      # the ghost from the display, restores the text to the input field,
+      # and shows a flash notification.
+      #
+      # @param msg [Hash] with "event_id", "content", and "message" keys
+      def handle_bounce_back(msg)
+        event_id = msg["event_id"]
+        @message_store.remove_by_id(event_id) if event_id
+        @loading = false
+
+        content = msg["content"].to_s
+        unless content.empty?
+          @input_buffer.clear
+          @input_buffer.insert(content)
+        end
+
+        add_flash("\u26A0\uFE0F Message not delivered: #{msg["message"] || "Unknown error"}", :error)
+      end
+
+      # Appends a flash notification to the queue.
+      #
+      # @param content [String] message text
+      # @param type [Symbol] :error, :warning, or :info
+      def add_flash(content, type = :info)
+        @flash_messages << {content: content, type: type, expires_at: Time.now + FLASH_TIMEOUT}
+      end
+
+      # Removes expired flash messages from the queue.
+      def expire_flash_messages
+        @flash_messages.reject! { |flash| Time.now >= flash[:expires_at] }
+      end
+
+      # Clears the current flash message.
+      def dismiss_flash
+        @flash_messages.shift
+      end
+
+      # Renders the first active flash message as an overlay at the top of
+      # the chat area. Uses Clear to prevent background content from bleeding
+      # through. Color-coded by type: red for errors, yellow for warnings.
+      #
+      # @param frame [RatatuiRuby::Frame] terminal frame
+      # @param chat_area [RatatuiRuby::Rect] the chat pane area to overlay
+      # @param tui [RatatuiRuby] TUI rendering API
+      def render_flash(frame, chat_area, tui)
+        flash = @flash_messages.first
+        return unless flash
+
+        flash_area, _ = tui.split(
+          chat_area,
+          direction: :vertical,
+          constraints: [
+            tui.constraint_length(FLASH_HEIGHT),
+            tui.constraint_fill(1)
+          ]
+        )
+
+        frame.render_widget(tui.clear, flash_area)
+
+        color = case flash[:type]
+        when :error then "red"
+        when :warning then "yellow"
+        else "cyan"
+        end
+
+        widget = tui.paragraph(
+          text: [tui.line(spans: [
+            tui.span(content: flash[:content], style: tui.style(fg: "white"))
+          ])],
+          wrap: true,
+          block: tui.block(
+            borders: [:all],
+            border_type: :rounded,
+            border_style: {fg: color}
+          )
+        )
+        frame.render_widget(widget, flash_area)
       end
 
       def render_messages(frame, area, tui)

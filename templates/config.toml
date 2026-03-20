@@ -97,6 +97,13 @@ soul = "{{ANIMA_HOME}}/soul.md"
 # Regenerate session name every N messages.
 name_generation_interval = 30
 
+# ─── TUI ─────────────────────────────────────────────────────
+
+[tui]
+
+# Seconds before flash notifications auto-dismiss.
+flash_timeout = 5
+
 # ─── Analytical Brain ─────────────────────────────────────────
 
 [analytical_brain]
