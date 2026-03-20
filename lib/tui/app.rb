@@ -968,7 +968,7 @@ module TUI
     # -- Token setup popup -----------------------------------------------
 
     # Opens the token setup popup and resets all input state.
-    # Can be triggered manually via Ctrl+a > a or automatically when the
+    # Can be triggered manually via C-a → a or automatically when the
     # brain broadcasts authentication_required.
     # @return [void]
     def activate_token_setup

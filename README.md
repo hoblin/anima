@@ -199,7 +199,7 @@ Domain knowledge bundles loaded from Markdown files. Skills provide specialized 
 - **Override:** User skills with the same name replace built-in ones
 - **Format:** Flat files (`skill-name.md`) or directories (`skill-name/SKILL.md` with `examples/` and `references/`)
 
-Active skills are displayed in the TUI HUD panel (toggle with `Ctrl+A H`).
+Active skills are displayed in the TUI HUD panel (toggle with `C-a → h`).
 
 ### Workflows
 
@@ -366,9 +366,9 @@ Each subscriber is a microservice — independent, stateless, reacting to the sa
 
 ### TUI HUD & View Modes
 
-The right-side HUD panel shows session state at a glance: session name, goals (with status icons), active skills, workflow, and sub-agents. Toggle with `Ctrl+A H`; when hidden, `[H] Info` appears in the input title.
+The right-side HUD panel shows session state at a glance: session name, goals (with status icons), active skills, workflow, and sub-agents. Toggle with `C-a → h`; when hidden, the input border shows `C-a → h HUD` as a reminder.
 
-Three switchable view modes let you control how much detail the TUI shows. Cycle with `Ctrl+A V`:
+Three switchable view modes let you control how much detail the TUI shows. Cycle with `C-a → v`:
 
 | Mode | What you see |
 |------|-------------|

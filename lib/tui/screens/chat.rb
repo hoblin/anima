@@ -601,9 +601,7 @@ module TUI
           scroll: [input_scroll, 0],
           block: tui.block(
             title: title,
-            titles: disabled ? [] : [
-              {content: "Enter send", position: :bottom, alignment: :center}
-            ],
+            titles: input_bottom_titles(disabled),
             borders: [:all],
             border_type: :rounded,
             border_style: styles[:border]
@@ -637,11 +635,19 @@ module TUI
       def input_title
         if !connected?
           "Disconnected"
-        elsif @hud_hint
-          "Input  Ctrl+A H HUD"
         else
           "Input"
         end
+      end
+
+      def input_bottom_titles(disabled)
+        return [] if disabled
+
+        command_hint = @hud_hint ? "C-a → h HUD" : "C-a command"
+        [
+          {content: command_hint, position: :bottom, alignment: :left},
+          {content: "Enter send", position: :bottom, alignment: :center}
+        ]
       end
 
       # Builds input text as pre-wrapped Line objects for the Paragraph widget.

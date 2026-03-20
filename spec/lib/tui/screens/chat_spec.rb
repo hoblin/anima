@@ -1107,9 +1107,9 @@ RSpec.describe TUI::Screens::Chat do
       expect(screen.send(:input_title)).to eq("Input")
     end
 
-    it "shows HUD hint when hud_hint is true" do
+    it "returns 'Input' even when hud_hint is true" do
       screen.hud_hint = true
-      expect(screen.send(:input_title)).to eq("Input  Ctrl+A H HUD")
+      expect(screen.send(:input_title)).to eq("Input")
     end
 
     it "returns 'Disconnected' when not connected" do
