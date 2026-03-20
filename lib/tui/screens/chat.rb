@@ -638,7 +638,7 @@ module TUI
         if !connected?
           "Disconnected"
         elsif @hud_hint
-          "Input  [H] Info"
+          "Input  Ctrl+A H HUD"
         else
           "Input"
         end
