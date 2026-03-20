@@ -161,12 +161,10 @@ module TUI
         case tool_name
         when "bash" then BashDecorator
         when "think" then ThinkDecorator
-        when "read_file" then ReadFileDecorator
-        when "edit_file" then EditFileDecorator
+        when "read" then ReadDecorator
+        when "edit" then EditDecorator
         when "write" then WriteDecorator
         when "web_get" then WebGetDecorator
-        when "list_files" then ListFilesDecorator
-        when "search_files" then SearchFilesDecorator
         else self
         end
       end

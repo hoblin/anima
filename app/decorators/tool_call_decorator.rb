@@ -99,12 +99,8 @@ class ToolCallDecorator < EventDecorator
       "$ #{input&.dig("command")}"
     when "web_get"
       "GET #{input&.dig("url")}"
-    when "read_file", "edit_file", "write"
+    when "read", "edit", "write"
       input&.dig("file_path").to_s
-    when "list_files"
-      input&.dig("path") || input&.dig("pattern") || json
-    when "search_files"
-      input&.dig("pattern") || input&.dig("query") || json
     else
       truncate_lines(json, max_lines: 2)
     end

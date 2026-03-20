@@ -103,31 +103,31 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       })
     end
 
-    it "returns file path for read_file tool" do
+    it "returns file path for read tool" do
       event = session.events.create!(
         event_type: "tool_call",
-        payload: {"content" => "reading", "tool_name" => "read_file",
+        payload: {"content" => "reading", "tool_name" => "read",
                   "tool_input" => {"file_path" => "/app/models/user.rb"}},
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
 
       expect(decorator.render_verbose).to eq({
-        role: :tool_call, tool: "read_file", input: "/app/models/user.rb", timestamp: 1
+        role: :tool_call, tool: "read", input: "/app/models/user.rb", timestamp: 1
       })
     end
 
-    it "returns file path for edit_file tool" do
+    it "returns file path for edit tool" do
       event = session.events.create!(
         event_type: "tool_call",
-        payload: {"content" => "editing", "tool_name" => "edit_file",
+        payload: {"content" => "editing", "tool_name" => "edit",
                   "tool_input" => {"file_path" => "/app/models/user.rb", "changes" => "..."}},
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
 
       expect(decorator.render_verbose).to eq({
-        role: :tool_call, tool: "edit_file", input: "/app/models/user.rb", timestamp: 1
+        role: :tool_call, tool: "edit", input: "/app/models/user.rb", timestamp: 1
       })
     end
 
@@ -142,34 +142,6 @@ RSpec.describe ToolCallDecorator, type: :decorator do
 
       expect(decorator.render_verbose).to eq({
         role: :tool_call, tool: "write", input: "/tmp/output.txt", timestamp: 1
-      })
-    end
-
-    it "returns pattern for list_files tool" do
-      event = session.events.create!(
-        event_type: "tool_call",
-        payload: {"content" => "listing", "tool_name" => "list_files",
-                  "tool_input" => {"path" => "/app/models"}},
-        timestamp: 1
-      )
-      decorator = EventDecorator.for(event)
-
-      expect(decorator.render_verbose).to eq({
-        role: :tool_call, tool: "list_files", input: "/app/models", timestamp: 1
-      })
-    end
-
-    it "returns pattern for search_files tool" do
-      event = session.events.create!(
-        event_type: "tool_call",
-        payload: {"content" => "searching", "tool_name" => "search_files",
-                  "tool_input" => {"pattern" => "def authenticate"}},
-        timestamp: 1
-      )
-      decorator = EventDecorator.for(event)
-
-      expect(decorator.render_verbose).to eq({
-        role: :tool_call, tool: "search_files", input: "def authenticate", timestamp: 1
       })
     end
 

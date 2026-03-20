@@ -3,12 +3,10 @@
 require_relative "../input_buffer"
 require_relative "../decorators/base_decorator"
 require_relative "../decorators/bash_decorator"
-require_relative "../decorators/read_file_decorator"
-require_relative "../decorators/edit_file_decorator"
+require_relative "../decorators/read_decorator"
+require_relative "../decorators/edit_decorator"
 require_relative "../decorators/write_decorator"
 require_relative "../decorators/web_get_decorator"
-require_relative "../decorators/list_files_decorator"
-require_relative "../decorators/search_files_decorator"
 require_relative "../decorators/think_decorator"
 
 module TUI

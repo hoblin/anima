@@ -2,9 +2,9 @@
 
 module TUI
   module Decorators
-    # Renders edit_file tool calls and responses.
+    # Renders edit tool calls and responses.
     # Calls show the file path with a pencil icon.
-    class EditFileDecorator < BaseDecorator
+    class EditDecorator < BaseDecorator
       ICON = "\u270F\uFE0F" # pencil
 
       def icon

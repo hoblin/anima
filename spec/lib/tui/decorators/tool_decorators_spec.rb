@@ -2,12 +2,10 @@
 
 require "spec_helper"
 require "tui/decorators/base_decorator"
-require "tui/decorators/read_file_decorator"
-require "tui/decorators/edit_file_decorator"
+require "tui/decorators/read_decorator"
+require "tui/decorators/edit_decorator"
 require "tui/decorators/write_decorator"
 require "tui/decorators/web_get_decorator"
-require "tui/decorators/list_files_decorator"
-require "tui/decorators/search_files_decorator"
 
 RSpec.describe "Tool-specific decorators" do
   let(:tui) do
@@ -18,21 +16,21 @@ RSpec.describe "Tool-specific decorators" do
     stub
   end
 
-  describe TUI::Decorators::ReadFileDecorator do
+  describe TUI::Decorators::ReadDecorator do
     it "renders with page icon in cyan" do
-      data = {"role" => "tool_call", "tool" => "read_file", "input" => "/app/models/user.rb"}
+      data = {"role" => "tool_call", "tool" => "read", "input" => "/app/models/user.rb"}
       lines = described_class.new(data).render_call(tui)
 
       header = lines.first[:spans].first[:content]
       expect(header).to include("\u{1F4C4}") # page icon
-      expect(header).to include("read_file")
+      expect(header).to include("read")
 
       style = lines.first[:spans].first[:style]
       expect(style[:fg]).to eq("cyan")
     end
 
     it "renders response in dark gray" do
-      data = {"role" => "tool_response", "tool" => "read_file", "content" => "file contents", "success" => true}
+      data = {"role" => "tool_response", "tool" => "read", "content" => "file contents", "success" => true}
       lines = described_class.new(data).render_response(tui)
 
       style = lines.first[:spans].first[:style]
@@ -40,14 +38,14 @@ RSpec.describe "Tool-specific decorators" do
     end
   end
 
-  describe TUI::Decorators::EditFileDecorator do
+  describe TUI::Decorators::EditDecorator do
     it "renders with pencil icon in yellow" do
-      data = {"role" => "tool_call", "tool" => "edit_file", "input" => "/app/models/user.rb"}
+      data = {"role" => "tool_call", "tool" => "edit", "input" => "/app/models/user.rb"}
       lines = described_class.new(data).render_call(tui)
 
       header = lines.first[:spans].first[:content]
       expect(header).to include("\u270F\uFE0F") # pencil icon
-      expect(header).to include("edit_file")
+      expect(header).to include("edit")
 
       style = lines.first[:spans].first[:style]
       expect(style[:fg]).to eq("yellow")
@@ -79,48 +77,6 @@ RSpec.describe "Tool-specific decorators" do
 
       style = lines.first[:spans].first[:style]
       expect(style[:fg]).to eq("blue")
-    end
-  end
-
-  describe TUI::Decorators::ListFilesDecorator do
-    it "renders with folder icon in cyan" do
-      data = {"role" => "tool_call", "tool" => "list_files", "input" => "/app/models"}
-      lines = described_class.new(data).render_call(tui)
-
-      header = lines.first[:spans].first[:content]
-      expect(header).to include("\u{1F4C1}") # folder icon
-
-      style = lines.first[:spans].first[:style]
-      expect(style[:fg]).to eq("cyan")
-    end
-
-    it "renders response in dark gray" do
-      data = {"role" => "tool_response", "tool" => "list_files", "content" => "user.rb\npost.rb", "success" => true}
-      lines = described_class.new(data).render_response(tui)
-
-      style = lines.first[:spans].first[:style]
-      expect(style[:fg]).to eq("dark_gray")
-    end
-  end
-
-  describe TUI::Decorators::SearchFilesDecorator do
-    it "renders with magnifying glass icon in magenta" do
-      data = {"role" => "tool_call", "tool" => "search_files", "input" => "def authenticate"}
-      lines = described_class.new(data).render_call(tui)
-
-      header = lines.first[:spans].first[:content]
-      expect(header).to include("\u{1F50D}") # magnifying glass
-
-      style = lines.first[:spans].first[:style]
-      expect(style[:fg]).to eq("magenta")
-    end
-
-    it "renders response in dark gray" do
-      data = {"role" => "tool_response", "tool" => "search_files", "content" => "found matches", "success" => true}
-      lines = described_class.new(data).render_response(tui)
-
-      style = lines.first[:spans].first[:style]
-      expect(style[:fg]).to eq("dark_gray")
     end
   end
 end

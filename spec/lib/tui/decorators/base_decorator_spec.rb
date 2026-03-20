@@ -3,12 +3,10 @@
 require "spec_helper"
 require "tui/decorators/base_decorator"
 require "tui/decorators/bash_decorator"
-require "tui/decorators/read_file_decorator"
-require "tui/decorators/edit_file_decorator"
+require "tui/decorators/read_decorator"
+require "tui/decorators/edit_decorator"
 require "tui/decorators/write_decorator"
 require "tui/decorators/web_get_decorator"
-require "tui/decorators/list_files_decorator"
-require "tui/decorators/search_files_decorator"
 require "tui/decorators/think_decorator"
 
 RSpec.describe TUI::Decorators::BaseDecorator do
@@ -29,16 +27,16 @@ RSpec.describe TUI::Decorators::BaseDecorator do
       expect(described_class.for(data)).to be_a(TUI::Decorators::BashDecorator)
     end
 
-    it "returns ReadFileDecorator for read_file tool calls" do
-      data = {"role" => "tool_call", "tool" => "read_file", "input" => "/app/models/user.rb"}
+    it "returns ReadDecorator for read tool calls" do
+      data = {"role" => "tool_call", "tool" => "read", "input" => "/app/models/user.rb"}
 
-      expect(described_class.for(data)).to be_a(TUI::Decorators::ReadFileDecorator)
+      expect(described_class.for(data)).to be_a(TUI::Decorators::ReadDecorator)
     end
 
-    it "returns EditFileDecorator for edit_file tool calls" do
-      data = {"role" => "tool_call", "tool" => "edit_file", "input" => "/app/models/user.rb"}
+    it "returns EditDecorator for edit tool calls" do
+      data = {"role" => "tool_call", "tool" => "edit", "input" => "/app/models/user.rb"}
 
-      expect(described_class.for(data)).to be_a(TUI::Decorators::EditFileDecorator)
+      expect(described_class.for(data)).to be_a(TUI::Decorators::EditDecorator)
     end
 
     it "returns WriteDecorator for write tool calls" do
@@ -51,18 +49,6 @@ RSpec.describe TUI::Decorators::BaseDecorator do
       data = {"role" => "tool_call", "tool" => "web_get", "input" => "GET https://example.com"}
 
       expect(described_class.for(data)).to be_a(TUI::Decorators::WebGetDecorator)
-    end
-
-    it "returns ListFilesDecorator for list_files tool calls" do
-      data = {"role" => "tool_call", "tool" => "list_files", "input" => "/app/models"}
-
-      expect(described_class.for(data)).to be_a(TUI::Decorators::ListFilesDecorator)
-    end
-
-    it "returns SearchFilesDecorator for search_files tool calls" do
-      data = {"role" => "tool_call", "tool" => "search_files", "input" => "def authenticate"}
-
-      expect(described_class.for(data)).to be_a(TUI::Decorators::SearchFilesDecorator)
     end
 
     it "returns ThinkDecorator for think role" do

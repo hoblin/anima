@@ -2,10 +2,10 @@
 
 module TUI
   module Decorators
-    # Renders read_file tool calls and responses.
+    # Renders read tool calls and responses.
     # Calls show the file path with a page icon.
     # Responses show file content in dim text.
-    class ReadFileDecorator < BaseDecorator
+    class ReadDecorator < BaseDecorator
       ICON = "\u{1F4C4}" # page facing up
 
       def icon
