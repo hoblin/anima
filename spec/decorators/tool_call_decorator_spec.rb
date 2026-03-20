@@ -103,7 +103,49 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       })
     end
 
-    it "returns generic JSON for unknown tools" do
+    it "returns file path for read tool" do
+      event = session.events.create!(
+        event_type: "tool_call",
+        payload: {"content" => "reading", "tool_name" => "read",
+                  "tool_input" => {"file_path" => "/app/models/user.rb"}},
+        timestamp: 1
+      )
+      decorator = EventDecorator.for(event)
+
+      expect(decorator.render_verbose).to eq({
+        role: :tool_call, tool: "read", input: "/app/models/user.rb", timestamp: 1
+      })
+    end
+
+    it "returns file path for edit tool" do
+      event = session.events.create!(
+        event_type: "tool_call",
+        payload: {"content" => "editing", "tool_name" => "edit",
+                  "tool_input" => {"file_path" => "/app/models/user.rb", "changes" => "..."}},
+        timestamp: 1
+      )
+      decorator = EventDecorator.for(event)
+
+      expect(decorator.render_verbose).to eq({
+        role: :tool_call, tool: "edit", input: "/app/models/user.rb", timestamp: 1
+      })
+    end
+
+    it "returns file path for write tool" do
+      event = session.events.create!(
+        event_type: "tool_call",
+        payload: {"content" => "writing", "tool_name" => "write",
+                  "tool_input" => {"file_path" => "/tmp/output.txt", "content" => "data"}},
+        timestamp: 1
+      )
+      decorator = EventDecorator.for(event)
+
+      expect(decorator.render_verbose).to eq({
+        role: :tool_call, tool: "write", input: "/tmp/output.txt", timestamp: 1
+      })
+    end
+
+    it "returns TOON-encoded input for unknown tools" do
       event = session.events.create!(
         event_type: "tool_call",
         payload: {"content" => "calling custom", "tool_name" => "custom_tool", "tool_input" => {"key" => "value"}},
@@ -112,11 +154,11 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       decorator = EventDecorator.for(event)
 
       expect(decorator.render_verbose).to eq({
-        role: :tool_call, tool: "custom_tool", input: '{"key":"value"}', timestamp: 1
+        role: :tool_call, tool: "custom_tool", input: "key: value", timestamp: 1
       })
     end
 
-    it "renders compact JSON for generic tool input" do
+    it "truncates TOON-encoded input for generic tool input" do
       input = {"a" => "1\n2\n3\n4\n5"}
       event = session.events.create!(
         event_type: "tool_call",
@@ -126,7 +168,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       decorator = EventDecorator.for(event)
 
       expect(decorator.render_verbose).to eq({
-        role: :tool_call, tool: "custom", input: input.to_json, timestamp: 1
+        role: :tool_call, tool: "custom", input: Toon.encode(input), timestamp: 1
       })
     end
 
@@ -202,7 +244,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
   end
 
   describe "#render_debug" do
-    it "returns full untruncated input as pretty-printed JSON" do
+    it "returns full untruncated input in TOON format" do
       input = {"command" => "git status"}
       event = session.events.create!(
         event_type: "tool_call",
@@ -218,7 +260,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       expect(decorator.render_debug).to eq({
         role: :tool_call,
         tool: "bash",
-        input: JSON.pretty_generate(input),
+        input: Toon.encode(input),
         tool_use_id: "toolu_01abc123",
         timestamp: 1
       })
@@ -254,7 +296,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       decorator = EventDecorator.for(event)
       result = decorator.render_debug
 
-      expect(result[:input]).to eq(JSON.pretty_generate(large_input))
+      expect(result[:input]).to eq(Toon.encode(large_input))
       expect(result[:input]).not_to include("...")
     end
 
@@ -267,7 +309,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       decorator = EventDecorator.for(event)
       result = decorator.render_debug
 
-      expect(result[:input]).to eq(JSON.pretty_generate({}))
+      expect(result[:input]).to eq(Toon.encode({}))
     end
 
     it "works with hash payloads" do
@@ -283,7 +325,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       expect(result[:role]).to eq(:tool_call)
       expect(result[:tool]).to eq("bash")
       expect(result[:tool_use_id]).to eq("toolu_hash")
-      expect(result[:input]).to eq(JSON.pretty_generate({"command" => "ls"}))
+      expect(result[:input]).to eq(Toon.encode({"command" => "ls"}))
     end
 
     context "think tool" do

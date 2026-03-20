@@ -40,5 +40,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "solid_queue", "~> 1.1"
   spec.add_dependency "sqlite3", "~> 2.0"
   spec.add_dependency "toml-rb", "~> 4.0"
+  spec.add_dependency "toon-ruby", "~> 0.1"
   spec.add_dependency "websocket-client-simple", "~> 0.8"
 end

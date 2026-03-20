@@ -3,8 +3,9 @@
 # Decorates tool_response events for display in the TUI.
 # Hidden in basic mode — tool activity is represented by the
 # aggregated tool counter instead. Verbose mode returns truncated
-# output with a success/failure indicator. Debug mode shows full
-# untruncated output with tool_use_id and estimated token count.
+# output with a success/failure indicator and tool name for per-tool
+# client-side rendering. Debug mode shows full untruncated output
+# with tool_use_id and estimated token count.
 #
 # Think tool responses ("OK") are hidden in basic and verbose modes
 # because the value is in the tool_call (the thoughts), not the response.
@@ -18,11 +19,13 @@ class ToolResponseDecorator < EventDecorator
 
   # Think responses are hidden in verbose mode — the "OK" adds no information.
   # @return [Hash, nil] structured tool response data, nil for think responses
+  #   `{role: :tool_response, tool: String, content: String, success: Boolean, timestamp: Integer|nil}`
   def render_verbose
     return if think?
 
     {
       role: :tool_response,
+      tool: tool_name,
       content: truncate_lines(content, max_lines: 3),
       success: payload["success"] != false,
       timestamp: timestamp
@@ -30,11 +33,12 @@ class ToolResponseDecorator < EventDecorator
   end
 
   # @return [Hash] full tool response data with untruncated content, tool_use_id, and token estimate
-  #   `{role: :tool_response, content: String, success: Boolean, tool_use_id: String|nil,
+  #   `{role: :tool_response, tool: String, content: String, success: Boolean, tool_use_id: String|nil,
   #     timestamp: Integer|nil, tokens: Integer, estimated: Boolean}`
   def render_debug
     {
       role: :tool_response,
+      tool: tool_name,
       content: content,
       success: payload["success"] != false,
       tool_use_id: payload["tool_use_id"],
@@ -53,7 +57,11 @@ class ToolResponseDecorator < EventDecorator
 
   private
 
+  def tool_name
+    payload["tool_name"]
+  end
+
   def think?
-    payload["tool_name"] == THINK_TOOL
+    tool_name == THINK_TOOL
   end
 end

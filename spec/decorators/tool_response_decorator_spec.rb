@@ -45,7 +45,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       decorator = EventDecorator.for(event)
 
       expect(decorator.render_verbose).to eq({
-        role: :tool_response, content: "file.txt", success: true, timestamp: 1
+        role: :tool_response, tool: "bash", content: "file.txt", success: true, timestamp: 1
       })
     end
 
@@ -58,7 +58,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       decorator = EventDecorator.for(event)
 
       expect(decorator.render_verbose).to eq({
-        role: :tool_response, content: "command not found", success: false, timestamp: 1
+        role: :tool_response, tool: "bash", content: "command not found", success: false, timestamp: 1
       })
     end
 
@@ -130,7 +130,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       )
 
       expect(decorator.render_verbose).to eq({
-        role: :tool_response, content: "success output", success: true, timestamp: nil
+        role: :tool_response, tool: "bash", content: "success output", success: true, timestamp: nil
       })
     end
 

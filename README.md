@@ -374,7 +374,12 @@ Three switchable view modes let you control how much detail the TUI shows. Cycle
 | **Verbose** | Everything in Basic, plus timestamps `[HH:MM:SS]`, tool call previews (`🔧 bash` / `$ command` / `↩ response`), and system messages |
 | **Debug** | Full X-ray view — timestamps, token counts per message (`[14 tok]`), full tool call args, full tool responses, tool use IDs |
 
-View modes are implemented via Draper decorators that operate at the transport layer. Each event type has a dedicated decorator (`UserMessageDecorator`, `ToolCallDecorator`, etc.) that returns structured data — the TUI renders it. Mode is stored on the `Session` model server-side, so it persists across reconnections.
+View modes are implemented as a two-layer decorator architecture:
+
+- **Server-side** (Draper) — uniform per event type (`UserMessageDecorator`, `ToolCallDecorator`, etc.). Decides WHAT structured data enters the wire for each view mode.
+- **Client-side** (TUI) — unique per tool name (`BashDecorator`, `ReadDecorator`, `EditDecorator`, etc.). Decides HOW each tool looks on screen — tool-specific icons, colors, and formatting.
+
+Mode is stored on the `Session` model server-side, so it persists across reconnections.
 
 ### Plugin Architecture [planned]
 
