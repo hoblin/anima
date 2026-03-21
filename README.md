@@ -36,9 +36,9 @@ Your agent. Your machine. Your rules. Anima runs locally as a headless Rails 8.1
   - [Event-Driven Design](#event-driven-design)
   - [Context as Viewport](#context-as-viewport-not-tape)
   - [Brain as Microservices](#brain-as-microservices-on-a-shared-event-bus)
-  - [TUI View Modes](#tui-view-modes)
-  - [Plugin Architecture](#plugin-architecture)
   - [Semantic Memory](#semantic-memory-mneme)
+  - [TUI HUD & View Modes](#tui-hud--view-modes)
+  - [Plugin Architecture](#plugin-architecture-planned)
 - [The Vision](#the-vision)
   - [The Problem](#the-problem)
   - [The Insight](#the-insight)
@@ -367,6 +367,31 @@ Event: "user_sent_message"
 
 Each subscriber is a microservice — independent, stateless, reacting to the same event bus. No orchestrator decides what to do. The architecture IS the nervous system.
 
+### Semantic Memory (Mneme)
+
+Every AI agent today has the same disability: amnesia. Context fills up, gets compacted, gets destroyed. The agent gets dumber as the conversation gets longer. When the session ends, everything is gone. Some systems bolt on memory as an afterthought — markdown files with procedures for when to save and what format to use. Filing cabinets the agent has to consciously decide to open, mid-task, while in flow. It never does. The truck is already moving.
+
+Mneme is not a filing cabinet. It's *remembering* — the way biological memory works. Continuous, automatic, layered. A third brain department running on the same event bus as the analytical brain, specializing in one job: making sure nothing important is ever truly lost.
+
+**Eviction-triggered summarization** — Mneme tracks a boundary event on each session. When that event leaves the viewport, Mneme fires: it builds a compressed view of the conversation (full text for messages, `[N tools called]` counters for tool work), sends it to a fast model, and persists a snapshot. The boundary advances after each run — a self-regulating cycle that fires exactly when context is about to be lost, no sooner or later. No timer. No manual trigger. The architecture itself knows when to remember.
+
+**Two-level snapshot compression** — once source events evict from the sliding window, their snapshots appear in the viewport as memory context. When enough Level 1 snapshots accumulate, Mneme compresses them into a single Level 2 snapshot — recursive summarization that mirrors how human memory consolidates short-term into long-term. Token budget splits across layers (L2: 5%, L1: 15%, recall: 5%, sliding: 75%), creating natural pressure: more memories means less live context, same principle as video compression keyframes. The viewport layout reads like geological strata — deep past at the top, recent past below, live present at the bottom:
+
+```
+[Soul — who I am]
+[L2 snapshots — weeks ago, compressed]
+[L1 snapshots — hours ago, detailed]
+[Associative recall — relevant older memories]
+[Pinned events — critical moments from active goals]
+[Sliding window — the present]
+```
+
+**Goal-scoped event pinning** — some moments are too important for summaries. Exact user instructions. Key decisions. Critical corrections. Mneme pins these events to active Goals — they float above the sliding window, protected from eviction, surviving intact where compression would lose the nuance that matters. Pins are goal-scoped and many-to-many: one event can attach to multiple Goals, and cleanup is automatic via reference counting. When the last active Goal completes, the pin releases. No manual unpin, no stale pins accumulating forever.
+
+**Associative recall** — FTS5 full-text search across the entire event history, across all sessions. Two modes: *passive* recall triggers automatically when goals change — Mneme searches for relevant older context and injects it into the viewport between snapshots and the sliding window. Memories surface on their own, right after the soul, right before the present. The agent doesn't have to decide to remember — the remembering happens around it. *Active* recall via the `remember(event_id:)` tool returns a fractal-resolution window centered on a target event — full detail at the center, compressed snapshots at the edges, like eye focus with sharp fovea and blurry periphery.
+
+The difference from every other system: memory isn't a tool the agent uses. It's the substrate the agent thinks in. Every LLM call assembles a fresh viewport where identity comes first, then memories, then the present — the agent always knows who it is, always has access to what it learned, and never has to break flow to make that happen.
+
 ### TUI HUD & View Modes
 
 The right-side HUD panel shows session state at a glance: session name, goals (with status icons), active skills, workflow, and sub-agents. Toggle with `C-a → h`; when hidden, the input border shows `C-a → h HUD` as a reminder.
@@ -398,31 +423,6 @@ anima-memory-*       → recall and association (Mneme subscribers)
 ```
 
 Currently tools are built-in. Plugin extraction into distributable gems comes later.
-
-### Semantic Memory (Mneme)
-
-Every AI agent today has the same disability: amnesia. Context fills up, gets compacted, gets destroyed. The agent gets dumber as the conversation gets longer. When the session ends, everything is gone. Some systems bolt on memory as an afterthought — markdown files with procedures for when to save and what format to use. Filing cabinets the agent has to consciously decide to open, mid-task, while in flow. It never does. The truck is already moving.
-
-Mneme is not a filing cabinet. It's *remembering* — the way biological memory works. Continuous, automatic, layered. A third brain department running on the same event bus as the analytical brain, specializing in one job: making sure nothing important is ever truly lost.
-
-**Eviction-triggered summarization** — Mneme tracks a boundary event on each session. When that event leaves the viewport, Mneme fires: it builds a compressed view of the conversation (full text for messages, `[N tools called]` counters for tool work), sends it to a fast model, and persists a snapshot. The boundary advances after each run — a self-regulating cycle that fires exactly when context is about to be lost, no sooner or later. No timer. No manual trigger. The architecture itself knows when to remember.
-
-**Two-level snapshot compression** — once source events evict from the sliding window, their snapshots appear in the viewport as memory context. When enough Level 1 snapshots accumulate, Mneme compresses them into a single Level 2 snapshot — recursive summarization that mirrors how human memory consolidates short-term into long-term. Token budget splits across layers (L2: 5%, L1: 15%, recall: 5%, sliding: 75%), creating natural pressure: more memories means less live context, same principle as video compression keyframes. The viewport layout reads like geological strata — deep past at the top, recent past below, live present at the bottom:
-
-```
-[Soul — who I am]
-[L2 snapshots — weeks ago, compressed]
-[L1 snapshots — hours ago, detailed]
-[Associative recall — relevant older memories]
-[Pinned events — critical moments from active goals]
-[Sliding window — the present]
-```
-
-**Goal-scoped event pinning** — some moments are too important for summaries. Exact user instructions. Key decisions. Critical corrections. Mneme pins these events to active Goals — they float above the sliding window, protected from eviction, surviving intact where compression would lose the nuance that matters. Pins are goal-scoped and many-to-many: one event can attach to multiple Goals, and cleanup is automatic via reference counting. When the last active Goal completes, the pin releases. No manual unpin, no stale pins accumulating forever.
-
-**Associative recall** — FTS5 full-text search across the entire event history, across all sessions. Two modes: *passive* recall triggers automatically when goals change — Mneme searches for relevant older context and injects it into the viewport between snapshots and the sliding window. Memories surface on their own, right after the soul, right before the present. The agent doesn't have to decide to remember — the remembering happens around it. *Active* recall via the `remember(event_id:)` tool returns a fractal-resolution window centered on a target event — full detail at the center, compressed snapshots at the edges, like eye focus with sharp fovea and blurry periphery.
-
-The difference from every other system: memory isn't a tool the agent uses. It's the substrate the agent thinks in. Every LLM call assembles a fresh viewport where identity comes first, then memories, then the present — the agent always knows who it is, always has access to what it learned, and never has to break flow to make that happen.
 
 ## The Vision
 
