@@ -70,7 +70,10 @@ RSpec.describe Anima::ConfigMigrator do
           ["mneme", "viewport_fraction"],
           ["mneme", "l1_budget_fraction"],
           ["mneme", "l2_budget_fraction"],
-          ["mneme", "l2_snapshot_threshold"]
+          ["mneme", "l2_snapshot_threshold"],
+          ["recall", "max_results"],
+          ["recall", "budget_fraction"],
+          ["recall", "max_snippet_tokens"]
         )
 
         updated = config_path.read
@@ -114,7 +117,7 @@ RSpec.describe Anima::ConfigMigrator do
         result = migrator.run
 
         sections = result.additions.map(&:section).uniq
-        expect(sections).to contain_exactly("paths", "analytical_brain", "mneme")
+        expect(sections).to contain_exactly("paths", "analytical_brain", "mneme", "recall")
 
         updated = config_path.read
         expect(updated).to include("[paths]")

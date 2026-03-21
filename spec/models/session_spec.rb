@@ -931,6 +931,7 @@ RSpec.describe Session do
       before do
         allow(Anima::Settings).to receive(:mneme_l1_budget_fraction).and_return(0.0)
         allow(Anima::Settings).to receive(:mneme_l2_budget_fraction).and_return(0.0)
+        allow(Anima::Settings).to receive(:recall_budget_fraction).and_return(0.0)
       end
 
       it "includes all events when within budget" do
@@ -1326,6 +1327,102 @@ RSpec.describe Session do
       session.snapshot_viewport!([1, 2])
       session.snapshot_viewport!([3, 4, 5])
       expect(session.reload.viewport_event_ids).to eq([3, 4, 5])
+    end
+  end
+
+  describe "#assemble_recall_messages" do
+    let(:session) { Session.create! }
+
+    def create_event(sess, type:, content:)
+      sess.events.create!(
+        event_type: type,
+        payload: {"content" => content},
+        timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+      )
+    end
+
+    it "returns empty when no recalled event IDs" do
+      expect(session.send(:assemble_recall_messages, budget: 1000)).to eq([])
+    end
+
+    it "returns recall messages for stored event IDs" do
+      other_session = Session.create!(name: "Past Work")
+      event = create_event(other_session, type: "user_message", content: "Important finding about auth")
+      session.update_column(:recalled_event_ids, [event.id])
+
+      messages = session.send(:assemble_recall_messages, budget: 1000)
+
+      expect(messages.size).to eq(1)
+      expect(messages.first[:role]).to eq("user")
+      expect(messages.first[:content]).to include("[associative recall]")
+      expect(messages.first[:content]).to include("Important finding about auth")
+      expect(messages.first[:content]).to include("Past Work")
+    end
+
+    it "respects budget and stops when exceeded" do
+      other_session = Session.create!
+      e1 = create_event(other_session, type: "user_message", content: "A" * 500)
+      e2 = create_event(other_session, type: "user_message", content: "B" * 500)
+      session.update_column(:recalled_event_ids, [e1.id, e2.id])
+
+      messages = session.send(:assemble_recall_messages, budget: 50)
+
+      # Budget should allow at least one snippet but not both
+      expect(messages.first[:content]).to include("A")
+    end
+
+    it "skips events that no longer exist" do
+      event = create_event(session, type: "user_message", content: "Still here")
+      session.update_column(:recalled_event_ids, [999999, event.id])
+
+      messages = session.send(:assemble_recall_messages, budget: 1000)
+
+      expect(messages.first[:content]).to include("Still here")
+      expect(messages.first[:content]).not_to include("999999")
+    end
+
+    it "falls back to session ID when name is nil" do
+      unnamed_session = Session.create!(name: nil)
+      event = create_event(unnamed_session, type: "user_message", content: "test")
+      session.update_column(:recalled_event_ids, [event.id])
+
+      messages = session.send(:assemble_recall_messages, budget: 1000)
+
+      expect(messages.first[:content]).to include("session ##{unnamed_session.id}")
+    end
+  end
+
+  describe "#extract_event_content (private)" do
+    let(:session) { Session.create! }
+
+    it "extracts content from user messages" do
+      event = session.events.create!(
+        event_type: "user_message",
+        payload: {"content" => "Hello world"},
+        timestamp: 1
+      )
+
+      expect(session.send(:extract_event_content, event)).to eq("Hello world")
+    end
+
+    it "extracts thoughts from think tool calls" do
+      event = session.events.create!(
+        event_type: "tool_call",
+        payload: {"tool_name" => "think", "tool_input" => {"thoughts" => "Deep thought"}, "tool_use_id" => "t1"},
+        timestamp: 1
+      )
+
+      expect(session.send(:extract_event_content, event)).to eq("Deep thought")
+    end
+
+    it "returns tool name summary for non-think tool calls" do
+      event = session.events.create!(
+        event_type: "tool_call",
+        payload: {"tool_name" => "bash", "tool_input" => {"cmd" => "ls"}, "tool_use_id" => "t1"},
+        timestamp: 1
+      )
+
+      expect(session.send(:extract_event_content, event)).to eq("bash(…)")
     end
   end
 
