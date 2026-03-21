@@ -42,7 +42,9 @@ class AgentLoop
 
   # Runs the agent loop for a single user input.
   #
-  # Emits {Events::UserMessage} immediately, then delegates to {#run}.
+  # Persists the user event directly (the global Persister skips
+  # non-pending user messages because {AgentRequestJob} owns their
+  # lifecycle). Then emits a bus notification and delegates to {#run}.
   # On error emits {Events::AgentMessage} with the error text.
   #
   # @param input [String] raw user input
@@ -51,6 +53,7 @@ class AgentLoop
     text = input.to_s.strip
     return if text.empty?
 
+    persist_user_event(text)
     Events::Bus.emit(Events::UserMessage.new(content: text, session_id: @session.id))
     run
   rescue => error
@@ -131,6 +134,21 @@ class AgentLoop
   STANDARD_TOOLS_BY_NAME = STANDARD_TOOLS.index_by(&:tool_name).freeze
 
   private
+
+  # Creates the user event record directly. Used by {#process} because
+  # the global Persister skips non-pending user messages (the job
+  # handles their persistence in the Bounce Back transaction).
+  #
+  # @param content [String] user message text
+  # @return [Event]
+  def persist_user_event(content)
+    now = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+    @session.events.create!(
+      event_type: "user_message",
+      payload: {type: "user_message", content: content, session_id: @session.id, timestamp: now},
+      timestamp: now
+    )
+  end
 
   # Assembles LLM options (system prompt, environment context).
   # @return [Hash] options for {LLM::Client#chat_with_tools}
