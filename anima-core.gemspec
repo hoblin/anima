@@ -36,6 +36,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "puma", "~> 6.0"
   spec.add_dependency "rails", "~> 8.1"
   spec.add_dependency "ratatui_ruby", "~> 1.4"
+  spec.add_dependency "reverse_markdown", "~> 3.0"
   spec.add_dependency "solid_cable", "~> 3.0"
   spec.add_dependency "solid_queue", "~> 1.1"
   spec.add_dependency "sqlite3", "~> 2.0"

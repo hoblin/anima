@@ -3,8 +3,12 @@
 require "httparty"
 
 module Tools
-  # Fetches content from a URL via HTTP GET. Returns the response body
-  # as plain text, truncated to {Anima::Settings.max_web_response_bytes} to prevent memory issues.
+  # Fetches content from a URL via HTTP GET. Returns a structured result with
+  # the response body and Content-Type header so that {ToolDecorator} can apply
+  # format-specific conversion (HTML → Markdown, JSON → TOON, etc.).
+  #
+  # The body is truncated to {Anima::Settings.max_web_response_bytes} before
+  # decoration to cap memory usage on large responses.
   #
   # Only http and https schemes are allowed.
   class WebGet < Base
@@ -23,8 +27,8 @@ module Tools
     end
 
     # @param input [Hash<String, Object>] string-keyed hash from the Anthropic API
-    # @return [String] response body (possibly truncated)
-    # @return [Hash] with :error key on failure
+    # @return [Hash] `{body: String, content_type: String}` on success
+    # @return [Hash] `{error: String}` on failure
     def execute(input)
       validate_and_fetch(input["url"].to_s)
     end
@@ -39,7 +43,11 @@ module Tools
         return {error: "Only http and https URLs are supported, got: #{scheme.inspect}"}
       end
 
-      truncate_body(HTTParty.get(url, timeout: timeout, follow_redirects: false).body.to_s)
+      response = HTTParty.get(url, timeout: timeout, follow_redirects: false)
+      body = truncate_body(response.body.to_s)
+      content_type = response.content_type || "text/plain"
+
+      {body: body, content_type: content_type}
     rescue URI::InvalidURIError => error
       {error: "Invalid URL: #{error.message}"}
     rescue Net::OpenTimeout, Net::ReadTimeout

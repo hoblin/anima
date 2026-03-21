@@ -1,6 +1,9 @@
 ## [Unreleased]
 
 ### Added
+- **ToolDecorator content pipeline** — new server-side decorator layer that transforms tool responses for LLM consumption before they enter the event stream; `ToolDecorator` base class with factory dispatch by tool name, extensible for any tool (#253)
+- **WebGetToolDecorator** — Content-Type → method dispatch DSL: `text/html` converts to Markdown (strips scripts, styles, nav, footer, ads), `application/json` compresses to TOON (~40% token savings), unknown types pass through; metadata tags (`[Converted: HTML → Markdown]`) inform the LLM about transformations (#253)
+- `Tools::WebGet` now returns structured `{body:, content_type:}` result, preserving HTTP Content-Type header for format-specific decoration (#253)
 - **TUI performance logging** — `--debug` flag enables frame-level timing to `log/tui_performance.log` with per-phase measurements (build_lines, paragraph, line_count, sidebar); uses `TUI::PerformanceLogger` with monotonic clock and 5MB log rotation (#182)
 - **TUI render caching** — `MessageStore` version tracking eliminates O(n×m) per-frame line rebuilds; cached message lines and `line_count` results are reused across frames until content actually changes; scrolling no longer triggers any Ruby-side computation, running at ~1.8ms/frame regardless of message count (#182)
 - **Bounce Back** — failed user messages return to the input field instead of persisting as orphans; event creation and LLM delivery are wrapped in a database transaction so both succeed or fail atomically; on failure, a transient `BounceBack` event notifies clients to restore the text and display a flash message (#236)

@@ -163,7 +163,7 @@ The agent has access to these built-in tools:
 | `read` | Read files with smart truncation and offset/limit paging |
 | `write` | Create or overwrite files |
 | `edit` | Surgical text replacement with uniqueness constraint |
-| `web_get` | Fetch content from HTTP/HTTPS URLs |
+| `web_get` | Fetch content from HTTP/HTTPS URLs (HTML → Markdown, JSON → TOON) |
 | `spawn_specialist` | Spawn a named specialist sub-agent from the registry |
 | `spawn_subagent` | Spawn a generic child session with custom tool grants |
 | `return_result` | Sub-agents only — deliver results back to parent |
@@ -376,10 +376,11 @@ Three switchable view modes let you control how much detail the TUI shows. Cycle
 | **Verbose** | Everything in Basic, plus timestamps `[HH:MM:SS]`, tool call previews (`🔧 bash` / `$ command` / `↩ response`), and system messages |
 | **Debug** | Full X-ray view — timestamps, token counts per message (`[14 tok]`), full tool call args, full tool responses, tool use IDs |
 
-View modes are implemented as a two-layer decorator architecture:
+View modes are implemented as a three-layer decorator architecture:
 
-- **Server-side** (Draper) — uniform per event type (`UserMessageDecorator`, `ToolCallDecorator`, etc.). Decides WHAT structured data enters the wire for each view mode.
-- **Client-side** (TUI) — unique per tool name (`BashDecorator`, `ReadDecorator`, `EditDecorator`, etc.). Decides HOW each tool looks on screen — tool-specific icons, colors, and formatting.
+- **ToolDecorator** (server-side, pre-event) — transforms raw tool responses for LLM consumption. Content-Type dispatch converts HTML → Markdown, JSON → TOON. Sits between tool execution and the event stream.
+- **EventDecorator** (server-side, Draper) — uniform per event type (`UserMessageDecorator`, `ToolCallDecorator`, etc.). Decides WHAT structured data enters the wire for each view mode.
+- **TUI Decorator** (client-side) — unique per tool name (`BashDecorator`, `ReadDecorator`, `EditDecorator`, etc.). Decides HOW each tool looks on screen — tool-specific icons, colors, and formatting.
 
 Mode is stored on the `Session` model server-side, so it persists across reconnections.
 
