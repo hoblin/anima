@@ -140,3 +140,17 @@ l2_snapshot_threshold = 5
 # Fraction of the main viewport token budget reserved for pinned events.
 # Pinned events appear between snapshots and the sliding window in the Goals section.
 pinned_budget_fraction = 0.05
+
+# ─── Recall (Associative Memory) ─────────────────────────────────
+
+[recall]
+
+# Maximum search results returned per FTS5 query.
+max_results = 5
+
+# Fraction of the main viewport token budget reserved for recalled memories.
+# Recalled memories appear between snapshots and the sliding window.
+budget_fraction = 0.05
+
+# Maximum tokens per individual recall snippet.
+max_snippet_tokens = 512

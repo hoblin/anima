@@ -236,16 +236,17 @@ class Session < ApplicationRecord
 
   # Builds the message array expected by the Anthropic Messages API.
   # Viewport layout (top to bottom):
-  #   [L2 snapshots] [L1 snapshots] [pinned events in goals section] [sliding window events]
+  #   [L2 snapshots] [L1 snapshots] [pinned events] [recalled memories] [sliding window events]
   #
   # Snapshots appear ONLY after their source events have evicted from
   # the sliding window. L1 snapshots drop once covered by an L2 snapshot.
   # Pinned events are critical context attached to active Goals — they
   # survive eviction intact until their Goals complete.
-  # Each layer has a fixed token budget fraction — snapshots and pins
+  # Recalled memories surface relevant older events (passive recall via goals).
+  # Each layer has a fixed token budget fraction — snapshots, pins, and recall
   # consume viewport space, reducing the sliding window size.
   #
-  # Sub-agent sessions skip snapshot/pin injection (they inherit parent events directly).
+  # Sub-agent sessions skip snapshot/pin/recall injection (they inherit parent events directly).
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @return [Array<Hash>] Anthropic Messages API format
@@ -253,12 +254,14 @@ class Session < ApplicationRecord
     sliding_budget = token_budget
     snapshot_messages = []
     pinned_messages = []
+    recall_messages = []
 
     unless sub_agent?
       l2_budget = (token_budget * Anima::Settings.mneme_l2_budget_fraction).to_i
       l1_budget = (token_budget * Anima::Settings.mneme_l1_budget_fraction).to_i
       pinned_budget = (token_budget * Anima::Settings.mneme_pinned_budget_fraction).to_i
-      sliding_budget = token_budget - l2_budget - l1_budget - pinned_budget
+      recall_budget = (token_budget * Anima::Settings.recall_budget_fraction).to_i
+      sliding_budget = token_budget - l2_budget - l1_budget - pinned_budget - recall_budget
     end
 
     events = viewport_events(token_budget: sliding_budget, include_pending: false)
@@ -267,9 +270,10 @@ class Session < ApplicationRecord
       first_event_id = events.first&.id
       snapshot_messages = assemble_snapshot_messages(first_event_id, l2_budget: l2_budget, l1_budget: l1_budget)
       pinned_messages = assemble_pinned_event_messages(first_event_id, budget: pinned_budget)
+      recall_messages = assemble_recall_messages(budget: recall_budget)
     end
 
-    snapshot_messages + pinned_messages + assemble_messages(events)
+    snapshot_messages + pinned_messages + recall_messages + assemble_messages(events)
   end
 
   # Creates a user message event record directly (bypasses EventBus+Persister).
@@ -653,6 +657,70 @@ class Session < ApplicationRecord
       "  event #{event_id}: #{pin.display_text}"
     else
       "  event #{event_id}"
+    end
+  end
+
+  # Assembles recalled memory messages from passive recall results.
+  # Recalled events are fetched by ID and formatted as compact snippets
+  # with session and event context for drill-down via the remember tool.
+  #
+  # @param budget [Integer] token budget for recall messages
+  # @return [Array<Hash>] Anthropic Messages API format
+  def assemble_recall_messages(budget:)
+    return [] if recalled_event_ids.blank?
+
+    recalled_events = Event.where(id: recalled_event_ids)
+      .includes(:session)
+      .index_by(&:id)
+
+    snippets = []
+    remaining = budget
+
+    recalled_event_ids.each do |eid|
+      event = recalled_events[eid]
+      next unless event
+
+      text = format_recall_snippet(event)
+      cost = [(text.bytesize / Event::BYTES_PER_TOKEN.to_f).ceil, 1].max
+      break if cost > remaining && snippets.any?
+
+      snippets << text
+      remaining -= cost
+    end
+
+    return [] if snippets.empty?
+
+    [{role: "user", content: "[associative recall]\n#{snippets.join("\n\n")}"}]
+  end
+
+  # Formats a recalled event as a compact snippet with enough context
+  # for the agent to decide whether to drill down with the remember tool.
+  #
+  # @param event [Event] the recalled event
+  # @return [String] formatted snippet
+  def format_recall_snippet(event)
+    session_label = event.session.name || "session ##{event.session_id}"
+    content = extract_event_content(event).to_s.truncate(Anima::Settings.recall_max_snippet_tokens * Event::BYTES_PER_TOKEN)
+    "event #{event.id} (#{session_label}): #{content}"
+  end
+
+  # Extracts readable content from an event's payload.
+  #
+  # @param event [Event]
+  # @return [String]
+  def extract_event_content(event)
+    data = event.payload
+    case event.event_type
+    when "user_message", "agent_message", "system_message"
+      data["content"]
+    when "tool_call"
+      if data["tool_name"] == Event::THINK_TOOL
+        data.dig("tool_input", "thoughts")
+      else
+        "#{data["tool_name"]}(…)"
+      end
+    else
+      data["content"]
     end
   end
 

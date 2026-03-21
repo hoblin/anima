@@ -289,6 +289,34 @@ RSpec.describe Goal do
     end
   end
 
+  describe "#schedule_passive_recall" do
+    it "enqueues PassiveRecallJob on goal create" do
+      session = Session.create!
+
+      expect {
+        Goal.create!(session: session, description: "new goal")
+      }.to have_enqueued_job(PassiveRecallJob).with(session.id)
+    end
+
+    it "enqueues PassiveRecallJob on goal update" do
+      session = Session.create!
+      goal = Goal.create!(session: session, description: "original")
+
+      expect {
+        goal.update!(description: "updated")
+      }.to have_enqueued_job(PassiveRecallJob).with(session.id)
+    end
+
+    it "skips enqueue for sub-agent sessions" do
+      parent = Session.create!
+      sub_agent_session = Session.create!(parent_session: parent)
+
+      expect {
+        Goal.create!(session: sub_agent_session, description: "sub-agent goal")
+      }.not_to have_enqueued_job(PassiveRecallJob)
+    end
+  end
+
   describe "ActionCable broadcast" do
     let(:session) { Session.create! }
 

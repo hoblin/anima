@@ -26,6 +26,7 @@ class Goal < ApplicationRecord
   scope :root, -> { where(parent_goal_id: nil) }
 
   after_commit :broadcast_goals_update
+  after_commit :schedule_passive_recall, on: [:create, :update]
 
   # @return [Boolean] true if this goal has been completed
   def completed? = status == "completed"
@@ -90,6 +91,16 @@ class Goal < ApplicationRecord
     return unless parent_goal.parent_goal_id
 
     errors.add(:parent_goal, "cannot nest deeper than two levels")
+  end
+
+  # Triggers passive recall when goals change so relevant memories
+  # surface in the viewport automatically.
+  #
+  # @return [void]
+  def schedule_passive_recall
+    return if session.sub_agent?
+
+    PassiveRecallJob.perform_later(session_id)
   end
 
   # Broadcasts goal changes to all clients subscribed to this session.
