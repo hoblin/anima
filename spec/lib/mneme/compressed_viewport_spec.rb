@@ -119,7 +119,7 @@ RSpec.describe Mneme::CompressedViewport do
 
     it "splits events into three zones by token count" do
       # Create 9 events, each 100 tokens = 900 total. Zones are ~300 each.
-      events = 9.times.map do |i|
+      9.times.map do |i|
         type = i.even? ? "user_message" : "agent_message"
         create_event(type: type, content: "message #{i}", token_count: 100)
       end
@@ -141,7 +141,7 @@ RSpec.describe Mneme::CompressedViewport do
 
   describe "from_event_id filtering" do
     it "starts from the specified event ID" do
-      old_event = create_event(type: "user_message", content: "old message", token_count: 100)
+      create_event(type: "user_message", content: "old message", token_count: 100)
       new_event = create_event(type: "user_message", content: "new message", token_count: 100)
 
       viewport = described_class.new(session, token_budget: 10_000, from_event_id: new_event.id)
