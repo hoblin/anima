@@ -53,7 +53,7 @@ class ShellSession
       restart unless @alive
       execute_in_pty(command)
     end
-  rescue => error
+  rescue => error # rubocop:disable Lint/RescueException -- LLM must always get a result hash, never a stack trace
     {error: "#{error.class}: #{error.message}"}
   end
 
@@ -144,13 +144,18 @@ class ShellSession
     restore_working_directory(saved_pwd)
   end
 
+  # Restores the shell's working directory after a respawn.
+  # Skips silently if the directory no longer exists.
+  #
+  # @param saved_pwd [String, nil] directory path to restore
+  # @return [void]
   def restore_working_directory(saved_pwd)
     return unless saved_pwd && File.directory?(saved_pwd)
     execute_in_pty("cd #{Shellwords.shellescape(saved_pwd)}")
   end
 
   def create_fifo
-    File.mkfifo(@fifo_path)
+    File.mkfifo(@fifo_path, 0o600)
   rescue Errno::EEXIST
     # FIFO already exists — reuse it
   end
@@ -252,7 +257,7 @@ class ShellSession
   rescue Errno::EIO, IOError
     @alive = false
     {error: "Shell session terminated unexpectedly"}
-  rescue => error
+  rescue => error # rubocop:disable Lint/RescueException -- LLM must always get a result hash, never a stack trace
     {error: "#{error.class}: #{error.message}"}
   end
 
@@ -291,6 +296,8 @@ class ShellSession
   # @param marker [String] unique marker to wait for
   # @param deadline [Float] monotonic clock deadline
   # @return [Boolean] true if marker was found, false if deadline expired
+  # @raise [Errno::EIO] when the PTY child process has exited
+  # @raise [IOError] when the PTY file descriptor is closed
   def consume_until(marker, deadline:)
     loop do
       line = gets_with_deadline(deadline)
@@ -300,6 +307,7 @@ class ShellSession
   end
 
   # Reads a single line from the PTY, respecting a deadline.
+  # Caller must hold @mutex — @read_buffer is not independently synchronized.
   #
   # Uses IO.select for safe, non-interruptive timeout handling instead of
   # Timeout.timeout (which uses Thread.raise that can corrupt mutex state
@@ -332,6 +340,10 @@ class ShellSession
 
   # Sends Ctrl+C to interrupt the running command and drains leftover output.
   # If recovery fails, marks the session as dead (will be respawned on next run).
+  #
+  # @return [void]
+  # @raise [Errno::EIO] when the PTY child process has exited
+  # @raise [IOError] when the PTY file descriptor is closed
   def recover_from_timeout
     @pty_stdin.write("\x03")
     sleep 0.1
@@ -391,6 +403,8 @@ class ShellSession
   # Unconditionally cleans up all shell resources (PTY, FIFO, child process).
   # Does NOT short-circuit when @alive is already false — this ensures leaked
   # processes are reaped even after failed recovery marked the session dead.
+  #
+  # @return [void]
   def teardown
     @alive = false
     @read_buffer = +""
@@ -417,6 +431,7 @@ class ShellSession
     end
 
     begin
+      @stderr_thread&.join(1)
       @stderr_thread&.kill
     rescue ThreadError
       # Thread already dead
