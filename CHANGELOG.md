@@ -1,6 +1,9 @@
 ## [Unreleased]
 
 ### Added
+- **Goal-scoped event pinning** — Mneme can pin critical events (exact user instructions, key decisions, critical corrections) to active Goals via `attach_events_to_goals` tool; pinned events survive viewport eviction intact and appear in a `[pinned events]` section between snapshots and the sliding window; deduplication shows truncated text on first Goal reference, bare `event N` ID on subsequent Goals (#251)
+- **Reference-counted pin cleanup** — when a Goal completes, pinned events attached exclusively to it are automatically released; events shared with other active Goals stay pinned until all referencing Goals complete; no manual unpin needed (#251)
+- **Pinned events budget setting** — `pinned_budget_fraction` in `[mneme]` config section controls how much viewport space pinned events consume; viewport layout is now `[L2 snapshots] [L1 snapshots] [pinned events] [sliding window]` (#251)
 - **Snapshots in viewport** — Mneme snapshots now appear in the main agent's context window after their source events evict; viewport layout is `[L2 snapshots] [L1 snapshots] [sliding window]` with configurable token budget fractions for each layer (#250)
 - **Level 2 recursive compression** — when enough L1 snapshots accumulate, Mneme compresses them into a single L2 snapshot (days/weeks scale); L1 snapshots drop from viewport once covered by their L2 summary, keeping memory usage predictable at every time scale (#250)
 - **Snapshot budget settings** — `l1_budget_fraction`, `l2_budget_fraction`, and `l2_snapshot_threshold` in `[mneme]` config section control snapshot viewport allocation and compression triggers (#250)

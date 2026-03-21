@@ -136,3 +136,7 @@ l2_budget_fraction = 0.05
 
 # Number of uncovered Level 1 snapshots that triggers Level 2 compression.
 l2_snapshot_threshold = 5
+
+# Fraction of the main viewport token budget reserved for pinned events.
+# Pinned events appear between snapshots and the sliding window in the Goals section.
+pinned_budget_fraction = 0.05

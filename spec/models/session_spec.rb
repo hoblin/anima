@@ -931,6 +931,7 @@ RSpec.describe Session do
       before do
         allow(Anima::Settings).to receive(:mneme_l1_budget_fraction).and_return(0.0)
         allow(Anima::Settings).to receive(:mneme_l2_budget_fraction).and_return(0.0)
+        allow(Anima::Settings).to receive(:mneme_pinned_budget_fraction).and_return(0.0)
       end
 
       it "includes all events when within budget" do
@@ -1088,17 +1089,91 @@ RSpec.describe Session do
       end
 
       it "reduces sliding window budget by snapshot budget fractions" do
-        # Budget 1000, l1_fraction=0.15, l2_fraction=0.05
-        # Sliding budget = 1000 - 150 - 50 = 800
+        # Budget 1000, l1_fraction=0.15, l2_fraction=0.05, pinned_fraction=0.05
+        # Sliding budget = 1000 - 150 - 50 - 50 = 750
         session.events.create!(event_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 500)
         session.events.create!(event_type: "agent_message", payload: {"content" => "old reply"}, timestamp: 2, token_count: 500)
         session.events.create!(event_type: "user_message", payload: {"content" => "recent"}, timestamp: 3, token_count: 500)
 
         result = session.messages_for_llm(token_budget: 1000)
 
-        # With 800 token sliding budget: only newest event fits (500 < 800, next 500 exceeds remaining 300)
+        # With 750 token sliding budget: only newest event fits (500 < 750, next 500 exceeds remaining 250)
         event_contents = result.reject { |m| m[:content].to_s.start_with?("[") }.map { |m| m[:content] }
         expect(event_contents.size).to eq(1)
+      end
+    end
+
+    context "with pinned events" do
+      let(:session) { Session.create! }
+
+      before do
+        allow(Anima::Settings).to receive(:mneme_l1_budget_fraction).and_return(0.15)
+        allow(Anima::Settings).to receive(:mneme_l2_budget_fraction).and_return(0.05)
+        allow(Anima::Settings).to receive(:mneme_pinned_budget_fraction).and_return(0.05)
+      end
+
+      it "includes pinned events after snapshots and before sliding window" do
+        old_event = session.events.create!(event_type: "user_message", payload: {"content" => "critical instruction"}, timestamp: 1, token_count: 500)
+        session.events.create!(event_type: "user_message", payload: {"content" => "recent"}, timestamp: 2, token_count: 10)
+
+        goal = session.goals.create!(description: "Active goal")
+        pin = PinnedEvent.create!(event: old_event, session: session, display_text: "critical instruction")
+        GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
+
+        result = session.messages_for_llm(token_budget: 100)
+
+        pinned_msg = result.find { |m| m[:content].to_s.include?("[pinned events]") }
+        expect(pinned_msg).to be_present
+        expect(pinned_msg[:content]).to include("critical instruction")
+        expect(pinned_msg[:content]).to include("Active goal")
+      end
+
+      it "excludes pinned events whose source events are still in the viewport" do
+        event = session.events.create!(event_type: "user_message", payload: {"content" => "visible"}, timestamp: 1, token_count: 10)
+
+        goal = session.goals.create!(description: "Goal")
+        pin = PinnedEvent.create!(event: event, session: session, display_text: "visible")
+        GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
+
+        result = session.messages_for_llm(token_budget: 1000)
+
+        contents = result.map { |m| m[:content] }
+        expect(contents.none? { |c| c.include?("[pinned events]") }).to be true
+      end
+
+      it "deduplicates pinned events across goals — first shows text, second shows bare ID" do
+        old_event = session.events.create!(event_type: "user_message", payload: {"content" => "shared"}, timestamp: 1, token_count: 500)
+        session.events.create!(event_type: "user_message", payload: {"content" => "recent"}, timestamp: 2, token_count: 10)
+
+        goal_a = session.goals.create!(description: "Goal A")
+        goal_b = session.goals.create!(description: "Goal B")
+        pin = PinnedEvent.create!(event: old_event, session: session, display_text: "shared")
+        GoalPinnedEvent.create!(goal: goal_a, pinned_event: pin)
+        GoalPinnedEvent.create!(goal: goal_b, pinned_event: pin)
+
+        result = session.messages_for_llm(token_budget: 100)
+
+        pinned_content = result.find { |m| m[:content].to_s.include?("[pinned events]") }&.dig(:content)
+        expect(pinned_content).to be_present
+        # First goal shows text, second shows bare ID
+        expect(pinned_content).to include("event #{old_event.id}: shared")
+        expect(pinned_content).to match(/event #{old_event.id}\n|event #{old_event.id}$/)
+      end
+
+      it "skips pinned events for sub-agent sessions" do
+        parent = Session.create!
+        child = Session.create!(parent_session: parent, prompt: "sub-agent")
+        old_event = parent.events.create!(event_type: "user_message", payload: {"content" => "pinned"}, timestamp: 1, token_count: 10)
+        child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 2, token_count: 10)
+
+        goal = parent.goals.create!(description: "Goal")
+        pin = PinnedEvent.create!(event: old_event, session: parent, display_text: "pinned")
+        GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
+
+        result = child.messages_for_llm(token_budget: 1000)
+
+        contents = result.map { |m| m[:content] }
+        expect(contents.none? { |c| c.include?("[pinned events]") }).to be true
       end
     end
   end

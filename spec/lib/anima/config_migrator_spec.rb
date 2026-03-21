@@ -70,7 +70,8 @@ RSpec.describe Anima::ConfigMigrator do
           ["mneme", "viewport_fraction"],
           ["mneme", "l1_budget_fraction"],
           ["mneme", "l2_budget_fraction"],
-          ["mneme", "l2_snapshot_threshold"]
+          ["mneme", "l2_snapshot_threshold"],
+          ["mneme", "pinned_budget_fraction"]
         )
 
         updated = config_path.read

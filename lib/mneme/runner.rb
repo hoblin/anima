@@ -17,6 +17,7 @@ module Mneme
   class Runner
     TOOLS = [
       Tools::SaveSnapshot,
+      Tools::AttachEventsToGoals,
       Tools::EverythingOk
     ].freeze
 
@@ -45,8 +46,16 @@ module Mneme
       1. Read the eviction zone carefully.
       2. If it contains meaningful conversation (decisions, goals, context):
          Call save_snapshot with a concise summary.
-      3. If it contains only mechanical activity with no conversation:
+      3. If any events in the eviction zone are too important to summarize
+         (exact user instructions, critical corrections, key decisions),
+         pin them to active goals with attach_events_to_goals.
+         Pinned events survive eviction intact — use this sparingly for
+         events where the exact wording matters.
+      4. If it contains only mechanical activity with no conversation:
          Call everything_ok.
+
+      You may call BOTH save_snapshot AND attach_events_to_goals in one turn
+      when the zone has a mix of summarizable and pin-worthy events.
 
       Write summaries that capture:
       - What was discussed and decided
@@ -59,7 +68,8 @@ module Mneme
       - Mechanical execution steps
       - Verbatim quotes (paraphrase instead)
 
-      Always finish with exactly ONE tool call: either save_snapshot or everything_ok.
+      Always finish with at least one tool call: save_snapshot, attach_events_to_goals,
+      or everything_ok. You may combine save_snapshot with attach_events_to_goals.
     PROMPT
 
     # @param session [Session] the main session to observe
@@ -192,7 +202,8 @@ module Mneme
     end
 
     # Builds the active goals section for Mneme's context so it knows
-    # what Goals exist and can reference them in summaries.
+    # what Goals exist, which events are already pinned, and can reference
+    # them when deciding what to pin or summarize.
     #
     # @return [String] formatted goals section, or empty string
     def active_goals_section
@@ -200,7 +211,11 @@ module Mneme
       return "" if root_goals.empty?
 
       lines = root_goals.map { |goal| format_goal_for_mneme(goal) }
-      "\n\n🎯 Active Goals\n#{lines.join("\n")}\n"
+      pinned = format_existing_pins
+
+      section = "\n\n🎯 Active Goals\n#{lines.join("\n")}\n"
+      section += "\n📌 Already Pinned\n#{pinned}\n" if pinned
+      section
     end
 
     # Formats a goal with sub-goals for Mneme's context.
@@ -214,6 +229,23 @@ module Mneme
         parts << "    #{checkbox} #{sub.description} (id: #{sub.id})"
       end
       parts.join("\n")
+    end
+
+    # Lists already-pinned event IDs so Mneme avoids redundant pinning.
+    #
+    # @return [String, nil] formatted pin list, or nil when nothing is pinned
+    def format_existing_pins
+      pins = @session.pinned_events.includes(:goals).order(:event_id)
+      return nil if pins.empty?
+
+      pins.map { |pin| format_pin_for_mneme(pin) }.join("\n")
+    end
+
+    # @param pin [PinnedEvent] pin with preloaded goals
+    # @return [String] formatted pin line
+    def format_pin_for_mneme(pin)
+      goal_ids = pin.goals.map(&:id).join(", ")
+      "  event #{pin.event_id} → goals [#{goal_ids}]"
     end
 
     # @return [Logger]

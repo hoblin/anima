@@ -51,11 +51,16 @@ module AnalyticalBrain
         id = goal.id
         return {error: "Goal already completed: #{goal.description} (id: #{id})"} if goal.completed?
 
+        released = 0
         Goal.transaction do
           goal.update!(status: "completed", completed_at: Time.current)
           goal.cascade_completion! if goal.root?
+          released = goal.release_orphaned_pins!
         end
-        "Goal completed: #{goal.description} (id: #{id})"
+
+        msg = "Goal completed: #{goal.description} (id: #{id})"
+        msg += " (released #{released} orphaned pins)" if released > 0
+        msg
       end
     end
   end
