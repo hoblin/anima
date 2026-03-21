@@ -33,7 +33,8 @@ RSpec.configure do |config|
       "paths" => {"soul" => Rails.root.join("templates/soul.md").to_s},
       "session" => {"name_generation_interval" => 30},
       "analytical_brain" => {"max_tokens" => 4096, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "event_window" => 20},
-      "environment" => {"project_files" => ["CLAUDE.md", "AGENTS.md", "README.md", "CONTRIBUTING.md"], "project_files_max_depth" => 3}
+      "environment" => {"project_files" => ["CLAUDE.md", "AGENTS.md", "README.md", "CONTRIBUTING.md"], "project_files_max_depth" => 3},
+      "mneme" => {"max_tokens" => 2048, "viewport_fraction" => 0.33, "l1_budget_fraction" => 0.15, "l2_budget_fraction" => 0.05, "l2_snapshot_threshold" => 5}
     )
   end
 end

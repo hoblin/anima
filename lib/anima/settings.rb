@@ -187,6 +187,18 @@ module Anima
       # @return [Float]
       def mneme_viewport_fraction = get("mneme", "viewport_fraction")
 
+      # Fraction of the main viewport token budget reserved for L1 snapshots.
+      # @return [Float]
+      def mneme_l1_budget_fraction = get("mneme", "l1_budget_fraction")
+
+      # Fraction of the main viewport token budget reserved for L2 snapshots.
+      # @return [Float]
+      def mneme_l2_budget_fraction = get("mneme", "l2_budget_fraction")
+
+      # Number of uncovered L1 snapshots that triggers L2 compression.
+      # @return [Integer]
+      def mneme_l2_snapshot_threshold = get("mneme", "l2_snapshot_threshold")
+
       private
 
       # Reads a setting from the config file.
