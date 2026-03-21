@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+### Fixed
+- **WebGet SSL certificate verification** — bundle Mozilla CA certificates via `certifi` gem so HTTPS requests work on systems with incomplete CA stores (e.g. mise/rbenv-compiled Ruby) (#253)
+
 ### Added
 - **ToolDecorator content pipeline** — new server-side decorator layer that transforms tool responses for LLM consumption before they enter the event stream; `ToolDecorator` base class with factory dispatch by tool name, extensible for any tool (#253)
 - **WebGetToolDecorator** — Content-Type → method dispatch DSL: `text/html` converts to Markdown (strips scripts, styles, nav, footer, ads), `application/json` compresses to TOON (~40% token savings), unknown types pass through; metadata tags (`[Converted: HTML → Markdown]`) inform the LLM about transformations (#253)

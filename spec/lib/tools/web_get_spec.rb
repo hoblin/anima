@@ -46,6 +46,16 @@ RSpec.describe Tools::WebGet do
       end
     end
 
+    context "with an HTTPS URL", :vcr do
+      it "returns body and content_type" do
+        result = tool.execute("url" => "https://example.com")
+
+        expect(result).to be_a(Hash)
+        expect(result[:body]).to include("Example Domain")
+        expect(result[:content_type]).to be_a(String)
+      end
+    end
+
     context "with a large response", :vcr do
       it "truncates the response body" do
         result = tool.execute("url" => "https://www.gutenberg.org/files/1342/1342-0.txt")

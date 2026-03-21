@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "certifi"
 require "httparty"
 
 module Tools
@@ -43,7 +44,7 @@ module Tools
         return {error: "Only http and https URLs are supported, got: #{scheme.inspect}"}
       end
 
-      response = HTTParty.get(url, timeout: timeout, follow_redirects: false)
+      response = HTTParty.get(url, timeout: timeout, follow_redirects: false, ssl_ca_file: Certifi.where)
       body = truncate_body(response.body.to_s)
       content_type = response.content_type || "text/plain"
 
