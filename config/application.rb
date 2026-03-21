@@ -27,9 +27,6 @@ module Anima
 
     config.action_cable.disable_request_forgery_protection = true
 
-    # Use SQL schema format — FTS5 virtual tables can't be expressed in Ruby DSL.
-    config.active_record.schema_format = :sql
-
     anima_home = Pathname.new(File.expand_path("~/.anima"))
 
     config.paths["log"] = [anima_home.join("log", "#{Rails.env}.log").to_s]

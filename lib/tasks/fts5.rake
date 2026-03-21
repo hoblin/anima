@@ -1,12 +1,6 @@
 # frozen_string_literal: true
 
-# Strips internal FTS5 tables from structure.sql after schema dump.
-# SQLite auto-creates these when the virtual table is loaded — including
-# them causes "reserved for internal use" errors on db:schema:load.
-Rake::Task["db:schema:dump"].enhance do
-  path = Rails.root.join("db/structure.sql")
-  next unless path.exist?
-
-  cleaned = path.read.gsub(/^CREATE TABLE IF NOT EXISTS 'events_fts_\w+'.*;\n/, "")
-  path.write(cleaned)
-end
+# No custom Rake tasks needed — FTS5 virtual tables are handled by:
+# - Migration: creates/drops the FTS5 table and triggers
+# - Initializer (config/initializers/fts5_schema_dump.rb): skips virtual
+#   tables during schema dump since they can't be expressed in Ruby DSL
