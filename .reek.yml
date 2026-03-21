@@ -27,6 +27,8 @@ detectors:
       - "Anima::ConfigMigrator"
       - "WebGetToolDecorator"
       - "Tools::WebGet#validate_and_fetch"
+      # Remember tool renders events from other objects — formatting IS the job.
+      - "Tools::Remember"
   # Private helpers don't need instance state to be valid.
   # ActiveJob#perform is always a utility function by design.
   # No-op tools (Think, EverythingIsReady) don't need instance state — by design.
@@ -37,6 +39,7 @@ detectors:
     public_methods_only: true
     exclude:
       - "AnalyticalBrainJob#perform"
+      - "PassiveRecallJob#perform"
       - "Tools::Think#execute"
       - "TUI::Formatting"
       - "WebGetToolDecorator#method_missing"
@@ -69,6 +72,13 @@ detectors:
   DuplicateMethodCall:
     exclude:
       - "Tools::WebGet#validate_and_fetch"
+      # Remember tool accesses event data for formatting — inherent to rendering.
+      - "Tools::Remember"
+  # Method length is enforced by code review, not arbitrary line counts
+  # build_sections passes context through to sub-methods — inherent to assembly.
+  LongParameterList:
+    exclude:
+      - "Tools::Remember#build_sections"
   # Method length is enforced by code review, not arbitrary line counts
   TooManyStatements:
     enabled: false

@@ -931,6 +931,7 @@ RSpec.describe Session do
       before do
         allow(Anima::Settings).to receive(:mneme_l1_budget_fraction).and_return(0.0)
         allow(Anima::Settings).to receive(:mneme_l2_budget_fraction).and_return(0.0)
+        allow(Anima::Settings).to receive(:recall_budget_fraction).and_return(0.0)
       end
 
       it "includes all events when within budget" do

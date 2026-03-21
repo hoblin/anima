@@ -199,6 +199,20 @@ module Anima
       # @return [Integer]
       def mneme_l2_snapshot_threshold = get("mneme", "l2_snapshot_threshold")
 
+      # ─── Recall (Associative Memory) ────────────────────────────
+
+      # Maximum search results returned per FTS5 query.
+      # @return [Integer]
+      def recall_max_results = get("recall", "max_results")
+
+      # Fraction of the main viewport token budget reserved for recalled memories.
+      # @return [Float]
+      def recall_budget_fraction = get("recall", "budget_fraction")
+
+      # Maximum tokens per individual recall snippet.
+      # @return [Integer]
+      def recall_max_snippet_tokens = get("recall", "max_snippet_tokens")
+
       private
 
       # Reads a setting from the config file.
