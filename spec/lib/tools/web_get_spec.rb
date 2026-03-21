@@ -37,28 +37,44 @@ RSpec.describe Tools::WebGet do
 
   describe "#execute" do
     context "with a valid URL", :vcr do
-      it "returns the response body" do
+      it "returns body and content_type" do
         result = tool.execute("url" => "http://example.com")
-        expect(result).to include("Example Domain")
+
+        expect(result).to be_a(Hash)
+        expect(result[:body]).to include("Example Domain")
+        expect(result[:content_type]).to be_a(String)
+      end
+    end
+
+    context "with an HTTPS URL", :vcr do
+      it "returns body and content_type" do
+        result = tool.execute("url" => "https://example.com")
+
+        expect(result).to be_a(Hash)
+        expect(result[:body]).to include("Example Domain")
+        expect(result[:content_type]).to be_a(String)
       end
     end
 
     context "with a large response", :vcr do
-      it "truncates the response" do
+      it "truncates the response body" do
         result = tool.execute("url" => "https://www.gutenberg.org/files/1342/1342-0.txt")
-        expect(result).to include("[Truncated:")
+
+        expect(result[:body]).to include("[Truncated:")
       end
     end
 
     context "with an unsupported scheme" do
       it "returns an error for ftp URLs" do
         result = tool.execute("url" => "ftp://files.example.com/file.txt")
+
         expect(result).to be_a(Hash)
         expect(result[:error]).to include("Only http and https")
       end
 
       it "returns an error for file URLs" do
         result = tool.execute("url" => "file:///etc/passwd")
+
         expect(result).to be_a(Hash)
         expect(result[:error]).to include("Only http and https")
       end
@@ -67,6 +83,7 @@ RSpec.describe Tools::WebGet do
     context "with an invalid URL" do
       it "returns an error" do
         result = tool.execute("url" => "not a url at all %%")
+
         expect(result).to be_a(Hash)
         expect(result[:error]).to be_a(String)
       end
@@ -77,6 +94,7 @@ RSpec.describe Tools::WebGet do
         allow(HTTParty).to receive(:get).and_raise(Net::ReadTimeout)
 
         result = tool.execute("url" => "https://slow.example.com")
+
         expect(result).to be_a(Hash)
         expect(result[:error]).to include("timed out")
       end
@@ -87,6 +105,7 @@ RSpec.describe Tools::WebGet do
         allow(HTTParty).to receive(:get).and_raise(Errno::ECONNREFUSED)
 
         result = tool.execute("url" => "https://down.example.com")
+
         expect(result).to be_a(Hash)
         expect(result[:error]).to include("Connection refused")
       end

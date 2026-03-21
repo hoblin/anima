@@ -19,7 +19,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 19 Mar 2026 21:00:15 GMT
+      - Sat, 21 Mar 2026 10:09:22 GMT
       Content-Type:
       - text/html
       Transfer-Encoding:
@@ -31,7 +31,7 @@ http_interactions:
       Allow:
       - GET, HEAD
       Age:
-      - '8581'
+      - '2269'
       Cf-Cache-Status:
       - HIT
       Vary:
@@ -55,5 +55,5 @@ http_interactions:
         cm1pc3Npb24uIEF2b2lkIHVzZSBpbiBvcGVyYXRpb25zLjwvcD48cD48YSBo
         cmVmPSJodHRwczovL2lhbmEub3JnL2RvbWFpbnMvZXhhbXBsZSI+TGVhcm4g
         bW9yZTwvYT48L3A+PC9kaXY+PC9ib2R5PjwvaHRtbD4K
-  recorded_at: Thu, 19 Mar 2026 21:00:15 GMT
+  recorded_at: Sat, 21 Mar 2026 10:09:22 GMT
 recorded_with: VCR 6.4.0

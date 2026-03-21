@@ -196,6 +196,7 @@ module LLM
         {error: "#{error.class}: #{error.message}"}
       end
 
+      result = ToolDecorator.call(name, result)
       result_content = format_tool_result(result)
       log(:debug, "tool_result: #{name} → #{result_content.to_s.truncate(200)}")
 

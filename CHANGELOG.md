@@ -1,6 +1,12 @@
 ## [Unreleased]
 
+### Fixed
+- **WebGet SSL certificate verification** — bundle Mozilla CA certificates via `certifi` gem so HTTPS requests work on systems with incomplete CA stores (e.g. mise/rbenv-compiled Ruby) (#253)
+
 ### Added
+- **ToolDecorator content pipeline** — new server-side decorator layer that transforms tool responses for LLM consumption before they enter the event stream; `ToolDecorator` base class with factory dispatch by tool name, extensible for any tool (#253)
+- **WebGetToolDecorator** — Content-Type → method dispatch DSL: `text/html` converts to Markdown (strips scripts, styles, nav, footer, ads), `application/json` compresses to TOON (~40% token savings), unknown types pass through; metadata tags (`[Converted: HTML → Markdown]`) inform the LLM about transformations (#253)
+- `Tools::WebGet` now returns structured `{body:, content_type:}` result, preserving HTTP Content-Type header for format-specific decoration (#253)
 - **Mneme memory department** — third event bus department that watches for viewport eviction and creates summaries before context is lost; mirrors the analytical brain's phantom LLM loop pattern (#249)
 - **Terminal event trigger** — deterministic volume-driven mechanism: tracks a boundary event ID on sessions, fires Mneme when it leaves the viewport, advances the boundary after completion; self-regulating cycle that fires exactly when context is about to be lost (#249)
 - **Compressed viewport for Mneme** — user/agent messages and think events as full text, tool calls compressed to `[N tools called]` counters, three-zone delimiters (eviction/middle/recent) for zone-aware summarization (#249)
