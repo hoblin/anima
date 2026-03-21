@@ -27,22 +27,24 @@ jobs:
       - name: Install gem (runtime deps only)
         run: gem install ./anima-core-*.gem
 
-      - name: Configure bundler to skip dev/test groups
+      - name: Verify Gemfile is NOT in the gem package
+        run: |
+          GEM_ROOT=$(ruby -e "puts Gem::Specification.find_by_name('anima-core').gem_dir")
+          if [ -f "$GEM_ROOT/Gemfile" ]; then
+            echo "FAIL: Gemfile found in gem package — Bundler will break production installs"
+            exit 1
+          fi
+          echo "OK: No Gemfile in gem — Bundler correctly skipped at boot"
+
+      - name: Verify config/boot.rb skips Bundler without Gemfile
         run: |
           GEM_ROOT=$(ruby -e "puts Gem::Specification.find_by_name('anima-core').gem_dir")
           cd "$GEM_ROOT"
-          bundle config set --local without development:test
+          ruby -e "require_relative 'config/boot'; puts 'Boot OK (Bundler skipped)'"
 
-      - name: Verify bundle resolves without dev/test gems
-        run: |
-          GEM_ROOT=$(ruby -e "puts Gem::Specification.find_by_name('anima-core').gem_dir")
-          cd "$GEM_ROOT"
-          BUNDLE_GEMFILE="$GEM_ROOT/Gemfile" ruby -e "require 'bundler/setup'; puts 'Bundle resolves OK'"
-
-      - name: Verify Rails boots
+      - name: Verify Rails loads via RubyGems (no Bundler)
         run: |
           GEM_ROOT=$(ruby -e "puts Gem::Specification.find_by_name('anima-core').gem_dir")
           cd "$GEM_ROOT"
           RAILS_ENV=production ANIMA_HOME=/tmp/anima-smoke \
-            BUNDLE_GEMFILE="$GEM_ROOT/Gemfile" \
-            ruby -e "require 'bundler/setup'; require 'rails'; puts 'Rails loads OK'"
+            ruby -e "require_relative 'config/boot'; require 'rails'; puts 'Rails loads OK'"
