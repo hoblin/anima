@@ -135,19 +135,9 @@ class AgentLoop
 
   private
 
-  # Creates the user event record directly. Used by {#process} because
-  # the global Persister skips non-pending user messages (the job
-  # handles their persistence in the Bounce Back transaction).
-  #
-  # @param content [String] user message text
-  # @return [Event]
+  # @see Session#create_user_event
   def persist_user_event(content)
-    now = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
-    @session.events.create!(
-      event_type: "user_message",
-      payload: {type: "user_message", content: content, session_id: @session.id, timestamp: now},
-      timestamp: now
-    )
+    @session.create_user_event(content)
   end
 
   # Assembles LLM options (system prompt, environment context).

@@ -21,6 +21,9 @@
 class AgentRequestJob < ApplicationJob
   queue_as :default
 
+  # ActionCable action signaling clients to prompt for an API token.
+  AUTH_REQUIRED_ACTION = "authentication_required"
+
   # Standard path only — bounce back handles its own errors.
   retry_on Providers::Anthropic::TransientError,
     wait: :polynomially_longer, attempts: 5 do |job, error|
@@ -39,7 +42,7 @@ class AgentRequestJob < ApplicationJob
     ))
     ActionCable.server.broadcast(
       "session_#{session_id}",
-      {"action" => "authentication_required", "message" => error.message}
+      {"action" => AUTH_REQUIRED_ACTION, "message" => error.message}
     )
   end
 
@@ -119,26 +122,15 @@ class AgentRequestJob < ApplicationJob
     broadcast_auth_required(session.id, error) if error.is_a?(Providers::Anthropic::AuthenticationError)
   end
 
-  # Creates the user event record directly (not via EventBus+Persister).
-  # The Persister skips non-pending user messages because the job owns
-  # their persistence lifecycle.
-  #
-  # @param session [Session]
-  # @param content [String]
-  # @return [Event] the persisted event record
+  # @see Session#create_user_event
   def persist_user_event(session, content)
-    now = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
-    session.events.create!(
-      event_type: "user_message",
-      payload: {type: "user_message", content: content, session_id: session.id, timestamp: now},
-      timestamp: now
-    )
+    session.create_user_event(content)
   end
 
   def broadcast_auth_required(session_id, error)
     ActionCable.server.broadcast(
       "session_#{session_id}",
-      {"action" => "authentication_required", "message" => error.message}
+      {"action" => AUTH_REQUIRED_ACTION, "message" => error.message}
     )
   end
 

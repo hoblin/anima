@@ -46,6 +46,7 @@ RSpec.describe AgentRequestJob, "bounce back" do
 
         expect(agent_loop).to have_received(:deliver!)
         expect(agent_loop).to have_received(:run)
+        expect(agent_loop).to have_received(:finalize)
       end
 
       it "processes pending messages after the main loop" do

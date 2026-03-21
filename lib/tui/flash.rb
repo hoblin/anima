@@ -24,6 +24,9 @@ module TUI
   class Flash
     AUTO_DISMISS_SECONDS = 5.0
 
+    # Flash area occupies at most 1/3 of the chat pane height.
+    MAX_HEIGHT_FRACTION = 3
+
     Entry = Struct.new(:message, :level, :created_at, keyword_init: true)
 
     LEVEL_STYLES = {
@@ -78,7 +81,7 @@ module TUI
       expire!
       return 0 if @entries.empty?
 
-      height = [@entries.size, area.height / 3].min
+      height = [@entries.size, area.height / MAX_HEIGHT_FRACTION].min
 
       flash_area, _ = tui.split(
         area,

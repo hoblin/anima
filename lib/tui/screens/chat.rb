@@ -306,11 +306,6 @@ module TUI
         @message_store.remove_by_ids(evicted_ids)
       end
 
-      # Reacts to connection lifecycle changes from the WebSocket client.
-      # Clears stale state when subscription begins so the store is empty
-      # before history arrives. Action Cable sends confirm_subscription
-      # AFTER transmit calls in the subscribed callback, so clearing on
-      # "subscribed" would wipe history that already arrived.
       # Renders flash messages as colored bars inside the chat frame,
       # just below the top border (respecting rounded corners).
       def render_flash(frame, chat_area, tui)
@@ -321,6 +316,11 @@ module TUI
         @flash.render(frame, inner, tui)
       end
 
+      # Reacts to connection lifecycle changes from the WebSocket client.
+      # Clears stale state when subscription begins so the store is empty
+      # before history arrives. Action Cable sends confirm_subscription
+      # AFTER transmit calls in the subscribed callback, so clearing on
+      # "subscribed" would wipe history that already arrived.
       def handle_connection_status(msg)
         case msg["status"]
         when "subscribing"
