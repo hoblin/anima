@@ -6,6 +6,10 @@ module Tools
   # runs via {AgentRequestJob}, and communicates with the parent through
   # natural text messages routed by {Events::Subscribers::SubagentMessageRouter}.
   #
+  # Nickname assignment is handled by the {AnalyticalBrain::Runner} which
+  # runs synchronously at spawn time — the same brain that manages skills,
+  # goals, and workflows for the main session.
+  #
   # For named specialists with predefined prompts and tools, see {SpawnSpecialist}.
   class SpawnSubagent < Base
     include SubagentPrompts
@@ -50,9 +54,9 @@ module Tools
       @session = session
     end
 
-    # Creates a child session with a generated nickname, persists the task
-    # as a user message, and queues background processing.
-    # Returns immediately (non-blocking).
+    # Creates a child session, runs the analytical brain to assign a nickname,
+    # persists the task as a user message, and queues background processing.
+    # Returns immediately after brain completes (blocking for ~200ms).
     #
     # @param input [Hash<String, Object>] with "task", "expected_output", and optional "tools"
     # @return [String] confirmation with child session ID and @nickname
@@ -79,15 +83,14 @@ module Tools
     private
 
     def spawn_child(task, expected_output, granted_tools)
-      nickname = NicknameGenerator.call(task, @session)
       child = Session.create!(
         parent_session_id: @session.id,
-        name: nickname,
         prompt: "#{GENERIC_PROMPT}\n#{EXPECTED_DELIVERABLE_PREFIX}#{expected_output}",
         granted_tools: granted_tools
       )
-      child.broadcast_children_update_to_parent
       child.create_user_event(task)
+      assign_nickname_via_brain(child)
+      child.broadcast_children_update_to_parent
       AgentRequestJob.perform_later(child.id)
       child
     end

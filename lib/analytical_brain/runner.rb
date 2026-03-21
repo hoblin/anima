@@ -2,67 +2,99 @@
 
 module AnalyticalBrain
   # Orchestrates the analytical brain — a phantom (non-persisted) LLM loop
-  # that observes a main session and performs background maintenance via tools.
+  # that observes a session and performs background maintenance via tools.
   #
-  # The analytical brain is a "subconscious" process: it operates ON the main
-  # session without the main agent knowing it exists. Tools mutate the main
-  # session directly (e.g. renaming it, activating skills), but no trace of
-  # the analytical brain's reasoning is persisted.
+  # The brain's capabilities are assembled from independent {Responsibility}
+  # modules, each contributing a prompt section and tools. Which modules are
+  # active depends on the session type:
+  #
+  # * **Parent sessions** — session naming, skill/workflow/goal management
+  # * **Child sessions** — sub-agent nickname assignment, skill/workflow/goal management
+  #
+  # Tools mutate the observed session directly (e.g. renaming it, activating
+  # skills), but no trace of the brain's reasoning is persisted — events are
+  # emitted into a phantom session (session_id: nil).
   #
   # @example
   #   AnalyticalBrain::Runner.new(session).call
   class Runner
-    # Tools available to the analytical brain.
-    # @return [Array<Class<Tools::Base>>]
-    TOOLS = [
-      Tools::RenameSession,
-      Tools::ActivateSkill,
-      Tools::DeactivateSkill,
-      Tools::ReadWorkflow,
-      Tools::DeactivateWorkflow,
-      Tools::SetGoal,
-      Tools::UpdateGoal,
-      Tools::FinishGoal,
-      Tools::EverythingIsReady
-    ].freeze
+    # A composable unit of brain capability: a prompt section + its tools.
+    Responsibility = Data.define(:prompt, :tools)
 
-    SYSTEM_PROMPT = <<~PROMPT
+    RESPONSIBILITIES = {
+      session_naming: Responsibility.new(
+        prompt: <<~PROMPT,
+          ──────────────────────────────
+          SESSION NAMING
+          ──────────────────────────────
+          Call rename_session when the topic becomes clear or shifts.
+          Format: one emoji + 1-3 descriptive words.
+        PROMPT
+        tools: [Tools::RenameSession]
+      ),
+
+      sub_agent_naming: Responsibility.new(
+        prompt: <<~PROMPT,
+          ──────────────────────────────
+          SUB-AGENT NAMING
+          ──────────────────────────────
+          Call assign_nickname to give this sub-agent a short, memorable nickname.
+          Format: 1-3 lowercase words joined by hyphens (e.g. "loop-sleuth", "api-scout").
+          Evocative of the task, fun, easy to type after @.
+          Generate EXACTLY ONE nickname. If taken, pick another — no numeric suffixes.
+        PROMPT
+        tools: [Tools::AssignNickname]
+      ),
+
+      skill_management: Responsibility.new(
+        prompt: <<~PROMPT,
+          ──────────────────────────────
+          SKILL MANAGEMENT
+          ──────────────────────────────
+          Call activate_skill when the conversation matches a skill's description.
+          Call deactivate_skill when the agent moves to a different domain.
+          Multiple skills can be active at once.
+        PROMPT
+        tools: [Tools::ActivateSkill, Tools::DeactivateSkill]
+      ),
+
+      workflow_management: Responsibility.new(
+        prompt: <<~PROMPT,
+          ──────────────────────────────
+          WORKFLOW MANAGEMENT
+          ──────────────────────────────
+          Call read_workflow when the user starts a multi-step task matching a workflow description.
+          Read the returned content and use judgment to create appropriate goals — not a mechanical 1:1 mapping.
+          Adapt to context: skip irrelevant steps, add extra steps for unfamiliar areas.
+          Call deactivate_workflow when the workflow completes or the user shifts focus.
+          Only one workflow can be active at a time — activating a new one replaces the previous.
+        PROMPT
+        tools: [Tools::ReadWorkflow, Tools::DeactivateWorkflow]
+      ),
+
+      goal_tracking: Responsibility.new(
+        prompt: <<~PROMPT,
+          ──────────────────────────────
+          GOAL TRACKING
+          ──────────────────────────────
+          Call set_goal to create a root goal when the user starts a multi-step task.
+          Call set_goal with parent_goal_id to add sub-goals (TODO items) under it.
+          Call update_goal to refine a goal's description as understanding evolves.
+          Call finish_goal when the main agent completes work a goal describes.
+          Finishing a root goal cascades — all active sub-goals are completed too.
+          Never duplicate an existing goal — check the active goals list first.
+        PROMPT
+        tools: [Tools::SetGoal, Tools::UpdateGoal, Tools::FinishGoal]
+      )
+    }.freeze
+
+    BASE_PROMPT = <<~PROMPT
       You are a background automation that manages session metadata.
       You MUST ONLY communicate through tool calls — NEVER output text.
       Always finish by calling everything_is_ready.
+    PROMPT
 
-      ──────────────────────────────
-      SESSION NAMING
-      ──────────────────────────────
-      Call rename_session when the topic becomes clear or shifts.
-      Format: one emoji + 1-3 descriptive words.
-
-      ──────────────────────────────
-      SKILL MANAGEMENT
-      ──────────────────────────────
-      Call activate_skill when the conversation matches a skill's description.
-      Call deactivate_skill when the agent moves to a different domain.
-      Multiple skills can be active at once.
-
-      ──────────────────────────────
-      WORKFLOW MANAGEMENT
-      ──────────────────────────────
-      Call read_workflow when the user starts a multi-step task matching a workflow description.
-      Read the returned content and use judgment to create appropriate goals — not a mechanical 1:1 mapping.
-      Adapt to context: skip irrelevant steps, add extra steps for unfamiliar areas.
-      Call deactivate_workflow when the workflow completes or the user shifts focus.
-      Only one workflow can be active at a time — activating a new one replaces the previous.
-
-      ──────────────────────────────
-      GOAL TRACKING
-      ──────────────────────────────
-      Call set_goal to create a root goal when the user starts a multi-step task.
-      Call set_goal with parent_goal_id to add sub-goals (TODO items) under it.
-      Call update_goal to refine a goal's description as understanding evolves.
-      Call finish_goal when the main agent completes work a goal describes.
-      Finishing a root goal cascades — all active sub-goals are completed too.
-      Never duplicate an existing goal — check the active goals list first.
-
+    COMPLETION_PROMPT = <<~PROMPT
       ──────────────────────────────
       COMPLETION
       ──────────────────────────────
@@ -70,7 +102,11 @@ module AnalyticalBrain
       If nothing needs changing, call it immediately as your only tool call.
     PROMPT
 
-    # @param session [Session] the main session to observe and maintain
+    # Which responsibilities activate for each session type.
+    PARENT_RESPONSIBILITIES = %i[session_naming skill_management workflow_management goal_tracking].freeze
+    CHILD_RESPONSIBILITIES = %i[sub_agent_naming skill_management workflow_management goal_tracking].freeze
+
+    # @param session [Session] the session to observe and maintain
     # @param client [LLM::Client, nil] injectable LLM client (defaults to fast model)
     def initialize(session, client: nil)
       @session = session
@@ -81,9 +117,9 @@ module AnalyticalBrain
       )
     end
 
-    # Runs the analytical brain loop. Builds context from the main session's
-    # recent events, calls the LLM with the analytical brain's tool set, and
-    # executes any tool calls against the main session.
+    # Runs the analytical brain loop. Builds context from the session's
+    # recent events, calls the LLM with the session-appropriate tool set,
+    # and executes any tool calls against the session.
     #
     # Events emitted during tool execution are not persisted — the phantom
     # session_id (nil) causes the global Persister to skip them.
@@ -116,13 +152,21 @@ module AnalyticalBrain
 
     private
 
+    # @return [Array<Symbol>] responsibility keys for this session type
+    def active_responsibility_keys
+      @session.sub_agent? ? CHILD_RESPONSIBILITIES : PARENT_RESPONSIBILITIES
+    end
+
+    # @return [Array<Responsibility>] active responsibility modules
+    def active_responsibilities
+      active_responsibility_keys.map { |key| RESPONSIBILITIES.fetch(key) }
+    end
+
     # Builds a condensed transcript of recent events as a single user message.
-    # The analytical brain doesn't need multi-turn conversation history — it
-    # just needs to understand "what is the agent doing RIGHT NOW?"
+    # The framing differs by session type:
     #
-    # The transcript is framed as an observation of the main session, not as
-    # a direct message to the analytical brain. Without this framing, Haiku
-    # confuses the main session's user messages with requests directed at it.
+    # * **Parent:** "The main session is working on this: [transcript]"
+    # * **Child:** "A sub-agent has been spawned with this task: [transcript]"
     #
     # @return [Array<Hash>] single-element messages array, or empty if no events
     def build_messages
@@ -130,6 +174,15 @@ module AnalyticalBrain
       return [] if events.empty?
 
       transcript = events.filter_map { |event| EventDecorator.for(event)&.render("brain") }.join("\n")
+
+      if @session.sub_agent?
+        build_child_message(transcript)
+      else
+        build_parent_message(transcript)
+      end
+    end
+
+    def build_parent_message(transcript)
       content = <<~MSG.strip
         The main session is working on this:
         ```
@@ -137,6 +190,18 @@ module AnalyticalBrain
         ```
 
         Observe the conversation and take action: manage goals, activate or deactivate relevant skills, read workflows when a multi-step task matches, rename the session if needed, then call everything_is_ready.
+      MSG
+      [{role: "user", content: content}]
+    end
+
+    def build_child_message(transcript)
+      content = <<~MSG.strip
+        A sub-agent has been spawned with this task:
+        ```
+        #{transcript}
+        ```
+
+        Assign a memorable nickname based on the task, activate relevant skills, then call everything_is_ready.
       MSG
       [{role: "user", content: content}]
     end
@@ -151,14 +216,16 @@ module AnalyticalBrain
         .reverse
     end
 
-    # Builds the system prompt with current session state, skills catalog,
-    # and currently active skills.
+    # Builds the system prompt from active responsibilities + context sections.
     #
     # @return [String]
     def build_system_prompt
       sections = [
-        SYSTEM_PROMPT,
+        BASE_PROMPT,
+        *active_responsibilities.map(&:prompt),
+        COMPLETION_PROMPT,
         session_state_section,
+        active_siblings_section,
         skills_catalog_section,
         workflows_catalog_section,
         active_goals_section
@@ -178,6 +245,27 @@ module AnalyticalBrain
         Session name: #{name}
         Active skills: #{skills}
         Active workflow: #{workflow}
+      SECTION
+    end
+
+    # Shows sibling nicknames already in use so the brain avoids collisions
+    # at prompt level (the tool also validates at execution time).
+    #
+    # @return [String, nil] sibling names section, or nil for parent sessions
+    def active_siblings_section
+      return unless @session.sub_agent?
+
+      siblings = @session.parent_session.child_sessions
+        .where.not(id: @session.id)
+        .where.not(name: nil)
+        .pluck(:name)
+      return if siblings.empty?
+
+      <<~SECTION
+        ──────────────────────────────
+        ACTIVE SIBLINGS
+        ──────────────────────────────
+        These nicknames are already taken: #{siblings.join(", ")}
       SECTION
     end
 
@@ -248,11 +336,16 @@ module AnalyticalBrain
     # @return [Logger] dev-only analytical brain logger
     def log = AnalyticalBrain.logger
 
-    # @return [Tools::Registry] registry with analytical brain tools
+    # @return [Tools::Registry] registry with tools from active responsibilities
     def build_registry
       registry = ::Tools::Registry.new(context: {main_session: @session})
-      TOOLS.each { |tool| registry.register(tool) }
+      active_tools.each { |tool| registry.register(tool) }
       registry
+    end
+
+    # @return [Array<Class<Tools::Base>>] tools from all active responsibilities + completion
+    def active_tools
+      active_responsibilities.flat_map(&:tools) + [Tools::EverythingIsReady]
     end
   end
 end

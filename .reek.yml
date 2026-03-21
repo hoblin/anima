@@ -35,6 +35,10 @@ detectors:
       - "Tools::SpawnSubagent#spawn_child"
       - "Tools::SpawnSpecialist#spawn_child"
       - "Tools::SpawnSpecialist#execute"
+      # Nickname assignment operates on child session and parent's children — inherent.
+      - "Tools::SubagentPrompts#assign_nickname_via_brain"
+      # Validation methods naturally reference the validated value more than self.
+      - "AnalyticalBrain::Tools::AssignNickname#validate"
   # Private helpers don't need instance state to be valid.
   # ActiveJob#perform is always a utility function by design.
   # No-op tools (Think, EverythingIsReady) don't need instance state — by design.
@@ -60,12 +64,16 @@ detectors:
       - "Session"
       - "Anima::CLI::Mcp"
       - "EnvironmentProbe"
+      # Runner composes system prompt from modular sections — methods grow with responsibilities.
+      - "AnalyticalBrain::Runner"
   # Decorators branch on tool type across 4 render modes — inherent to the pattern.
   # Installer methods each guard idempotency with config_path.exist? — by design.
   RepeatedConditional:
     exclude:
       - "ToolCallDecorator"
       - "Anima::Installer"
+      # Runner checks session type to compose responsibilities — the core dispatch.
+      - "AnalyticalBrain::Runner"
   # EventDecorator holds shared rendering constants (icons, markers, dispatch maps).
   TooManyConstants:
     exclude:
@@ -80,6 +88,8 @@ detectors:
       - "Tools::WebGet#validate_and_fetch"
       # Remember tool accesses event data for formatting — inherent to rendering.
       - "Tools::Remember"
+      # Nickname validation checks parent_session for existence then queries — two calls, one guard.
+      - "AnalyticalBrain::Tools::AssignNickname#sibling_nickname_taken?"
   # Method length is enforced by code review, not arbitrary line counts
   # build_sections passes context through to sub-methods — inherent to assembly.
   LongParameterList:

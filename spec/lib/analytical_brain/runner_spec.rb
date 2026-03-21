@@ -123,24 +123,6 @@ RSpec.describe AnalyticalBrain::Runner do
         expect(captured_opts[:system]).to include("Active skills: None")
       end
 
-      it "registers all analytical brain tools" do
-        captured_registry = nil
-        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
-          captured_registry = opts[:registry]
-          "Done"
-        }
-
-        runner.call
-
-        expect(captured_registry.registered?("rename_session")).to be true
-        expect(captured_registry.registered?("activate_skill")).to be true
-        expect(captured_registry.registered?("deactivate_skill")).to be true
-        expect(captured_registry.registered?("set_goal")).to be true
-        expect(captured_registry.registered?("update_goal")).to be true
-        expect(captured_registry.registered?("finish_goal")).to be true
-        expect(captured_registry.registered?("everything_is_ready")).to be true
-      end
-
       it "includes goal tracking responsibilities in system prompt" do
         captured_opts = nil
         allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
@@ -410,6 +392,237 @@ RSpec.describe AnalyticalBrain::Runner do
         described_class.new(session).call
 
         # Brain may or may not rename — but it should complete without error
+      end
+    end
+  end
+
+  describe "modular responsibility composition" do
+    context "parent session" do
+      before do
+        session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+        session.events.create!(event_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
+      end
+
+      it "registers rename_session tool" do
+        captured_registry = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_registry = opts[:registry]
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_registry.registered?("rename_session")).to be true
+      end
+
+      it "does not register assign_nickname tool" do
+        captured_registry = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_registry = opts[:registry]
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_registry.registered?("assign_nickname")).to be false
+      end
+
+      it "registers all shared tools" do
+        captured_registry = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_registry = opts[:registry]
+          "Done"
+        }
+
+        runner.call
+
+        %w[activate_skill deactivate_skill read_workflow deactivate_workflow
+          set_goal update_goal finish_goal everything_is_ready].each do |name|
+          expect(captured_registry.registered?(name)).to be(true), "expected #{name} to be registered"
+        end
+      end
+
+      it "includes SESSION NAMING in system prompt" do
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).to include("SESSION NAMING")
+      end
+
+      it "does not include SUB-AGENT NAMING in system prompt" do
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).not_to include("SUB-AGENT NAMING")
+      end
+
+      it "does not include ACTIVE SIBLINGS in system prompt" do
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).not_to include("ACTIVE SIBLINGS")
+      end
+
+      it "frames the message as main session observation" do
+        captured_messages = nil
+        allow(client).to receive(:chat_with_tools) { |msgs, **_opts|
+          captured_messages = msgs
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_messages.first[:content]).to include("The main session is working on this:")
+      end
+    end
+
+    context "child session" do
+      let(:parent) { Session.create! }
+      let(:child_session) { Session.create!(parent_session: parent, prompt: "sub-agent task") }
+      let(:child_runner) { described_class.new(child_session, client: client) }
+
+      before do
+        child_session.events.create!(
+          event_type: "user_message",
+          payload: {"content" => "Read lib/agent_loop.rb and summarize tool flow"},
+          timestamp: 1
+        )
+      end
+
+      it "registers assign_nickname tool" do
+        captured_registry = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_registry = opts[:registry]
+          "Done"
+        }
+
+        child_runner.call
+
+        expect(captured_registry.registered?("assign_nickname")).to be true
+      end
+
+      it "does not register rename_session tool" do
+        captured_registry = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_registry = opts[:registry]
+          "Done"
+        }
+
+        child_runner.call
+
+        expect(captured_registry.registered?("rename_session")).to be false
+      end
+
+      it "registers shared tools for skill/workflow/goal management" do
+        captured_registry = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_registry = opts[:registry]
+          "Done"
+        }
+
+        child_runner.call
+
+        %w[activate_skill deactivate_skill set_goal everything_is_ready].each do |name|
+          expect(captured_registry.registered?(name)).to be(true), "expected #{name} to be registered"
+        end
+      end
+
+      it "includes SUB-AGENT NAMING in system prompt" do
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        child_runner.call
+
+        expect(captured_opts[:system]).to include("SUB-AGENT NAMING")
+      end
+
+      it "does not include SESSION NAMING in system prompt" do
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        child_runner.call
+
+        expect(captured_opts[:system]).not_to include("SESSION NAMING")
+      end
+
+      it "frames the message as sub-agent task" do
+        captured_messages = nil
+        allow(client).to receive(:chat_with_tools) { |msgs, **_opts|
+          captured_messages = msgs
+          "Done"
+        }
+
+        child_runner.call
+
+        content = captured_messages.first[:content]
+        expect(content).to include("A sub-agent has been spawned with this task:")
+        expect(content).to include("Read lib/agent_loop.rb")
+        expect(content).to include("Assign a memorable nickname")
+      end
+
+      it "includes active siblings in system prompt when siblings exist" do
+        Session.create!(parent_session: parent, prompt: "sibling", name: "api-scout")
+
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        child_runner.call
+
+        expect(captured_opts[:system]).to include("ACTIVE SIBLINGS")
+        expect(captured_opts[:system]).to include("api-scout")
+      end
+
+      it "omits active siblings section when no named siblings exist" do
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        child_runner.call
+
+        expect(captured_opts[:system]).not_to include("ACTIVE SIBLINGS")
+      end
+
+      it "excludes own name from siblings list" do
+        child_session.update!(name: "self-name")
+        Session.create!(parent_session: parent, prompt: "sibling", name: "other-name")
+
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        child_runner.call
+
+        siblings_line = captured_opts[:system][/These nicknames are already taken:.*/]
+        expect(siblings_line).to include("other-name")
+        expect(siblings_line).not_to include("self-name")
       end
     end
   end
