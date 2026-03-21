@@ -3,11 +3,19 @@
 require "io/console"
 require "pty"
 require "securerandom"
-require "timeout"
+require "shellwords"
 
 # Persistent shell session backed by a PTY with FIFO-based stderr separation.
 # Commands share working directory, environment variables, and shell history
 # within a conversation. Multiple tools share the same session.
+#
+# Auto-recovers from timeouts and crashes: if the shell dies, the next command
+# transparently respawns a fresh shell and restores the working directory.
+#
+# Uses IO.select-based deadlines instead of Timeout.timeout for all PTY reads.
+# Timeout.timeout is unsafe with PTY I/O — it uses Thread.raise which can
+# corrupt mutex state, leave resources inconsistent, and cause exceptions
+# to fire outside handler blocks when nested.
 #
 # @example
 #   session = ShellSession.new(session_id: 42)
@@ -25,27 +33,37 @@ class ShellSession
     @mutex = Mutex.new
     @fifo_path = File.join(Dir.tmpdir, "anima-stderr-#{Process.pid}-#{SecureRandom.hex(8)}")
     @alive = false
+    @finalized = false
     @pwd = nil
+    @read_buffer = +""
     self.class.cleanup_orphans
     start
     self.class.register(self)
   end
 
-  # Execute a command in the persistent shell.
+  # Execute a command in the persistent shell. Respawns the shell
+  # automatically if the previous session died (timeout, crash, etc.).
   #
   # @param command [String] bash command to execute
   # @return [Hash] with :stdout, :stderr, :exit_code keys on success
   # @return [Hash] with :error key on failure
   def run(command)
     @mutex.synchronize do
-      return {error: "Shell session is not running"} unless @alive
+      return {error: "Shell session is not running"} if @finalized
+      restart unless @alive
       execute_in_pty(command)
     end
+  rescue => error
+    {error: "#{error.class}: #{error.message}"}
   end
 
-  # Clean up PTY, FIFO, and child process.
+  # Clean up PTY, FIFO, and child process. Permanent — the session
+  # will not auto-respawn after this call.
   def finalize
-    @mutex.synchronize { shutdown }
+    @mutex.synchronize do
+      @finalized = true
+      teardown
+    end
     self.class.unregister(self)
   end
 
@@ -73,7 +91,7 @@ class ShellSession
     # Finalize all live sessions. Called automatically via at_exit.
     def cleanup_all
       @sessions_mutex.synchronize do
-        @sessions.each { |session| session.send(:shutdown) }
+        @sessions.each { |session| session.send(:teardown) }
         @sessions.clear
       end
     end
@@ -116,6 +134,21 @@ class ShellSession
     @alive = true
   end
 
+  # Shuts down the current shell and spawns a fresh one, restoring the
+  # previous working directory. Called automatically when @alive is false.
+  def restart
+    saved_pwd = @pwd
+    teardown
+    @fifo_path = File.join(Dir.tmpdir, "anima-stderr-#{Process.pid}-#{SecureRandom.hex(8)}")
+    start
+    restore_working_directory(saved_pwd)
+  end
+
+  def restore_working_directory(saved_pwd)
+    return unless saved_pwd && File.directory?(saved_pwd)
+    execute_in_pty("cd #{Shellwords.shellescape(saved_pwd)}")
+  end
+
   def create_fifo
     File.mkfifo(@fifo_path)
   rescue Errno::EEXIST
@@ -123,8 +156,14 @@ class ShellSession
   end
 
   def spawn_shell
+    env = {
+      "TERM" => "dumb",
+      "GIT_PAGER" => "cat",            # Prevent git from launching less/more in PTY
+      "PAGER" => "cat",                 # Same for non-git pagers
+      "GIT_TERMINAL_PROMPT" => "0"      # Fail immediately instead of prompting for credentials
+    }
     @pty_stdout, @pty_stdin, @pid = PTY.spawn(
-      {"TERM" => "dumb"},
+      env,
       "bash", "--norc", "--noprofile"
     )
     # Disable terminal echo via termios before bash can echo our commands.
@@ -165,45 +204,57 @@ class ShellSession
     @pty_stdin.puts "PS1=''"
     @pty_stdin.puts "exec 2>#{@fifo_path}"
     @pty_stdin.puts "echo '#{marker}'"
-    consume_until(marker)
+    unless consume_until(marker, deadline: monotonic_now + 10)
+      raise IOError, "Shell initialization timed out"
+    end
   end
 
   def execute_in_pty(command)
     clear_stderr
     marker = "__ANIMA_#{SecureRandom.hex(8)}__"
     timeout = Anima::Settings.command_timeout
+    deadline = monotonic_now + timeout
 
-    Timeout.timeout(timeout) do
-      # All on one line: run command, capture exit code, ensure newline
-      # before marker so output without trailing newline doesn't merge.
-      @pty_stdin.puts "#{command}; __anima_ec=$?; echo; echo '#{marker}' $__anima_ec"
+    @pty_stdin.puts "#{command}; __anima_ec=$?; echo; echo '#{marker}' $__anima_ec"
 
-      stdout, exit_code = read_until_marker(marker)
-      update_pwd
+    stdout, exit_code = read_until_marker(marker, deadline: deadline)
+
+    if exit_code.nil?
+      recover_from_timeout
       stderr = drain_stderr
-
-      {
-        stdout: truncate(stdout),
-        stderr: truncate(stderr),
-        exit_code: exit_code
-      }
+      parts = ["Command timed out after #{timeout} seconds."]
+      parts << "Partial stdout:\n#{truncate(stdout)}" unless stdout.empty?
+      parts << "stderr:\n#{truncate(stderr)}" unless stderr.empty?
+      return {error: parts.join("\n\n")}
     end
-  rescue Timeout::Error
-    recover_from_timeout
-    {error: "Command timed out after #{timeout} seconds"}
-  rescue Errno::EIO
+
+    update_pwd
+    stderr = drain_stderr
+
+    {
+      stdout: truncate(stdout),
+      stderr: truncate(stderr),
+      exit_code: exit_code
+    }
+  rescue Errno::EIO, IOError
     @alive = false
     {error: "Shell session terminated unexpectedly"}
   rescue => error
     {error: "#{error.class}: #{error.message}"}
   end
 
-  def read_until_marker(marker)
+  # Reads lines from the PTY until the marker appears.
+  #
+  # @param marker [String] unique marker to detect command completion
+  # @param deadline [Float] monotonic clock deadline
+  # @return [Array(String, Integer)] stdout and exit code on success
+  # @return [Array(String, nil)] partial stdout and nil exit code on timeout
+  def read_until_marker(marker, deadline:)
     lines = []
     exit_code = nil
 
     loop do
-      line = @pty_stdout.gets
+      line = gets_with_deadline(deadline)
       break if line.nil?
 
       line = line.chomp.delete("\r")
@@ -219,26 +270,63 @@ class ShellSession
     # Strip trailing empty line added by our separator echo
     lines.pop if lines.last == ""
 
-    [lines.join("\n"), exit_code || -1]
+    [lines.join("\n"), exit_code]
   end
 
-  def consume_until(marker)
+  # Reads and discards PTY output until the marker appears or deadline expires.
+  #
+  # @param marker [String] unique marker to wait for
+  # @param deadline [Float] monotonic clock deadline
+  # @return [Boolean] true if marker was found, false if deadline expired
+  def consume_until(marker, deadline:)
     loop do
-      line = @pty_stdout.gets
-      break if line.nil?
-      break if line.chomp.delete("\r").include?(marker)
+      line = gets_with_deadline(deadline)
+      return false if line.nil?
+      return true if line.chomp.delete("\r").include?(marker)
+    end
+  end
+
+  # Reads a single line from the PTY, respecting a deadline.
+  #
+  # Uses IO.select for safe, non-interruptive timeout handling instead of
+  # Timeout.timeout (which uses Thread.raise that can corrupt mutex state
+  # and leave resources inconsistent).
+  #
+  # @param deadline [Float] monotonic clock deadline
+  # @return [String] line including trailing newline
+  # @return [nil] if deadline expired
+  # @raise [Errno::EIO] when the PTY child process exits (Linux)
+  # @raise [IOError] when the PTY file descriptor is closed
+  def gets_with_deadline(deadline)
+    loop do
+      if (idx = @read_buffer.index("\n"))
+        return @read_buffer.slice!(0..idx)
+      end
+
+      remaining = deadline - monotonic_now
+      return nil if remaining <= 0
+
+      ready = IO.select([@pty_stdout], nil, nil, remaining)
+      return nil unless ready
+
+      begin
+        @read_buffer << @pty_stdout.read_nonblock(4096)
+      rescue IO::WaitReadable
+        # Spurious wakeup from IO.select — retry
+      end
     end
   end
 
   # Sends Ctrl+C to interrupt the running command and drains leftover output.
-  # If recovery fails, marks the session as dead.
+  # If recovery fails, marks the session as dead (will be respawned on next run).
   def recover_from_timeout
     @pty_stdin.write("\x03")
     sleep 0.1
     marker = "__ANIMA_RECOVER_#{SecureRandom.hex(8)}__"
     @pty_stdin.puts "echo '#{marker}'"
-    Timeout.timeout(3) { consume_until(marker) }
-  rescue Timeout::Error, Errno::EIO, IOError
+    recovered = consume_until(marker, deadline: monotonic_now + 3)
+    @alive = false unless recovered
+  rescue Errno::EIO, IOError
     @alive = false
   end
 
@@ -283,15 +371,24 @@ class ShellSession
       "\n\n[Truncated: output exceeded #{max_bytes} bytes]"
   end
 
-  def shutdown
-    return unless @alive
-    @alive = false
+  def monotonic_now
+    Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  end
 
-    begin
-      pgid = Process.getpgid(@pid)
-      Process.kill("TERM", -pgid)
-    rescue Errno::ESRCH, Errno::EPERM
-      # Process group already gone
+  # Unconditionally cleans up all shell resources (PTY, FIFO, child process).
+  # Does NOT short-circuit when @alive is already false — this ensures leaked
+  # processes are reaped even after failed recovery marked the session dead.
+  def teardown
+    @alive = false
+    @read_buffer = +""
+
+    if @pid
+      begin
+        pgid = Process.getpgid(@pid)
+        Process.kill("TERM", -pgid)
+      rescue Errno::ESRCH, Errno::EPERM
+        # Process group already gone
+      end
     end
 
     begin
@@ -312,23 +409,27 @@ class ShellSession
       # Thread already dead
     end
 
-    File.delete(@fifo_path) if File.exist?(@fifo_path)
+    File.delete(@fifo_path) if @fifo_path && File.exist?(@fifo_path)
 
-    begin
-      # Non-blocking reap with SIGKILL fallback if process doesn't exit in time
-      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 2
-      loop do
-        _, status = Process.wait2(@pid, Process::WNOHANG)
-        break if status
-        if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
-          Process.kill("KILL", @pid)
-          Process.wait(@pid)
-          break
+    if @pid
+      begin
+        # Non-blocking reap with SIGKILL fallback if process doesn't exit in time
+        deadline = monotonic_now + 2
+        loop do
+          _, status = Process.wait2(@pid, Process::WNOHANG)
+          break if status
+          if monotonic_now > deadline
+            Process.kill("KILL", @pid)
+            Process.wait(@pid)
+            break
+          end
+          sleep 0.05
         end
-        sleep 0.05
+      rescue Errno::ECHILD, Errno::ESRCH
+        # Already reaped
       end
-    rescue Errno::ECHILD, Errno::ESRCH
-      # Already reaped
+
+      @pid = nil
     end
   end
 end

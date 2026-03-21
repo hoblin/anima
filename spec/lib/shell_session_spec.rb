@@ -69,7 +69,7 @@ RSpec.describe ShellSession do
       expect(result[:stderr]).to include("[Truncated:")
     end
 
-    it "returns error when shell is not running" do
+    it "returns error when shell is finalized" do
       shell.finalize
       result = shell.run("echo hello")
       expect(result[:error]).to include("not running")
@@ -82,6 +82,64 @@ RSpec.describe ShellSession do
         result = timed_shell.run("sleep 30")
         expect(result[:error]).to include("timed out")
         timed_shell.finalize
+      end
+
+      it "includes partial output in timeout error" do
+        allow(Anima::Settings).to receive(:command_timeout).and_return(2)
+        timed_shell = described_class.new(session_id: "partial-#{SecureRandom.hex(4)}")
+        result = timed_shell.run("echo 'before hang' && sleep 30")
+        expect(result[:error]).to include("timed out")
+        expect(result[:error]).to include("before hang")
+        timed_shell.finalize
+      end
+
+      it "recovers after a command timeout" do
+        allow(Anima::Settings).to receive(:command_timeout).and_return(1)
+        timed_shell = described_class.new(session_id: "recover-#{SecureRandom.hex(4)}")
+        timed_shell.run("sleep 30")
+
+        allow(Anima::Settings).to receive(:command_timeout).and_call_original
+        result = timed_shell.run("echo recovered")
+        expect(result[:stdout]).to eq("recovered")
+        timed_shell.finalize
+      end
+    end
+
+    context "auto-respawn" do
+      it "respawns after the shell process exits" do
+        result = shell.run("exit 1")
+        expect(result[:error]).to include("terminated unexpectedly")
+
+        result = shell.run("echo respawned")
+        expect(result[:stdout]).to eq("respawned")
+      end
+
+      it "preserves working directory after respawn" do
+        shell.run("cd /tmp")
+        expect(shell.pwd).to eq("/tmp")
+
+        shell.run("exit 1")
+
+        result = shell.run("pwd")
+        expect(result[:stdout]).to eq("/tmp")
+      end
+
+      it "does not respawn after finalize" do
+        shell.finalize
+        result = shell.run("echo hello")
+        expect(result[:error]).to include("not running")
+      end
+    end
+
+    context "git pager prevention" do
+      it "sets GIT_PAGER to cat to prevent pager hangs" do
+        result = shell.run("echo $GIT_PAGER")
+        expect(result[:stdout]).to eq("cat")
+      end
+
+      it "sets GIT_TERMINAL_PROMPT to 0" do
+        result = shell.run("echo $GIT_TERMINAL_PROMPT")
+        expect(result[:stdout]).to eq("0")
       end
     end
   end
@@ -127,6 +185,19 @@ RSpec.describe ShellSession do
     it "terminates the child process" do
       pid = shell.instance_variable_get(:@pid)
       shell.finalize
+      expect { Process.kill(0, pid) }.to raise_error(Errno::ESRCH)
+    end
+
+    it "cleans up even when session is already dead" do
+      pid = shell.instance_variable_get(:@pid)
+      fifo_path = shell.instance_variable_get(:@fifo_path)
+
+      # Simulate failed recovery that leaves @alive = false
+      shell.run("exit 1")
+      expect(shell.alive?).to be false
+
+      shell.finalize
+      expect(File.exist?(fifo_path)).to be false
       expect { Process.kill(0, pid) }.to raise_error(Errno::ESRCH)
     end
   end
