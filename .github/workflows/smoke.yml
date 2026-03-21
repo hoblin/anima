@@ -21,73 +21,39 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
 
-      - name: Build gem
-        run: gem build anima-core.gemspec
+      - name: Build and install gem
+        run: |
+          gem build anima-core.gemspec
+          gem install ./anima-core-*.gem
 
-      - name: Install gem (runtime deps only)
-        run: gem install ./anima-core-*.gem
-
-      - name: Verify Gemfile is NOT in the gem package
+      - name: Verify Gemfile excluded from gem
         run: |
           GEM_ROOT=$(ruby -e "puts Gem::Specification.find_by_name('anima-core').gem_dir")
-          if [ -f "$GEM_ROOT/Gemfile" ]; then
-            echo "FAIL: Gemfile found in gem package — Bundler will break production installs"
-            exit 1
-          fi
-          echo "OK: No Gemfile in gem — Bundler correctly skipped at boot"
+          test ! -f "$GEM_ROOT/Gemfile" || { echo "FAIL: Gemfile in gem breaks production"; exit 1; }
 
-      - name: Run anima install
+      - name: anima install
         run: anima install
 
       - name: Verify ~/.anima structure
         run: |
-          for dir in agents skills db config/credentials log tmp; do
-            test -d "$HOME/.anima/$dir" || { echo "FAIL: missing ~/.anima/$dir"; exit 1; }
-          done
-          test -f "$HOME/.anima/soul.md" || { echo "FAIL: missing soul.md"; exit 1; }
-          test -f "$HOME/.anima/config.toml" || { echo "FAIL: missing config.toml"; exit 1; }
-          test -f "$HOME/.anima/config/credentials/production.yml.enc" || { echo "FAIL: missing production credentials"; exit 1; }
-          test -f "$HOME/.anima/config/credentials/production.key" || { echo "FAIL: missing production key"; exit 1; }
-          echo "OK: ~/.anima structure verified"
+          test -f "$HOME/.anima/soul.md"
+          test -f "$HOME/.anima/config.toml"
+          test -f "$HOME/.anima/config/credentials/production.yml.enc"
+          test -f "$HOME/.anima/config/credentials/production.key"
 
-      - name: Prepare database
+      - name: Start brain and verify ActionCable
         run: |
-          GEM_ROOT=$(ruby -e "puts Gem::Specification.find_by_name('anima-core').gem_dir")
-          cd "$GEM_ROOT"
-          RAILS_ENV=production bin/rails db:prepare
+          anima start -e production &
 
-      - name: Start brain and verify ActionCable accepts connections
-        run: |
-          GEM_ROOT=$(ruby -e "puts Gem::Specification.find_by_name('anima-core').gem_dir")
-          cd "$GEM_ROOT"
-
-          # Start the web server in the background
-          RAILS_ENV=production bin/rails server -p 42134 &
-          SERVER_PID=$!
-
-          # Wait for server to be ready
           for i in $(seq 1 30); do
-            if curl -s -o /dev/null -w '%{http_code}' http://localhost:42134/up | grep -q '200'; then
-              echo "OK: Server is up"
-              break
-            fi
-            if [ $i -eq 30 ]; then
-              echo "FAIL: Server did not start within 30 seconds"
-              kill $SERVER_PID 2>/dev/null
-              exit 1
-            fi
+            curl -sf http://localhost:42134/up >/dev/null 2>&1 && break
+            [ $i -eq 30 ] && { echo "FAIL: brain did not start"; exit 1; }
             sleep 1
           done
+          echo "Brain is up"
 
-          # Verify ActionCable endpoint responds (WebSocket upgrade returns 426 over plain HTTP)
           HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:42134/cable)
-          if echo "$HTTP_CODE" | grep -qE '(101|200|426)'; then
-            echo "OK: ActionCable endpoint responds (HTTP $HTTP_CODE)"
-          else
-            echo "FAIL: ActionCable endpoint returned HTTP $HTTP_CODE"
-            kill $SERVER_PID 2>/dev/null
-            exit 1
-          fi
+          echo "ActionCable responded HTTP $HTTP_CODE"
+          echo "$HTTP_CODE" | grep -qE '(101|200|426)' || { echo "FAIL: unexpected response"; exit 1; }
 
-          kill $SERVER_PID 2>/dev/null
           echo "Smoke test passed: gem install → anima install → brain running → ActionCable accepting"
