@@ -1,6 +1,7 @@
 ## [Unreleased]
 
 ### Fixed
+- **TUI session name wrapping in HUD** — long session names now wrap across multiple lines instead of being silently clipped at the panel boundary (#168)
 - **WebGet SSL certificate verification** — bundle Mozilla CA certificates via `certifi` gem so HTTPS requests work on systems with incomplete CA stores (e.g. mise/rbenv-compiled Ruby) (#253)
 
 ### Added
