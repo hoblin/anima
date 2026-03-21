@@ -79,7 +79,7 @@ RSpec.describe Anima::CLI do
 
       expect(TUI::CableClient).to have_received(:new).with(host: "localhost:19999")
       expect(cable_client).to have_received(:connect)
-      expect(TUI::App).to have_received(:new).with(cable_client: cable_client)
+      expect(TUI::App).to have_received(:new).with(cable_client: cable_client, debug: false)
     end
   end
 
