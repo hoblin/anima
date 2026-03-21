@@ -1,6 +1,12 @@
 ## [Unreleased]
 
 ### Added
+- **Mneme memory department** — third event bus department that watches for viewport eviction and creates summaries before context is lost; mirrors the analytical brain's phantom LLM loop pattern (#249)
+- **Terminal event trigger** — deterministic volume-driven mechanism: tracks a boundary event ID on sessions, fires Mneme when it leaves the viewport, advances the boundary after completion; self-regulating cycle that fires exactly when context is about to be lost (#249)
+- **Compressed viewport for Mneme** — user/agent messages and think events as full text, tool calls compressed to `[N tools called]` counters, three-zone delimiters (eviction/middle/recent) for zone-aware summarization (#249)
+- **Snapshot model** — persisted summaries with event ID ranges, compression levels, and token counts; `snapshots` table with session association and level-based scoping (#249)
+- **Mneme tools** — `save_snapshot` for persisting summaries with token-limited text, `everything_ok` sentinel for when no action is needed (#249)
+- **Mneme configuration** — `[mneme]` section in `config.toml` with `max_tokens` and `viewport_fraction` settings backed by `Anima::Settings` (#249)
 - **TUI viewport virtualization** — renders only messages visible in the scroll window instead of processing the entire conversation history; uses overflow-based building (adds entries until viewport is full, adapting to entry sizes) with `HeightMap` for scroll-position-to-entry mapping; rendering cost is now constant regardless of conversation length (#228)
 - **TUI performance logging** — `--debug` flag enables frame-level timing to `log/tui_performance.log` with per-phase measurements (build_lines, paragraph, line_count, sidebar); uses `TUI::PerformanceLogger` with monotonic clock and 5MB log rotation (#182)
 - **TUI render caching** — `MessageStore` version tracking eliminates O(n×m) per-frame line rebuilds; cached message lines and `line_count` results are reused across frames until content actually changes; scrolling no longer triggers any Ruby-side computation, running at ~1.8ms/frame regardless of message count (#182)

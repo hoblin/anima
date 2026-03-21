@@ -90,6 +90,10 @@ module Event::Broadcasting
     evicted_ids = session.recalculate_viewport!
     broadcast_payload["evicted_event_ids"] = evicted_ids if evicted_ids.any?
 
+    # The nil? branch fires on every broadcast until boundary initializes, but
+    # schedule_mneme! returns early after setting the boundary — cost is one DB read + write.
+    session.schedule_mneme! if evicted_ids.any? || session.mneme_boundary_event_id.nil?
+
     ActionCable.server.broadcast("session_#{session_id}", broadcast_payload)
   end
 end
