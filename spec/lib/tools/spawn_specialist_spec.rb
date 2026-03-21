@@ -122,12 +122,14 @@ RSpec.describe Tools::SpawnSpecialist do
     end
 
     it "broadcasts children update to parent session" do
-      expect(ActionCable.server).to receive(:broadcast).with(
+      allow(ActionCable.server).to receive(:broadcast)
+
+      tool.execute(input)
+
+      expect(ActionCable.server).to have_received(:broadcast).with(
         "session_#{parent_session.id}",
         hash_including("action" => "children_updated", "session_id" => parent_session.id)
       )
-
-      tool.execute(input)
     end
 
     it "sets parent reference on child session" do
@@ -137,16 +139,13 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(child.parent_session).to eq(parent_session)
     end
 
-    it "emits a user_message event in the child session" do
-      collector = Events::Subscribers::MessageCollector.new
-      Events::Bus.subscribe(collector)
-
+    it "persists a user_message event in the child session" do
       tool.execute(input)
 
-      user_messages = collector.messages.select { |m| m[:role] == "user" }
-      expect(user_messages.last[:content]).to eq("Read lib/agent_loop.rb and summarize the tool execution flow")
-    ensure
-      Events::Bus.unsubscribe(collector)
+      child = Session.last
+      user_event = child.events.find_by(event_type: "user_message")
+      expect(user_event).to be_present
+      expect(user_event.payload["content"]).to eq("Read lib/agent_loop.rb and summarize the tool execution flow")
     end
 
     it "enqueues AgentRequestJob for the child session" do

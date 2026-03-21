@@ -26,7 +26,7 @@ module Tools
         properties: {
           task: {
             type: "string",
-            description: "What the sub-agent should do (emitted as its first user message)"
+            description: "What the sub-agent should do (persisted as its first user message)"
           },
           expected_output: {
             type: "string",
@@ -49,7 +49,7 @@ module Tools
       @session = session
     end
 
-    # Creates a child session, emits the task as a user message, and
+    # Creates a child session, persists the task as a user message, and
     # queues background processing. Returns immediately (non-blocking).
     #
     # @param input [Hash<String, Object>] with "task", "expected_output", and optional "tools"
@@ -80,7 +80,7 @@ module Tools
         granted_tools: granted_tools
       )
       child.broadcast_children_update_to_parent
-      Events::Bus.emit(Events::UserMessage.new(content: task, session_id: child.id))
+      child.create_user_event(task)
       AgentRequestJob.perform_later(child.id)
       child
     end

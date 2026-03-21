@@ -34,7 +34,7 @@ module Tools
           name: name_property,
           task: {
             type: "string",
-            description: "What the specialist should do (emitted as its first user message)"
+            description: "What the specialist should do (persisted as its first user message)"
           },
           expected_output: {
             type: "string",
@@ -66,7 +66,7 @@ module Tools
     end
 
     # Creates a child session with the specialist's predefined prompt and tools,
-    # emits the task as a user message, and queues background processing.
+    # persists the task as a user message, and queues background processing.
     #
     # @param input [Hash<String, Object>] with "name", "task", and "expected_output"
     # @return [String] confirmation with child session ID
@@ -98,7 +98,7 @@ module Tools
         name: definition.name
       )
       child.broadcast_children_update_to_parent
-      Events::Bus.emit(Events::UserMessage.new(content: task, session_id: child.id))
+      child.create_user_event(task)
       AgentRequestJob.perform_later(child.id)
       child
     end
