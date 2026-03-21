@@ -26,5 +26,7 @@ class CreateMnemeSchema < ActiveRecord::Migration[8.1]
     end
 
     add_index :snapshots, [:session_id, :level]
+    add_index :snapshots, [:session_id, :from_event_id, :to_event_id],
+      name: "index_snapshots_on_session_and_event_range"
   end
 end

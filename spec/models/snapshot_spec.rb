@@ -29,6 +29,15 @@ RSpec.describe Snapshot do
       expect(snapshot).not_to be_valid
     end
 
+    it "rejects text exceeding MAX_TEXT_BYTES" do
+      snapshot = session.snapshots.build(
+        text: "x" * (Snapshot::MAX_TEXT_BYTES + 1),
+        from_event_id: 1, to_event_id: 10, level: 1
+      )
+      expect(snapshot).not_to be_valid
+      expect(snapshot.errors[:text]).to include(/too long/)
+    end
+
     it "creates a valid snapshot with all required fields" do
       snapshot = session.snapshots.create!(
         text: "Summary of events", from_event_id: 1, to_event_id: 10, level: 1

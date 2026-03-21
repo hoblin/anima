@@ -57,11 +57,11 @@ class Session < ApplicationRecord
     # Initialize boundary on first conversation event
     if mneme_boundary_event_id.nil?
       first_conversation = events.deliverable
-        .where(event_type: %w[user_message agent_message system_message])
+        .where(event_type: Event::CONVERSATION_TYPES)
         .order(:id).first
       first_conversation ||= events.deliverable
         .where(event_type: "tool_call")
-        .find_by("json_extract(payload, '$.tool_name') = ?", "think")
+        .detect { |e| e.payload["tool_name"] == Event::THINK_TOOL }
 
       if first_conversation
         update_column(:mneme_boundary_event_id, first_conversation.id)

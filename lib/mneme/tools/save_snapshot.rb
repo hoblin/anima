@@ -42,7 +42,7 @@ module Mneme
 
       def execute(input)
         text = input["text"].to_s.strip
-        return {error: "Summary text cannot be blank"} if text.empty?
+        return "Error: Summary text cannot be blank" if text.empty?
 
         snapshot = @main_session.snapshots.create!(
           text: text,

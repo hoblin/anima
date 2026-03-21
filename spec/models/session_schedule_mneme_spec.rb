@@ -49,6 +49,15 @@ RSpec.describe Session, "#schedule_mneme!" do
       expect { session.schedule_mneme! }.not_to have_enqueued_job(MnemeJob)
     end
 
+    it "initializes the boundary to a think event when no messages exist" do
+      think = create_event(session, type: "tool_call", tool_name: "think",
+        tool_input: {"thoughts" => "Let me think"})
+
+      session.schedule_mneme!
+
+      expect(session.reload.mneme_boundary_event_id).to eq(think.id)
+    end
+
     it "does nothing when there are no conversation events" do
       session.schedule_mneme!
 

@@ -20,7 +20,11 @@
 class Snapshot < ApplicationRecord
   belongs_to :session
 
-  validates :text, presence: true
+  # 32KB — generous upper bound (~8K tokens). The LLM tool description advises
+  # a tighter limit (mneme_max_tokens), but this hard cap prevents unbounded storage.
+  MAX_TEXT_BYTES = 32_768
+
+  validates :text, presence: true, length: {maximum: MAX_TEXT_BYTES}
   validates :from_event_id, presence: true
   validates :to_event_id, presence: true
   validates :level, presence: true, numericality: {greater_than: 0}

@@ -51,16 +51,16 @@ RSpec.describe Mneme::Tools::SaveSnapshot do
       expect(result).to include("events 1..50")
     end
 
-    it "returns an error for blank text" do
+    it "returns an error string for blank text" do
       result = tool.execute("text" => "  ")
 
-      expect(result).to eq({error: "Summary text cannot be blank"})
+      expect(result).to eq("Error: Summary text cannot be blank")
     end
 
-    it "returns an error for nil text" do
+    it "returns an error string for nil text" do
       result = tool.execute("text" => nil)
 
-      expect(result).to eq({error: "Summary text cannot be blank"})
+      expect(result).to eq("Error: Summary text cannot be blank")
     end
 
     it "estimates token count for the saved snapshot" do

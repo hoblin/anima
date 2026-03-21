@@ -18,16 +18,11 @@ module Mneme
   #   viewport = Mneme::CompressedViewport.new(session, token_budget: 60_000)
   #   viewport.render  #=> "── EVICTION ZONE ──\nevent 42 User: ..."
   class CompressedViewport
-    THINK_TOOL = "think"
-
     ZONE_DELIMITERS = {
-      eviction: "\u2500\u2500 EVICTION ZONE (upper third) \u2500\u2500",
-      middle: "\u2500\u2500 MIDDLE ZONE \u2500\u2500",
-      recent: "\u2500\u2500 RECENT ZONE (lower third) \u2500\u2500"
+      eviction: "── EVICTION ZONE (upper third) ──",
+      middle: "── MIDDLE ZONE ──",
+      recent: "── RECENT ZONE (lower third) ──"
     }.freeze
-
-    # Event types that Mneme sees as full text (conversation events).
-    CONVERSATION_TYPES = %w[user_message agent_message system_message].freeze
 
     # @param session [Session] the session to build viewport for
     # @param token_budget [Integer] total tokens available for Mneme's viewport
@@ -43,7 +38,6 @@ module Mneme
     #
     # @return [String] compressed viewport with zone delimiters
     def render
-      events = fetch_events
       return "" if events.empty?
 
       zones = split_into_zones(events)
@@ -59,6 +53,7 @@ module Mneme
 
     # Fetches events within token budget, starting from from_event_id.
     # Selects newest-first until budget exhausted, returns chronological.
+    # Caches per-event token costs in @event_costs for reuse by split_into_zones.
     #
     # @return [Array<Event>]
     def fetch_events
@@ -69,6 +64,7 @@ module Mneme
       end
 
       selected = []
+      @event_costs = {}
       remaining = @token_budget
 
       scope.reorder(id: :desc).each do |event|
@@ -76,6 +72,7 @@ module Mneme
         break if cost > remaining && selected.any?
 
         selected << event
+        @event_costs[event.id] = cost
         remaining -= cost
       end
 
@@ -88,7 +85,7 @@ module Mneme
     #
     # @return [Hash{Symbol => Array<Event>}] :eviction, :middle, :recent
     def split_into_zones(events)
-      costs = events.map { |event| [event, event_token_cost(event)] }
+      costs = events.map { |event| [event, @event_costs[event.id] || event_token_cost(event)] }
       zone_size = costs.sum(&:last) / 3.0
 
       result = {eviction: [], middle: [], recent: []}
@@ -129,6 +126,8 @@ module Mneme
 
     # Renders a single zone: conversation events as full text, consecutive
     # tool calls/responses compressed into `[N tools called]` counters.
+    # tool_response events are intentionally silent — they affect zone boundaries
+    # via token cost but are not rendered; only tool_call events increment the counter.
     #
     # @param zone_events [Array<Event>]
     # @return [String]
@@ -152,7 +151,7 @@ module Mneme
 
     # @return [Boolean] true if event is a user/agent/system message
     def conversation_event?(event)
-      event.event_type.in?(CONVERSATION_TYPES)
+      event.event_type.in?(Event::CONVERSATION_TYPES)
     end
 
     # Think events are tool_call events with tool_name == "think".
@@ -160,7 +159,7 @@ module Mneme
     #
     # @return [Boolean]
     def think_event?(event)
-      event.event_type == "tool_call" && event.payload["tool_name"] == THINK_TOOL
+      event.event_type == "tool_call" && event.payload["tool_name"] == Event::THINK_TOOL
     end
 
     ROLE_LABELS = {

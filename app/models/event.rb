@@ -21,6 +21,8 @@ class Event < ApplicationRecord
   TYPES = %w[system_message user_message agent_message tool_call tool_response].freeze
   LLM_TYPES = %w[user_message agent_message].freeze
   CONTEXT_TYPES = %w[system_message user_message agent_message tool_call tool_response].freeze
+  CONVERSATION_TYPES = %w[user_message agent_message system_message].freeze
+  THINK_TOOL = "think"
   PENDING_STATUS = "pending"
 
   ROLE_MAP = {"user_message" => "user", "agent_message" => "assistant"}.freeze
@@ -76,6 +78,13 @@ class Event < ApplicationRecord
   # @return [Boolean] true if this is a pending message not yet sent to the LLM
   def pending?
     status == PENDING_STATUS
+  end
+
+  # @return [Boolean] true if this is a conversation event (user/agent/system message)
+  #   or a think tool_call — the events Mneme treats as "conversation" for boundary tracking
+  def conversation_or_think?
+    event_type.in?(CONVERSATION_TYPES) ||
+      (event_type == "tool_call" && payload["tool_name"] == THINK_TOOL)
   end
 
   # Heuristic token estimate: ~4 bytes per token for English prose.

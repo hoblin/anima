@@ -130,7 +130,7 @@ RSpec.describe Mneme::Runner do
         expect(session.reload.mneme_boundary_event_id).to be_present
       end
 
-      it "sets the boundary to a conversation event (not tool_call)" do
+      it "sets the boundary to a conversation-or-think event" do
         create_event(type: "tool_call", tool_name: "bash", token_count: 50)
         create_event(type: "tool_response", tool_name: "bash", content: "output", token_count: 50)
 
@@ -140,7 +140,7 @@ RSpec.describe Mneme::Runner do
 
         boundary_id = session.reload.mneme_boundary_event_id
         boundary_event = Event.find(boundary_id)
-        expect(boundary_event.event_type).to be_in(%w[user_message agent_message system_message])
+        expect(boundary_event).to be_conversation_or_think
       end
 
       it "updates snapshot range pointers" do
@@ -173,6 +173,62 @@ RSpec.describe Mneme::Runner do
         content = captured_messages.first[:content]
         expect(content).to include("Active Goals")
         expect(content).to include("Build auth flow")
+      end
+    end
+
+    context "when LLM calls everything_ok (no snapshot needed)" do
+      before do
+        create_event(type: "user_message", content: "Start")
+        create_event(type: "tool_call", tool_name: "bash", token_count: 200)
+        create_event(type: "tool_response", tool_name: "bash", content: "ok", token_count: 200)
+        create_event(type: "agent_message", content: "Done")
+      end
+
+      it "advances boundary without creating a snapshot" do
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          opts[:registry].execute("everything_ok", {})
+          "Done"
+        }
+
+        runner.call
+
+        expect(Snapshot.count).to eq(0)
+        expect(session.reload.mneme_boundary_event_id).to be_present
+      end
+    end
+
+    context "when viewport contains only tool events" do
+      before do
+        create_event(type: "tool_call", tool_name: "bash", token_count: 100)
+        create_event(type: "tool_response", tool_name: "bash", content: "ok", token_count: 100)
+      end
+
+      it "does not advance the boundary (no conversation events)" do
+        allow(client).to receive(:chat_with_tools) { "Done" }
+
+        runner.call
+
+        expect(session.reload.mneme_boundary_event_id).to be_nil
+      end
+    end
+
+    context "with think events as the last conversation event" do
+      before do
+        create_event(type: "user_message", content: "Fix the bug")
+        create_event(type: "tool_call", tool_name: "think",
+          tool_input: {"thoughts" => "Let me analyze this"}, token_count: 50)
+        create_event(type: "tool_response", tool_name: "think", content: "", token_count: 10)
+        create_event(type: "tool_call", tool_name: "bash", token_count: 50)
+        create_event(type: "tool_response", tool_name: "bash", content: "ok", token_count: 50)
+      end
+
+      it "can set boundary to a think event" do
+        allow(client).to receive(:chat_with_tools) { "Done" }
+
+        runner.call
+
+        boundary_event = Event.find(session.reload.mneme_boundary_event_id)
+        expect(boundary_event).to be_conversation_or_think
       end
     end
 

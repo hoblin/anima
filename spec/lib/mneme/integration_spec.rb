@@ -114,21 +114,20 @@ RSpec.describe "Mneme terminal event trigger integration" do
     end
 
     it "fires Mneme again when the new boundary leaves viewport" do
-      # Fill initial viewport (4 events × 500 = 2000 tokens)
+      # Fill viewport: budget=2000, each event 500 tokens → holds 4 events.
       first = create_event(type: "user_message", content: "msg 1", token_count: event_size)
       create_event(type: "agent_message", content: "msg 2", token_count: event_size)
       create_event(type: "user_message", content: "msg 3", token_count: event_size)
-      fourth = create_event(type: "agent_message", content: "msg 4", token_count: event_size)
+      create_event(type: "agent_message", content: "msg 4", token_count: event_size)
 
       session.update_column(:mneme_boundary_event_id, first.id)
       session.recalculate_viewport!
 
-      # First event evicted (budget=2000, 4×500=2000, but select_events walks newest-first)
-      # Actually with 4 events at 500 each, they all fit. Let's add one more to push out.
-      fifth = create_event(type: "user_message", content: "msg 5", token_count: event_size)
+      # 5th event pushes first out of viewport
+      create_event(type: "user_message", content: "msg 5", token_count: event_size)
       session.recalculate_viewport!
 
-      # First Mneme run
+      # First Mneme run — creates snapshot and advances boundary
       allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
         opts[:registry].execute("save_snapshot", {"text" => "First summary"})
         "Done"
@@ -137,21 +136,22 @@ RSpec.describe "Mneme terminal event trigger integration" do
       runner = Mneme::Runner.new(session, client: client)
       runner.call
 
-      # Boundary advanced
       new_boundary = session.reload.mneme_boundary_event_id
       expect(new_boundary).to be > first.id
 
-      # Add more events to push new boundary out
-      create_event(type: "agent_message", content: "msg 6", token_count: event_size)
-      create_event(type: "user_message", content: "msg 7", token_count: event_size)
+      # Add enough events to guarantee the new boundary evicts.
+      # Budget holds 4 events; we need 4 new events beyond the boundary.
+      4.times do |i|
+        type = i.even? ? "agent_message" : "user_message"
+        create_event(type: type, content: "msg #{6 + i}", token_count: event_size)
+      end
       session.recalculate_viewport!
 
-      # New boundary might have left viewport — schedule again
-      unless session.viewport_event_ids.include?(new_boundary)
-        expect { session.schedule_mneme! }.to have_enqueued_job(MnemeJob).with(session.id)
-      end
+      # New boundary must have left viewport — unconditional assertion
+      expect(session.viewport_event_ids).not_to include(new_boundary)
+      expect { session.schedule_mneme! }.to have_enqueued_job(MnemeJob).with(session.id)
 
-      expect(Snapshot.count).to eq(1) # Only first run created a snapshot so far
+      expect(Snapshot.count).to eq(1)
     end
   end
 end

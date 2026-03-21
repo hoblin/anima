@@ -89,7 +89,7 @@ module Mneme
       end
 
       messages = build_messages(compressed_text)
-      system = build_system_prompt
+      system = SYSTEM_PROMPT
 
       log.info("session=#{sid} — running Mneme (#{viewport.events.size} events)")
       log.debug("compressed viewport:\n#{compressed_text}")
@@ -139,11 +139,6 @@ module Mneme
       [{role: "user", content: content}]
     end
 
-    # @return [String]
-    def build_system_prompt
-      SYSTEM_PROMPT
-    end
-
     # Builds the tool registry with session context for SaveSnapshot.
     # Passes the event range from the viewport so the snapshot records
     # which events it covers.
@@ -162,9 +157,12 @@ module Mneme
     end
 
     # Advances the terminal event pointer after Mneme completes.
+    # Runs unconditionally — even when the LLM called `everything_ok` (no snapshot
+    # needed), the zone was reviewed and should be advanced past. Without this,
+    # Mneme would re-examine the same mechanical-only content on every trigger.
+    #
     # Sets it to the last conversation event in the viewport, ensuring
     # the boundary is always a message/think event, never a tool_call/tool_response.
-    #
     # Also updates the snapshot range pointers.
     #
     # @param viewport [Mneme::CompressedViewport]
@@ -172,7 +170,7 @@ module Mneme
       viewport_events = viewport.events
       return if viewport_events.empty?
 
-      new_boundary = viewport_events.reverse.find { |event| conversation_or_think?(event) }
+      new_boundary = viewport_events.reverse_each.find { |event| conversation_or_think?(event) }
       return unless new_boundary
 
       boundary_id = new_boundary.id
@@ -185,11 +183,12 @@ module Mneme
       log.debug("session=#{@session.id} — boundary advanced to event #{boundary_id}")
     end
 
-    # @return [Boolean] true if event is a conversation message or think tool_call
+    # Delegates to {Event#conversation_or_think?} — single source of truth
+    # for which events Mneme treats as conversation boundaries.
+    #
+    # @return [Boolean]
     def conversation_or_think?(event)
-      event_type = event.event_type
-      event_type.in?(%w[user_message agent_message system_message]) ||
-        (event_type == "tool_call" && event.payload["tool_name"] == CompressedViewport::THINK_TOOL)
+      event.conversation_or_think?
     end
 
     # Builds the active goals section for Mneme's context so it knows
@@ -201,7 +200,7 @@ module Mneme
       return "" if root_goals.empty?
 
       lines = root_goals.map { |goal| format_goal_for_mneme(goal) }
-      "\n\n\u{1F3AF} Active Goals\n#{lines.join("\n")}\n"
+      "\n\n🎯 Active Goals\n#{lines.join("\n")}\n"
     end
 
     # Formats a goal with sub-goals for Mneme's context.
@@ -209,8 +208,8 @@ module Mneme
     # @param goal [Goal] root goal with preloaded sub_goals
     # @return [String]
     def format_goal_for_mneme(goal)
-      parts = ["  \u25CF #{goal.description} (id: #{goal.id})"]
-      goal.sub_goals.sort_by(&:created_at).each do |sub|
+      parts = ["  ● #{goal.description} (id: #{goal.id})"]
+      goal.sub_goals.each do |sub|
         checkbox = sub.completed? ? "[x]" : "[ ]"
         parts << "    #{checkbox} #{sub.description} (id: #{sub.id})"
       end
