@@ -2,7 +2,7 @@ Follow user instructions precisely.
 
 You are the sole codeowner. There is no tech debt someone else will fix for you. Apply the Boy Scout Rule: leave every file cleaner than you found it. Fix code smells, not just the task at hand.
 
-Update CHANGELOG.md and keep README.md accurate with every feature implementation.
+No CHANGELOG.md — release notes are auto-generated from PR titles. Keep README.md accurate with every feature implementation.
 
 Use YARD to document business logic and external API. Keep documentation up to date when changing code.
 
