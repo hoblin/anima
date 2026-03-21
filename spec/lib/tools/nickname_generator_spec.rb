@@ -44,11 +44,20 @@ RSpec.describe Tools::NicknameGenerator do
       expect(nickname).to eq("loop-sleuth-3")
     end
 
-    it "falls back to agent-N on LLM failure" do
-      allow(LLM::Client).to receive(:new).and_raise(StandardError, "API down")
+    it "falls back to agent-N on transient LLM failure" do
+      allow(LLM::Client).to receive(:new)
+        .and_raise(Providers::Anthropic::RateLimitError, "rate limited")
 
       nickname = described_class.call(task, parent_session)
       expect(nickname).to match(/\Aagent-\d+\z/)
+    end
+
+    it "propagates non-transient errors" do
+      allow(LLM::Client).to receive(:new)
+        .and_raise(Providers::Anthropic::AuthenticationError, "invalid key")
+
+      expect { described_class.call(task, parent_session) }
+        .to raise_error(Providers::Anthropic::AuthenticationError)
     end
 
     it "truncates long nicknames to 50 characters" do

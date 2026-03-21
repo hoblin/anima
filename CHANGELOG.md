@@ -3,7 +3,7 @@
 ### Added
 - **Sub-agent @mention communication** — bidirectional text routing between parent and sub-agent sessions; sub-agent `agent_message` events automatically forward to the parent session as attributed `user_message` events (`[sub-agent @name]: ...`), and parent `@name` mentions route back to matching child sessions; replaces the `return_result` tool — sub-agents communicate through natural text instead of structured tool calls (#124)
 - **Haiku-generated sub-agent nicknames** — generic sub-agents receive a fun, memorable nickname at spawn time via a fast LLM call (e.g. `@loop-sleuth`, `@api-scout`); nicknames serve as @mention handles for parent ↔ child communication; collision-safe with automatic numeric suffix (#124)
-- **SubagentMessageRouter event subscriber** — global subscriber that handles both routing directions: child→parent (attribution + job enqueue) and parent→child (@mention scanning + job enqueue); registered alongside Persister and AgentDispatcher (#124)
+- **Automatic sub-agent message routing** — sub-agent responses flow to the parent conversation automatically with `[sub-agent @name]` attribution; parent replies via @mentions reach the correct sub-agent without manual plumbing (#124)
 
 ### Removed
 - **`return_result` tool** — eliminated entirely; sub-agent text messages ARE results, routed automatically by `SubagentMessageRouter`; no special tool needed to deliver results back to the parent (#124)

@@ -29,7 +29,14 @@ module Events
       # Regex to extract @mention names from parent agent messages.
       MENTION_PATTERN = /@(\w[\w-]*)/
 
-      # @param event [Hash] Rails.event notification hash
+      # Routes agent text messages between parent and child sessions.
+      #
+      # For sub-agent sessions: forwards to parent with attribution prefix.
+      # For parent sessions: scans for @mentions and routes to matching children.
+      #
+      # @param event [Hash] Rails.event notification hash with +:payload+ containing
+      #   an +agent_message+ event (type, session_id, content)
+      # @return [void]
       def emit(event)
         payload = event[:payload]
         return unless payload.is_a?(Hash)

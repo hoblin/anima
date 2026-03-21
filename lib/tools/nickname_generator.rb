@@ -23,7 +23,8 @@ module Tools
 
     class << self
       # Generates a unique nickname for a sub-agent.
-      # Falls back to "agent-N" if the LLM call fails.
+      # Falls back to "agent-N" on transient LLM failures (rate limits,
+      # timeouts, server errors). Auth and config errors propagate.
       #
       # @param task [String] the sub-agent's task description
       # @param parent_session [Session] the parent session (for uniqueness check)
@@ -31,8 +32,8 @@ module Tools
       def call(task, parent_session)
         nickname = generate(task)
         ensure_unique(nickname, parent_session)
-      rescue => error
-        Rails.logger.warn("Nickname generation failed: #{error.message}")
+      rescue Providers::Anthropic::TransientError => error
+        Rails.logger.warn("Nickname generation failed (transient): #{error.message}")
         fallback_nickname(parent_session)
       end
 
