@@ -236,6 +236,7 @@ module TUI
 
       content = tui.paragraph(
         text: lines,
+        wrap: true,
         block: tui.block(
           borders: [:left, :top, :right],
           border_type: :rounded,
