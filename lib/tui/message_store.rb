@@ -32,6 +32,15 @@ module TUI
       @entries = []
       @entries_by_id = {}
       @mutex = Mutex.new
+      @version = 0
+    end
+
+    # Monotonically increasing counter that bumps on every mutation.
+    # Consumers compare this to a cached value to detect changes
+    # without copying the full entries array on every frame.
+    # @return [Integer]
+    def version
+      @mutex.synchronize { @version }
     end
 
     # @return [Array<Hash>] thread-safe copy of stored entries
@@ -77,6 +86,7 @@ module TUI
       @mutex.synchronize do
         @entries = []
         @entries_by_id = {}
+        @version += 1
       end
     end
 
@@ -111,6 +121,7 @@ module TUI
         return false unless entry
 
         @entries.delete(entry)
+        @version += 1
         true
       end
     end
@@ -131,6 +142,7 @@ module TUI
           @entries.delete(entry)
           removed += 1
         end
+        @version += 1 if removed > 0
         removed
       end
     end
@@ -151,6 +163,7 @@ module TUI
         return false unless entry
 
         entry[:data] = rendered
+        @version += 1
         true
       end
     end
@@ -170,6 +183,7 @@ module TUI
         entry = {type: :rendered, data: data, event_type: event_type, id: id}
         @entries << entry
         @entries_by_id[id] = entry if id
+        @version += 1
       end
       true
     end
@@ -182,6 +196,7 @@ module TUI
         else
           @entries << {type: :tool_counter, calls: 1, responses: 0}
         end
+        @version += 1
       end
       true
     end
@@ -189,7 +204,10 @@ module TUI
     def record_tool_response
       @mutex.synchronize do
         current = current_tool_counter
-        current[:responses] += 1 if current
+        if current
+          current[:responses] += 1
+          @version += 1
+        end
       end
       true
     end
@@ -204,6 +222,7 @@ module TUI
         entry = {type: :message, role: ROLE_MAP.fetch(event_data["type"]), content: content, id: event_id}
         @entries << entry
         @entries_by_id[event_id] = entry if event_id
+        @version += 1
       end
       true
     end

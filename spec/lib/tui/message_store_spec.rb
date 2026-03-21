@@ -390,4 +390,79 @@ RSpec.describe TUI::MessageStore do
       expect(store.messages.size).to eq(10)
     end
   end
+
+  describe "#version" do
+    it "starts at zero" do
+      expect(store.version).to eq(0)
+    end
+
+    it "increments when a message is added" do
+      expect { store.process_event({"type" => "user_message", "content" => "hi"}) }
+        .to change { store.version }.by(1)
+    end
+
+    it "increments when a rendered event is added" do
+      expect {
+        store.process_event({"type" => "user_message", "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
+      }.to change { store.version }.by(1)
+    end
+
+    it "increments on tool call and tool response" do
+      expect { store.process_event({"type" => "tool_call", "content" => "bash"}) }
+        .to change { store.version }.by(1)
+
+      expect { store.process_event({"type" => "tool_response", "content" => "ok"}) }
+        .to change { store.version }.by(1)
+    end
+
+    it "increments on clear" do
+      store.process_event({"type" => "user_message", "content" => "hi"})
+      expect { store.clear }.to change { store.version }.by(1)
+    end
+
+    it "increments on remove_by_id" do
+      store.process_event({"type" => "user_message", "id" => 1, "content" => "hi"})
+      expect { store.remove_by_id(1) }.to change { store.version }.by(1)
+    end
+
+    it "does not increment on failed remove_by_id" do
+      expect { store.remove_by_id(999) }.not_to change { store.version }
+    end
+
+    it "increments on remove_by_ids when entries are removed" do
+      store.process_event({"type" => "user_message", "id" => 1,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
+      expect { store.remove_by_ids([1]) }.to change { store.version }.by(1)
+    end
+
+    it "does not increment on remove_by_ids when no entries match" do
+      expect { store.remove_by_ids([999]) }.not_to change { store.version }
+    end
+
+    it "increments on update_existing" do
+      store.process_event({"type" => "user_message", "id" => 1,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "v1"}}})
+
+      expect {
+        store.process_event({"type" => "user_message", "id" => 1, "action" => "update",
+                             "rendered" => {"basic" => {"role" => "user", "content" => "v2"}}})
+      }.to change { store.version }.by(1)
+    end
+
+    it "is monotonically increasing across multiple operations" do
+      versions = []
+      versions << store.version
+      store.process_event({"type" => "user_message", "content" => "first"})
+      versions << store.version
+      store.process_event({"type" => "tool_call", "content" => "bash"})
+      versions << store.version
+      store.process_event({"type" => "tool_response", "content" => "ok"})
+      versions << store.version
+      store.clear
+      versions << store.version
+
+      expect(versions).to eq(versions.sort)
+      expect(versions.uniq.size).to eq(versions.size)
+    end
+  end
 end

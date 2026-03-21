@@ -1,6 +1,8 @@
 ## [Unreleased]
 
 ### Added
+- **TUI performance logging** — `--debug` flag enables frame-level timing to `log/tui_performance.log` with per-phase measurements (build_lines, paragraph, line_count, sidebar); uses `TUI::PerformanceLogger` with monotonic clock and 5MB log rotation (#182)
+- **TUI render caching** — `MessageStore` version tracking eliminates O(n×m) per-frame line rebuilds; cached message lines and `line_count` results are reused across frames until content actually changes; scrolling no longer triggers any Ruby-side computation, running at ~1.8ms/frame regardless of message count (#182)
 - **Bounce Back** — failed user messages return to the input field instead of persisting as orphans; event creation and LLM delivery are wrapped in a database transaction so both succeed or fail atomically; on failure, a transient `BounceBack` event notifies clients to restore the text and display a flash message (#236)
 - Event-driven job scheduling — `AgentDispatcher` subscriber reacts to non-pending `UserMessage` emissions by scheduling `AgentRequestJob`, replacing the imperative `perform_later` call in the channel (#236)
 - `TransientBroadcaster` subscriber — bridges non-persisted events (like `BounceBack`) to ActionCable for client delivery (#236)

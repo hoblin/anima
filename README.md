@@ -593,6 +593,10 @@ bin/dev
 
 # Terminal 2: Connect the TUI to the dev brain
 ./exe/anima tui --host localhost:42135
+
+# Optional: enable performance logging for render profiling
+./exe/anima tui --host localhost:42135 --debug
+# Frame timing data written to log/tui_performance.log
 ```
 
 Development uses port **42135** so it doesn't conflict with the production brain (port 42134) running via systemd. On first run, `bin/dev` runs `db:prepare` automatically.

@@ -2,6 +2,7 @@
 
 require_relative "../input_buffer"
 require_relative "../flash"
+require_relative "../performance_logger"
 require_relative "../decorators/base_decorator"
 require_relative "../decorators/bash_decorator"
 require_relative "../decorators/read_decorator"
@@ -43,9 +44,11 @@ module TUI
 
       # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
       # @param message_store [TUI::MessageStore, nil] injectable for testing
-      def initialize(cable_client:, message_store: nil)
+      # @param perf_logger [TUI::PerformanceLogger, nil] optional performance logger
+      def initialize(cable_client:, message_store: nil, perf_logger: nil)
         @cable_client = cable_client
         @message_store = message_store || MessageStore.new
+        @perf_logger = perf_logger || PerformanceLogger.new(enabled: false)
         @input_buffer = InputBuffer.new
         @flash = Flash.new
         @loading = false
@@ -64,6 +67,14 @@ module TUI
         @input_history = []
         @history_index = nil
         @saved_input = nil
+        # Line cache: avoids rebuilding all message lines every frame
+        @cached_lines = nil
+        @cached_lines_version = -1
+        @cached_loading = nil
+        # line_count cache: avoids recalculating word-wrap on unchanged content
+        @cached_content_height = nil
+        @cached_content_width = nil
+        @cached_content_version = -1
       end
 
       def messages
@@ -423,25 +434,18 @@ module TUI
       end
 
       def render_messages(frame, area, tui)
-        lines = build_message_lines(tui)
-
-        if @loading
-          lines << tui.line(spans: [
-            tui.span(content: "Thinking...", style: tui.style(fg: "yellow", modifiers: [:bold]))
-          ])
-        end
-
-        if lines.empty?
-          lines << tui.line(spans: [
-            tui.span(content: "Type a message to start chatting.", style: tui.style(fg: "dark_gray"))
-          ])
-        end
+        lines = @perf_logger.measure(:build_lines) { cached_message_lines(tui) }
 
         inner_width = [area.width - 2, 1].max
         @visible_height = [area.height - 2, 0].max
 
-        base_widget = tui.paragraph(text: lines, wrap: true, style: tui.style(fg: "white"))
-        content_height = base_widget.line_count(inner_width)
+        base_widget = @perf_logger.measure(:paragraph) {
+          tui.paragraph(text: lines, wrap: true, style: tui.style(fg: "white"))
+        }
+
+        content_height = @perf_logger.measure(:line_count) {
+          cached_line_count(base_widget, inner_width)
+        }
 
         @max_scroll = [content_height - @visible_height, 0].max
         @scroll_offset = @max_scroll if @auto_scroll
@@ -473,6 +477,58 @@ module TUI
           track_style: {fg: "dark_gray"}
         )
         frame.render_widget(scrollbar, area)
+      end
+
+      # Returns cached message lines, rebuilding only when the message
+      # store version changes or the loading indicator toggles. Eliminates
+      # O(n×m) line-building work on frames with no content change.
+      #
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @return [Array<RatatuiRuby::Widgets::Line>]
+      def cached_message_lines(tui)
+        version = @message_store.version
+
+        if version != @cached_lines_version || @loading != @cached_loading
+          @cached_lines = build_message_lines(tui)
+
+          if @loading
+            @cached_lines << tui.line(spans: [
+              tui.span(content: "Thinking...", style: tui.style(fg: "yellow", modifiers: [:bold]))
+            ])
+          end
+
+          if @cached_lines.empty?
+            @cached_lines << tui.line(spans: [
+              tui.span(content: "Type a message to start chatting.", style: tui.style(fg: "dark_gray"))
+            ])
+          end
+
+          @cached_lines_version = version
+          @cached_loading = @loading
+          @perf_logger.info("lines_cache MISS entries=#{@message_store.messages.size} lines=#{@cached_lines.size}")
+        end
+
+        @cached_lines
+      end
+
+      # Returns cached content height, recalculating only when lines
+      # or width change. The line_count FFI call is expensive for large
+      # content because it calculates word-wrap for every line.
+      #
+      # @param widget [RatatuiRuby::Widgets::Paragraph] paragraph widget
+      # @param inner_width [Integer] available width for wrapping
+      # @return [Integer] total wrapped line count
+      def cached_line_count(widget, inner_width)
+        version = @message_store.version
+        loading_changed = @loading != @cached_loading
+
+        if version != @cached_content_version || inner_width != @cached_content_width || loading_changed
+          @cached_content_height = widget.line_count(inner_width)
+          @cached_content_version = version
+          @cached_content_width = inner_width
+        end
+
+        @cached_content_height
       end
 
       def build_message_lines(tui)
