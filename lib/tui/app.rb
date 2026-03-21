@@ -4,6 +4,7 @@ require "time"
 require_relative "cable_client"
 require_relative "input_buffer"
 require_relative "message_store"
+require_relative "performance_logger"
 require_relative "screens/chat"
 
 module TUI
@@ -85,10 +86,14 @@ module TUI
     attr_reader :token_setup_active
     # @return [Boolean] true when graceful shutdown has been requested via signal
     attr_reader :shutdown_requested
+    # @return [TUI::PerformanceLogger] frame timing logger (no-op when debug is off)
+    attr_reader :perf_logger
 
     # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
-    def initialize(cable_client:)
+    # @param debug [Boolean] enable performance logging to log/tui_performance.log
+    def initialize(cable_client:, debug: false)
       @cable_client = cable_client
+      @perf_logger = PerformanceLogger.new(enabled: debug)
       @current_screen = :chat
       @command_mode = false
       @session_picker_active = false
@@ -108,7 +113,7 @@ module TUI
       @previous_signal_handlers = {}
       @watchdog_thread = nil
       @screens = {
-        chat: Screens::Chat.new(cable_client: cable_client)
+        chat: Screens::Chat.new(cable_client: cable_client, perf_logger: @perf_logger)
       }
     end
 
@@ -136,6 +141,8 @@ module TUI
     private
 
     def render(frame, tui)
+      @perf_logger.start_frame
+
       @screens[:chat].hud_hint = !@hud_visible
 
       if @hud_visible
@@ -149,14 +156,16 @@ module TUI
           ]
         )
 
-        @screens[@current_screen].render(frame, content_area, tui)
-        render_sidebar(frame, sidebar, tui)
+        @perf_logger.measure(:chat_render) { @screens[@current_screen].render(frame, content_area, tui) }
+        @perf_logger.measure(:sidebar) { render_sidebar(frame, sidebar, tui) }
       else
-        @screens[@current_screen].render(frame, frame.area, tui)
+        @perf_logger.measure(:chat_render) { @screens[@current_screen].render(frame, frame.area, tui) }
       end
 
       check_token_setup_signals
       render_token_setup_popup(frame, frame.area, tui) if @token_setup_active
+
+      @perf_logger.end_frame
     end
 
     def render_sidebar(frame, area, tui)

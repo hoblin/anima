@@ -3,6 +3,8 @@
 require "spec_helper"
 require "anima/cli"
 require "anima/installer"
+require "tui/cable_client"
+require "tui/app"
 
 RSpec.describe Anima::CLI do
   describe "version" do
@@ -79,7 +81,21 @@ RSpec.describe Anima::CLI do
 
       expect(TUI::CableClient).to have_received(:new).with(host: "localhost:19999")
       expect(cable_client).to have_received(:connect)
-      expect(TUI::App).to have_received(:new).with(cable_client: cable_client)
+      expect(TUI::App).to have_received(:new).with(cable_client: cable_client, debug: false)
+    end
+
+    it "passes debug: true when --debug flag is given" do
+      cable_client = instance_double(TUI::CableClient, connect: nil, disconnect: nil, status: :subscribed)
+      allow(TUI::CableClient).to receive(:new).with(host: "localhost:19999").and_return(cable_client)
+
+      app = instance_double(TUI::App, run: nil)
+      allow(TUI::App).to receive(:new).and_return(app)
+
+      expect {
+        described_class.start(["tui", "--host", "localhost:19999", "--debug"])
+      }.to output(/Connecting to brain/).to_stdout
+
+      expect(TUI::App).to have_received(:new).with(cable_client: cable_client, debug: true)
     end
   end
 

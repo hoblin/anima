@@ -78,6 +78,7 @@ module Anima
 
     desc "tui", "Launch the Anima terminal interface"
     option :host, desc: "Brain server address (default: #{DEFAULT_HOST})"
+    option :debug, type: :boolean, default: false, desc: "Enable performance logging to log/tui_performance.log"
     def tui
       require "ratatui_ruby"
       require_relative "../tui/app"
@@ -89,7 +90,7 @@ module Anima
       cable_client = TUI::CableClient.new(host: host)
       cable_client.connect
 
-      TUI::App.new(cable_client: cable_client).run
+      TUI::App.new(cable_client: cable_client, debug: options[:debug]).run
     end
 
     desc "version", "Show version"
