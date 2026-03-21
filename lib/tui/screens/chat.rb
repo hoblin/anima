@@ -75,6 +75,7 @@ module TUI
         @cached_content_height = nil
         @cached_content_width = nil
         @cached_content_version = -1
+        @cached_content_loading = nil
       end
 
       def messages
@@ -507,7 +508,7 @@ module TUI
 
           @cached_lines_version = version
           @cached_loading = @loading
-          @perf_logger.info("lines_cache MISS entries=#{@message_store.messages.size} lines=#{@cached_lines.size}")
+          @perf_logger.info("lines_cache MISS entries=#{@message_store.size} lines=#{@cached_lines.size}")
         end
 
         @cached_lines
@@ -522,12 +523,13 @@ module TUI
       # @return [Integer] total wrapped line count
       def cached_line_count(widget, inner_width)
         version = @message_store.version
-        loading_changed = @loading != @cached_loading
 
-        if version != @cached_content_version || inner_width != @cached_content_width || loading_changed
+        if version != @cached_content_version || inner_width != @cached_content_width || @loading != @cached_content_loading
           @cached_content_height = widget.line_count(inner_width)
           @cached_content_version = version
           @cached_content_width = inner_width
+          @cached_content_loading = @loading
+          @perf_logger.info("content_height_cache MISS width=#{inner_width} version=#{version}")
         end
 
         @cached_content_height

@@ -48,6 +48,11 @@ module TUI
       @mutex.synchronize { @entries.dup }
     end
 
+    # @return [Integer] number of stored entries (no array copy)
+    def size
+      @mutex.synchronize { @entries.size }
+    end
+
     # Processes a raw event payload from the WebSocket channel.
     # Uses structured decorator data when available; falls back to
     # role/content extraction for messages and tool counter aggregation.
@@ -204,10 +209,10 @@ module TUI
     def record_tool_response
       @mutex.synchronize do
         current = current_tool_counter
-        if current
-          current[:responses] += 1
-          @version += 1
-        end
+        return false unless current
+
+        current[:responses] += 1
+        @version += 1
       end
       true
     end
