@@ -155,4 +155,40 @@ RSpec.describe Mneme::L2Runner do
       end
     end
   end
+
+  describe "integration with real LLM", :vcr do
+    before do
+      allow(Anima::Settings).to receive(:mneme_l2_snapshot_threshold).and_return(3)
+    end
+
+    it "calls save_snapshot with a compressed L2 summary" do
+      session.snapshots.create!(
+        text: "User asked for help setting up OAuth with PKCE for a mobile app. " \
+          "Agent proposed using code verifier/challenge pattern with SHA-256.",
+        from_event_id: 1, to_event_id: 10, level: 1, token_count: 40
+      )
+      session.snapshots.create!(
+        text: "Implemented token refresh flow using AppAuth library for iOS. " \
+          "Added secure token storage in Keychain with biometric protection.",
+        from_event_id: 11, to_event_id: 20, level: 1, token_count: 40
+      )
+      session.snapshots.create!(
+        text: "Added error handling for expired refresh tokens — redirect to login. " \
+          "Discussed rate limiting and token revocation on the backend.",
+        from_event_id: 21, to_event_id: 30, level: 1, token_count: 40
+      )
+
+      real_runner = described_class.new(session)
+      real_runner.call
+
+      expect(session.snapshots.for_level(2).count).to eq(1)
+      l2 = session.snapshots.for_level(2).first
+      expect(l2.text).to include("OAuth")
+      expect(l2.text).to include("PKCE")
+      expect(l2.text).to include("token")
+      expect(l2.from_event_id).to eq(1)
+      expect(l2.to_event_id).to eq(30)
+      expect(l2.token_count).to be > 0
+    end
+  end
 end
