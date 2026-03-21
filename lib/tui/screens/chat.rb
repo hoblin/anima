@@ -458,12 +458,15 @@ module TUI
         # Needed for total_height / scrollbar / scroll-offset-to-entry mapping.
         @perf_logger.measure(:estimate_heights) { update_height_map(entries, inner_width, version) }
 
-        # Phase 2: Scroll state from estimated total height
-        total_height = @height_map.total_height
-        total_height += 1 if @loading
-        @max_scroll = [total_height - @visible_height, 0].max
-        @scroll_offset = @max_scroll if @auto_scroll
-        @scroll_offset = @scroll_offset.clamp(0, @max_scroll)
+        # Phase 2: Preliminary scroll offset for visible_range lookup.
+        # Don't clamp here — Phase 5.5 sets the authoritative @max_scroll
+        # from actual viewport height. Clamping here would cap scroll_offset
+        # to the (under)estimated total, making the bottom unreachable.
+        if @auto_scroll
+          est_total = @height_map.total_height
+          est_total += 1 if @loading
+          @scroll_offset = [est_total - @visible_height, 0].max
+        end
 
         # Phase 3: Find approximate first visible entry
         first_vis, = @height_map.visible_range(@scroll_offset, @visible_height)
@@ -481,9 +484,25 @@ module TUI
           cached_viewport_line_count(base_widget, inner_width, version)
         }
 
-        # Phase 6: Adjusted scroll relative to windowed content
-        window_start = @height_map.cumulative_height(@viewport[:first])
-        adjusted_scroll = (@scroll_offset - window_start).clamp(0, [wrapped_height - @visible_height, 0].max)
+        # Phase 5.5: Correct scroll state using actual viewport height.
+        # Replace the estimated viewport portion with the real wrapped_height.
+        vp_first = @viewport[:first]
+        vp_last = @viewport[:last]
+        est_before = @height_map.cumulative_height(vp_first)
+        est_after = @height_map.total_height - @height_map.cumulative_height(vp_last + 1)
+        loading_outside = @loading && vp_last < entries.size - 1
+        corrected_total = est_before + wrapped_height + est_after + (loading_outside ? 1 : 0)
+
+        @max_scroll = [corrected_total - @visible_height, 0].max
+        @scroll_offset = @max_scroll if @auto_scroll
+        @scroll_offset = @scroll_offset.clamp(0, @max_scroll)
+
+        # Phase 6: Map global scroll_offset into the viewport paragraph.
+        # est_before cancels between scroll_offset and max_scroll, so
+        # estimation errors don't create a dead zone at the bottom —
+        # they shift to the top (oldest messages) where they're harmless.
+        max_adjusted = [wrapped_height - @visible_height, 0].max
+        adjusted_scroll = (@scroll_offset - est_before).clamp(0, max_adjusted)
 
         chat_block = {
           title: "Chat",
@@ -586,7 +605,11 @@ module TUI
           lines.concat(entry_lines)
           pre_wrap_count += entry_lines.size
           buf_last = idx
-          break if pre_wrap_count >= target
+          # Stop early only when we have enough lines AND are far from
+          # the bottom. Near the bottom, always include trailing entries
+          # so the viewport covers the actual end of content — otherwise
+          # the last entries become unreachable.
+          break if pre_wrap_count >= target && entry_count - idx > 10
         end
 
         if @loading && buf_last >= entry_count - 1
@@ -677,8 +700,7 @@ module TUI
         return 1 if text.empty?
 
         text.split("\n", -1).sum { |line|
-          # +4 accounts for typical indentation/prefix overhead
-          [((line.length + 4).to_f / width).ceil, 1].max
+          [(line.length.to_f / width).ceil, 1].max
         }
       end
 
