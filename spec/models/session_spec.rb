@@ -1088,7 +1088,7 @@ RSpec.describe Session do
         expect(contents.none? { |c| c.include?("Parent snapshot") }).to be true
       end
 
-      it "reduces sliding window budget by snapshot budget fractions" do
+      it "reduces sliding window budget by snapshot and pinned budget fractions" do
         # Budget 1000, l1_fraction=0.15, l2_fraction=0.05, pinned_fraction=0.05
         # Sliding budget = 1000 - 150 - 50 - 50 = 750
         session.events.create!(event_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 500)

@@ -59,6 +59,14 @@ RSpec.describe Mneme::Tools::AttachEventsToGoals do
       expect(pin.display_text).to end_with("…")
     end
 
+    it "falls back to event ID when content is empty" do
+      empty_event = session.events.create!(event_type: "user_message", payload: {"content" => ""}, timestamp: 3)
+
+      tool.execute("event_ids" => [empty_event.id], "goal_ids" => [goal.id])
+      pin = PinnedEvent.last
+      expect(pin.display_text).to eq("event #{empty_event.id}")
+    end
+
     it "reuses existing PinnedEvent when pinning to additional goals" do
       tool.execute("event_ids" => [event1.id], "goal_ids" => [goal.id])
 
@@ -92,16 +100,21 @@ RSpec.describe Mneme::Tools::AttachEventsToGoals do
       expect(result).to include("Events not found: 999")
     end
 
-    it "returns error when goals not found or inactive" do
+    it "returns error distinguishing completed goals from missing goals" do
       completed_goal = session.goals.create!(description: "Done", status: "completed", completed_at: Time.current)
       result = tool.execute("event_ids" => [event1.id], "goal_ids" => [completed_goal.id])
-      expect(result).to include("Active goals not found:")
+      expect(result).to include("Goals already completed: #{completed_goal.id}")
+    end
+
+    it "returns error for non-existent goals" do
+      result = tool.execute("event_ids" => [event1.id], "goal_ids" => [888])
+      expect(result).to include("Goals not found: 888")
     end
 
     it "returns combined errors for missing events and goals" do
       result = tool.execute("event_ids" => [999], "goal_ids" => [888])
       expect(result).to include("Events not found: 999")
-      expect(result).to include("Active goals not found: 888")
+      expect(result).to include("Goals not found: 888")
     end
   end
 end

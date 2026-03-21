@@ -51,10 +51,10 @@ class Goal < ApplicationRecord
     sub_goals.active.update_all(status: "completed", completed_at: now, updated_at: now)
   end
 
-  # Releases pinned events that are no longer referenced by any active Goal.
-  # Called after goal completion — events pinned exclusively to this Goal
-  # (and its sub-goals if cascading) are destroyed. Events shared with
-  # other active Goals remain pinned.
+  # Releases pinned events that have no remaining active Goal references
+  # anywhere in the session. Called after goal (and cascade) completion —
+  # the orphaned scope checks all Goals, so pins shared with other active
+  # Goals survive automatically via reference counting.
   #
   # @return [Integer] number of released pins
   def release_orphaned_pins!

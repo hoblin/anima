@@ -610,21 +610,43 @@ class Session < ApplicationRecord
     }.join("\n\n")
   end
 
+  # Groups pins by their active Goals so the viewport renders
+  # one headed section per Goal.
+  #
+  # @param pins [Array<PinnedEvent>] pins with preloaded goals
+  # @return [Hash{Goal => Array<PinnedEvent>}]
   def group_pins_by_active_goal(pins)
     pairs = pins.flat_map { |pin| active_goal_pin_pairs(pin) }
     pairs.group_by(&:first).transform_values { |group| group.map(&:last) }
   end
 
+  # Expands a single pin into [goal, pin] pairs for each active Goal
+  # referencing it. Uses in-memory filter on preloaded goals.
+  #
+  # @param pin [PinnedEvent]
+  # @return [Array<Array(Goal, PinnedEvent)>]
   def active_goal_pin_pairs(pin)
     pin.goals.select(&:active?).map { |goal| [goal, pin] }
   end
 
+  # Renders one Goal's pinned events as a headed list.
+  #
+  # @param goal [Goal]
+  # @param pin_list [Array<PinnedEvent>]
+  # @param shown_events [Set<Integer>] tracks already-rendered event IDs for dedup
+  # @return [String]
   def render_goal_pins(goal, pin_list, shown_events)
     lines = ["📌 #{goal.description} (id: #{goal.id})"]
     pin_list.each { |pin| lines << format_pin_line(pin, shown_events) }
     lines.join("\n")
   end
 
+  # Formats a single pin line with deduplication: first occurrence shows
+  # truncated text, subsequent occurrences show bare event ID only.
+  #
+  # @param pin [PinnedEvent]
+  # @param shown_events [Set<Integer>]
+  # @return [String]
   def format_pin_line(pin, shown_events)
     event_id = pin.event_id
     if shown_events.add?(event_id)

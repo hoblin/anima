@@ -54,11 +54,18 @@ module Mneme
         goals = @session.goals.active.where(id: goal_ids)
 
         missing_events = event_ids - events.pluck(:id)
-        missing_goals = goal_ids - goals.pluck(:id)
+        inactive_goal_ids = goal_ids - goals.pluck(:id)
 
         errors = []
         errors << "Events not found: #{missing_events.join(", ")}" if missing_events.any?
-        errors << "Active goals not found: #{missing_goals.join(", ")}" if missing_goals.any?
+
+        if inactive_goal_ids.any?
+          completed_ids = @session.goals.completed.where(id: inactive_goal_ids).pluck(:id)
+          not_found_ids = inactive_goal_ids - completed_ids
+          errors << "Goals already completed: #{completed_ids.join(", ")}" if completed_ids.any?
+          errors << "Goals not found: #{not_found_ids.join(", ")}" if not_found_ids.any?
+        end
+
         return "Error: #{errors.join("; ")}" if errors.any?
 
         attached = attach(events, goals)
@@ -86,7 +93,9 @@ module Mneme
       end
 
       def truncate_event_content(event)
-        content = event.payload&.dig("content").to_s
+        content = event.payload&.dig("content").to_s.strip
+        content = "event #{event.id}" if content.empty?
+
         if content.length > PinnedEvent::MAX_DISPLAY_TEXT_LENGTH
           content[0, PinnedEvent::MAX_DISPLAY_TEXT_LENGTH - 1] + "…"
         else
