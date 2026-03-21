@@ -24,6 +24,7 @@ RSpec.describe Anima::Installer do
     after { FileUtils.rm_rf(tmp_home) }
 
     before do
+      allow(installer).to receive(:configure_bundler)
       allow(installer).to receive(:create_systemd_service)
     end
 
@@ -129,6 +130,39 @@ RSpec.describe Anima::Installer do
 
       installer.run
       expect(tmp_home.join("config", "credentials", "production.key").read).to eq(original_key)
+    end
+  end
+
+  describe "#configure_bundler" do
+    let(:tmp_home) { Pathname.new(Dir.mktmpdir("anima-test-")) }
+    let(:installer) { described_class.new(anima_home: tmp_home) }
+    let(:gem_root) { Pathname.new(Dir.mktmpdir("gem-root-")) }
+
+    after do
+      FileUtils.rm_rf(tmp_home)
+      FileUtils.rm_rf(gem_root)
+    end
+
+    before do
+      allow(Anima).to receive(:gem_root).and_return(gem_root)
+    end
+
+    it "runs bundle config to exclude development:test groups" do
+      allow(installer).to receive(:system).and_return(true)
+
+      installer.configure_bundler
+
+      expect(installer).to have_received(:system)
+        .with("bundle", "config", "set", "--local", "without", "development:test", chdir: gem_root.to_s)
+    end
+
+    it "aborts when bundle config fails" do
+      allow(installer).to receive(:system).and_return(false)
+      allow(installer).to receive(:abort)
+
+      installer.configure_bundler
+
+      expect(installer).to have_received(:abort).with(/Failed to configure bundler/)
     end
   end
 

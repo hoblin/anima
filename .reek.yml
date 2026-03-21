@@ -52,9 +52,11 @@ detectors:
       - "Anima::CLI::Mcp"
       - "EnvironmentProbe"
   # Decorators branch on tool type across 4 render modes — inherent to the pattern.
+  # Installer methods each guard idempotency with config_path.exist? — by design.
   RepeatedConditional:
     exclude:
       - "ToolCallDecorator"
+      - "Anima::Installer"
   # EventDecorator holds shared rendering constants (icons, markers, dispatch maps).
   TooManyConstants:
     exclude:

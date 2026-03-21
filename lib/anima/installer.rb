@@ -34,6 +34,7 @@ module Anima
       create_settings_config
       create_mcp_config
       generate_credentials
+      configure_bundler
       create_systemd_service
       say "Installation complete. Brain is running. Connect with 'anima tui'."
     end
@@ -115,21 +116,35 @@ module Anima
 
         next if key_path.exist? && content_path.exist?
 
+        content_str = content_path.to_s
+        key_str = key_path.to_s
+
         key = ActiveSupport::EncryptedFile.generate_key
         key_path.write(key)
-        File.chmod(0o600, key_path.to_s)
+        File.chmod(0o600, key_str)
 
         config = ActiveSupport::EncryptedConfiguration.new(
-          config_path: content_path.to_s,
-          key_path: key_path.to_s,
+          config_path: content_str,
+          key_path: key_str,
           env_key: "RAILS_MASTER_KEY",
           raise_if_missing_key: true
         )
 
         config.write("secret_key_base: #{SecureRandom.hex(64)}\n")
-        File.chmod(0o600, content_path.to_s)
+        File.chmod(0o600, content_str)
         say "  created credentials for #{env}"
       end
+    end
+
+    # Tells Bundler to skip development and test groups so production
+    # doesn't try to resolve gems like rspec-rails that aren't installed.
+    # Creates .bundle/config in the gem root — persists across reboots.
+    def configure_bundler
+      gem_root = Anima.gem_root.to_s
+      unless system("bundle", "config", "set", "--local", "without", "development:test", chdir: gem_root)
+        abort "Failed to configure bundler in #{gem_root}"
+      end
+      say "  configured bundler to skip development:test groups"
     end
 
     def create_systemd_service
@@ -153,16 +168,12 @@ module Anima
         WantedBy=default.target
       UNIT
 
-      if service_path.exist?
-        if service_path.read == unit_content
-          say "  anima.service unchanged"
-        else
-          service_path.write(unit_content)
-          say "  updated #{service_path}"
-        end
+      already_exists = service_path.exist?
+      if already_exists && service_path.read == unit_content
+        say "  anima.service unchanged"
       else
         service_path.write(unit_content)
-        say "  created #{service_path}"
+        say "  #{already_exists ? "updated" : "created"} #{service_path}"
       end
 
       system("systemctl", "--user", "daemon-reload", err: File::NULL, out: File::NULL)

@@ -1,10 +1,12 @@
 ## [Unreleased]
 
 ### Fixed
+- **Dev dependencies leak into production gem install** — `anima install` now configures Bundler to skip development and test groups via `bundle config set --local without development:test`; Gemfile uses proper groups so `bundler/setup` no longer tries to resolve rspec-rails, reek, standard, etc. on fresh installs (#225, #202)
 - **TUI session name wrapping in HUD** — long session names now wrap across multiple lines instead of being silently clipped at the panel boundary (#168)
 - **WebGet SSL certificate verification** — bundle Mozilla CA certificates via `certifi` gem so HTTPS requests work on systems with incomplete CA stores (e.g. mise/rbenv-compiled Ruby) (#253)
 
 ### Added
+- **CI smoke test workflow** — builds and installs the gem in a clean environment, verifies `bundler/setup` resolves without dev/test dependencies; runs on PRs, pushes to main, and blocks releases (#225)
 - **ToolDecorator content pipeline** — new server-side decorator layer that transforms tool responses for LLM consumption before they enter the event stream; `ToolDecorator` base class with factory dispatch by tool name, extensible for any tool (#253)
 - **WebGetToolDecorator** — Content-Type → method dispatch DSL: `text/html` converts to Markdown (strips scripts, styles, nav, footer, ads), `application/json` compresses to TOON (~40% token savings), unknown types pass through; metadata tags (`[Converted: HTML → Markdown]`) inform the LLM about transformations (#253)
 - `Tools::WebGet` now returns structured `{body:, content_type:}` result, preserving HTTP Content-Type header for format-specific decoration (#253)
