@@ -16,7 +16,7 @@ RSpec.describe Tools::ReturnResult do
 
   before do
     Events::Bus.subscribe(persister)
-    # Simulate the task user_message that spawn_subagent would have emitted
+    # Simulate the task user_message that spawn_subagent persists via create_user_event
     child_session.events.create!(
       event_type: "user_message",
       payload: {"content" => "Read lib/agent_loop.rb and summarize the tool execution flow"},

@@ -16,6 +16,7 @@ class Session < ApplicationRecord
   has_many :events, -> { order(:id) }, dependent: :destroy
   has_many :goals, dependent: :destroy
   has_many :snapshots, dependent: :destroy
+  has_many :pinned_events, through: :events
 
   belongs_to :parent_session, class_name: "Session", optional: true
   has_many :child_sessions, class_name: "Session", foreign_key: :parent_session_id, dependent: :destroy
@@ -235,28 +236,32 @@ class Session < ApplicationRecord
 
   # Builds the message array expected by the Anthropic Messages API.
   # Viewport layout (top to bottom):
-  #   [L2 snapshots] [L1 snapshots] [recalled memories] [sliding window events]
+  #   [L2 snapshots] [L1 snapshots] [pinned events] [recalled memories] [sliding window events]
   #
   # Snapshots appear ONLY after their source events have evicted from
   # the sliding window. L1 snapshots drop once covered by an L2 snapshot.
+  # Pinned events are critical context attached to active Goals — they
+  # survive eviction intact until their Goals complete.
   # Recalled memories surface relevant older events (passive recall via goals).
-  # Each layer has a fixed token budget fraction — snapshots and recall consume
-  # viewport space, reducing the sliding window size.
+  # Each layer has a fixed token budget fraction — snapshots, pins, and recall
+  # consume viewport space, reducing the sliding window size.
   #
-  # Sub-agent sessions skip snapshot and recall injection (they inherit parent events directly).
+  # Sub-agent sessions skip snapshot/pin/recall injection (they inherit parent events directly).
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @return [Array<Hash>] Anthropic Messages API format
   def messages_for_llm(token_budget: Anima::Settings.token_budget)
     sliding_budget = token_budget
     snapshot_messages = []
+    pinned_messages = []
     recall_messages = []
 
     unless sub_agent?
       l2_budget = (token_budget * Anima::Settings.mneme_l2_budget_fraction).to_i
       l1_budget = (token_budget * Anima::Settings.mneme_l1_budget_fraction).to_i
+      pinned_budget = (token_budget * Anima::Settings.mneme_pinned_budget_fraction).to_i
       recall_budget = (token_budget * Anima::Settings.recall_budget_fraction).to_i
-      sliding_budget = token_budget - l2_budget - l1_budget - recall_budget
+      sliding_budget = token_budget - l2_budget - l1_budget - pinned_budget - recall_budget
     end
 
     events = viewport_events(token_budget: sliding_budget, include_pending: false)
@@ -264,14 +269,16 @@ class Session < ApplicationRecord
     unless sub_agent?
       first_event_id = events.first&.id
       snapshot_messages = assemble_snapshot_messages(first_event_id, l2_budget: l2_budget, l1_budget: l1_budget)
+      pinned_messages = assemble_pinned_event_messages(first_event_id, budget: pinned_budget)
       recall_messages = assemble_recall_messages(budget: recall_budget)
     end
 
-    snapshot_messages + recall_messages + assemble_messages(events)
+    snapshot_messages + pinned_messages + recall_messages + assemble_messages(events)
   end
 
   # Creates a user message event record directly (bypasses EventBus+Persister).
-  # Used by {AgentRequestJob} (Bounce Back transaction) and {AgentLoop#process}
+  # Used by {AgentRequestJob} (Bounce Back transaction), {AgentLoop#process},
+  # and sub-agent spawn tools ({Tools::SpawnSubagent}, {Tools::SpawnSpecialist})
   # because the global {Events::Subscribers::Persister} skips non-pending user
   # messages — these callers own the persistence lifecycle.
   #
@@ -543,6 +550,115 @@ class Session < ApplicationRecord
   # @return [Hash] Anthropic message format
   def format_snapshot_message(snapshot, label:)
     {role: "user", content: "[#{label}]\n#{snapshot.text}"}
+  end
+
+  # Assembles pinned events as a Goals section message for the viewport.
+  # Only includes pinned events whose source event has evicted from the
+  # sliding window (same rule as snapshots — no duplication with live events).
+  #
+  # Deduplication: the first Goal referencing an event shows its truncated
+  # display_text; subsequent Goals show a bare `event N` ID to save tokens.
+  #
+  # @param first_event_id [Integer, nil] first event ID in the sliding window
+  # @param budget [Integer] token budget for pinned events
+  # @return [Array<Hash>] Anthropic Messages API format (0 or 1 messages)
+  def assemble_pinned_event_messages(first_event_id, budget:)
+    return [] unless first_event_id
+
+    pins = pinned_events
+      .includes(:event, :goals)
+      .where("pinned_events.event_id < ?", first_event_id)
+      .order("pinned_events.event_id")
+
+    return [] if pins.empty?
+
+    selected = select_pins_within_budget(pins, budget)
+    return [] if selected.empty?
+
+    text = render_pinned_events_section(selected)
+    [{role: "user", content: "[pinned events]\n#{text}"}]
+  end
+
+  # Walks pinned events chronologically, selecting until the token budget
+  # is exhausted. Always includes at least one pin.
+  #
+  # @param pins [Array<PinnedEvent>]
+  # @param budget [Integer]
+  # @return [Array<PinnedEvent>]
+  def select_pins_within_budget(pins, budget)
+    selected = []
+    remaining = budget
+
+    pins.each do |pin|
+      cost = pin.token_cost
+      break if cost > remaining && selected.any?
+
+      selected << pin
+      remaining -= cost
+    end
+
+    selected
+  end
+
+  # Renders the pinned events section grouped by Goal.
+  # First Goal referencing a pin shows truncated text; subsequent Goals
+  # show bare `event N` ID to avoid token-expensive repetition.
+  #
+  # @param pins [Array<PinnedEvent>] selected pins with preloaded goals
+  # @return [String] formatted section text
+  def render_pinned_events_section(pins)
+    goal_pins = group_pins_by_active_goal(pins)
+
+    shown_events = Set.new
+    goal_pins.map { |goal, pin_list|
+      render_goal_pins(goal, pin_list, shown_events)
+    }.join("\n\n")
+  end
+
+  # Groups pins by their active Goals so the viewport renders
+  # one headed section per Goal.
+  #
+  # @param pins [Array<PinnedEvent>] pins with preloaded goals
+  # @return [Hash{Goal => Array<PinnedEvent>}]
+  def group_pins_by_active_goal(pins)
+    pairs = pins.flat_map { |pin| active_goal_pin_pairs(pin) }
+    pairs.group_by(&:first).transform_values { |group| group.map(&:last) }
+  end
+
+  # Expands a single pin into [goal, pin] pairs for each active Goal
+  # referencing it. Uses in-memory filter on preloaded goals.
+  #
+  # @param pin [PinnedEvent]
+  # @return [Array<Array(Goal, PinnedEvent)>]
+  def active_goal_pin_pairs(pin)
+    pin.goals.select(&:active?).map { |goal| [goal, pin] }
+  end
+
+  # Renders one Goal's pinned events as a headed list.
+  #
+  # @param goal [Goal]
+  # @param pin_list [Array<PinnedEvent>]
+  # @param shown_events [Set<Integer>] tracks already-rendered event IDs for dedup
+  # @return [String]
+  def render_goal_pins(goal, pin_list, shown_events)
+    lines = ["📌 #{goal.description} (id: #{goal.id})"]
+    pin_list.each { |pin| lines << format_pin_line(pin, shown_events) }
+    lines.join("\n")
+  end
+
+  # Formats a single pin line with deduplication: first occurrence shows
+  # truncated text, subsequent occurrences show bare event ID only.
+  #
+  # @param pin [PinnedEvent]
+  # @param shown_events [Set<Integer>]
+  # @return [String]
+  def format_pin_line(pin, shown_events)
+    event_id = pin.event_id
+    if shown_events.add?(event_id)
+      "  event #{event_id}: #{pin.display_text}"
+    else
+      "  event #{event_id}"
+    end
   end
 
   # Assembles recalled memory messages from passive recall results.

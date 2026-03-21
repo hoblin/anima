@@ -71,6 +71,7 @@ RSpec.describe Anima::ConfigMigrator do
           ["mneme", "l1_budget_fraction"],
           ["mneme", "l2_budget_fraction"],
           ["mneme", "l2_snapshot_threshold"],
+          ["mneme", "pinned_budget_fraction"],
           ["recall", "max_results"],
           ["recall", "budget_fraction"],
           ["recall", "max_snippet_tokens"]
