@@ -155,15 +155,28 @@ class ShellSession
     # FIFO already exists — reuse it
   end
 
+  # Env vars that prevent interactive pagers and credential prompts from
+  # hanging the PTY. We need a PTY (not pipes) for pwd tracking via /proc
+  # and signal handling, but this makes programs think they're on a terminal
+  # and launch pagers. No single switch disables all pagers — each tool has
+  # its own env var — so we set a comprehensive list plus LESS flags as a
+  # safety net for direct `less` invocations.
+  SHELL_ENV = {
+    "TERM" => "dumb",
+    "PAGER" => "cat",                   # Default pager for most Unix tools
+    "LESS" => "-eFRX",                  # Safety net: make less auto-exit at EOF, no screen clear
+    "GIT_PAGER" => "cat",              # Git checks this before PAGER
+    "MANPAGER" => "cat",               # man pages
+    "SYSTEMD_PAGER" => "",             # journalctl, systemctl (empty = disable)
+    "BAT_PAGER" => "cat",             # bat (cat alternative)
+    "AWS_PAGER" => "",                 # AWS CLI v2 (empty = disable)
+    "PSQL_PAGER" => "cat",            # PostgreSQL psql
+    "GIT_TERMINAL_PROMPT" => "0"       # Fail immediately instead of prompting for credentials
+  }.freeze
+
   def spawn_shell
-    env = {
-      "TERM" => "dumb",
-      "GIT_PAGER" => "cat",            # Prevent git from launching less/more in PTY
-      "PAGER" => "cat",                 # Same for non-git pagers
-      "GIT_TERMINAL_PROMPT" => "0"      # Fail immediately instead of prompting for credentials
-    }
     @pty_stdout, @pty_stdin, @pid = PTY.spawn(
-      env,
+      SHELL_ENV,
       "bash", "--norc", "--noprofile"
     )
     # Disable terminal echo via termios before bash can echo our commands.

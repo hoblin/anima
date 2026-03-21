@@ -131,13 +131,21 @@ RSpec.describe ShellSession do
       end
     end
 
-    context "git pager prevention" do
-      it "sets GIT_PAGER to cat to prevent pager hangs" do
+    context "pager prevention" do
+      it "disables pagers via PAGER and tool-specific env vars" do
+        result = shell.run("echo $PAGER")
+        expect(result[:stdout]).to eq("cat")
+
         result = shell.run("echo $GIT_PAGER")
         expect(result[:stdout]).to eq("cat")
       end
 
-      it "sets GIT_TERMINAL_PROMPT to 0" do
+      it "configures less to auto-exit as safety net" do
+        result = shell.run("echo $LESS")
+        expect(result[:stdout]).to eq("-eFRX")
+      end
+
+      it "disables git credential prompts" do
         result = shell.run("echo $GIT_TERMINAL_PROMPT")
         expect(result[:stdout]).to eq("0")
       end
