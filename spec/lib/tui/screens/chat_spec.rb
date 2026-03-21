@@ -1714,4 +1714,93 @@ RSpec.describe TUI::Screens::Chat do
       ])
     end
   end
+
+  describe "#estimate_text_height" do
+    it "returns 1 for empty text" do
+      expect(screen.send(:estimate_text_height, "", 80)).to eq(1)
+    end
+
+    it "returns 1 for text shorter than width" do
+      expect(screen.send(:estimate_text_height, "hello", 80)).to eq(1)
+    end
+
+    it "returns 1 for text exactly at width" do
+      expect(screen.send(:estimate_text_height, "a" * 80, 80)).to eq(1)
+    end
+
+    it "wraps text exceeding width" do
+      expect(screen.send(:estimate_text_height, "a" * 160, 80)).to eq(2)
+      expect(screen.send(:estimate_text_height, "a" * 161, 80)).to eq(3)
+    end
+
+    it "counts newlines as separate lines" do
+      expect(screen.send(:estimate_text_height, "line1\nline2\nline3", 80)).to eq(3)
+    end
+
+    it "handles trailing newline" do
+      expect(screen.send(:estimate_text_height, "line1\n", 80)).to eq(2)
+    end
+
+    it "combines wrapping and newlines" do
+      text = "#{"a" * 160}\nshort"
+      expect(screen.send(:estimate_text_height, text, 80)).to eq(3)
+    end
+
+    it "handles width of 1" do
+      expect(screen.send(:estimate_text_height, "abc", 1)).to eq(3)
+    end
+  end
+
+  describe "#estimate_entry_height" do
+    it "returns 2 for tool_counter entries" do
+      entry = {type: :tool_counter, calls: 3, responses: 2}
+      expect(screen.send(:estimate_entry_height, entry, 80)).to eq(2)
+    end
+
+    it "estimates rendered tool_call without separator" do
+      entry = {type: :rendered, event_type: "tool_call", data: {"content" => "result"}}
+      height = screen.send(:estimate_entry_height, entry, 80)
+      # 1 line content + 1 header = 2 (no separator for tool_call)
+      expect(height).to eq(2)
+    end
+
+    it "estimates rendered non-tool_call with separator" do
+      entry = {type: :rendered, event_type: "tool_response", data: {"content" => "result"}}
+      height = screen.send(:estimate_entry_height, entry, 80)
+      # 1 line content + 1 header + 1 separator = 3
+      expect(height).to eq(3)
+    end
+
+    it "combines content and input for rendered entries" do
+      entry = {type: :rendered, event_type: "tool_call", data: {"content" => "desc", "input" => "code"}}
+      height = screen.send(:estimate_entry_height, entry, 80)
+      # 2 lines (content\ninput joined) + 1 header = 3
+      expect(height).to eq(3)
+    end
+
+    it "handles nil content in rendered entries" do
+      entry = {type: :rendered, event_type: "assistant", data: {"content" => nil}}
+      height = screen.send(:estimate_entry_height, entry, 80)
+      # empty text → 1 line + 1 header + 1 separator = 3
+      expect(height).to eq(3)
+    end
+
+    it "estimates message entries with separator" do
+      entry = {type: :message, content: "hello world"}
+      height = screen.send(:estimate_entry_height, entry, 80)
+      # 1 line content + 1 separator = 2
+      expect(height).to eq(2)
+    end
+
+    it "returns 1 for unknown entry types" do
+      entry = {type: :unknown}
+      expect(screen.send(:estimate_entry_height, entry, 80)).to eq(1)
+    end
+
+    it "handles zero width safely" do
+      entry = {type: :message, content: "hello"}
+      height = screen.send(:estimate_entry_height, entry, 0)
+      expect(height).to be >= 1
+    end
+  end
 end

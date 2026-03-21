@@ -3,6 +3,7 @@
 require_relative "../input_buffer"
 require_relative "../flash"
 require_relative "../performance_logger"
+require_relative "../height_map"
 require_relative "../decorators/base_decorator"
 require_relative "../decorators/bash_decorator"
 require_relative "../decorators/read_decorator"
@@ -30,6 +31,11 @@ module TUI
       TOOL_ICON = "\u{1F527}"
       CLOCK_ICON = "\u{1F552}"
       CHECKMARK = "\u2713"
+
+      # Viewport virtualization tuning
+      VIEWPORT_BACK_BUFFER = 3    # entries before scroll target for upward scroll margin
+      VIEWPORT_OVERFLOW_MULTIPLIER = 2 # build this many viewports worth of lines
+      VIEWPORT_BOTTOM_THRESHOLD = 10   # entries from end before we include all trailing
 
       ROLE_COLORS = {"user" => "green", "assistant" => "cyan"}.freeze
 
@@ -67,15 +73,14 @@ module TUI
         @input_history = []
         @history_index = nil
         @saved_input = nil
-        # Line cache: avoids rebuilding all message lines every frame
-        @cached_lines = nil
-        @cached_lines_version = -1
-        @cached_loading = nil
-        # line_count cache: avoids recalculating word-wrap on unchanged content
-        @cached_content_height = nil
-        @cached_content_width = nil
-        @cached_content_version = -1
-        @cached_content_loading = nil
+        # Viewport virtualization: only renders messages visible in the scroll
+        # window. Heights are estimated for all entries (cheap string math),
+        # but Line objects are only built for the visible range + buffer.
+        @height_map = HeightMap.new
+        @height_map_version = -1
+        @height_map_width = nil
+        @height_map_loading = nil
+        @viewport = viewport_cache_empty
       end
 
       def messages
@@ -434,38 +439,78 @@ module TUI
         @auto_scroll = true
       end
 
+      # Renders chat messages using viewport virtualization.
+      # Only builds Line objects for entries visible in the scroll window,
+      # keeping render cost constant regardless of conversation length.
+      #
+      # Uses overflow-based viewport building: starts from the estimated
+      # scroll position and builds entries forward until enough lines
+      # accumulate to fill the viewport. Real line counts (not estimates)
+      # determine when to stop, so the buffer naturally adapts to entry
+      # sizes — no fixed entry-count buffer needed.
       def render_messages(frame, area, tui)
-        lines = @perf_logger.measure(:build_lines) { cached_message_lines(tui) }
-
         inner_width = [area.width - 2, 1].max
         @visible_height = [area.height - 2, 0].max
+        entries = messages
+        version = @message_store.version
 
+        if entries.empty?
+          render_empty_or_loading(frame, area, tui)
+          return
+        end
+
+        # Phase 1: Height estimation — O(n) string math, cached by version+width.
+        # Needed for total_height / scrollbar / scroll-offset-to-entry mapping.
+        @perf_logger.measure(:estimate_heights) { update_height_map(entries, inner_width, version) }
+
+        # Phase 2: Preliminary scroll offset for visible_range lookup.
+        # Don't clamp here — Phase 5.5 sets the authoritative @max_scroll
+        # from actual viewport height. Clamping here would cap scroll_offset
+        # to the (under)estimated total, making the bottom unreachable.
+        if @auto_scroll
+          est_total = @height_map.total_height
+          est_total += 1 if @loading
+          @scroll_offset = [est_total - @visible_height, 0].max
+        end
+
+        # Phase 3: Find approximate first visible entry
+        first_vis, = @height_map.visible_range(@scroll_offset, @visible_height)
+
+        # Phase 4: Build Line objects using overflow — stops when viewport is full
+        lines = @perf_logger.measure(:build_lines) {
+          cached_viewport_lines(tui, entries, version, first_vis)
+        }
+
+        # Phase 5: Paragraph widget + wrapped line count
         base_widget = @perf_logger.measure(:paragraph) {
           tui.paragraph(text: lines, wrap: true, style: tui.style(fg: "white"))
         }
-
-        content_height = @perf_logger.measure(:line_count) {
-          cached_line_count(base_widget, inner_width)
+        wrapped_height = @perf_logger.measure(:line_count) {
+          cached_viewport_line_count(base_widget, inner_width, version)
         }
 
-        @max_scroll = [content_height - @visible_height, 0].max
+        # Phase 5.5: Correct scroll state using actual viewport height.
+        # Replace the estimated viewport portion with the real wrapped_height.
+        vp_first = @viewport[:first]
+        vp_last = @viewport[:last]
+        est_before = @height_map.cumulative_height(vp_first)
+        est_after = @height_map.total_height - @height_map.cumulative_height(vp_last + 1)
+        loading_outside = @loading && vp_last < entries.size - 1
+        corrected_total = est_before + wrapped_height + est_after + (loading_outside ? 1 : 0)
+
+        @max_scroll = [corrected_total - @visible_height, 0].max
         @scroll_offset = @max_scroll if @auto_scroll
         @scroll_offset = @scroll_offset.clamp(0, @max_scroll)
 
-        chat_block = {
-          title: "Chat",
-          borders: [:all],
-          border_type: :rounded,
-          border_style: @chat_focused ? {fg: "yellow"} : {fg: "cyan"}
-        }
-        if @chat_focused
-          chat_block[:titles] = [
-            {content: "\u2191\u2193 scroll  Esc return", position: :bottom, alignment: :center}
-          ]
-        end
+        # Phase 6: Map global scroll_offset into the viewport paragraph.
+        # est_before cancels between scroll_offset and max_scroll, so
+        # estimation errors don't create a dead zone at the bottom —
+        # they shift to the top (oldest messages) where they're harmless.
+        max_adjusted = [wrapped_height - @visible_height, 0].max
+        adjusted_scroll = (@scroll_offset - est_before).clamp(0, max_adjusted)
 
         widget = @perf_logger.measure(:widget_with) {
-          base_widget.with(scroll: [@scroll_offset, 0], block: tui.block(**chat_block))
+          base_widget.with(scroll: [adjusted_scroll, 0], block: tui.block(**chat_block_config))
         }
         @perf_logger.measure(:render_widget) { frame.render_widget(widget, area) }
 
@@ -482,70 +527,206 @@ module TUI
         frame.render_widget(scrollbar, area)
       end
 
-      # Returns cached message lines, rebuilding only when the message
-      # store version changes or the loading indicator toggles. Eliminates
-      # O(n×m) line-building work on frames with no content change.
+      # Renders the empty or loading state placeholder when no messages exist.
+      # Resets scroll state since there is no scrollable content.
+      #
+      # @param frame [RatatuiRuby::Frame] current render frame
+      # @param area [RatatuiRuby::Rect] available area for the chat pane
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @return [void]
+      def render_empty_or_loading(frame, area, tui)
+        lines = if @loading
+          [tui.line(spans: [
+            tui.span(content: "Thinking...", style: tui.style(fg: "yellow", modifiers: [:bold]))
+          ])]
+        else
+          [tui.line(spans: [
+            tui.span(content: "Type a message to start chatting.", style: tui.style(fg: "dark_gray"))
+          ])]
+        end
+
+        widget = tui.paragraph(text: lines, wrap: true, style: tui.style(fg: "white"))
+          .with(scroll: [0, 0], block: tui.block(**chat_block_config))
+        frame.render_widget(widget, area)
+        @max_scroll = 0
+        @scroll_offset = 0
+      end
+
+      # Re-estimates entry heights when content or width changes.
+      # Height estimation is O(n) string-length math — orders of
+      # magnitude cheaper than building Line/Span objects. Skips
+      # re-estimation when version, width, and loading state are unchanged.
+      #
+      # @param entries [Array<Hash>] message store entries
+      # @param width [Integer] available terminal width
+      # @param version [Integer] message store version counter
+      # @return [void]
+      def update_height_map(entries, width, version)
+        return if version == @height_map_version && width == @height_map_width && @loading == @height_map_loading
+
+        @height_map.update(entries, width) { |entry, avail_width| estimate_entry_height(entry, avail_width) }
+        @height_map_version = version
+        @height_map_width = width
+        @height_map_loading = @loading
+      end
+
+      # Returns cached viewport lines, rebuilding only when content
+      # changes or scroll moves outside the cached range. Uses overflow
+      # building: starts from a back-buffer before the visible entry and
+      # builds forward until the pre-wrap line count exceeds 2x the
+      # viewport height. Real line counts determine the buffer size, so
+      # it naturally adapts to entry sizes.
+      def cached_viewport_lines(tui, entries, version, first_visible_est)
+        vp = @viewport
+        vp_first = vp[:first]
+
+        # Cache hit: content unchanged and scroll target within the built range
+        if version == vp[:version] && @loading == vp[:loading] &&
+            vp_first && first_visible_est >= vp_first && first_visible_est <= vp[:last]
+          return vp[:lines]
+        end
+
+        entry_count = entries.size
+
+        # Start a few entries before the scroll target for upward buffer
+        buf_first = [first_visible_est - VIEWPORT_BACK_BUFFER, 0].max
+
+        # Build forward until we've accumulated enough lines to fill the
+        # viewport with margin. Pre-wrap count is a lower bound on visual
+        # height (wrapping only adds lines), so 2x guarantees coverage.
+        target = @visible_height * VIEWPORT_OVERFLOW_MULTIPLIER
+        lines = []
+        pre_wrap_count = 0
+        buf_last = buf_first
+
+        (buf_first...entry_count).each do |idx|
+          entry_lines = build_entry_lines(tui, entries[idx])
+          lines.concat(entry_lines)
+          pre_wrap_count += entry_lines.size
+          buf_last = idx
+          # Stop early only when we have enough lines AND are far from
+          # the bottom. Near the bottom, always include trailing entries
+          # so the viewport covers the actual end of content — otherwise
+          # the last entries become unreachable.
+          break if pre_wrap_count >= target && entry_count - idx > VIEWPORT_BOTTOM_THRESHOLD
+        end
+
+        if @loading && buf_last >= entry_count - 1
+          lines << tui.line(spans: [
+            tui.span(content: "Thinking...", style: tui.style(fg: "yellow", modifiers: [:bold]))
+          ])
+        end
+
+        @perf_logger.info(
+          "viewport MISS range=#{buf_first}..#{buf_last} " \
+          "of=#{entry_count} lines=#{lines.size}"
+        )
+
+        @viewport = {
+          version: version, loading: @loading, width: nil,
+          first: buf_first, last: buf_last,
+          lines: lines, wrapped_height: nil
+        }
+        lines
+      end
+
+      # Returns cached wrapped line count for the viewport paragraph.
+      # Avoids the expensive FFI line_count call when the viewport
+      # content and width haven't changed.
+      def cached_viewport_line_count(widget, width, version)
+        vp = @viewport
+        cached_height = vp[:wrapped_height]
+        if cached_height && version == vp[:version] && @loading == vp[:loading] && width == vp[:width]
+          return cached_height
+        end
+
+        height = widget.line_count(width)
+        @viewport[:width] = width
+        @viewport[:wrapped_height] = height
+        @perf_logger.info("viewport_lc MISS width=#{width} wrapped=#{height}")
+        height
+      end
+
+      # Builds Line objects for a single message store entry.
+      # Dispatches by entry type to the appropriate line builder.
       #
       # @param tui [RatatuiRuby] TUI rendering API
+      # @param entry [Hash] message store entry
       # @return [Array<RatatuiRuby::Widgets::Line>]
-      def cached_message_lines(tui)
-        version = @message_store.version
-
-        if version != @cached_lines_version || @loading != @cached_loading
-          @cached_lines = build_message_lines(tui)
-
-          if @loading
-            @cached_lines << tui.line(spans: [
-              tui.span(content: "Thinking...", style: tui.style(fg: "yellow", modifiers: [:bold]))
-            ])
-          end
-
-          if @cached_lines.empty?
-            @cached_lines << tui.line(spans: [
-              tui.span(content: "Type a message to start chatting.", style: tui.style(fg: "dark_gray"))
-            ])
-          end
-
-          @cached_lines_version = version
-          @cached_loading = @loading
-          @perf_logger.info("lines_cache MISS entries=#{@message_store.size} lines=#{@cached_lines.size}")
+      def build_entry_lines(tui, entry)
+        case entry[:type]
+        when :rendered then build_rendered_lines(tui, entry)
+        when :tool_counter then build_tool_counter_lines(tui, entry)
+        when :message then build_chat_message_lines(tui, entry)
+        else []
         end
-
-        @cached_lines
       end
 
-      # Returns cached content height, recalculating only when lines
-      # or width change. The line_count FFI call is expensive for large
-      # content because it calculates word-wrap for every line.
+      # Estimates visual (wrapped) line count for a message store entry.
+      # Used only for scroll mapping (total_height, scrollbar) — the
+      # actual viewport uses real line counts from overflow building.
       #
-      # @param widget [RatatuiRuby::Widgets::Paragraph] paragraph widget
-      # @param inner_width [Integer] available width for wrapping
-      # @return [Integer] total wrapped line count
-      def cached_line_count(widget, inner_width)
-        version = @message_store.version
+      # @param entry [Hash] message store entry
+      # @param width [Integer] available terminal width
+      # @return [Integer] estimated visual lines (minimum 1)
+      def estimate_entry_height(entry, width)
+        effective_width = [width, 1].max
 
-        if version != @cached_content_version || inner_width != @cached_content_width || @loading != @cached_content_loading
-          @cached_content_height = widget.line_count(inner_width)
-          @cached_content_version = version
-          @cached_content_width = inner_width
-          @cached_content_loading = @loading
-          @perf_logger.info("content_height_cache MISS width=#{inner_width} version=#{version}")
+        case entry[:type]
+        when :tool_counter
+          2 # counter line + blank separator
+        when :rendered
+          data = entry[:data]
+          text = [data["content"], data["input"]].compact.map(&:to_s).reject(&:empty?).join("\n")
+          lines = estimate_text_height(text, effective_width)
+          lines += 1 # header/label line
+          lines += 1 unless entry[:event_type] == "tool_call" # separator
+          lines
+        when :message
+          lines = estimate_text_height(entry[:content].to_s, effective_width)
+          lines + 1 # separator
+        else
+          1
         end
-
-        @cached_content_height
       end
 
-      def build_message_lines(tui)
-        messages.flat_map do |entry|
-          case entry[:type]
-          when :rendered
-            build_rendered_lines(tui, entry)
-          when :tool_counter
-            build_tool_counter_lines(tui, entry)
-          when :message
-            build_chat_message_lines(tui, entry)
-          end
+      # Estimates visual line count for multi-line text after word-wrapping.
+      #
+      # @param text [String] content text with embedded newlines
+      # @param width [Integer] available width
+      # @return [Integer] estimated visual line count (minimum 1)
+      def estimate_text_height(text, width)
+        return 1 if text.empty?
+
+        text.split("\n", -1).sum { |line|
+          [(line.length.to_f / width).ceil, 1].max
+        }
+      end
+
+      VIEWPORT_CACHE_EMPTY = {
+        version: -1, loading: nil, width: nil,
+        first: nil, last: nil, lines: nil, wrapped_height: nil
+      }.freeze
+
+      def viewport_cache_empty
+        VIEWPORT_CACHE_EMPTY.dup
+      end
+
+      # Builds the shared chat pane block config with focus-aware styling.
+      # @return [Hash] block configuration for tui.block
+      def chat_block_config
+        config = {
+          title: "Chat",
+          borders: [:all],
+          border_type: :rounded,
+          border_style: @chat_focused ? {fg: "yellow"} : {fg: "cyan"}
+        }
+        if @chat_focused
+          config[:titles] = [
+            {content: "\u2191\u2193 scroll  Esc return", position: :bottom, alignment: :center}
+          ]
         end
+        config
       end
 
       # Renders a tool activity counter (e.g. "🔧 Tools: 2/2 ✓").
