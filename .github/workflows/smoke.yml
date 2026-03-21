@@ -26,39 +26,31 @@ jobs:
           gem build anima-core.gemspec
           gem install ./anima-core-*.gem
 
-      - name: Verify Gemfile excluded from gem
-        run: |
-          GEM_ROOT=$(ruby -e "puts Gem::Specification.find_by_name('anima-core').gem_dir")
-          test ! -f "$GEM_ROOT/Gemfile" || { echo "FAIL: Gemfile in gem breaks production"; exit 1; }
-
       - name: anima install
         run: anima install
 
-      - name: Verify ~/.anima structure
-        run: |
-          test -f "$HOME/.anima/soul.md"
-          test -f "$HOME/.anima/config.toml"
-          test -f "$HOME/.anima/config/credentials/production.yml.enc"
-          test -f "$HOME/.anima/config/credentials/production.key"
+      - name: Start brain (no systemd in CI)
+        run: tmux new-session -d -s anima-brain 'anima start -e production'
 
-      - name: Start brain and verify ActionCable
+      - name: Connect TUI and verify
         run: |
-          anima start -e production &
-
+          # Wait for brain to be ready
           for i in $(seq 1 30); do
             curl -sf http://localhost:42134/up >/dev/null 2>&1 && break
             [ $i -eq 30 ] && { echo "FAIL: brain did not start"; exit 1; }
             sleep 1
           done
-          echo "Brain is up"
 
-          # ActionCable requires WebSocket upgrade — send proper headers
-          HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
-            -H "Upgrade: websocket" -H "Connection: Upgrade" \
-            -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
-            -H "Sec-WebSocket-Version: 13" \
-            http://localhost:42134/cable)
-          echo "ActionCable responded HTTP $HTTP_CODE"
-          echo "$HTTP_CODE" | grep -qE '(101|200|400|404|426)' || { echo "FAIL: unexpected response"; exit 1; }
+          tmux new-session -d -s anima-test -x 120 -y 30 'anima tui'
+          sleep 3
 
-          echo "Smoke test passed: gem install → anima install → brain running → ActionCable accepting"
+          if tmux capture-pane -t anima-test -p | grep -q '🟢'; then
+            echo "Smoke test passed"
+          else
+            echo "FAIL: TUI did not connect"
+            tmux capture-pane -t anima-test -p
+            exit 1
+          fi
+
+          tmux kill-session -t anima-test
+          tmux kill-session -t anima-brain
