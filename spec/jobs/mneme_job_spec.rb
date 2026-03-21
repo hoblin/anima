@@ -8,7 +8,6 @@ RSpec.describe MnemeJob do
 
   before do
     allow(Mneme::Runner).to receive(:new).and_return(runner)
-    allow(Anima::Settings).to receive(:mneme_l2_snapshot_threshold).and_return(3)
   end
 
   it "runs Mneme for the given session" do
@@ -38,6 +37,7 @@ RSpec.describe MnemeJob do
 
     before do
       allow(Mneme::L2Runner).to receive(:new).and_return(l2_runner)
+      allow(Anima::Settings).to receive(:mneme_l2_snapshot_threshold).and_return(3)
     end
 
     it "triggers L2 compression when enough uncovered L1 snapshots accumulate" do

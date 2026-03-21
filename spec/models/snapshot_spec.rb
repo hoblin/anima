@@ -29,6 +29,20 @@ RSpec.describe Snapshot do
       expect(snapshot).not_to be_valid
     end
 
+    it "rejects from_event_id > to_event_id" do
+      snapshot = session.snapshots.build(text: "Summary", from_event_id: 20, to_event_id: 10, level: 1)
+      expect(snapshot).not_to be_valid
+      expect(snapshot.errors[:from_event_id]).to include("must be <= to_event_id")
+    end
+
+    it "rejects negative token_count" do
+      snapshot = session.snapshots.build(
+        text: "Summary", from_event_id: 1, to_event_id: 10, level: 1, token_count: -1
+      )
+      expect(snapshot).not_to be_valid
+      expect(snapshot.errors[:token_count]).to include("must be greater than or equal to 0")
+    end
+
     it "rejects text exceeding MAX_TEXT_BYTES" do
       snapshot = session.snapshots.build(
         text: "x" * (Snapshot::MAX_TEXT_BYTES + 1),
@@ -94,6 +108,14 @@ RSpec.describe Snapshot do
         uncovered = session.snapshots.for_level(1).not_covered_by_l2
         expect(uncovered.count).to eq(2)
         expect(uncovered.pluck(:from_event_id)).to contain_exactly(21, 31)
+      end
+
+      it "does not treat partial overlap as coverage" do
+        # L1 covers events 5..25, L2 covers 1..20 — L2 does NOT fully contain L1
+        l1_partial = session.snapshots.create!(text: "L1 partial", from_event_id: 5, to_event_id: 25, level: 1)
+
+        uncovered = session.snapshots.for_level(1).not_covered_by_l2
+        expect(uncovered).to include(l1_partial)
       end
 
       it "scopes to the same session" do

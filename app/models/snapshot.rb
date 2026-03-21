@@ -30,6 +30,8 @@ class Snapshot < ApplicationRecord
   validates :from_event_id, presence: true
   validates :to_event_id, presence: true
   validates :level, presence: true, numericality: {greater_than: 0}
+  validates :token_count, numericality: {greater_than_or_equal_to: 0}, allow_nil: true
+  validate :from_event_id_not_after_to_event_id
 
   scope :for_level, ->(level) { where(level: level) }
   scope :chronological, -> { order(:from_event_id) }
@@ -61,6 +63,11 @@ class Snapshot < ApplicationRecord
   end
 
   private
+
+  def from_event_id_not_after_to_event_id
+    return unless from_event_id && to_event_id
+    errors.add(:from_event_id, "must be <= to_event_id") if from_event_id > to_event_id
+  end
 
   # @return [Integer] estimated token count (at least 1)
   def estimate_tokens

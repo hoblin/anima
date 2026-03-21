@@ -511,6 +511,8 @@ class Session < ApplicationRecord
   end
 
   # Walks snapshots chronologically, selecting until the token budget is exhausted.
+  # Always includes at least one snapshot even if it exceeds the budget, so the
+  # agent never loses all memory context.
   #
   # @param scope [ActiveRecord::Relation] snapshot scope to select from
   # @param budget [Integer] maximum tokens to include
