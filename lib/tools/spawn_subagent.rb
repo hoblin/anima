@@ -3,21 +3,22 @@
 module Tools
   # Spawns a generic child session that works on a task autonomously.
   # The sub-agent inherits the parent's viewport context at fork time,
-  # runs via {AgentRequestJob}, and delivers results back
-  # through {Tools::ReturnResult}.
+  # runs via {AgentRequestJob}, and communicates with the parent through
+  # natural text messages routed by {Events::Subscribers::SubagentMessageRouter}.
   #
   # For named specialists with predefined prompts and tools, see {SpawnSpecialist}.
   class SpawnSubagent < Base
     include SubagentPrompts
 
-    GENERIC_PROMPT = "You are a focused sub-agent. #{RETURN_INSTRUCTION}\n"
+    GENERIC_PROMPT = "You are a focused sub-agent. #{COMMUNICATION_INSTRUCTION}\n"
 
     def self.tool_name = "spawn_subagent"
 
     def self.description
       "Spawn a generic sub-agent to work on a task autonomously. " \
         "The sub-agent inherits your conversation context, works independently, " \
-        "and returns results as a tool response when done."
+        "and its text messages are forwarded to you automatically. " \
+        "Address it via @nickname to send follow-up instructions."
     end
 
     def self.input_schema
@@ -36,7 +37,7 @@ module Tools
             type: "array",
             items: {type: "string"},
             description: "Tool names to grant the sub-agent. " \
-              "Omit for all standard tools. Empty array for pure reasoning (return_result only). " \
+              "Omit for all standard tools. Empty array for pure reasoning. " \
               "Valid tools: #{AgentLoop::STANDARD_TOOLS_BY_NAME.keys.join(", ")}"
           }
         },
@@ -49,11 +50,12 @@ module Tools
       @session = session
     end
 
-    # Creates a child session, persists the task as a user message, and
-    # queues background processing. Returns immediately (non-blocking).
+    # Creates a child session with a generated nickname, persists the task
+    # as a user message, and queues background processing.
+    # Returns immediately (non-blocking).
     #
     # @param input [Hash<String, Object>] with "task", "expected_output", and optional "tools"
-    # @return [String] confirmation with child session ID
+    # @return [String] confirmation with child session ID and @nickname
     # @return [Hash{Symbol => String}] with :error key on validation failure
     def execute(input)
       task = input["task"].to_s.strip
@@ -68,14 +70,19 @@ module Tools
       return error if error
 
       child = spawn_child(task, expected_output, tools)
-      "Sub-agent spawned (session #{child.id}). Result will arrive as a tool response."
+      nickname = child.name
+      "Sub-agent @#{nickname} spawned (session #{child.id}). " \
+        "Its messages will appear in your conversation. " \
+        "Reply with @#{nickname} to send it instructions."
     end
 
     private
 
     def spawn_child(task, expected_output, granted_tools)
+      nickname = NicknameGenerator.call(task, @session)
       child = Session.create!(
         parent_session_id: @session.id,
+        name: nickname,
         prompt: "#{GENERIC_PROMPT}\n#{EXPECTED_DELIVERABLE_PREFIX}#{expected_output}",
         granted_tools: granted_tools
       )

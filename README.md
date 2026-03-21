@@ -168,7 +168,6 @@ The agent has access to these built-in tools:
 | `web_get` | Fetch content from HTTP/HTTPS URLs (HTML → Markdown, JSON → TOON) |
 | `spawn_specialist` | Spawn a named specialist sub-agent from the registry |
 | `spawn_subagent` | Spawn a generic child session with custom tool grants |
-| `return_result` | Sub-agents only — deliver results back to parent |
 
 Plus dynamic tools from configured MCP servers, namespaced as `server_name__tool_name`.
 
@@ -188,9 +187,9 @@ Two types:
 | `thoughts-analyzer` | Extract decisions from project history |
 | `web-search-researcher` | Research questions via web search |
 
-**Generic Sub-agents** — child sessions with custom tool grants for ad-hoc tasks.
+**Generic Sub-agents** — child sessions with custom tool grants for ad-hoc tasks. Each generic sub-agent gets a Haiku-generated nickname (e.g. `@loop-sleuth`, `@api-scout`) for @mention addressing.
 
-Sub-agents run as background jobs and appear in the TUI session picker under their parent. Next: [@mention communication](https://github.com/hoblin/anima/issues/124) — sub-agent text messages route to the parent automatically, parent replies via `@name`. Workers become colleagues.
+Sub-agents communicate through natural text — their `agent_message` events route to the parent session automatically, and the parent replies via `@name` mentions. No special tools needed; when a sub-agent writes text, the parent sees it. When the parent @mentions a sub-agent, the message arrives in that child's session. Workers become colleagues.
 
 ### Skills
 

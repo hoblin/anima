@@ -154,8 +154,9 @@ class AgentLoop
 
   # Builds the tool registry appropriate for this session type.
   # Main sessions get standard tools + spawn_subagent + spawn_specialist.
-  # Sub-agent sessions get granted standard tools + return_result (no spawning).
-  # Sub-agents cannot spawn further sub-agents (no recursive nesting).
+  # Sub-agents get granted standard tools only (no spawning, no nesting).
+  # Sub-agent results are delivered through natural text messages routed
+  # by {Events::Subscribers::SubagentMessageRouter}.
   # When {Session#granted_tools} is nil, all standard tools are granted.
   # MCP tools from configured servers are registered for all session types.
   #
@@ -166,9 +167,7 @@ class AgentLoop
 
     granted_standard_tools.each { |tool| registry.register(tool) }
 
-    if @session.sub_agent?
-      registry.register(Tools::ReturnResult)
-    else
+    unless @session.sub_agent?
       registry.register(Tools::SpawnSubagent)
       registry.register(Tools::SpawnSpecialist)
       registry.register(Tools::RequestFeature)

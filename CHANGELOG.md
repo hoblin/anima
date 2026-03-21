@@ -1,6 +1,12 @@
 ## [Unreleased]
 
 ### Added
+- **Sub-agent @mention communication** — bidirectional text routing between parent and sub-agent sessions; sub-agent `agent_message` events automatically forward to the parent session as attributed `user_message` events (`[sub-agent @name]: ...`), and parent `@name` mentions route back to matching child sessions; replaces the `return_result` tool — sub-agents communicate through natural text instead of structured tool calls (#124)
+- **Haiku-generated sub-agent nicknames** — generic sub-agents receive a fun, memorable nickname at spawn time via a fast LLM call (e.g. `@loop-sleuth`, `@api-scout`); nicknames serve as @mention handles for parent ↔ child communication; collision-safe with automatic numeric suffix (#124)
+- **SubagentMessageRouter event subscriber** — global subscriber that handles both routing directions: child→parent (attribution + job enqueue) and parent→child (@mention scanning + job enqueue); registered alongside Persister and AgentDispatcher (#124)
+
+### Removed
+- **`return_result` tool** — eliminated entirely; sub-agent text messages ARE results, routed automatically by `SubagentMessageRouter`; no special tool needed to deliver results back to the parent (#124)
 - **Goal-scoped event pinning** — Mneme can pin critical events (exact user instructions, key decisions, critical corrections) to active Goals via `attach_events_to_goals` tool; pinned events survive viewport eviction intact and appear in a `[pinned events]` section between snapshots and the sliding window; deduplication shows truncated text on first Goal reference, bare `event N` ID on subsequent Goals (#251)
 - **Reference-counted pin cleanup** — when a Goal completes, pinned events attached exclusively to it are automatically released; events shared with other active Goals stay pinned until all referencing Goals complete; no manual unpin needed (#251)
 - **Pinned events budget setting** — `pinned_budget_fraction` in `[mneme]` config section controls how much viewport space pinned events consume; viewport layout is now `[L2 snapshots] [L1 snapshots] [pinned events] [recalled memories] [sliding window]` (#251)

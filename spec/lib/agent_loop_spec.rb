@@ -284,21 +284,19 @@ RSpec.describe AgentLoop do
         expect(registry.registered?("spawn_subagent")).to be true
         expect(registry.registered?("spawn_specialist")).to be true
         expect(registry.registered?("request_feature")).to be true
-        expect(registry.registered?("return_result")).to be false
         "ok"
       end
 
       agent_loop.run
     end
 
-    it "registers return_result for sub-agent sessions (no spawning or feature requests)" do
+    it "registers only standard tools for sub-agent sessions (no spawning or feature requests)" do
       parent = Session.create!
       child = Session.create!(parent_session: parent, prompt: "sub-agent prompt")
       child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
 
       sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
       allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
-        expect(registry.registered?("return_result")).to be true
         expect(registry.registered?("spawn_subagent")).to be false
         expect(registry.registered?("spawn_specialist")).to be false
         expect(registry.registered?("request_feature")).to be false
@@ -322,7 +320,6 @@ RSpec.describe AgentLoop do
           expect(registry.registered?("bash")).to be false
           expect(registry.registered?("write")).to be false
           expect(registry.registered?("edit")).to be false
-          expect(registry.registered?("return_result")).to be true
           "done"
         end
 
@@ -330,14 +327,13 @@ RSpec.describe AgentLoop do
         sub_loop.finalize
       end
 
-      it "registers only return_result for empty tools array (pure reasoning)" do
+      it "registers no standard tools for empty tools array (pure reasoning)" do
         parent = Session.create!
         child = Session.create!(parent_session: parent, prompt: "thinker agent", granted_tools: [])
         child.events.create!(event_type: "user_message", payload: {"content" => "think"}, timestamp: 1)
 
         sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
         allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
-          expect(registry.registered?("return_result")).to be true
           AgentLoop::STANDARD_TOOLS_BY_NAME.each_key do |name|
             expect(registry.registered?(name)).to be false
           end
@@ -348,7 +344,7 @@ RSpec.describe AgentLoop do
         sub_loop.finalize
       end
 
-      it "registers all standard tools when granted_tools is nil (backward compatible)" do
+      it "registers all standard tools when granted_tools is nil" do
         parent = Session.create!
         child = Session.create!(parent_session: parent, prompt: "full agent")
         child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
@@ -358,7 +354,6 @@ RSpec.describe AgentLoop do
           AgentLoop::STANDARD_TOOLS_BY_NAME.each_key do |name|
             expect(registry.registered?(name)).to be true
           end
-          expect(registry.registered?("return_result")).to be true
           "done"
         end
 
