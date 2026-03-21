@@ -96,17 +96,9 @@ module Tools
     end
 
     # Runs the analytical brain synchronously to assign a nickname.
-    # Falls back to a sequential "agent-N" name on any failure.
     def assign_nickname_via_brain(child)
       AnalyticalBrain::Runner.new(child).call
       child.reload
-    rescue => error
-      Rails.logger.warn("Sub-agent nickname assignment failed: #{error.message}")
-      child.update!(name: fallback_nickname)
-    end
-
-    def fallback_nickname
-      "agent-#{@session.child_sessions.count}"
     end
 
     # Normalizes tool names to lowercase and removes duplicates.

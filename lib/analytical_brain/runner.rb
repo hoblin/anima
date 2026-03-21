@@ -18,7 +18,14 @@ module AnalyticalBrain
   # @example
   #   AnalyticalBrain::Runner.new(session).call
   class Runner
-    # A composable unit of brain capability: a prompt section + its tools.
+    # A composable unit of brain capability: a prompt section and the tools
+    # that implement it. The Runner selects active responsibilities based on
+    # session type and assembles the system prompt + tool registry from them.
+    #
+    # @!attribute [r] prompt
+    #   @return [String] system prompt section describing when/how to use the tools
+    # @!attribute [r] tools
+    #   @return [Array<Class<Tools::Base>>] tool classes to register for this responsibility
     Responsibility = Data.define(:prompt, :tools)
 
     RESPONSIBILITIES = {
@@ -103,8 +110,9 @@ module AnalyticalBrain
     PROMPT
 
     # Which responsibilities activate for each session type.
-    PARENT_RESPONSIBILITIES = %i[session_naming skill_management workflow_management goal_tracking].freeze
-    CHILD_RESPONSIBILITIES = %i[sub_agent_naming skill_management workflow_management goal_tracking].freeze
+    SHARED_RESPONSIBILITIES = %i[skill_management workflow_management goal_tracking].freeze
+    PARENT_RESPONSIBILITIES = (%i[session_naming] + SHARED_RESPONSIBILITIES).freeze
+    CHILD_RESPONSIBILITIES = (%i[sub_agent_naming] + SHARED_RESPONSIBILITIES).freeze
 
     # @param session [Session] the session to observe and maintain
     # @param client [LLM::Client, nil] injectable LLM client (defaults to fast model)
