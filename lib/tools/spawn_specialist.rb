@@ -67,6 +67,7 @@ module Tools
 
     # Creates a child session with the specialist's predefined prompt and tools,
     # persists the task as a user message, and queues background processing.
+    # Returns immediately (non-blocking).
     #
     # @param input [Hash<String, Object>] with "name", "task", and "expected_output"
     # @return [String] confirmation with child session ID
