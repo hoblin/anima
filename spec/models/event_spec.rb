@@ -210,6 +210,35 @@ RSpec.describe Event do
     end
   end
 
+  describe "#conversation_or_think?" do
+    it "returns true for user_message" do
+      expect(Event.new(event_type: "user_message", payload: {})).to be_conversation_or_think
+    end
+
+    it "returns true for agent_message" do
+      expect(Event.new(event_type: "agent_message", payload: {})).to be_conversation_or_think
+    end
+
+    it "returns true for system_message" do
+      expect(Event.new(event_type: "system_message", payload: {})).to be_conversation_or_think
+    end
+
+    it "returns true for think tool_call" do
+      event = Event.new(event_type: "tool_call", payload: {"tool_name" => "think"})
+      expect(event).to be_conversation_or_think
+    end
+
+    it "returns false for non-think tool_call" do
+      event = Event.new(event_type: "tool_call", payload: {"tool_name" => "bash"})
+      expect(event).not_to be_conversation_or_think
+    end
+
+    it "returns false for tool_response" do
+      event = Event.new(event_type: "tool_response", payload: {"tool_name" => "bash"})
+      expect(event).not_to be_conversation_or_think
+    end
+  end
+
   describe "after_create callback" do
     it "enqueues CountEventTokensJob for LLM events" do
       expect {

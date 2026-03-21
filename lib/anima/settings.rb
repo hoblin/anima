@@ -177,6 +177,16 @@ module Anima
       # @return [Integer]
       def analytical_brain_event_window = get("analytical_brain", "event_window")
 
+      # ─── Mneme (Memory Department) ────────────────────────────────
+
+      # Maximum tokens per Mneme LLM response.
+      # @return [Integer]
+      def mneme_max_tokens = get("mneme", "max_tokens")
+
+      # Fraction of the main viewport token budget allocated to Mneme's viewport.
+      # @return [Float]
+      def mneme_viewport_fraction = get("mneme", "viewport_fraction")
+
       private
 
       # Reads a setting from the config file.

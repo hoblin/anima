@@ -10,7 +10,7 @@ Anima is different. It's built on the premise that if you want an agent — a re
 
 **A brain modeled after biology, not chat.** The human brain isn't one process — it's specialized subsystems on a shared signal bus. Anima's [analytical brain](https://blog.promptmaster.pro/posts/llms-have-adhd/) runs as a separate subconscious process, managing context, skills, and goals so the main agent can stay in flow. Not two brains — a microservice architecture where each process does one job well. More subsystems are coming.
 
-**Context that never degrades.** Other agents fill a static array until the model gets dumb. Anima assembles a fresh viewport over an event bus every iteration. No compaction. No summarization. Endless sessions. The [dumb zone](https://www.humanlayer.dev/blog/the-dumb-zone) never arrives — and the analytical brain curates what the agent sees, in real time.
+**Context that never degrades.** Other agents fill a static array until the model gets dumb. Anima assembles a fresh viewport over an event bus every iteration. No compaction. No lossy rewriting. Endless sessions. The [dumb zone](https://www.humanlayer.dev/blog/the-dumb-zone) never arrives — the analytical brain curates what the agent sees in real time, while Mneme summarizes evicted context into persistent snapshots so nothing is truly forgotten.
 
 **Sub-agents that already know everything.** When Anima spawns a sub-agent, it inherits the parent's full event stream — every file read, every decision, every user message. No "let me summarize what I know." Lossless context. Zero wasted tool calls on rediscovery.
 
@@ -63,9 +63,10 @@ Anima (Ruby, Rails 8.1 headless)
 ├── MCP          — external tool integration (Model Context Protocol)
 ├── Sub-agents   — autonomous child sessions with lossless context inheritance
 │
+├── Mneme        — memory department (eviction-triggered summarization)
+│
 │ Designed:
 ├── Thymos       — hormonal/desire system (stimulus → hormone vector)
-├── Mneme        — semantic memory (viewport pinning, associative recall)
 └── Psyche       — soul matrix (coefficient table, evolving individuality)
 ```
 
@@ -76,6 +77,7 @@ Brain Server (Rails + Puma)              TUI Client (RatatuiRuby)
 ├── LLM integration (Anthropic)          ├── WebSocket client
 ├── Agent loop + tool execution          ├── Terminal rendering
 ├── Analytical brain (background)        └── User input capture
+├── Mneme memory department (background)
 ├── Skills registry + activation
 ├── Workflow registry + activation
 ├── MCP client (HTTP + stdio)
@@ -337,7 +339,7 @@ Most agents treat context as an append-only array — messages go in, they never
 
 The viewport is a live query, not a log. It walks events newest-first until the token budget is exhausted. Events that fall out of the viewport aren't deleted — they're still in the database, just not visible to the model right now. The context can shrink, grow, or change composition between any two iterations. If the analytical brain marks a large accidental file read as irrelevant, it's gone from the next viewport — tokens recovered instantly.
 
-This means sessions are endless. No compaction. No summarization. No degradation. The model always operates in fresh, high-quality context. The [dumb zone](https://www.humanlayer.dev/blog/the-dumb-zone) never arrives.
+This means sessions are endless. No compaction. No lossy rewriting. The model always operates in fresh, high-quality context. The [dumb zone](https://www.humanlayer.dev/blog/the-dumb-zone) never arrives. Meanwhile, Mneme runs as a background department — summarizing evicted events into persistent snapshots so past context is preserved, not destroyed.
 
 Sub-agent viewports compose from two event scopes — their own events (prioritized) and parent events (filling remaining budget). Same mechanism, no special handling. The bus is the architecture.
 
@@ -351,15 +353,16 @@ Anima mirrors this with an event-driven architecture. The analytical brain is th
 Event: "tool_call_failed"
   │
   ├── Analytical brain: update goals, check if workflow needs changing
+  ├── Mneme: summarize evicted context into snapshot
   ├── Thymos subscriber: frustration += 10 [planned]
-  ├── Mneme subscriber: log failure context for future recall [planned]
   └── Psyche subscriber: update coefficient (this agent handles errors calmly) [planned]
 
 Event: "user_sent_message"
   │
   ├── Analytical brain: activate relevant skills, name session
+  ├── Mneme: check viewport eviction, fire if boundary left viewport
   ├── Thymos subscriber: oxytocin += 5 (bonding signal) [planned]
-  └── Mneme subscriber: associate emotional state with topic [planned]
+  └── Psyche subscriber: associate emotional state with topic [planned]
 ```
 
 Each subscriber is a microservice — independent, stateless, reacting to the same event bus. No orchestrator decides what to do. The architecture IS the nervous system.
@@ -396,9 +399,11 @@ anima-memory-*       → recall and association (Mneme subscribers)
 
 Currently tools are built-in. Plugin extraction into distributable gems comes later.
 
-### Semantic Memory (Mneme) [planned]
+### Semantic Memory (Mneme)
 
 The viewport solves context degradation but creates a new question: what do we lose when events fall off the conveyor belt? Mneme is the answer — memory systems built on top of the viewport.
+
+**Eviction-triggered summarization** (implemented) — Mneme is the third brain department, running as a phantom LLM loop on the same event bus as the analytical brain. It tracks a boundary event on each session. When that event leaves the viewport, Mneme fires: builds a compressed viewport (conversation as full text, tool calls as `[N tools called]` counters, three-zone delimiters), sends it to a fast model, and persists a snapshot. The boundary advances after each run, creating a self-regulating cycle — Mneme fires exactly when context is about to be lost, no sooner or later.
 
 **Viewport pinning** (next) — the analytical brain watches events approaching eviction and pins critical ones (the original user goal, key decisions). Pinned events float above the sliding window, protected from eviction. Same mental model as pinning a message in Discord or Slack. Pins consume budget, so the brain must be judicious — natural pressure toward minimalism.
 
@@ -561,6 +566,7 @@ This single example demonstrates every core principle:
 - Event-driven architecture on a shared event bus
 - Dynamic viewport context assembly (endless sessions, no compaction)
 - Analytical brain (skills, workflows, goals, session naming)
+- Mneme memory department (eviction-triggered summarization, persistent snapshots)
 - 8 built-in tools + MCP integration (HTTP + stdio transports)
 - 7 built-in skills + 13 built-in workflows (user-extensible)
 - Sub-agents with lossless context inheritance (5 specialists + generic)
@@ -573,7 +579,7 @@ This single example demonstrates every core principle:
 **Designed, not yet implemented:**
 
 - Hormonal system (Thymos) — desires as behavioral drivers
-- Semantic memory (Mneme) — viewport pinning, associative recall
+- Semantic memory layers 2–3 (Mneme) — viewport pinning, associative recall
 - Soul matrix (Psyche) — evolving coefficient table for individuality
 
 ## Development
