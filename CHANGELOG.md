@@ -13,6 +13,7 @@
 - **Snapshot budget settings** — `l1_budget_fraction`, `l2_budget_fraction`, and `l2_snapshot_threshold` in `[mneme]` config section control snapshot viewport allocation and compression triggers (#250)
 
 ### Fixed
+- **Sub-agents receive empty task** — `SpawnSubagent` and `SpawnSpecialist` emitted the task via `Events::Bus` which the `Persister` intentionally skips for non-pending user messages; switched to `Session#create_user_event` (direct DB persistence) matching the pattern used by `AgentRequestJob` and `AgentLoop`; also eliminates a duplicate job from `AgentDispatcher` catching the bus emission (#262)
 - **Dev dependencies leak into production gem install** — exclude `Gemfile` from the gem package so `config/boot.rb` skips Bundler entirely; after `gem install`, all runtime deps are on the load path via RubyGems and Bundler adds no value. Also moved dev/test gems into proper Gemfile groups for development clarity (#225, #202)
 - **TUI session name wrapping in HUD** — long session names now wrap across multiple lines instead of being silently clipped at the panel boundary (#168)
 - **WebGet SSL certificate verification** — bundle Mozilla CA certificates via `certifi` gem so HTTPS requests work on systems with incomplete CA stores (e.g. mise/rbenv-compiled Ruby) (#253)
