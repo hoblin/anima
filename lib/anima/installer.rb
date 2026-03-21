@@ -115,19 +115,22 @@ module Anima
 
         next if key_path.exist? && content_path.exist?
 
+        content_str = content_path.to_s
+        key_str = key_path.to_s
+
         key = ActiveSupport::EncryptedFile.generate_key
         key_path.write(key)
-        File.chmod(0o600, key_path.to_s)
+        File.chmod(0o600, key_str)
 
         config = ActiveSupport::EncryptedConfiguration.new(
-          config_path: content_path.to_s,
-          key_path: key_path.to_s,
+          config_path: content_str,
+          key_path: key_str,
           env_key: "RAILS_MASTER_KEY",
           raise_if_missing_key: true
         )
 
         config.write("secret_key_base: #{SecureRandom.hex(64)}\n")
-        File.chmod(0o600, content_path.to_s)
+        File.chmod(0o600, content_str)
         say "  created credentials for #{env}"
       end
     end
@@ -153,16 +156,12 @@ module Anima
         WantedBy=default.target
       UNIT
 
-      if service_path.exist?
-        if service_path.read == unit_content
-          say "  anima.service unchanged"
-        else
-          service_path.write(unit_content)
-          say "  updated #{service_path}"
-        end
+      already_exists = service_path.exist?
+      if already_exists && service_path.read == unit_content
+        say "  anima.service unchanged"
       else
         service_path.write(unit_content)
-        say "  created #{service_path}"
+        say "  #{already_exists ? "updated" : "created"} #{service_path}"
       end
 
       system("systemctl", "--user", "daemon-reload", err: File::NULL, out: File::NULL)

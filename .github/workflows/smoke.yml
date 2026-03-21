@@ -1,0 +1,56 @@
+name: Smoke Test (Gem Install)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: ["3.2", "3.3", "3.4"]
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    name: Smoke ${{ matrix.os }} Ruby ${{ matrix.ruby }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: ruby/setup-ruby@6ca151fd1bfcfd6fe0c4eb6837eb0584d0134a0c # v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+
+      - name: Build and install gem
+        run: |
+          gem build anima-core.gemspec
+          gem install ./anima-core-*.gem
+
+      - name: anima install
+        run: anima install
+
+      - name: Start brain (no systemd in CI)
+        run: tmux new-session -d -s anima-brain 'anima start -e production'
+
+      - name: Connect TUI and verify
+        run: |
+          # Wait for brain to be ready
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:42134/up >/dev/null 2>&1 && break
+            [ $i -eq 30 ] && { echo "FAIL: brain did not start"; exit 1; }
+            sleep 1
+          done
+
+          tmux new-session -d -s anima-test -x 120 -y 30 'anima tui'
+          sleep 3
+
+          if tmux capture-pane -t anima-test -p | grep -q '🟢'; then
+            echo "Smoke test passed"
+          else
+            echo "FAIL: TUI did not connect"
+            tmux capture-pane -t anima-test -p
+            exit 1
+          fi
+
+          tmux kill-session -t anima-test
+          tmux kill-session -t anima-brain

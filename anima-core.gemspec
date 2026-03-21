@@ -21,7 +21,7 @@ Gem::Specification.new do |spec|
   # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
   spec.files = IO.popen(%w[git ls-files -z], chdir: __dir__, err: IO::NULL) do |ls|
     ls.readlines("\x0", chomp: true).reject do |f|
-      f.start_with?(*%w[bin/console bin/dev bin/setup .gitignore .rspec spec/ .github/ .standard.yml thoughts/ CLAUDE.md .mise.toml])
+      f.start_with?(*%w[bin/console bin/dev bin/setup Gemfile .gitignore .rspec spec/ .github/ .standard.yml thoughts/ CLAUDE.md .mise.toml])
     end
   end
   spec.bindir = "exe"
