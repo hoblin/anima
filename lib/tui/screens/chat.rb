@@ -94,20 +94,8 @@ module TUI
           ]
         )
 
-        flash_height = @flash.any? ? @flash.render(frame, chat_area, tui) : 0
-        if flash_height > 0
-          _, messages_area = tui.split(
-            chat_area,
-            direction: :vertical,
-            constraints: [
-              tui.constraint_length(flash_height),
-              tui.constraint_fill(1)
-            ]
-          )
-          render_messages(frame, messages_area, tui)
-        else
-          render_messages(frame, chat_area, tui)
-        end
+        render_messages(frame, chat_area, tui)
+        render_flash(frame, chat_area, tui)
 
         render_input(frame, input_area, tui)
       end
@@ -323,6 +311,16 @@ module TUI
       # before history arrives. Action Cable sends confirm_subscription
       # AFTER transmit calls in the subscribed callback, so clearing on
       # "subscribed" would wipe history that already arrived.
+      # Renders flash messages as colored bars inside the chat frame,
+      # just below the top border (respecting rounded corners).
+      def render_flash(frame, chat_area, tui)
+        return unless @flash.any?
+
+        # Inner area: inset by 1 on each side for the chat frame border
+        inner = tui.block(borders: [:all]).inner(chat_area)
+        @flash.render(frame, inner, tui)
+      end
+
       def handle_connection_status(msg)
         case msg["status"]
         when "subscribing"

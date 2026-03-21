@@ -2,8 +2,9 @@
 
 module TUI
   # Ephemeral notification system for the TUI, modeled after Rails flash
-  # messages. Notifications appear at the top of the chat pane and
-  # auto-dismiss after a configurable timeout or on any keypress.
+  # messages. Notifications render as a colored bar at the top of the
+  # chat pane and auto-dismiss after a configurable timeout or on any
+  # keypress.
   #
   # Reusable beyond Bounce Back — useful for connection status changes,
   # background task notifications, and any transient user feedback that
@@ -15,18 +16,21 @@ module TUI
   #   flash.warning("Rate limited, retry in 30s")
   #   flash.info("Reconnected to server")
   #
-  # @example Rendering
-  #   flash.render(frame, area, tui) unless flash.empty?
+  # @example Rendering (returns height consumed)
+  #   flash_height = flash.render(frame, area, tui)
   #
   # @example Dismissing
   #   flash.dismiss!
   class Flash
-    # @return [Float] seconds before auto-dismiss (0 = sticky)
     AUTO_DISMISS_SECONDS = 5.0
 
     Entry = Struct.new(:message, :level, :created_at, keyword_init: true)
 
-    LEVELS = {error: "red", warning: "yellow", info: "blue"}.freeze
+    LEVEL_STYLES = {
+      error: {fg: "white", bg: "red", icon: " \u2718 "},
+      warning: {fg: "black", bg: "yellow", icon: " \u26A0 "},
+      info: {fg: "white", bg: "blue", icon: " \u2139 "}
+    }.freeze
 
     def initialize
       @entries = []
@@ -63,19 +67,18 @@ module TUI
       @entries.clear
     end
 
-    # Renders the flash overlay at the top of the given area.
+    # Renders flash entries as colored bars at the top of the given area.
     # Returns the height consumed so the caller can adjust layout.
     #
     # @param frame [RatatuiRuby::Frame]
     # @param area [RatatuiRuby::Rect] full chat area (flash renders at top)
     # @param tui [RatatuiRuby::TUI]
-    # @return [Integer] number of rows consumed by the flash
+    # @return [Integer] number of rows consumed
     def render(frame, area, tui)
       expire!
       return 0 if @entries.empty?
 
-      lines = @entries.map { |entry| build_line(entry, tui) }
-      height = [lines.size + 2, area.height / 3].min # +2 for border
+      height = [@entries.size, area.height / 3].min
 
       flash_area, _ = tui.split(
         area,
@@ -86,15 +89,13 @@ module TUI
         ]
       )
 
-      paragraph = tui.paragraph(
-        text: lines,
-        block: tui.block(
-          borders: [:bottom],
-          border_style: {fg: border_color}
-        )
-      )
+      @entries.each_with_index do |entry, index|
+        break if index >= height
 
-      frame.render_widget(paragraph, flash_area)
+        row_area = row_rect(flash_area, index, tui)
+        render_entry(frame, row_area, entry, tui)
+      end
+
       height
     end
 
@@ -109,19 +110,23 @@ module TUI
       @entries.reject! { |entry| now - entry.created_at > AUTO_DISMISS_SECONDS }
     end
 
-    def build_line(entry, tui)
-      color = LEVELS.fetch(entry.level, "white")
-      icon = (entry.level == :info) ? "\u2139\uFE0F " : "\u26A0\uFE0F "
-      tui.line(spans: [
-        tui.span(content: " #{icon}", style: tui.style(fg: color)),
-        tui.span(content: entry.message, style: tui.style(fg: color))
-      ])
+    def row_rect(area, index, tui)
+      rows = (0...area.height).map { tui.constraint_length(1) }
+      chunks = tui.split(area, direction: :vertical, constraints: rows)
+      chunks[index]
     end
 
-    def border_color
-      return "red" if @entries.any? { |e| e.level == :error }
-      return "yellow" if @entries.any? { |e| e.level == :warning }
-      "blue"
+    def render_entry(frame, area, entry, tui)
+      config = LEVEL_STYLES.fetch(entry.level, LEVEL_STYLES[:info])
+      style = tui.style(fg: config[:fg], bg: config[:bg], modifiers: [:bold])
+
+      text = "#{config[:icon]}#{entry.message} "
+      # Pad to full width so background color fills the entire row
+      padded = text.ljust(area.width)
+
+      line = tui.line(spans: [tui.span(content: padded, style: style)])
+      widget = tui.paragraph(text: [line])
+      frame.render_widget(widget, area)
     end
 
     def monotonic_now
