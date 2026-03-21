@@ -41,6 +41,8 @@ module Mneme
         @session = main_session
       end
 
+      # @param input [Hash<String, Object>] with "event_ids" and "goal_ids"
+      # @return [String] confirmation with link count, or error description
       def execute(input)
         event_ids = Array(input["event_ids"]).map(&:to_i).uniq
         goal_ids = Array(input["goal_ids"]).map(&:to_i).uniq
@@ -51,8 +53,8 @@ module Mneme
         events = @session.events.where(id: event_ids)
         goals = @session.goals.active.where(id: goal_ids)
 
-        missing_events = event_ids - events.map(&:id)
-        missing_goals = goal_ids - goals.map(&:id)
+        missing_events = event_ids - events.pluck(:id)
+        missing_goals = goal_ids - goals.pluck(:id)
 
         errors = []
         errors << "Events not found: #{missing_events.join(", ")}" if missing_events.any?
@@ -84,7 +86,7 @@ module Mneme
       end
 
       def truncate_event_content(event)
-        content = event.payload["content"].to_s
+        content = event.payload&.dig("content").to_s
         if content.length > PinnedEvent::MAX_DISPLAY_TEXT_LENGTH
           content[0, PinnedEvent::MAX_DISPLAY_TEXT_LENGTH - 1] + "…"
         else

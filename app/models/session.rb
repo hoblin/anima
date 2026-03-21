@@ -616,7 +616,7 @@ class Session < ApplicationRecord
   end
 
   def active_goal_pin_pairs(pin)
-    pin.goals.select(&:active_goal?).map { |goal| [goal, pin] }
+    pin.goals.select(&:active?).map { |goal| [goal, pin] }
   end
 
   def render_goal_pins(goal, pin_list, shown_events)

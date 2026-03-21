@@ -21,6 +21,7 @@ class CreatePinnedEvents < ActiveRecord::Migration[8.1]
     end
 
     # One event pinned to a goal at most once.
+    # (t.references already creates individual indexes on goal_id and pinned_event_id)
     add_index :goal_pinned_events, [:goal_id, :pinned_event_id], unique: true
   end
 end

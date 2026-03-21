@@ -31,7 +31,7 @@ class Goal < ApplicationRecord
   def completed? = status == "completed"
 
   # @return [Boolean] true if this goal is still active
-  def active_goal? = status == "active"
+  def active? = status == "active"
 
   # @return [Boolean] true if this is a root goal (no parent)
   def root? = !parent_goal_id

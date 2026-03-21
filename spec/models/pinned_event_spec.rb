@@ -81,7 +81,7 @@ RSpec.describe PinnedEvent do
   describe "#token_cost" do
     it "estimates tokens from display_text byte size" do
       pin = PinnedEvent.new(display_text: "a" * 100)
-      expect(pin.token_cost).to eq(25)
+      expect(pin.token_cost).to eq((100.0 / Event::BYTES_PER_TOKEN).ceil)
     end
 
     it "returns at least 1 for empty-ish text" do
