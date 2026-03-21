@@ -7,6 +7,10 @@ RSpec.describe Tools::SpawnSubagent do
 
   subject(:tool) { described_class.new(session: parent_session) }
 
+  before do
+    allow(Tools::NicknameGenerator).to receive(:call).and_return("loop-sleuth")
+  end
+
   describe ".tool_name" do
     it "returns spawn_subagent" do
       expect(described_class.tool_name).to eq("spawn_subagent")
@@ -115,19 +119,20 @@ RSpec.describe Tools::SpawnSubagent do
       )
     end
 
-    it "returns confirmation with child session ID" do
+    it "returns confirmation with @nickname and session ID" do
       result = tool.execute(input)
 
       child = Session.last
-      expect(result).to include("Sub-agent spawned")
+      expect(result).to include("Sub-agent @loop-sleuth spawned")
       expect(result).to include("session #{child.id}")
+      expect(result).to include("@loop-sleuth")
     end
 
-    it "does not store a name on the child session" do
+    it "generates and stores a nickname on the child session" do
       tool.execute(input)
 
       child = Session.last
-      expect(child.name).to be_nil
+      expect(child.name).to eq("loop-sleuth")
     end
 
     it "returns immediately (non-blocking)" do
@@ -218,7 +223,7 @@ RSpec.describe Tools::SpawnSubagent do
         result = tool.execute(input.merge("tools" => valid_names))
 
         expect(result).to be_a(String)
-        expect(result).to include("Sub-agent spawned")
+        expect(result).to include("Sub-agent @loop-sleuth spawned")
       end
     end
   end

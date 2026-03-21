@@ -5,7 +5,8 @@ module Tools
   # The specialist has a predefined system prompt and tool set defined
   # in its Markdown definition file under agents/.
   #
-  # Results are delivered back through {Tools::ReturnResult}.
+  # Results are delivered through natural text messages routed by
+  # {Events::Subscribers::SubagentMessageRouter}.
   #
   # @see Agents::Registry
   # @see Agents::Definition
@@ -17,7 +18,9 @@ module Tools
     # Builds description dynamically to include available specialists.
     def self.description
       base = "Spawn a named specialist sub-agent to work on a task autonomously. " \
-        "The specialist has a predefined role, system prompt, and tool set."
+        "The specialist has a predefined role, system prompt, and tool set. " \
+        "Its text messages are forwarded to you automatically. " \
+        "Address it via @name to send follow-up instructions."
 
       registry = Agents::Registry.instance
       return base unless registry.any?
@@ -85,7 +88,9 @@ module Tools
       return {error: "Unknown agent: #{name}"} unless definition
 
       child = spawn_child(definition, task, expected_output)
-      "Specialist '#{name}' spawned (session #{child.id}). Result will arrive as a tool response."
+      "Specialist @#{name} spawned (session #{child.id}). " \
+        "Its messages will appear in your conversation. " \
+        "Reply with @#{name} to send it instructions."
     end
 
     private
@@ -105,7 +110,7 @@ module Tools
     end
 
     def build_prompt(definition, expected_output)
-      "#{definition.prompt}\n\n#{RETURN_INSTRUCTION}\n\n#{EXPECTED_DELIVERABLE_PREFIX}#{expected_output}"
+      "#{definition.prompt}\n\n#{COMMUNICATION_INSTRUCTION}\n\n#{EXPECTED_DELIVERABLE_PREFIX}#{expected_output}"
     end
   end
 end

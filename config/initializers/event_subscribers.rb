@@ -14,5 +14,8 @@ Rails.application.config.after_initialize do
 
     # Bridges transient events (e.g. BounceBack) to ActionCable for client delivery.
     Events::Bus.subscribe(Events::Subscribers::TransientBroadcaster.new)
+
+    # Routes text messages between parent and sub-agent sessions via @mentions.
+    Events::Bus.subscribe(Events::Subscribers::SubagentMessageRouter.new)
   end
 end

@@ -100,11 +100,11 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(child.prompt).to include("code analysis specialist")
     end
 
-    it "appends the return_result instruction to the prompt" do
+    it "appends the communication instruction to the prompt" do
       tool.execute(input)
 
       child = Session.last
-      expect(child.prompt).to include("call the return_result tool")
+      expect(child.prompt).to include("automatically forwarded to the parent agent")
     end
 
     it "appends the expected deliverable to the prompt" do
@@ -156,11 +156,12 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(AgentRequestJob).to have_been_enqueued.with(child.id)
     end
 
-    it "returns confirmation including the specialist name" do
+    it "returns confirmation including the specialist name and @mention hint" do
       result = tool.execute(input)
 
-      expect(result).to include("Specialist 'analyzer' spawned")
+      expect(result).to include("Specialist @analyzer spawned")
       expect(result).to include("session #{Session.last.id}")
+      expect(result).to include("@analyzer")
     end
 
     context "with blank name" do
