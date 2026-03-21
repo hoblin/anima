@@ -8,7 +8,11 @@ RSpec.describe Tools::SpawnSubagent do
   subject(:tool) { described_class.new(session: parent_session) }
 
   before do
-    allow(Tools::NicknameGenerator).to receive(:call).and_return("loop-sleuth")
+    # Stub the analytical brain to simulate nickname assignment
+    allow_any_instance_of(AnalyticalBrain::Runner).to receive(:call) do |runner|
+      session = runner.instance_variable_get(:@session)
+      session.update!(name: "loop-sleuth")
+    end
   end
 
   describe ".tool_name" do
@@ -128,11 +132,35 @@ RSpec.describe Tools::SpawnSubagent do
       expect(result).to include("@loop-sleuth")
     end
 
-    it "generates and stores a nickname on the child session" do
+    it "assigns nickname via the analytical brain" do
       tool.execute(input)
 
       child = Session.last
       expect(child.name).to eq("loop-sleuth")
+    end
+
+    it "runs the analytical brain synchronously" do
+      brain_called = false
+      allow_any_instance_of(AnalyticalBrain::Runner).to receive(:call) do |runner|
+        brain_called = true
+        session = runner.instance_variable_get(:@session)
+        session.update!(name: "brain-named")
+      end
+
+      tool.execute(input)
+
+      expect(brain_called).to be true
+      expect(Session.last.name).to eq("brain-named")
+    end
+
+    it "falls back to agent-N on brain failure" do
+      allow_any_instance_of(AnalyticalBrain::Runner).to receive(:call)
+        .and_raise(Providers::Anthropic::RateLimitError, "rate limited")
+
+      tool.execute(input)
+
+      child = Session.last
+      expect(child.name).to match(/\Aagent-\d+\z/)
     end
 
     it "returns immediately (non-blocking)" do
