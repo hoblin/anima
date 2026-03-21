@@ -463,8 +463,10 @@ module TUI
           ]
         end
 
-        widget = base_widget.with(scroll: [@scroll_offset, 0], block: tui.block(**chat_block))
-        frame.render_widget(widget, area)
+        widget = @perf_logger.measure(:widget_with) {
+          base_widget.with(scroll: [@scroll_offset, 0], block: tui.block(**chat_block))
+        }
+        @perf_logger.measure(:render_widget) { frame.render_widget(widget, area) }
 
         return unless @max_scroll > 0
 
