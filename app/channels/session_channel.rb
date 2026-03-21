@@ -42,9 +42,14 @@ class SessionChannel < ApplicationCable::Channel
     ActionCable.server.broadcast(stream_name, data)
   end
 
-  # Processes user input: persists the message and enqueues LLM processing.
-  # When the session is actively processing an agent request, the message
-  # is queued as "pending" and picked up after the current loop completes.
+  # Processes user input by emitting a {Events::UserMessage} on the event bus.
+  #
+  # When the session is idle, the emission triggers {Events::Subscribers::AgentDispatcher}
+  # which schedules {AgentRequestJob} to persist the event and deliver it to the LLM
+  # inside a transaction (Bounce Back, #236).
+  #
+  # When the session is already processing, the message is queued as "pending"
+  # and picked up after the current agent loop completes.
   #
   # @param data [Hash] must include "content" with the user's message text
   def speak(data)
@@ -58,7 +63,6 @@ class SessionChannel < ApplicationCable::Channel
       Events::Bus.emit(Events::UserMessage.new(content: content, session_id: @current_session_id, status: Event::PENDING_STATUS))
     else
       Events::Bus.emit(Events::UserMessage.new(content: content, session_id: @current_session_id))
-      AgentRequestJob.perform_later(@current_session_id)
     end
   end
 

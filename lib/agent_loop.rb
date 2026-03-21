@@ -42,7 +42,9 @@ class AgentLoop
 
   # Runs the agent loop for a single user input.
   #
-  # Emits {Events::UserMessage} immediately, then delegates to {#run}.
+  # Persists the user event directly (the global Persister skips
+  # non-pending user messages because {AgentRequestJob} owns their
+  # lifecycle). Then emits a bus notification and delegates to {#run}.
   # On error emits {Events::AgentMessage} with the error text.
   #
   # @param input [String] raw user input
@@ -51,6 +53,7 @@ class AgentLoop
     text = input.to_s.strip
     return if text.empty?
 
+    persist_user_event(text)
     Events::Bus.emit(Events::UserMessage.new(content: text, session_id: @session.id))
     run
   rescue => error
@@ -59,15 +62,39 @@ class AgentLoop
     error_message
   end
 
+  # Makes the first LLM API call to verify delivery. Called inside the
+  # Bounce Back transaction — if this raises, the user event rolls back.
+  #
+  # Caches the first response so the subsequent {#run} call can continue
+  # from it without duplicating the API call.
+  #
+  # @return [void]
+  # @raise [Providers::Anthropic::Error] on any LLM delivery failure
+  def deliver!
+    @client ||= LLM::Client.new
+    @registry ||= build_tool_registry
+
+    messages = @session.messages_for_llm
+    options = build_llm_options
+
+    @first_response = @client.provider.create_message(
+      model: @client.model,
+      messages: messages,
+      max_tokens: @client.max_tokens,
+      tools: @registry.schemas,
+      **options
+    )
+  end
+
   # Runs the LLM tool-use loop on persisted session messages.
   #
-  # Unlike {#process}, does not emit {Events::UserMessage} and lets errors
-  # propagate — designed for callers like {AgentRequestJob} that handle
-  # retries and need errors to bubble up.
+  # When a cached first response exists (from {#deliver!}), continues
+  # from that response without a redundant API call. Otherwise makes
+  # a fresh call — used for pending message processing and the standard
+  # path.
   #
-  # When the user interrupts, +chat_with_tools+ returns nil. Tool results
-  # are already persisted; no agent message is emitted so the conversation
-  # ends at the interrupted tool result.
+  # Lets errors propagate — designed for callers like {AgentRequestJob}
+  # that handle retries and need errors to bubble up.
   #
   # @return [String, nil] the agent's response text, or nil when interrupted
   # @raise [Providers::Anthropic::TransientError] on retryable network/server errors
@@ -77,15 +104,15 @@ class AgentLoop
     @registry ||= build_tool_registry
 
     messages = @session.messages_for_llm
-    options = {}
+    options = build_llm_options
 
-    unless @session.sub_agent?
-      env_context = EnvironmentProbe.to_prompt(@shell_session.pwd)
-    end
-    prompt = @session.system_prompt(environment_context: env_context)
-    options[:system] = prompt if prompt
+    first_resp = @first_response
+    @first_response = nil
 
-    response = @client.chat_with_tools(messages, registry: @registry, session_id: @session.id, **options)
+    response = @client.chat_with_tools(
+      messages, registry: @registry, session_id: @session.id,
+      first_response: first_resp, **options
+    )
     return unless response
 
     Events::Bus.emit(Events::AgentMessage.new(content: response, session_id: @session.id))
@@ -107,6 +134,23 @@ class AgentLoop
   STANDARD_TOOLS_BY_NAME = STANDARD_TOOLS.index_by(&:tool_name).freeze
 
   private
+
+  # @see Session#create_user_event
+  def persist_user_event(content)
+    @session.create_user_event(content)
+  end
+
+  # Assembles LLM options (system prompt, environment context).
+  # @return [Hash] options for {LLM::Client#chat_with_tools}
+  def build_llm_options
+    options = {}
+    unless @session.sub_agent?
+      env_context = EnvironmentProbe.to_prompt(@shell_session.pwd)
+    end
+    prompt = @session.system_prompt(environment_context: env_context)
+    options[:system] = prompt if prompt
+    options
+  end
 
   # Builds the tool registry appropriate for this session type.
   # Main sessions get standard tools + spawn_subagent + spawn_specialist.

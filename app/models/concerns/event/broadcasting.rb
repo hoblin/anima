@@ -44,9 +44,23 @@ module Event::Broadcasting
     after_update_commit :broadcast_update
   end
 
+  # Broadcasts this event immediately, bypassing +after_create_commit+.
+  # Used inside a wrapping transaction where +after_create_commit+ is
+  # deferred until the outer transaction commits. Gives clients
+  # optimistic UI — the event appears right away and is removed via
+  # bounce if the transaction rolls back.
+  #
+  # Sets a flag so the deferred +after_create_commit+ callback skips
+  # the duplicate broadcast after the transaction commits.
+  def broadcast_now!
+    @already_broadcast = true
+    broadcast_event(action: ACTION_CREATE)
+  end
+
   private
 
   def broadcast_create
+    return if @already_broadcast
     broadcast_event(action: ACTION_CREATE)
   end
 

@@ -298,9 +298,14 @@ RSpec.describe SessionChannel, type: :channel do
       Events::Bus.unsubscribe(subscriber)
     end
 
-    it "enqueues an AgentRequestJob" do
+    it "emits event that causes AgentDispatcher to enqueue job" do
+      dispatcher = Events::Subscribers::AgentDispatcher.new
+      Events::Bus.subscribe(dispatcher)
+
       expect { perform(:speak, {"content" => "process this"}) }
-        .to have_enqueued_job(AgentRequestJob).with(session_id)
+        .to have_enqueued_job(AgentRequestJob).with(session_id, content: "process this")
+
+      Events::Bus.unsubscribe(dispatcher)
     end
 
     it "ignores empty content" do

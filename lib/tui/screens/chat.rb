@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../input_buffer"
+require_relative "../flash"
 require_relative "../decorators/base_decorator"
 require_relative "../decorators/bash_decorator"
 require_relative "../decorators/read_decorator"
@@ -46,6 +47,7 @@ module TUI
         @cable_client = cable_client
         @message_store = message_store || MessageStore.new
         @input_buffer = InputBuffer.new
+        @flash = Flash.new
         @loading = false
         @scroll_offset = 0
         @auto_scroll = true
@@ -93,6 +95,8 @@ module TUI
         )
 
         render_messages(frame, chat_area, tui)
+        render_flash(frame, chat_area, tui)
+
         render_input(frame, input_area, tui)
       end
 
@@ -107,6 +111,9 @@ module TUI
         return handle_mouse_event(event) if event.mouse?
         return handle_paste_event(event) if event.paste?
         return handle_scroll_key(event) if event.page_up? || event.page_down?
+
+        # Dismiss flash on any keypress (flash auto-expires too)
+        @flash.dismiss! if @flash.any?
 
         return handle_chat_focused_event(event) if @chat_focused
 
@@ -259,9 +266,11 @@ module TUI
           when "token_error"
             @token_save_result = {success: false, message: msg["message"]}
           when "error"
-            # Silently ignored — no user-facing error display yet
+            @flash.error(msg["message"]) if msg["message"]
           else
             case type
+            when "bounce_back"
+              handle_bounce_back(msg)
             when "connection"
               handle_connection_status(msg)
             when "user_message"
@@ -297,6 +306,16 @@ module TUI
         @message_store.remove_by_ids(evicted_ids)
       end
 
+      # Renders flash messages as colored bars inside the chat frame,
+      # just below the top border (respecting rounded corners).
+      def render_flash(frame, chat_area, tui)
+        return unless @flash.any?
+
+        # Inner area: inset by 1 on each side for the chat frame border
+        inner = tui.block(borders: [:all]).inner(chat_area)
+        @flash.render(frame, inner, tui)
+      end
+
       # Reacts to connection lifecycle changes from the WebSocket client.
       # Clears stale state when subscription begins so the store is empty
       # before history arrives. Action Cable sends confirm_subscription
@@ -311,6 +330,25 @@ module TUI
         when "disconnected", "failed"
           @loading = false
         end
+      end
+
+      # Handles a Bounce Back event: the server rolled back the user event
+      # because LLM delivery failed. Removes the phantom message from the
+      # chat, restores the text to the input field, and shows a flash.
+      def handle_bounce_back(msg)
+        event_id = msg["event_id"]
+        content = msg["content"]
+        error = msg["error"]
+
+        @message_store.remove_by_id(event_id) if event_id
+        @loading = false
+
+        if content
+          @input_buffer.clear
+          @input_buffer.insert(content)
+        end
+
+        @flash.error("Message not delivered: #{error}") if error
       end
 
       def handle_session_changed(msg)

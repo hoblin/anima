@@ -213,6 +213,22 @@ class Session < ApplicationRecord
     assemble_messages(viewport_events(token_budget: token_budget, include_pending: false))
   end
 
+  # Creates a user message event record directly (bypasses EventBus+Persister).
+  # Used by {AgentRequestJob} (Bounce Back transaction) and {AgentLoop#process}
+  # because the global {Events::Subscribers::Persister} skips non-pending user
+  # messages — these callers own the persistence lifecycle.
+  #
+  # @param content [String] user message text
+  # @return [Event] the persisted event record
+  def create_user_event(content)
+    now = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+    events.create!(
+      event_type: "user_message",
+      payload: {type: "user_message", content: content, session_id: id, timestamp: now},
+      timestamp: now
+    )
+  end
+
   # Promotes all pending user messages to delivered status so they
   # appear in the next LLM context. Triggers broadcast_update for
   # each event so connected clients refresh the pending indicator.
