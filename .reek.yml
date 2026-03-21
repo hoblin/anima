@@ -33,9 +33,10 @@ detectors:
       - "Events::Subscribers::SubagentMessageRouter"
       # Spawn tools orchestrate child session creation — references are the job.
       - "Tools::SpawnSubagent#spawn_child"
-      - "Tools::SpawnSubagent#assign_nickname_via_brain"
       - "Tools::SpawnSpecialist#spawn_child"
       - "Tools::SpawnSpecialist#execute"
+      # Nickname assignment operates on child session and parent's children — inherent.
+      - "Tools::SubagentPrompts#assign_nickname_via_brain"
       # Validation methods naturally reference the validated value more than self.
       - "AnalyticalBrain::Tools::AssignNickname#validate"
   # Private helpers don't need instance state to be valid.

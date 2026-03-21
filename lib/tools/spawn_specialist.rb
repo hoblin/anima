@@ -5,6 +5,10 @@ module Tools
   # The specialist has a predefined system prompt and tool set defined
   # in its Markdown definition file under agents/.
   #
+  # Nickname assignment is handled by the {AnalyticalBrain::Runner} which
+  # runs synchronously at spawn time, generating a unique nickname based
+  # on the task — same as generic sub-agents.
+  #
   # Results are delivered through natural text messages routed by
   # {Events::Subscribers::SubagentMessageRouter}.
   #
@@ -88,9 +92,10 @@ module Tools
       return {error: "Unknown agent: #{name}"} unless definition
 
       child = spawn_child(definition, task, expected_output)
-      "Specialist @#{name} spawned (session #{child.id}). " \
+      nickname = child.name
+      "Specialist @#{nickname} spawned (session #{child.id}). " \
         "Its messages will appear in your conversation. " \
-        "Reply with @#{name} to send it instructions."
+        "Reply with @#{nickname} to send it instructions."
     end
 
     private
@@ -100,11 +105,11 @@ module Tools
       child = Session.create!(
         parent_session_id: @session.id,
         prompt: prompt,
-        granted_tools: definition.tools,
-        name: definition.name
+        granted_tools: definition.tools
       )
-      child.broadcast_children_update_to_parent
       child.create_user_event(task)
+      assign_nickname_via_brain(child)
+      child.broadcast_children_update_to_parent
       AgentRequestJob.perform_later(child.id)
       child
     end

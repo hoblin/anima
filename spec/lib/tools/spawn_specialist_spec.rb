@@ -14,6 +14,12 @@ RSpec.describe Tools::SpawnSpecialist do
   subject(:tool) { described_class.new(session: parent_session, agent_registry: agent_registry) }
 
   before do
+    # Stub the analytical brain to simulate nickname assignment
+    allow_any_instance_of(AnalyticalBrain::Runner).to receive(:call) do |runner|
+      session = runner.instance_variable_get(:@session)
+      session.update!(name: "code-scout")
+    end
+
     File.write(File.join(tmp_dir, "analyzer.md"), <<~MD)
       ---
       name: analyzer
@@ -114,11 +120,11 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(child.prompt).to include("Expected deliverable: A summary of how tools are dispatched")
     end
 
-    it "stores the agent name on the child session" do
+    it "assigns nickname via the analytical brain" do
       tool.execute(input)
 
       child = Session.last
-      expect(child.name).to eq("analyzer")
+      expect(child.name).to eq("code-scout")
     end
 
     it "broadcasts children update to parent session" do
@@ -156,12 +162,22 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(AgentRequestJob).to have_been_enqueued.with(child.id)
     end
 
-    it "returns confirmation including the specialist name and @mention hint" do
+    it "returns confirmation including the nickname and @mention hint" do
       result = tool.execute(input)
 
-      expect(result).to include("Specialist @analyzer spawned")
+      expect(result).to include("Specialist @code-scout spawned")
       expect(result).to include("session #{Session.last.id}")
-      expect(result).to include("@analyzer")
+      expect(result).to include("@code-scout")
+    end
+
+    it "falls back to agent-N on brain failure" do
+      allow_any_instance_of(AnalyticalBrain::Runner).to receive(:call)
+        .and_raise(Providers::Anthropic::RateLimitError, "rate limited")
+
+      tool.execute(input)
+
+      child = Session.last
+      expect(child.name).to match(/\Aagent-\d+\z/)
     end
 
     context "with blank name" do
