@@ -153,11 +153,14 @@ RSpec.describe Tools::SpawnSubagent do
       expect(Session.last.name).to eq("brain-named")
     end
 
-    it "propagates brain failures" do
+    it "falls back to agent-N on brain failure" do
       allow_any_instance_of(AnalyticalBrain::Runner).to receive(:call)
         .and_raise(Providers::Anthropic::RateLimitError, "rate limited")
 
-      expect { tool.execute(input) }.to raise_error(Providers::Anthropic::RateLimitError)
+      tool.execute(input)
+
+      child = Session.last
+      expect(child.name).to match(/\Aagent-\d+\z/)
     end
 
     it "returns immediately (non-blocking)" do

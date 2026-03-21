@@ -33,6 +33,7 @@ detectors:
       - "Events::Subscribers::SubagentMessageRouter"
       # Spawn tools orchestrate child session creation — references are the job.
       - "Tools::SpawnSubagent#spawn_child"
+      - "Tools::SpawnSubagent#assign_nickname_via_brain"
       - "Tools::SpawnSpecialist#spawn_child"
       - "Tools::SpawnSpecialist#execute"
       # Validation methods naturally reference the validated value more than self.
@@ -73,11 +74,9 @@ detectors:
       # Runner checks session type to compose responsibilities — the core dispatch.
       - "AnalyticalBrain::Runner"
   # EventDecorator holds shared rendering constants (icons, markers, dispatch maps).
-  # Runner defines responsibility modules as named constants — grows with capabilities.
   TooManyConstants:
     exclude:
       - "EventDecorator"
-      - "AnalyticalBrain::Runner"
   # Abstract base class methods declare parameters for the subclass contract.
   UnusedParameters:
     exclude:
