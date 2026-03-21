@@ -46,8 +46,9 @@ module TUI
     # @return [Integer] total visual lines above this entry
     def cumulative_height(index)
       return 0 if index <= 0 || @heights.empty?
+      return @heights.sum(0) if index >= @size
 
-      @heights[0...[index, @size].min].sum(0)
+      @heights[0...index].sum(0)
     end
 
     # Finds the entry range visible within a scroll window.

@@ -32,6 +32,11 @@ module TUI
       CLOCK_ICON = "\u{1F552}"
       CHECKMARK = "\u2713"
 
+      # Viewport virtualization tuning
+      VIEWPORT_BACK_BUFFER = 3    # entries before scroll target for upward scroll margin
+      VIEWPORT_OVERFLOW_MULTIPLIER = 2 # build this many viewports worth of lines
+      VIEWPORT_BOTTOM_THRESHOLD = 10   # entries from end before we include all trailing
+
       ROLE_COLORS = {"user" => "green", "assistant" => "cyan"}.freeze
 
       # Intentionally duplicated from Session::VIEW_MODES to keep the TUI
@@ -504,20 +509,8 @@ module TUI
         max_adjusted = [wrapped_height - @visible_height, 0].max
         adjusted_scroll = (@scroll_offset - est_before).clamp(0, max_adjusted)
 
-        chat_block = {
-          title: "Chat",
-          borders: [:all],
-          border_type: :rounded,
-          border_style: @chat_focused ? {fg: "yellow"} : {fg: "cyan"}
-        }
-        if @chat_focused
-          chat_block[:titles] = [
-            {content: "\u2191\u2193 scroll  Esc return", position: :bottom, alignment: :center}
-          ]
-        end
-
         widget = @perf_logger.measure(:widget_with) {
-          base_widget.with(scroll: [adjusted_scroll, 0], block: tui.block(**chat_block))
+          base_widget.with(scroll: [adjusted_scroll, 0], block: tui.block(**chat_block_config))
         }
         @perf_logger.measure(:render_widget) { frame.render_widget(widget, area) }
 
@@ -534,7 +527,13 @@ module TUI
         frame.render_widget(scrollbar, area)
       end
 
-      # Renders the empty or loading state placeholder.
+      # Renders the empty or loading state placeholder when no messages exist.
+      # Resets scroll state since there is no scrollable content.
+      #
+      # @param frame [RatatuiRuby::Frame] current render frame
+      # @param area [RatatuiRuby::Rect] available area for the chat pane
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @return [void]
       def render_empty_or_loading(frame, area, tui)
         lines = if @loading
           [tui.line(spans: [
@@ -546,14 +545,8 @@ module TUI
           ])]
         end
 
-        chat_block = {
-          title: "Chat",
-          borders: [:all],
-          border_type: :rounded,
-          border_style: @chat_focused ? {fg: "yellow"} : {fg: "cyan"}
-        }
         widget = tui.paragraph(text: lines, wrap: true, style: tui.style(fg: "white"))
-          .with(scroll: [0, 0], block: tui.block(**chat_block))
+          .with(scroll: [0, 0], block: tui.block(**chat_block_config))
         frame.render_widget(widget, area)
         @max_scroll = 0
         @scroll_offset = 0
@@ -561,7 +554,13 @@ module TUI
 
       # Re-estimates entry heights when content or width changes.
       # Height estimation is O(n) string-length math — orders of
-      # magnitude cheaper than building Line/Span objects.
+      # magnitude cheaper than building Line/Span objects. Skips
+      # re-estimation when version, width, and loading state are unchanged.
+      #
+      # @param entries [Array<Hash>] message store entries
+      # @param width [Integer] available terminal width
+      # @param version [Integer] message store version counter
+      # @return [void]
       def update_height_map(entries, width, version)
         return if version == @height_map_version && width == @height_map_width && @loading == @height_map_loading
 
@@ -590,12 +589,12 @@ module TUI
         entry_count = entries.size
 
         # Start a few entries before the scroll target for upward buffer
-        buf_first = [first_visible_est - 3, 0].max
+        buf_first = [first_visible_est - VIEWPORT_BACK_BUFFER, 0].max
 
         # Build forward until we've accumulated enough lines to fill the
         # viewport with margin. Pre-wrap count is a lower bound on visual
         # height (wrapping only adds lines), so 2x guarantees coverage.
-        target = @visible_height * 2
+        target = @visible_height * VIEWPORT_OVERFLOW_MULTIPLIER
         lines = []
         pre_wrap_count = 0
         buf_last = buf_first
@@ -609,7 +608,7 @@ module TUI
           # the bottom. Near the bottom, always include trailing entries
           # so the viewport covers the actual end of content — otherwise
           # the last entries become unreachable.
-          break if pre_wrap_count >= target && entry_count - idx > 10
+          break if pre_wrap_count >= target && entry_count - idx > VIEWPORT_BOTTOM_THRESHOLD
         end
 
         if @loading && buf_last >= entry_count - 1
@@ -704,9 +703,30 @@ module TUI
         }
       end
 
+      VIEWPORT_CACHE_EMPTY = {
+        version: -1, loading: nil, width: nil,
+        first: nil, last: nil, lines: nil, wrapped_height: nil
+      }.freeze
+
       def viewport_cache_empty
-        {version: -1, loading: nil, width: nil, first: nil, last: nil,
-         lines: nil, wrapped_height: nil}
+        VIEWPORT_CACHE_EMPTY.dup
+      end
+
+      # Builds the shared chat pane block config with focus-aware styling.
+      # @return [Hash] block configuration for tui.block
+      def chat_block_config
+        config = {
+          title: "Chat",
+          borders: [:all],
+          border_type: :rounded,
+          border_style: @chat_focused ? {fg: "yellow"} : {fg: "cyan"}
+        }
+        if @chat_focused
+          config[:titles] = [
+            {content: "\u2191\u2193 scroll  Esc return", position: :bottom, alignment: :center}
+          ]
+        end
+        config
       end
 
       # Renders a tool activity counter (e.g. "🔧 Tools: 2/2 ✓").
