@@ -156,7 +156,7 @@ RSpec.describe Mneme::L2Runner do
     end
   end
 
-  describe "integration with real LLM", :vcr do
+  describe "integration with real LLM", vcr: {match_requests_on: [:method, :uri]} do
     before do
       allow(Anima::Settings).to receive(:mneme_l2_snapshot_threshold).and_return(3)
     end

@@ -253,7 +253,7 @@ RSpec.describe Mneme::Runner do
     end
   end
 
-  describe "integration with real LLM", :vcr do
+  describe "integration with real LLM", vcr: {match_requests_on: [:method, :uri]} do
     it "calls save_snapshot with a meaningful summary" do
       session.events.create!(
         event_type: "user_message",
