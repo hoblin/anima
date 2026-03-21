@@ -199,6 +199,11 @@ module Anima
       # @return [Integer]
       def mneme_l2_snapshot_threshold = get("mneme", "l2_snapshot_threshold")
 
+      # Fraction of the main viewport token budget reserved for pinned events.
+      # Pinned events appear between snapshots and the sliding window.
+      # @return [Float]
+      def mneme_pinned_budget_fraction = get("mneme", "pinned_budget_fraction")
+
       # ─── Recall (Associative Memory) ────────────────────────────
 
       # Maximum search results returned per FTS5 query.

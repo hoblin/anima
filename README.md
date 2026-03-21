@@ -407,7 +407,7 @@ The viewport solves context degradation but creates a new question: what do we l
 
 **Snapshots in viewport + Level 2 compression** (implemented) — once source events evict from the sliding window, their snapshots appear in the viewport as memory context. Layout: `[L2 long-term] [L1 recent] [recalled memories] [sliding window]`. When enough L1 snapshots accumulate, Mneme compresses them into a single L2 snapshot — recursive summarization that mirrors how human memory consolidates. Token budget is split across layers via configurable fractions (L2: 5%, L1: 15%, recall: 5%, sliding: 75%), creating natural pressure: more snapshots means less sliding window space, same principle as video compression keyframes.
 
-**Viewport pinning** (next) — the analytical brain watches events approaching eviction and pins critical ones (the original user goal, key decisions). Pinned events float above the sliding window, protected from eviction. Same mental model as pinning a message in Discord or Slack. Pins consume budget, so the brain must be judicious — natural pressure toward minimalism.
+**Goal-scoped event pinning** (implemented) — Mneme pins critical events to active Goals via `attach_events_to_goals`. Pinned events float above the sliding window, protected from eviction — exact user instructions, key decisions, critical corrections survive intact where summaries would lose nuance. Pins are goal-scoped: one event can attach to multiple Goals (many-to-many), and cleanup is automatic via reference counting — when the last active Goal completes, the pin releases. No manual unpin needed. Viewport layout: `[L2 long-term] [L1 recent] [pinned events] [sliding window]`. Pins consume budget (configurable fraction), creating natural pressure toward minimalism.
 
 **Associative recall** (implemented) — FTS5 full-text search over the entire event history, across all sessions. Two recall modes: *passive* recall triggers automatically when goals change — Mneme searches for relevant older context and injects snippets into the viewport between snapshots and the sliding window. *Active* recall via the `remember(event_id:)` tool returns a fractal-resolution window centered on a target event — full detail at the center, compressed snapshots at the edges, like eye focus with sharp fovea and blurry periphery. The search interface is abstract; FTS5 handles the 80% case (keyword matching), with semantic search (embeddings, re-ranking) as a future layer that can swap in without changing callers.
 
@@ -568,7 +568,7 @@ This single example demonstrates every core principle:
 - Event-driven architecture on a shared event bus
 - Dynamic viewport context assembly (endless sessions, no compaction)
 - Analytical brain (skills, workflows, goals, session naming)
-- Mneme memory department (eviction-triggered summarization, persistent snapshots, associative recall)
+- Mneme memory department (eviction-triggered summarization, persistent snapshots, goal-scoped event pinning, associative recall)
 - 9 built-in tools + MCP integration (HTTP + stdio transports)
 - 7 built-in skills + 13 built-in workflows (user-extensible)
 - Sub-agents with lossless context inheritance (5 specialists + generic)
@@ -581,7 +581,7 @@ This single example demonstrates every core principle:
 **Designed, not yet implemented:**
 
 - Hormonal system (Thymos) — desires as behavioral drivers
-- Semantic memory layers 2–3 (Mneme) — event pinning, semantic search
+- Semantic memory layer 3 (Mneme) — semantic search
 - Soul matrix (Psyche) — evolving coefficient table for individuality
 
 ## Development

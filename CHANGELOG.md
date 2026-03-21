@@ -1,6 +1,9 @@
 ## [Unreleased]
 
 ### Added
+- **Goal-scoped event pinning** — Mneme can pin critical events (exact user instructions, key decisions, critical corrections) to active Goals via `attach_events_to_goals` tool; pinned events survive viewport eviction intact and appear in a `[pinned events]` section between snapshots and the sliding window; deduplication shows truncated text on first Goal reference, bare `event N` ID on subsequent Goals (#251)
+- **Reference-counted pin cleanup** — when a Goal completes, pinned events attached exclusively to it are automatically released; events shared with other active Goals stay pinned until all referencing Goals complete; no manual unpin needed (#251)
+- **Pinned events budget setting** — `pinned_budget_fraction` in `[mneme]` config section controls how much viewport space pinned events consume; viewport layout is now `[L2 snapshots] [L1 snapshots] [pinned events] [recalled memories] [sliding window]` (#251)
 - **Associative recall — FTS5 search + remember tool** — full-text search over event history using SQLite FTS5; `remember(event_id:)` tool returns fractal-resolution window (sharp center, compressed edges); passive recall triggered by Goal updates surfaces relevant older events automatically in the viewport between snapshots and the sliding window (#252)
 - **FTS5 search index** — virtual table on user messages, agent messages, and think events with Porter stemming; auto-maintained by INSERT/DELETE triggers; abstract `Mneme::Search` interface for future semantic search swap (#252)
 - **Recall configuration** — `[recall]` section in `config.toml` with `max_results`, `budget_fraction`, and `max_snippet_tokens` settings (#252)

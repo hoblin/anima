@@ -13,6 +13,8 @@ class Goal < ApplicationRecord
   belongs_to :session
   belongs_to :parent_goal, class_name: "Goal", optional: true
   has_many :sub_goals, -> { order(:created_at) }, class_name: "Goal", foreign_key: :parent_goal_id, dependent: :destroy
+  has_many :goal_pinned_events, dependent: :destroy
+  has_many :pinned_events, through: :goal_pinned_events
 
   validates :description, presence: true
   validates :status, inclusion: {in: STATUSES}
@@ -28,6 +30,9 @@ class Goal < ApplicationRecord
 
   # @return [Boolean] true if this goal has been completed
   def completed? = status == "completed"
+
+  # @return [Boolean] true if this goal is still active
+  def active? = status == "active"
 
   # @return [Boolean] true if this is a root goal (no parent)
   def root? = !parent_goal_id
@@ -45,6 +50,17 @@ class Goal < ApplicationRecord
   def cascade_completion!
     now = Time.current
     sub_goals.active.update_all(status: "completed", completed_at: now, updated_at: now)
+  end
+
+  # Releases pinned events that have no remaining active Goal references
+  # anywhere in the session. Called after goal (and cascade) completion —
+  # the orphaned scope checks all Goals, so pins shared with other active
+  # Goals survive automatically via reference counting.
+  #
+  # @return [Integer] number of released pins
+  def release_orphaned_pins!
+    orphaned = session.pinned_events.orphaned
+    orphaned.destroy_all.size
   end
 
   # Serializes this goal for ActionCable broadcast and TUI display.
