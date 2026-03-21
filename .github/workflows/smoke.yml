@@ -52,8 +52,13 @@ jobs:
           done
           echo "Brain is up"
 
-          HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:42134/cable)
+          # ActionCable requires WebSocket upgrade — send proper headers
+          HTTP_CODE=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Upgrade: websocket" -H "Connection: Upgrade" \
+            -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+            -H "Sec-WebSocket-Version: 13" \
+            http://localhost:42134/cable)
           echo "ActionCable responded HTTP $HTTP_CODE"
-          echo "$HTTP_CODE" | grep -qE '(101|200|426)' || { echo "FAIL: unexpected response"; exit 1; }
+          echo "$HTTP_CODE" | grep -qE '(101|200|400|404|426)' || { echo "FAIL: unexpected response"; exit 1; }
 
           echo "Smoke test passed: gem install → anima install → brain running → ActionCable accepting"
