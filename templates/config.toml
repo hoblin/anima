@@ -114,3 +114,14 @@ blocking_on_agent_message = false
 
 # Number of recent events to include in the analytical brain's context window.
 event_window = 20
+
+# ─── Mneme (Memory Department) ──────────────────────────────────
+
+[mneme]
+
+# Maximum tokens per Mneme LLM response.
+max_tokens = 2048
+
+# Fraction of the main viewport token budget allocated to Mneme's viewport.
+# Mneme sees roughly this fraction of the total context when triggered.
+viewport_fraction = 0.33

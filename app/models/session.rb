@@ -15,6 +15,7 @@ class Session < ApplicationRecord
 
   has_many :events, -> { order(:id) }, dependent: :destroy
   has_many :goals, dependent: :destroy
+  has_many :snapshots, dependent: :destroy
 
   belongs_to :parent_session, class_name: "Session", optional: true
   has_many :child_sessions, class_name: "Session", foreign_key: :parent_session_id, dependent: :destroy
@@ -40,6 +41,38 @@ class Session < ApplicationRecord
   # @return [Boolean] true if this session is a sub-agent (has a parent)
   def sub_agent?
     parent_session_id.present?
+  end
+
+  # Checks whether the Mneme terminal event has left the viewport and
+  # enqueues {MnemeJob} when it has. On the first event of a new session,
+  # initializes the boundary pointer.
+  #
+  # The terminal event is always a conversation event (user/agent message
+  # or think tool_call), never a bare tool_call/tool_response.
+  #
+  # @return [void]
+  def schedule_mneme!
+    return if sub_agent?
+
+    # Initialize boundary on first conversation event
+    if mneme_boundary_event_id.nil?
+      first_conversation = events.deliverable
+        .where(event_type: %w[user_message agent_message system_message])
+        .order(:id).first
+      first_conversation ||= events.deliverable
+        .where(event_type: "tool_call")
+        .find_by("json_extract(payload, '$.tool_name') = ?", "think")
+
+      if first_conversation
+        update_column(:mneme_boundary_event_id, first_conversation.id)
+      end
+      return
+    end
+
+    # Check if boundary event has left the viewport
+    return if viewport_event_ids.include?(mneme_boundary_event_id)
+
+    MnemeJob.perform_later(id)
   end
 
   # Enqueues the analytical brain to perform background maintenance on

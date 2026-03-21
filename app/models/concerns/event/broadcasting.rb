@@ -90,6 +90,8 @@ module Event::Broadcasting
     evicted_ids = session.recalculate_viewport!
     broadcast_payload["evicted_event_ids"] = evicted_ids if evicted_ids.any?
 
+    session.schedule_mneme! if evicted_ids.any? || session.mneme_boundary_event_id.nil?
+
     ActionCable.server.broadcast("session_#{session_id}", broadcast_payload)
   end
 end
