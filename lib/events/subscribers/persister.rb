@@ -27,6 +27,12 @@ module Events
       end
 
       # Receives a Rails.event notification hash and persists it.
+      #
+      # Skips non-pending user messages — those are persisted by
+      # {AgentRequestJob} inside a transaction with LLM delivery
+      # (Bounce Back, #236). Also skips event types not in {Event::TYPES}
+      # (transient events like {Events::BounceBack}).
+      #
       # @param event [Hash] with :payload containing event data
       def emit(event)
         payload = event[:payload]
@@ -34,6 +40,8 @@ module Events
 
         event_type = payload[:type]
         return if event_type.nil?
+        return unless Event::TYPES.include?(event_type)
+        return if persisted_by_job?(event_type, payload)
 
         target_session = @session || Session.find_by(id: payload[:session_id])
         return unless target_session
@@ -51,6 +59,15 @@ module Events
 
       def session=(new_session)
         @mutex.synchronize { @session = new_session }
+      end
+
+      private
+
+      # Non-pending user messages are persisted by {AgentRequestJob} inside
+      # a transaction with LLM delivery. Pending messages are still
+      # auto-persisted here because they queue while the session is busy.
+      def persisted_by_job?(event_type, payload)
+        event_type == "user_message" && payload[:status] != Event::PENDING_STATUS
       end
     end
   end

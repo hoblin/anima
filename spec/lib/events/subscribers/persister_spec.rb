@@ -10,14 +10,11 @@ RSpec.describe Events::Subscribers::Persister do
   after { Events::Bus.unsubscribe(persister) }
 
   describe "#emit" do
-    it "persists user_message events" do
+    it "skips non-pending user_message events (job handles persistence)" do
       Events::Bus.subscribe(persister)
       Events::Bus.emit(Events::UserMessage.new(content: "hello", session_id: session.id))
 
-      expect(session.events.count).to eq(1)
-      event = session.events.first
-      expect(event.event_type).to eq("user_message")
-      expect(event.payload["content"]).to eq("hello")
+      expect(session.events.count).to eq(0)
     end
 
     it "persists agent_message events" do
@@ -67,9 +64,9 @@ RSpec.describe Events::Subscribers::Persister do
 
     it "preserves event creation order" do
       Events::Bus.subscribe(persister)
-      Events::Bus.emit(Events::UserMessage.new(content: "first", session_id: session.id))
-      Events::Bus.emit(Events::AgentMessage.new(content: "second", session_id: session.id))
-      Events::Bus.emit(Events::UserMessage.new(content: "third", session_id: session.id))
+      Events::Bus.emit(Events::AgentMessage.new(content: "first", session_id: session.id))
+      Events::Bus.emit(Events::SystemMessage.new(content: "second", session_id: session.id))
+      Events::Bus.emit(Events::AgentMessage.new(content: "third", session_id: session.id))
 
       contents = session.events.reload.pluck(:payload).map { |p| p["content"] }
       expect(contents).to eq(%w[first second third])
@@ -86,7 +83,7 @@ RSpec.describe Events::Subscribers::Persister do
 
     it "preserves nanosecond timestamps" do
       Events::Bus.subscribe(persister)
-      Events::Bus.emit(Events::UserMessage.new(content: "hello", session_id: session.id))
+      Events::Bus.emit(Events::AgentMessage.new(content: "hello", session_id: session.id))
 
       event = session.events.first
       expect(event.timestamp).to be_a(Integer)
@@ -110,7 +107,7 @@ RSpec.describe Events::Subscribers::Persister do
       Events::Bus.subscribe(persister)
 
       persister.session = new_session
-      Events::Bus.emit(Events::UserMessage.new(content: "hello", session_id: new_session.id))
+      Events::Bus.emit(Events::AgentMessage.new(content: "hello", session_id: new_session.id))
 
       expect(new_session.events.count).to eq(1)
       expect(session.events.count).to eq(0)
@@ -124,7 +121,7 @@ RSpec.describe Events::Subscribers::Persister do
 
     it "persists events by looking up session from payload" do
       Events::Bus.subscribe(global_persister)
-      Events::Bus.emit(Events::UserMessage.new(content: "global hello", session_id: session.id))
+      Events::Bus.emit(Events::AgentMessage.new(content: "global hello", session_id: session.id))
 
       expect(session.events.count).to eq(1)
       expect(session.events.first.payload["content"]).to eq("global hello")
@@ -132,14 +129,14 @@ RSpec.describe Events::Subscribers::Persister do
 
     it "ignores events with unknown session_id" do
       Events::Bus.subscribe(global_persister)
-      Events::Bus.emit(Events::UserMessage.new(content: "orphan", session_id: 999_999))
+      Events::Bus.emit(Events::AgentMessage.new(content: "orphan", session_id: 999_999))
 
       expect(Event.count).to eq(0)
     end
 
     it "ignores events without session_id" do
       Events::Bus.subscribe(global_persister)
-      Events::Bus.emit(Events::UserMessage.new(content: "no session"))
+      Events::Bus.emit(Events::AgentMessage.new(content: "no session"))
 
       expect(Event.count).to eq(0)
     end

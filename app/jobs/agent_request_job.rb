@@ -3,19 +3,25 @@
 # Executes an LLM agent loop as a background job with retry logic
 # for transient failures (network errors, rate limits, server errors).
 #
-# Emits events via {Events::Bus} as it progresses, making results visible
-# to any subscriber (TUI, WebSocket clients). All retry and failure
-# notifications are emitted as {Events::SystemMessage} to avoid polluting
-# the LLM context window.
+# Supports two modes:
 #
-# @example Inline execution (TUI)
-#   AgentRequestJob.perform_now(session.id)
+# **Bounce Back (content provided):** Persists the user event and verifies
+# LLM delivery inside a single transaction. If the first API call fails,
+# the transaction rolls back (event never existed) and a {Events::BounceBack}
+# is emitted so clients can restore the text to the input field.
 #
-# @example Background execution (future Brain/TUI separation)
+# **Standard (no content):** Processes already-persisted events (e.g. after
+# pending message promotion). Uses ActiveJob retry/discard for error handling.
+#
+# @example Bounce Back — event-driven via AgentDispatcher
+#   AgentRequestJob.perform_later(session.id, content: "hello")
+#
+# @example Standard — pending message processing
 #   AgentRequestJob.perform_later(session.id)
 class AgentRequestJob < ApplicationJob
   queue_as :default
 
+  # Standard path only — bounce back handles its own errors.
   retry_on Providers::Anthropic::TransientError,
     wait: :polynomially_longer, attempts: 5 do |job, error|
     Events::Bus.emit(Events::SystemMessage.new(
@@ -27,12 +33,10 @@ class AgentRequestJob < ApplicationJob
   discard_on ActiveRecord::RecordNotFound
   discard_on Providers::Anthropic::AuthenticationError do |job, error|
     session_id = job.arguments.first
-    # Persistent system message for the event log
     Events::Bus.emit(Events::SystemMessage.new(
       content: "Authentication failed: #{error.message}",
       session_id: session_id
     ))
-    # Transient signal to trigger TUI token setup popup (not persisted)
     ActionCable.server.broadcast(
       "session_#{session_id}",
       {"action" => "authentication_required", "message" => error.message}
@@ -40,27 +44,30 @@ class AgentRequestJob < ApplicationJob
   end
 
   # @param session_id [Integer] ID of the session to process
-  def perform(session_id)
+  # @param content [String, nil] user message text (triggers Bounce Back when present)
+  def perform(session_id, content: nil)
     session = Session.find(session_id)
 
-    # Atomic: only one job processes a session at a time. If another job
-    # is already running, this one exits — the running job will pick up
-    # any pending messages after its current loop completes.
+    # Atomic: only one job processes a session at a time.
     return unless claim_processing(session_id)
 
-    # Run analytical brain BEFORE the main agent on user messages so
-    # activated skills are available for the current response.
     run_analytical_brain_blocking(session)
 
     agent_loop = AgentLoop.new(session: session)
-    loop do
+
+    if content
+      deliver_with_bounce_back(session, content, agent_loop)
+    else
       agent_loop.run
-      promoted = session.promote_pending_messages!
-      break if promoted == 0
     end
 
-    # Non-blocking analytical brain run after agent completes —
-    # handles post-response updates (renaming, skill changes).
+    # Process any pending messages queued while we were busy.
+    loop do
+      promoted = session.promote_pending_messages!
+      break if promoted == 0
+      agent_loop.run
+    end
+
     session.schedule_analytical_brain!
   ensure
     release_processing(session_id)
@@ -69,6 +76,71 @@ class AgentRequestJob < ApplicationJob
   end
 
   private
+
+  # Persists the user event and verifies LLM delivery atomically.
+  #
+  # Inside a transaction: creates the event record, broadcasts it for
+  # optimistic UI, and makes the first LLM API call. If the call fails,
+  # a {Events::BounceBack} is emitted and the exception re-raised to
+  # trigger rollback — the event never existed in the database.
+  #
+  # After commit: continues the agent loop (tool execution, subsequent
+  # API calls) outside the transaction so tool events broadcast in
+  # real time.
+  #
+  # @param session [Session] the conversation session
+  # @param content [String] user message text
+  # @param agent_loop [AgentLoop] agent loop instance (reused after commit)
+  def deliver_with_bounce_back(session, content, agent_loop)
+    event_id = nil
+
+    ActiveRecord::Base.transaction do
+      event = persist_user_event(session, content)
+      event_id = event.id
+      event.broadcast_now!
+
+      agent_loop.deliver!
+    rescue => error
+      Events::Bus.emit(Events::BounceBack.new(
+        content: content,
+        error: error.message,
+        session_id: session.id,
+        event_id: event_id
+      ))
+      raise
+    end
+
+    # Transaction committed — first call succeeded.
+    # Continue processing (tool execution, etc.) outside the transaction.
+    agent_loop.run
+  rescue => error
+    # Bounce already emitted inside the transaction rescue.
+    # Also trigger auth popup for authentication errors.
+    broadcast_auth_required(session.id, error) if error.is_a?(Providers::Anthropic::AuthenticationError)
+  end
+
+  # Creates the user event record directly (not via EventBus+Persister).
+  # The Persister skips non-pending user messages because the job owns
+  # their persistence lifecycle.
+  #
+  # @param session [Session]
+  # @param content [String]
+  # @return [Event] the persisted event record
+  def persist_user_event(session, content)
+    now = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+    session.events.create!(
+      event_type: "user_message",
+      payload: {type: "user_message", content: content, session_id: session.id, timestamp: now},
+      timestamp: now
+    )
+  end
+
+  def broadcast_auth_required(session_id, error)
+    ActionCable.server.broadcast(
+      "session_#{session_id}",
+      {"action" => "authentication_required", "message" => error.message}
+    )
+  end
 
   # Runs the analytical brain synchronously before the main agent loop.
   # Respects the blocking_on_user_message setting and session guards
@@ -102,9 +174,7 @@ class AgentRequestJob < ApplicationJob
     Session.find_by(id: session_id)&.broadcast_children_update_to_parent
   end
 
-  # Safety-net clearing of the interrupt flag. The primary clear happens in
-  # {LLM::Client#clear_interrupt!} after handling the interrupt; this ensures
-  # the flag is reset even if the job crashes before reaching that code path.
+  # Safety-net clearing of the interrupt flag.
   def clear_interrupt(session_id)
     Session.where(id: session_id, interrupt_requested: true).update_all(interrupt_requested: false)
   end

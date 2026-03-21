@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../input_buffer"
+require_relative "../flash"
 require_relative "../decorators/base_decorator"
 require_relative "../decorators/bash_decorator"
 require_relative "../decorators/read_decorator"
@@ -46,6 +47,7 @@ module TUI
         @cable_client = cable_client
         @message_store = message_store || MessageStore.new
         @input_buffer = InputBuffer.new
+        @flash = Flash.new
         @loading = false
         @scroll_offset = 0
         @auto_scroll = true
@@ -92,7 +94,21 @@ module TUI
           ]
         )
 
-        render_messages(frame, chat_area, tui)
+        flash_height = @flash.any? ? @flash.render(frame, chat_area, tui) : 0
+        if flash_height > 0
+          _, messages_area = tui.split(
+            chat_area,
+            direction: :vertical,
+            constraints: [
+              tui.constraint_length(flash_height),
+              tui.constraint_fill(1)
+            ]
+          )
+          render_messages(frame, messages_area, tui)
+        else
+          render_messages(frame, chat_area, tui)
+        end
+
         render_input(frame, input_area, tui)
       end
 
@@ -107,6 +123,9 @@ module TUI
         return handle_mouse_event(event) if event.mouse?
         return handle_paste_event(event) if event.paste?
         return handle_scroll_key(event) if event.page_up? || event.page_down?
+
+        # Dismiss flash on any keypress (flash auto-expires too)
+        @flash.dismiss! if @flash.any?
 
         return handle_chat_focused_event(event) if @chat_focused
 
@@ -259,9 +278,11 @@ module TUI
           when "token_error"
             @token_save_result = {success: false, message: msg["message"]}
           when "error"
-            # Silently ignored — no user-facing error display yet
+            @flash.error(msg["message"]) if msg["message"]
           else
             case type
+            when "bounce_back"
+              handle_bounce_back(msg)
             when "connection"
               handle_connection_status(msg)
             when "user_message"
@@ -311,6 +332,25 @@ module TUI
         when "disconnected", "failed"
           @loading = false
         end
+      end
+
+      # Handles a Bounce Back event: the server rolled back the user event
+      # because LLM delivery failed. Removes the phantom message from the
+      # chat, restores the text to the input field, and shows a flash.
+      def handle_bounce_back(msg)
+        event_id = msg["event_id"]
+        content = msg["content"]
+        error = msg["error"]
+
+        @message_store.remove_by_id(event_id) if event_id
+        @loading = false
+
+        if content
+          @input_buffer.clear
+          @input_buffer.insert(content)
+        end
+
+        @flash.error("Message not delivered: #{error}") if error
       end
 
       def handle_session_changed(msg)

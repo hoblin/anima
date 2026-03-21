@@ -1,6 +1,14 @@
 ## [Unreleased]
 
 ### Added
+- **Bounce Back** — failed user messages return to the input field instead of persisting as orphans; event creation and LLM delivery are wrapped in a database transaction so both succeed or fail atomically; on failure, a transient `BounceBack` event notifies clients to restore the text and display a flash message (#236)
+- Event-driven job scheduling — `AgentDispatcher` subscriber reacts to non-pending `UserMessage` emissions by scheduling `AgentRequestJob`, replacing the imperative `perform_later` call in the channel (#236)
+- `TransientBroadcaster` subscriber — bridges non-persisted events (like `BounceBack`) to ActionCable for client delivery (#236)
+- `Event#broadcast_now!` — manual broadcast inside transactions where `after_create_commit` is deferred, providing optimistic UI (#236)
+- `AgentLoop#deliver!` — makes the first LLM API call inside the Bounce Back transaction and caches the response so `#run` can continue without duplicating work (#236)
+- `LLM::Client#chat_with_tools` accepts `first_response:` parameter to skip the first API call when a pre-fetched response is available (#236)
+- TUI flash message system (`TUI::Flash`) — ephemeral notifications at the top of the chat pane with auto-dismiss and keypress dismiss; supports error (red), warning (yellow), and info (blue) levels (#236)
+- TUI bounce back handling — removes phantom user message from chat, restores text to input buffer, shows flash with error context (#236)
 - HUD toggle — collapsible info panel via `C-a → h` with redesigned layout: session name, goals with descriptions and status icons (`●` active, `◐` in-progress, `✓` completed), skills, workflow, sub-agents with activity indicators (`●` running, `◌` idle), and a bottom status bar showing connection state and view mode; panel occupies 1/3 screen width when visible, input border shows `C-a → h HUD` hint when hidden (#226)
 - Real-time sub-agent tracking — HUD displays child sessions with processing state; broadcasts flow from `SpawnSubagent`/`SpawnSpecialist` on creation and `AgentRequestJob` on processing state changes (#226)
 - `session_changed` payload now includes `children` array for sessions with sub-agents (#226)
@@ -19,6 +27,9 @@
 - VCR test infrastructure for recording and replaying external HTTP interactions — cassettes for Anthropic API success, 401, 403, 429, 500, and 529 responses; `spec/support/vcr.rb` auto-loaded via `rails_helper.rb`; API keys filtered from cassettes; `:new_episodes` in dev, `:none` in CI (#190)
 
 ### Changed
+- `Persister` skips non-pending `user_message` events — `AgentRequestJob` now owns their persistence lifecycle inside a transaction (#236)
+- `SessionChannel#speak` no longer calls `AgentRequestJob.perform_later` directly — job scheduling is event-driven via `AgentDispatcher` (#236)
+- Generic `"error"` action from server now shows a flash message in TUI instead of being silently ignored (#236)
 - Connection status indicator simplified — emoji-only `🟢` for normal state, descriptive text only for abnormal states (#80)
 - `STATUS_STYLES` structure simplified from `{label, fg, bg}` to `{label, color}` (#80)
 - `ActionCableBridge` removed — broadcasting moved from EventBus subscriber to AR callbacks, eliminating the timing gap where events were broadcast before persistence

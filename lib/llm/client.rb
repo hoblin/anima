@@ -70,10 +70,13 @@ module LLM
     # @param messages [Array<Hash>] conversation messages in Anthropic format
     # @param registry [Tools::Registry] registered tools to make available
     # @param session_id [Integer, String] session ID for emitted events
+    # @param first_response [Hash, nil] pre-fetched first API response from
+    #   {AgentLoop#deliver!}. Skips the first API call when provided so
+    #   the Bounce Back transaction doesn't duplicate work.
     # @param options [Hash] additional API parameters (e.g. +system:+)
     # @return [String, nil] the assistant's final text response, or nil when interrupted
     # @raise [Providers::Anthropic::Error] on API errors
-    def chat_with_tools(messages, registry:, session_id:, **options)
+    def chat_with_tools(messages, registry:, session_id:, first_response: nil, **options)
       messages = messages.dup
       rounds = 0
 
@@ -84,13 +87,17 @@ module LLM
           return "[Tool loop exceeded #{max_rounds} rounds — halting]"
         end
 
-        response = provider.create_message(
-          model: model,
-          messages: messages,
-          max_tokens: max_tokens,
-          tools: registry.schemas,
-          **options
-        )
+        response = if first_response && rounds == 1
+          first_response
+        else
+          provider.create_message(
+            model: model,
+            messages: messages,
+            max_tokens: max_tokens,
+            tools: registry.schemas,
+            **options
+          )
+        end
 
         log(:debug, "stop_reason=#{response["stop_reason"]} content_types=#{(response["content"] || []).map { |b| b["type"] }.join(",")}")
 
