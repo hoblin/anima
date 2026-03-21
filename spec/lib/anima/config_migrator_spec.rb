@@ -67,7 +67,10 @@ RSpec.describe Anima::ConfigMigrator do
           ["analytical_brain", "blocking_on_agent_message"],
           ["analytical_brain", "event_window"],
           ["mneme", "max_tokens"],
-          ["mneme", "viewport_fraction"]
+          ["mneme", "viewport_fraction"],
+          ["mneme", "l1_budget_fraction"],
+          ["mneme", "l2_budget_fraction"],
+          ["mneme", "l2_snapshot_threshold"]
         )
 
         updated = config_path.read
