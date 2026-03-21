@@ -59,6 +59,16 @@ RSpec.describe Mneme::Search do
       expect(results.first.event_id).to eq(event.id)
     end
 
+    it "finds system messages by keyword" do
+      event = create_event(session, type: "system_message", content: "System context initialized with debug mode.")
+
+      results = described_class.query("debug mode")
+
+      expect(results.size).to eq(1)
+      expect(results.first.event_id).to eq(event.id)
+      expect(results.first.event_type).to eq("system_message")
+    end
+
     it "does not index non-think tool_call events" do
       create_event(session, type: "tool_call", tool_name: "bash")
 

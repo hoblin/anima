@@ -10,7 +10,7 @@ module Mneme
   # recognition memory in humans — context surfaces without conscious effort.
   #
   # @example Trigger after a goal update
-  #   Mneme::PassiveRecall.new(session).refresh
+  #   Mneme::PassiveRecall.new(session).call
   class PassiveRecall
     # @param session [Session] the session whose goals drive recall
     def initialize(session)

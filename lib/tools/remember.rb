@@ -17,6 +17,7 @@ module Tools
   #   remember(event_id: 42)
   class Remember < Base
     # Events around the target to include at full resolution.
+    # ±10 events provides sharp foveal detail while keeping output readable.
     CONTEXT_WINDOW = 20
 
     ROLE_LABELS = {

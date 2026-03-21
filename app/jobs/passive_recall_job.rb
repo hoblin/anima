@@ -4,8 +4,8 @@
 # context relevant to active goals and caches results on the session
 # for viewport injection.
 #
-# Debounced via unique job ID: rapid goal updates (e.g. analytical brain
-# setting multiple goals) collapse into a single search.
+# Idempotent: multiple enqueues for the same session safely overwrite
+# each other's results — last one wins.
 #
 # @example
 #   PassiveRecallJob.perform_later(session.id)
