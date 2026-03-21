@@ -62,7 +62,7 @@ module Tools
       max_bytes = Anima::Settings.max_web_response_bytes
       return body if body.bytesize <= max_bytes
 
-      body.byteslice(0, max_bytes) +
+      body.byteslice(0, max_bytes).scrub +
         "\n\n[Truncated: response exceeded #{max_bytes} bytes]"
     end
   end

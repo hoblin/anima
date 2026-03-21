@@ -42,21 +42,8 @@ class WebGetToolDecorator < ToolDecorator
   # @return [Hash] `{text: String, meta: String|nil}`
   def decorate(body, content_type:)
     method_name = content_type.split(";").first.strip.tr("/", "_").tr("-", "_")
-    send(method_name, body)
+    public_send(method_name, body)
   end
-
-  # Passthrough for unregistered content types.
-  #
-  # @return [Hash] `{text: String, meta: nil}`
-  def method_missing(_method_name, body, *)
-    {text: body.to_s, meta: nil}
-  end
-
-  def respond_to_missing?(*, **)
-    true
-  end
-
-  private
 
   # Compresses JSON using TOON (Token-Optimized Object Notation) for
   # ~40% token savings on typical JSON arrays.
@@ -80,13 +67,26 @@ class WebGetToolDecorator < ToolDecorator
     {text: markdown, meta: "[Converted: HTML → Markdown]"}
   end
 
+  # Passthrough for unregistered content types.
+  #
+  # @return [Hash] `{text: String, meta: nil}`
+  def method_missing(_method_name, body, *)
+    {text: body, meta: nil}
+  end
+
+  def respond_to_missing?(*, **)
+    true
+  end
+
+  private
+
   # Strips noise HTML elements then converts to Markdown.
   #
   # @param html [String] raw HTML
   # @return [String] clean Markdown
   def html_to_markdown(html)
     doc = Nokogiri::HTML(html)
-    NOISE_TAGS.each { |tag| doc.css(tag).remove }
+    doc.css(NOISE_TAGS.join(", ")).remove
     clean_html = doc.at("body")&.inner_html || doc.to_html
     markdown = ReverseMarkdown.convert(clean_html, unknown_tags: :bypass, github_flavored: true)
     collapse_whitespace(markdown)

@@ -136,6 +136,35 @@ RSpec.describe WebGetToolDecorator do
       end
     end
 
+    context "with HTML without body tag" do
+      it "falls back to full document content" do
+        html = "<h1>No Body</h1><p>Just a fragment</p>"
+        result = decorator.call(body: html, content_type: "text/html")
+
+        expect(result).to start_with("[Converted: HTML → Markdown]")
+        expect(result).to include("# No Body")
+        expect(result).to include("Just a fragment")
+      end
+    end
+
+    context "with empty body" do
+      it "returns empty string for empty HTML" do
+        result = decorator.call(body: "", content_type: "text/html")
+
+        expect(result).to start_with("[Converted: HTML → Markdown]")
+      end
+
+      it "returns empty string for empty plain text" do
+        result = decorator.call(body: "", content_type: "text/plain")
+        expect(result).to eq("")
+      end
+
+      it "passes through empty JSON as-is" do
+        result = decorator.call(body: "", content_type: "application/json")
+        expect(result).to eq("")
+      end
+    end
+
     context "with missing content_type" do
       it "defaults to passthrough when content_type is nil" do
         result = decorator.call(body: "some data", content_type: nil)
