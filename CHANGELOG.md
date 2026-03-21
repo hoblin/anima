@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Added
+- **Snapshots in viewport** — Mneme snapshots now appear in the main agent's context window after their source events evict; viewport layout is `[L2 snapshots] [L1 snapshots] [sliding window]` with configurable token budget fractions for each layer (#250)
+- **Level 2 recursive compression** — when enough L1 snapshots accumulate, Mneme compresses them into a single L2 snapshot (days/weeks scale); L1 snapshots drop from viewport once covered by their L2 summary, keeping memory usage predictable at every time scale (#250)
+- **Snapshot budget settings** — `l1_budget_fraction`, `l2_budget_fraction`, and `l2_snapshot_threshold` in `[mneme]` config section control snapshot viewport allocation and compression triggers (#250)
+
 ### Fixed
 - **TUI session name wrapping in HUD** — long session names now wrap across multiple lines instead of being silently clipped at the panel boundary (#168)
 - **WebGet SSL certificate verification** — bundle Mozilla CA certificates via `certifi` gem so HTTPS requests work on systems with incomplete CA stores (e.g. mise/rbenv-compiled Ruby) (#253)

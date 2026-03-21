@@ -44,6 +44,11 @@ RSpec.describe Mneme::Tools::SaveSnapshot do
       expect(snapshot.token_count).to be > 0
     end
 
+    it "defaults to level 1" do
+      tool.execute("text" => "Summary")
+      expect(Snapshot.last.level).to eq(1)
+    end
+
     it "returns a confirmation string with event range" do
       result = tool.execute("text" => "Summary of events.")
 
@@ -68,6 +73,19 @@ RSpec.describe Mneme::Tools::SaveSnapshot do
 
       snapshot = Snapshot.last
       expect(snapshot.token_count).to eq(100)
+    end
+
+    context "with level 2 context" do
+      let(:l2_tool) { described_class.new(main_session: session, from_event_id: 1, to_event_id: 100, level: 2) }
+
+      it "creates a Level 2 snapshot" do
+        l2_tool.execute("text" => "Meta-summary of L1 snapshots.")
+
+        snapshot = Snapshot.last
+        expect(snapshot.level).to eq(2)
+        expect(snapshot.from_event_id).to eq(1)
+        expect(snapshot.to_event_id).to eq(100)
+      end
     end
   end
 end

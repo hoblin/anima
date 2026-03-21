@@ -405,6 +405,8 @@ The viewport solves context degradation but creates a new question: what do we l
 
 **Eviction-triggered summarization** (implemented) — Mneme is the third brain department, running as a phantom LLM loop on the same event bus as the analytical brain. It tracks a boundary event on each session. When that event leaves the viewport, Mneme fires: builds a compressed viewport (conversation as full text, tool calls as `[N tools called]` counters, three-zone delimiters), sends it to a fast model, and persists a snapshot. The boundary advances after each run, creating a self-regulating cycle — Mneme fires exactly when context is about to be lost, no sooner or later.
 
+**Snapshots in viewport + Level 2 compression** (implemented) — once source events evict from the sliding window, their snapshots appear in the viewport as memory context. Layout: `[L2 long-term] [L1 recent] [sliding window]`. When enough L1 snapshots accumulate, Mneme compresses them into a single L2 snapshot — recursive summarization that mirrors how human memory consolidates. Token budget is split across layers via configurable fractions (L2: 5%, L1: 15%, sliding: 80%), creating natural pressure: more snapshots means less sliding window space, same principle as video compression keyframes.
+
 **Viewport pinning** (next) — the analytical brain watches events approaching eviction and pins critical ones (the original user goal, key decisions). Pinned events float above the sliding window, protected from eviction. Same mental model as pinning a message in Discord or Slack. Pins consume budget, so the brain must be judicious — natural pressure toward minimalism.
 
 **Associative recall** (future) — inspired by [QMD](https://github.com/tobi/qmd). The endocrine system can recall: "Last time this topic came up, curiosity was at 95 and we had a great evening." Hormonal reactions colored by the full history of experiences — like smelling mom's baking and feeling a wave of oxytocin. Not because of the smell, but because of the memory attached to it.
@@ -579,7 +581,7 @@ This single example demonstrates every core principle:
 **Designed, not yet implemented:**
 
 - Hormonal system (Thymos) — desires as behavioral drivers
-- Semantic memory layers 2–3 (Mneme) — viewport pinning, associative recall
+- Semantic memory layers 2–3 (Mneme) — event pinning, associative recall
 - Soul matrix (Psyche) — evolving coefficient table for individuality
 
 ## Development

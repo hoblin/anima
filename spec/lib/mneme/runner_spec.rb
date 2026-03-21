@@ -252,4 +252,41 @@ RSpec.describe Mneme::Runner do
       end
     end
   end
+
+  describe "integration with real LLM", vcr: {match_requests_on: [:method, :uri]} do
+    it "calls save_snapshot with a meaningful summary" do
+      session.events.create!(
+        event_type: "user_message",
+        payload: {"content" => "Help me set up OAuth with PKCE for our mobile app"},
+        timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
+        token_count: 20
+      )
+      session.events.create!(
+        event_type: "agent_message",
+        payload: {"content" => "I'll implement OAuth 2.0 with PKCE. First, we need a code verifier and challenge. " \
+          "The verifier is a random string, and the challenge is its SHA-256 hash. " \
+          "Then we redirect to the authorization server with the challenge."},
+        timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
+        token_count: 60
+      )
+      session.events.create!(
+        event_type: "user_message",
+        payload: {"content" => "Use the AppAuth library for iOS and handle token refresh"},
+        timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
+        token_count: 15
+      )
+
+      real_runner = described_class.new(session)
+      real_runner.call
+
+      expect(session.snapshots.for_level(1).count).to eq(1)
+      snapshot = session.snapshots.for_level(1).first
+      expect(snapshot.text).to include("OAuth")
+      expect(snapshot.text).to include("PKCE")
+      expect(snapshot.text).to include("AppAuth")
+      expect(snapshot.token_count).to be > 0
+      expect(snapshot.from_event_id).to eq(session.events.first.id)
+      expect(snapshot.to_event_id).to eq(session.events.last.id)
+    end
+  end
 end

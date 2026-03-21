@@ -928,6 +928,11 @@ RSpec.describe Session do
     end
 
     context "with token budget" do
+      before do
+        allow(Anima::Settings).to receive(:mneme_l1_budget_fraction).and_return(0.0)
+        allow(Anima::Settings).to receive(:mneme_l2_budget_fraction).and_return(0.0)
+      end
+
       it "includes all events when within budget" do
         session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
         session.events.create!(event_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2, token_count: 10)
@@ -977,6 +982,123 @@ RSpec.describe Session do
         result = session.messages_for_llm(token_budget: 30)
 
         expect(result.map { |m| m[:content] }).to eq([timestamped("first", 1), "second", timestamped("third", 3)])
+      end
+    end
+
+    context "with snapshots" do
+      let(:session) { Session.create! }
+
+      before do
+        allow(Anima::Settings).to receive(:mneme_l1_budget_fraction).and_return(0.15)
+        allow(Anima::Settings).to receive(:mneme_l2_budget_fraction).and_return(0.05)
+      end
+
+      # Creates events and returns a snapshot whose source events are BEFORE
+      # the viewport (to_event_id < first viewport event).
+      def create_viewport_with_evicted_snapshot(session, budget:)
+        # Old events that will be evicted by budget pressure
+        e1 = session.events.create!(event_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: budget)
+        e2 = session.events.create!(event_type: "agent_message", payload: {"content" => "old reply"}, timestamp: 2, token_count: budget)
+        # Recent event that fills the viewport
+        session.events.create!(event_type: "user_message", payload: {"content" => "recent"}, timestamp: 3, token_count: 10)
+
+        # Snapshot covers the old events (contiguous range)
+        session.snapshots.create!(
+          text: "Earlier discussion summary",
+          from_event_id: e1.id, to_event_id: e2.id,
+          level: 1, token_count: 20
+        )
+      end
+
+      it "includes L1 snapshots above sliding window events" do
+        create_viewport_with_evicted_snapshot(session, budget: 1000)
+
+        # Budget tight enough that old events evict, leaving snapshot visible
+        result = session.messages_for_llm(token_budget: 100)
+
+        expect(result.first[:content]).to include("[recent memory]")
+        expect(result.first[:content]).to include("Earlier discussion summary")
+      end
+
+      it "excludes snapshots whose source events are still in the viewport" do
+        e1 = session.events.create!(event_type: "user_message", payload: {"content" => "visible"}, timestamp: 1, token_count: 10)
+        e2 = session.events.create!(event_type: "agent_message", payload: {"content" => "reply"}, timestamp: 2, token_count: 10)
+
+        # Snapshot covers events still in the viewport
+        session.snapshots.create!(text: "Should not appear", from_event_id: e1.id, to_event_id: e2.id, level: 1, token_count: 20)
+
+        result = session.messages_for_llm(token_budget: 1000)
+
+        contents = result.map { |m| m[:content] }
+        expect(contents.none? { |c| c.include?("Should not appear") }).to be true
+      end
+
+      it "places L2 snapshots above L1 snapshots in message order" do
+        # Create old events that will evict, then a recent one that stays
+        e1 = session.events.create!(event_type: "user_message", payload: {"content" => "old1"}, timestamp: 1, token_count: 500)
+        e2 = session.events.create!(event_type: "agent_message", payload: {"content" => "old2"}, timestamp: 2, token_count: 500)
+        e3 = session.events.create!(event_type: "user_message", payload: {"content" => "old3"}, timestamp: 3, token_count: 500)
+        e4 = session.events.create!(event_type: "agent_message", payload: {"content" => "old4"}, timestamp: 4, token_count: 500)
+        session.events.create!(event_type: "user_message", payload: {"content" => "recent"}, timestamp: 5, token_count: 10)
+
+        # L2 covers first two events, L1 covers next two (not covered by L2)
+        session.snapshots.create!(text: "L2 meta-summary", from_event_id: e1.id, to_event_id: e2.id, level: 2, token_count: 20)
+        session.snapshots.create!(text: "L1 uncovered", from_event_id: e3.id, to_event_id: e4.id, level: 1, token_count: 20)
+
+        # Budget tight so old events evict, making snapshots visible
+        result = session.messages_for_llm(token_budget: 100)
+
+        memory_messages = result.select { |m| m[:content].is_a?(String) && m[:content].start_with?("[") }
+        labels = memory_messages.map { |m| m[:content].lines.first.strip }
+        expect(labels).to eq(["[long-term memory]", "[recent memory]"])
+      end
+
+      it "drops L1 snapshots covered by L2" do
+        # Create old events, then a recent one
+        e1 = session.events.create!(event_type: "user_message", payload: {"content" => "old1"}, timestamp: 1, token_count: 500)
+        e2 = session.events.create!(event_type: "agent_message", payload: {"content" => "old2"}, timestamp: 2, token_count: 500)
+        e3 = session.events.create!(event_type: "user_message", payload: {"content" => "old3"}, timestamp: 3, token_count: 500)
+        e4 = session.events.create!(event_type: "agent_message", payload: {"content" => "old4"}, timestamp: 4, token_count: 500)
+        session.events.create!(event_type: "user_message", payload: {"content" => "recent"}, timestamp: 5, token_count: 10)
+
+        # L1(e1..e2), L1(e3..e4) — both covered by L2(e1..e4)
+        session.snapshots.create!(text: "L1 covered a", from_event_id: e1.id, to_event_id: e2.id, level: 1, token_count: 20)
+        session.snapshots.create!(text: "L1 covered b", from_event_id: e3.id, to_event_id: e4.id, level: 1, token_count: 20)
+        session.snapshots.create!(text: "L2 covers both", from_event_id: e1.id, to_event_id: e4.id, level: 2, token_count: 30)
+
+        result = session.messages_for_llm(token_budget: 100)
+
+        contents = result.map { |m| m[:content] }
+        expect(contents.any? { |c| c.include?("L2 covers both") }).to be true
+        expect(contents.none? { |c| c.include?("L1 covered") }).to be true
+      end
+
+      it "skips snapshot injection for sub-agent sessions" do
+        parent = Session.create!
+        child = Session.create!(parent_session: parent, prompt: "sub-agent")
+        child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1, token_count: 10)
+
+        # Parent has a snapshot — child should not see it
+        parent.snapshots.create!(text: "Parent snapshot", from_event_id: 1, to_event_id: 5, level: 1, token_count: 20)
+
+        result = child.messages_for_llm(token_budget: 1000)
+
+        contents = result.map { |m| m[:content] }
+        expect(contents.none? { |c| c.include?("Parent snapshot") }).to be true
+      end
+
+      it "reduces sliding window budget by snapshot budget fractions" do
+        # Budget 1000, l1_fraction=0.15, l2_fraction=0.05
+        # Sliding budget = 1000 - 150 - 50 = 800
+        session.events.create!(event_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 500)
+        session.events.create!(event_type: "agent_message", payload: {"content" => "old reply"}, timestamp: 2, token_count: 500)
+        session.events.create!(event_type: "user_message", payload: {"content" => "recent"}, timestamp: 3, token_count: 500)
+
+        result = session.messages_for_llm(token_budget: 1000)
+
+        # With 800 token sliding budget: only newest event fits (500 < 800, next 500 exceeds remaining 300)
+        event_contents = result.reject { |m| m[:content].to_s.start_with?("[") }.map { |m| m[:content] }
+        expect(event_contents.size).to eq(1)
       end
     end
   end

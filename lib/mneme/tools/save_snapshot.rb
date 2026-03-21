@@ -34,10 +34,12 @@ module Mneme
       # @param main_session [Session] the session being observed
       # @param from_event_id [Integer] first event ID covered by this snapshot
       # @param to_event_id [Integer] last event ID covered by this snapshot
-      def initialize(main_session:, from_event_id:, to_event_id:, **)
+      # @param level [Integer] compression level (1 = from events, 2 = from L1 snapshots)
+      def initialize(main_session:, from_event_id:, to_event_id:, level: 1, **)
         @main_session = main_session
         @from_event_id = from_event_id
         @to_event_id = to_event_id
+        @level = level
       end
 
       def execute(input)
@@ -48,7 +50,7 @@ module Mneme
           text: text,
           from_event_id: @from_event_id,
           to_event_id: @to_event_id,
-          level: 1,
+          level: @level,
           token_count: estimate_tokens(text)
         )
 

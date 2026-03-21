@@ -1,0 +1,286 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":"Compress
+        these 3 Level 1 snapshots into a single Level 2 summary:\n\n--- Snapshot 1
+        (events 1..10) ---\nUser asked for help setting up OAuth with PKCE for a mobile
+        app. Agent proposed using code verifier/challenge pattern with SHA-256.\n\n---
+        Snapshot 2 (events 11..20) ---\nImplemented token refresh flow using AppAuth
+        library for iOS. Added secure token storage in Keychain with biometric protection.\n\n---
+        Snapshot 3 (events 21..30) ---\nAdded error handling for expired refresh tokens
+        — redirect to login. Discussed rate limiting and token revocation on the backend."}],"max_tokens":2048,"tools":[{"name":"save_snapshot","description":"Save
+        a summary of the conversation context that is about to leave the viewport.
+        Write a concise summary capturing key decisions, topics discussed, and important
+        context. Focus on WHAT was decided and WHY, not mechanical details.","input_schema":{"type":"object","properties":{"text":{"type":"string","description":"The
+        summary text. Be concise but preserve key decisions, goals discussed, and
+        important context. Max 2048 tokens."}},"required":["text"]}},{"name":"everything_ok","description":"Signal
+        that no snapshot is needed. Call this when the eviction zone contains only
+        mechanical activity (tool calls) with no meaningful conversation to summarize.","input_schema":{"type":"object","properties":{},"required":[]}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are Mneme, the memory department of an AI agent named Anima.\nYour job is
+        to compress multiple conversation summaries into a single\nhigher-level summary.\n\nYou
+        MUST ONLY communicate through tool calls — NEVER output text.\n\n──────────────────────────────\nWHAT
+        YOU SEE\n──────────────────────────────\nSeveral Level 1 snapshots — hourly
+        conversation summaries.\nEach captures key decisions, goals discussed, and
+        important context\nfrom a portion of the conversation history.\n\n──────────────────────────────\nYOUR
+        TASK\n──────────────────────────────\nCompress the snapshots into ONE Level
+        2 summary that captures the\nessential arc across all of them. If the snapshots
+        contain meaningful\ncontent, call save_snapshot. If they are purely mechanical,
+        call\neverything_ok.\n\nPreserve:\n- Key decisions and their reasoning\n-
+        Goal progress across the time span\n- Important context shifts or pivots\n-
+        Relationships and patterns across snapshots\n\nDrop:\n- Redundant details
+        repeated across snapshots\n- Mechanical execution details\n- Interim decisions
+        that were superseded by later ones\n\nAlways finish with exactly ONE tool
+        call: either save_snapshot or everything_ok.\n"}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Sat, 21 Mar 2026 13:54:24 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1774112400'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.17'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1774591200'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.18'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - five_hour
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1774112400'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '6871'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - x-originResponse;dur=6871
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
+        Z18wMURLdEx1RnhVaHd4S0VUc21SQktYdTgiLCJ0eXBlIjoibWVzc2FnZSIs
+        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidG9vbF91
+        c2UiLCJpZCI6InRvb2x1XzAxRTJ0NnFoOHRjV0RIVUVKa1M1YVRFUyIsIm5h
+        bWUiOiJzYXZlX3NuYXBzaG90IiwiaW5wdXQiOnsidGV4dCI6IlVzZXIgcmVx
+        dWVzdGVkIGhlbHAgc2V0dGluZyB1cCBPQXV0aCB3aXRoIFBLQ0UgZm9yIGEg
+        bW9iaWxlIGFwcC4gQWdlbnQgcHJvcG9zZWQgY29kZSB2ZXJpZmllci9jaGFs
+        bGVuZ2UgcGF0dGVybiB3aXRoIFNIQS0yNTYgYW5kIGltcGxlbWVudGVkIHRo
+        ZSBhcHByb2FjaCBhY3Jvc3MgdGhyZWUgYXJlYXM6XG5cbjEuICoqT0F1dGgg
+        UEtDRSBGbG93Kio6IEVzdGFibGlzaGVkIHNlY3VyZSBhdXRob3JpemF0aW9u
+        IGZsb3cgdXNpbmcgY29kZSB2ZXJpZmllci9jaGFsbGVuZ2Ugd2l0aCBTSEEt
+        MjU2IGhhc2hpbmdcbjIuICoqVG9rZW4gTWFuYWdlbWVudCoqOiBJbXBsZW1l
+        bnRlZCB0b2tlbiByZWZyZXNoIGZsb3cgdXNpbmcgQXBwQXV0aCBsaWJyYXJ5
+        IGZvciBpT1MsIHdpdGggc2VjdXJlIHRva2VuIHN0b3JhZ2UgaW4gS2V5Y2hh
+        aW4gYW5kIGJpb21ldHJpYyBwcm90ZWN0aW9uXG4zLiAqKkVycm9yIEhhbmRs
+        aW5nICYgQmFja2VuZCBDb25zaWRlcmF0aW9ucyoqOiBBZGRlZCBleHBpcmVk
+        IHJlZnJlc2ggdG9rZW4gaGFuZGxpbmcgdGhhdCByZWRpcmVjdHMgdG8gbG9n
+        aW4sIHBsdXMgZGlzY3Vzc2VkIGJhY2tlbmQtc2lkZSByYXRlIGxpbWl0aW5n
+        IGFuZCB0b2tlbiByZXZvY2F0aW9uIG1lY2hhbmlzbXNcblxuVGhlIHNldHVw
+        IGVuc3VyZXMgZW5kLXRvLWVuZCBzZWN1cml0eSBmcm9tIGluaXRpYWwgYXV0
+        aGVudGljYXRpb24gdGhyb3VnaCB0b2tlbiBsaWZlY3ljbGUgbWFuYWdlbWVu
+        dCBhbmQgZWRnZSBjYXNlcyBsaWtlIHRva2VuIGV4cGlyYXRpb24uIn0sImNh
+        bGxlciI6eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29s
+        X3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rv
+        a2VucyI6MTEyNSwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJj
+        YWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsi
+        ZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lu
+        cHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjIwNywic2VydmljZV90
+        aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJs
+        ZSJ9fQ==
+  recorded_at: Sat, 21 Mar 2026 13:54:24 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":"Compress
+        these 3 Level 1 snapshots into a single Level 2 summary:\n\n--- Snapshot 1
+        (events 1..10) ---\nUser asked for help setting up OAuth with PKCE for a mobile
+        app. Agent proposed using code verifier/challenge pattern with SHA-256.\n\n---
+        Snapshot 2 (events 11..20) ---\nImplemented token refresh flow using AppAuth
+        library for iOS. Added secure token storage in Keychain with biometric protection.\n\n---
+        Snapshot 3 (events 21..30) ---\nAdded error handling for expired refresh tokens
+        — redirect to login. Discussed rate limiting and token revocation on the backend."},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01E2t6qh8tcWDHUEJkS5aTES","name":"save_snapshot","input":{"text":"User
+        requested help setting up OAuth with PKCE for a mobile app. Agent proposed
+        code verifier/challenge pattern with SHA-256 and implemented the approach
+        across three areas:\n\n1. **OAuth PKCE Flow**: Established secure authorization
+        flow using code verifier/challenge with SHA-256 hashing\n2. **Token Management**:
+        Implemented token refresh flow using AppAuth library for iOS, with secure
+        token storage in Keychain and biometric protection\n3. **Error Handling \u0026
+        Backend Considerations**: Added expired refresh token handling that redirects
+        to login, plus discussed backend-side rate limiting and token revocation mechanisms\n\nThe
+        setup ensures end-to-end security from initial authentication through token
+        lifecycle management and edge cases like token expiration."},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01E2t6qh8tcWDHUEJkS5aTES","content":"Snapshot
+        saved (id: 4, events 1..30)"}]}],"max_tokens":2048,"tools":[{"name":"save_snapshot","description":"Save
+        a summary of the conversation context that is about to leave the viewport.
+        Write a concise summary capturing key decisions, topics discussed, and important
+        context. Focus on WHAT was decided and WHY, not mechanical details.","input_schema":{"type":"object","properties":{"text":{"type":"string","description":"The
+        summary text. Be concise but preserve key decisions, goals discussed, and
+        important context. Max 2048 tokens."}},"required":["text"]}},{"name":"everything_ok","description":"Signal
+        that no snapshot is needed. Call this when the eviction zone contains only
+        mechanical activity (tool calls) with no meaningful conversation to summarize.","input_schema":{"type":"object","properties":{},"required":[]}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are Mneme, the memory department of an AI agent named Anima.\nYour job is
+        to compress multiple conversation summaries into a single\nhigher-level summary.\n\nYou
+        MUST ONLY communicate through tool calls — NEVER output text.\n\n──────────────────────────────\nWHAT
+        YOU SEE\n──────────────────────────────\nSeveral Level 1 snapshots — hourly
+        conversation summaries.\nEach captures key decisions, goals discussed, and
+        important context\nfrom a portion of the conversation history.\n\n──────────────────────────────\nYOUR
+        TASK\n──────────────────────────────\nCompress the snapshots into ONE Level
+        2 summary that captures the\nessential arc across all of them. If the snapshots
+        contain meaningful\ncontent, call save_snapshot. If they are purely mechanical,
+        call\neverything_ok.\n\nPreserve:\n- Key decisions and their reasoning\n-
+        Goal progress across the time span\n- Important context shifts or pivots\n-
+        Relationships and patterns across snapshots\n\nDrop:\n- Redundant details
+        repeated across snapshots\n- Mechanical execution details\n- Interim decisions
+        that were superseded by later ones\n\nAlways finish with exactly ONE tool
+        call: either save_snapshot or everything_ok.\n"}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Sat, 21 Mar 2026 13:54:26 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1774112400'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.17'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1774591200'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.18'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - five_hour
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1774112400'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '1074'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - x-originResponse;dur=1075
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
+        Z18wMVZUaHdHQnlyQjVVcTNUY3lKNjJuNXIiLCJ0eXBlIjoibWVzc2FnZSIs
+        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24i
+        OiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7Imlu
+        cHV0X3Rva2VucyI6MTM1OCwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5z
+        IjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRp
+        b24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFs
+        XzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjIsInNlcnZp
+        Y2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFp
+        bGFibGUifX0=
+  recorded_at: Sat, 21 Mar 2026 13:54:26 GMT
+recorded_with: VCR 6.4.0

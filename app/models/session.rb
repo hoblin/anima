@@ -234,16 +234,36 @@ class Session < ApplicationRecord
   end
 
   # Builds the message array expected by the Anthropic Messages API.
-  # Includes user/agent messages and tool call/response events in
-  # Anthropic's wire format. Consecutive tool_call events are grouped
-  # into a single assistant message; consecutive tool_response events
-  # are grouped into a single user message with tool_result blocks.
-  # Pending messages are excluded — they haven't been delivered yet.
+  # Viewport layout (top to bottom):
+  #   [L2 snapshots] [L1 snapshots] [sliding window events]
+  #
+  # Snapshots appear ONLY after their source events have evicted from
+  # the sliding window. L1 snapshots drop once covered by an L2 snapshot.
+  # Each layer has a fixed token budget fraction — snapshots consume
+  # viewport space, reducing the sliding window size.
+  #
+  # Sub-agent sessions skip snapshot injection (they inherit parent events directly).
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @return [Array<Hash>] Anthropic Messages API format
   def messages_for_llm(token_budget: Anima::Settings.token_budget)
-    assemble_messages(viewport_events(token_budget: token_budget, include_pending: false))
+    sliding_budget = token_budget
+    snapshot_messages = []
+
+    unless sub_agent?
+      l2_budget = (token_budget * Anima::Settings.mneme_l2_budget_fraction).to_i
+      l1_budget = (token_budget * Anima::Settings.mneme_l1_budget_fraction).to_i
+      sliding_budget = token_budget - l2_budget - l1_budget
+    end
+
+    events = viewport_events(token_budget: sliding_budget, include_pending: false)
+
+    unless sub_agent?
+      first_event_id = events.first&.id
+      snapshot_messages = assemble_snapshot_messages(first_event_id, l2_budget: l2_budget, l1_budget: l1_budget)
+    end
+
+    snapshot_messages + assemble_messages(events)
   end
 
   # Creates a user message event record directly (bypasses EventBus+Persister).
@@ -464,6 +484,61 @@ class Session < ApplicationRecord
   def trim_trailing_tool_calls(event_list)
     event_list.pop while event_list.last&.event_type == "tool_call"
     event_list
+  end
+
+  # Selects visible snapshots and formats them as Anthropic messages.
+  # Snapshots are visible when their source events have fully evicted.
+  # L1 snapshots are excluded when covered by an L2 snapshot.
+  #
+  # @param first_event_id [Integer, nil] first event ID in the sliding window
+  # @param l2_budget [Integer] token budget for L2 snapshots
+  # @param l1_budget [Integer] token budget for L1 snapshots
+  # @return [Array<Hash>] Anthropic Messages API format
+  def assemble_snapshot_messages(first_event_id, l2_budget:, l1_budget:)
+    return [] unless first_event_id
+
+    l2_messages = select_snapshots_within_budget(
+      snapshots.for_level(2).source_events_evicted(first_event_id).chronological,
+      budget: l2_budget
+    ).map { |snapshot| format_snapshot_message(snapshot, label: "long-term memory") }
+
+    l1_messages = select_snapshots_within_budget(
+      snapshots.for_level(1).not_covered_by_l2.source_events_evicted(first_event_id).chronological,
+      budget: l1_budget
+    ).map { |snapshot| format_snapshot_message(snapshot, label: "recent memory") }
+
+    l2_messages + l1_messages
+  end
+
+  # Walks snapshots chronologically, selecting until the token budget is exhausted.
+  # Always includes at least one snapshot even if it exceeds the budget, so the
+  # agent never loses all memory context.
+  #
+  # @param scope [ActiveRecord::Relation] snapshot scope to select from
+  # @param budget [Integer] maximum tokens to include
+  # @return [Array<Snapshot>]
+  def select_snapshots_within_budget(scope, budget:)
+    selected = []
+    remaining = budget
+
+    scope.each do |snapshot|
+      cost = snapshot.token_cost
+      break if cost > remaining && selected.any?
+
+      selected << snapshot
+      remaining -= cost
+    end
+
+    selected
+  end
+
+  # Formats a snapshot as an Anthropic user message with a memory label prefix.
+  #
+  # @param snapshot [Snapshot]
+  # @param label [String] human-readable label (e.g. "recent memory", "long-term memory")
+  # @return [Hash] Anthropic message format
+  def format_snapshot_message(snapshot, label:)
+    {role: "user", content: "[#{label}]\n#{snapshot.text}"}
   end
 
   # Converts a chronological list of events into Anthropic wire-format messages.

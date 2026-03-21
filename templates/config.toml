@@ -125,3 +125,14 @@ max_tokens = 2048
 # Fraction of the main viewport token budget allocated to Mneme's viewport.
 # Mneme sees roughly this fraction of the total context when triggered.
 viewport_fraction = 0.33
+
+# Fraction of the main viewport token budget reserved for Level 1 snapshots
+# (hourly summaries). Snapshots appear above the sliding window.
+l1_budget_fraction = 0.15
+
+# Fraction of the main viewport token budget reserved for Level 2 snapshots
+# (daily/weekly meta-summaries). Displayed above L1 snapshots.
+l2_budget_fraction = 0.05
+
+# Number of uncovered Level 1 snapshots that triggers Level 2 compression.
+l2_snapshot_threshold = 5
