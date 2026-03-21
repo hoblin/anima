@@ -78,7 +78,7 @@ module Mneme
       end
 
       def find_or_create_pinned_event(event)
-        @session.pinned_events.find_or_create_by!(event: event) do |pe|
+        PinnedEvent.find_or_create_by!(event: event) do |pe|
           pe.display_text = truncate_event_content(event)
         end
       end

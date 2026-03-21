@@ -15,13 +15,12 @@ class PinnedEvent < ApplicationRecord
   MAX_DISPLAY_TEXT_LENGTH = 200
 
   belongs_to :event
-  belongs_to :session
 
   has_many :goal_pinned_events, dependent: :destroy
   has_many :goals, through: :goal_pinned_events
 
   validates :display_text, presence: true, length: {maximum: MAX_DISPLAY_TEXT_LENGTH}
-  validates :event_id, uniqueness: {scope: :session_id}
+  validates :event_id, uniqueness: true
 
   # Pinned events with no remaining active goals — safe to release.
   #

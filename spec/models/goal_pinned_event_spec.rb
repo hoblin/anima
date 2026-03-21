@@ -6,7 +6,7 @@ RSpec.describe GoalPinnedEvent do
   let(:session) { Session.create! }
   let(:event) { session.events.create!(event_type: "user_message", payload: {content: "text"}, timestamp: 1) }
   let(:goal) { session.goals.create!(description: "goal") }
-  let(:pinned_event) { PinnedEvent.create!(event: event, session: session, display_text: "text") }
+  let(:pinned_event) { PinnedEvent.create!(event: event, display_text: "text") }
 
   describe "validations" do
     it "enforces pinned_event uniqueness per goal" do

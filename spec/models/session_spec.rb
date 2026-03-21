@@ -1117,7 +1117,7 @@ RSpec.describe Session do
         session.events.create!(event_type: "user_message", payload: {"content" => "recent"}, timestamp: 2, token_count: 10)
 
         goal = session.goals.create!(description: "Active goal")
-        pin = PinnedEvent.create!(event: old_event, session: session, display_text: "critical instruction")
+        pin = PinnedEvent.create!(event: old_event, display_text: "critical instruction")
         GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
 
         result = session.messages_for_llm(token_budget: 100)
@@ -1132,7 +1132,7 @@ RSpec.describe Session do
         event = session.events.create!(event_type: "user_message", payload: {"content" => "visible"}, timestamp: 1, token_count: 10)
 
         goal = session.goals.create!(description: "Goal")
-        pin = PinnedEvent.create!(event: event, session: session, display_text: "visible")
+        pin = PinnedEvent.create!(event: event, display_text: "visible")
         GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
 
         result = session.messages_for_llm(token_budget: 1000)
@@ -1147,7 +1147,7 @@ RSpec.describe Session do
 
         goal_a = session.goals.create!(description: "Goal A")
         goal_b = session.goals.create!(description: "Goal B")
-        pin = PinnedEvent.create!(event: old_event, session: session, display_text: "shared")
+        pin = PinnedEvent.create!(event: old_event, display_text: "shared")
         GoalPinnedEvent.create!(goal: goal_a, pinned_event: pin)
         GoalPinnedEvent.create!(goal: goal_b, pinned_event: pin)
 
@@ -1167,7 +1167,7 @@ RSpec.describe Session do
         child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 2, token_count: 10)
 
         goal = parent.goals.create!(description: "Goal")
-        pin = PinnedEvent.create!(event: old_event, session: parent, display_text: "pinned")
+        pin = PinnedEvent.create!(event: old_event, display_text: "pinned")
         GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
 
         result = child.messages_for_llm(token_budget: 1000)

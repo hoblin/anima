@@ -121,7 +121,7 @@ RSpec.describe AnalyticalBrain::Tools::FinishGoal do
 
       it "releases orphaned pins when completing a goal" do
         goal = session.goals.create!(description: "Only goal")
-        pin = PinnedEvent.create!(event: event, session: session, display_text: "critical")
+        pin = PinnedEvent.create!(event: event, display_text: "critical")
         GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
 
         result = tool.execute({"goal_id" => goal.id})
@@ -133,7 +133,7 @@ RSpec.describe AnalyticalBrain::Tools::FinishGoal do
       it "keeps pins alive when another active goal references them" do
         goal_a = session.goals.create!(description: "First goal")
         goal_b = session.goals.create!(description: "Second goal")
-        pin = PinnedEvent.create!(event: event, session: session, display_text: "critical")
+        pin = PinnedEvent.create!(event: event, display_text: "critical")
         GoalPinnedEvent.create!(goal: goal_a, pinned_event: pin)
         GoalPinnedEvent.create!(goal: goal_b, pinned_event: pin)
 
@@ -146,7 +146,7 @@ RSpec.describe AnalyticalBrain::Tools::FinishGoal do
       it "releases pins from cascaded sub-goals too" do
         root = session.goals.create!(description: "Root")
         sub = session.goals.create!(description: "Sub", parent_goal: root)
-        pin = PinnedEvent.create!(event: event, session: session, display_text: "critical")
+        pin = PinnedEvent.create!(event: event, display_text: "critical")
         GoalPinnedEvent.create!(goal: sub, pinned_event: pin)
 
         result = tool.execute({"goal_id" => root.id})

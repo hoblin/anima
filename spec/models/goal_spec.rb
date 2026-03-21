@@ -190,7 +190,7 @@ RSpec.describe Goal do
 
     it "destroys pins with no remaining active goals" do
       goal = Goal.create!(session: session, description: "sole goal", status: "completed", completed_at: Time.current)
-      pin = PinnedEvent.create!(event: event, session: session, display_text: "text")
+      pin = PinnedEvent.create!(event: event, display_text: "text")
       GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
 
       expect { goal.release_orphaned_pins! }.to change(PinnedEvent, :count).by(-1)
@@ -199,7 +199,7 @@ RSpec.describe Goal do
     it "keeps pins referenced by other active goals" do
       goal_a = Goal.create!(session: session, description: "completed", status: "completed", completed_at: Time.current)
       goal_b = Goal.create!(session: session, description: "still active")
-      pin = PinnedEvent.create!(event: event, session: session, display_text: "text")
+      pin = PinnedEvent.create!(event: event, display_text: "text")
       GoalPinnedEvent.create!(goal: goal_a, pinned_event: pin)
       GoalPinnedEvent.create!(goal: goal_b, pinned_event: pin)
 
@@ -208,7 +208,7 @@ RSpec.describe Goal do
 
     it "returns the count of released pins" do
       goal = Goal.create!(session: session, description: "done", status: "completed", completed_at: Time.current)
-      pin = PinnedEvent.create!(event: event, session: session, display_text: "text")
+      pin = PinnedEvent.create!(event: event, display_text: "text")
       GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
 
       expect(goal.release_orphaned_pins!).to eq(1)
@@ -226,7 +226,7 @@ RSpec.describe Goal do
     it "has many pinned_events through goal_pinned_events" do
       goal = Goal.create!(session: session, description: "goal")
       event = session.events.create!(event_type: "user_message", payload: {content: "text"}, timestamp: 1)
-      pin = PinnedEvent.create!(event: event, session: session, display_text: "text")
+      pin = PinnedEvent.create!(event: event, display_text: "text")
       GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
 
       expect(goal.pinned_events).to eq([pin])
@@ -235,7 +235,7 @@ RSpec.describe Goal do
     it "destroys join records when goal is destroyed" do
       goal = Goal.create!(session: session, description: "goal")
       event = session.events.create!(event_type: "user_message", payload: {content: "text"}, timestamp: 1)
-      pin = PinnedEvent.create!(event: event, session: session, display_text: "text")
+      pin = PinnedEvent.create!(event: event, display_text: "text")
       GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
 
       expect { goal.destroy }.to change(GoalPinnedEvent, :count).by(-1)

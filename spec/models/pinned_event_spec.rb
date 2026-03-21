@@ -8,34 +8,38 @@ RSpec.describe PinnedEvent do
 
   describe "validations" do
     it "requires display_text" do
-      pin = PinnedEvent.new(event: event, session: session, display_text: nil)
+      pin = PinnedEvent.new(event: event, display_text: nil)
       expect(pin).not_to be_valid
       expect(pin.errors[:display_text]).to be_present
     end
 
     it "enforces display_text max length" do
-      pin = PinnedEvent.new(event: event, session: session, display_text: "x" * 201)
+      pin = PinnedEvent.new(event: event, display_text: "x" * 201)
       expect(pin).not_to be_valid
       expect(pin.errors[:display_text]).to be_present
     end
 
-    it "enforces event uniqueness per session" do
-      PinnedEvent.create!(event: event, session: session, display_text: "text")
-      dup = PinnedEvent.new(event: event, session: session, display_text: "text")
+    it "enforces event uniqueness" do
+      PinnedEvent.create!(event: event, display_text: "text")
+      dup = PinnedEvent.new(event: event, display_text: "text")
       expect(dup).not_to be_valid
       expect(dup.errors[:event_id]).to be_present
     end
   end
 
   describe "associations" do
-    it "belongs to an event and session" do
-      pin = PinnedEvent.create!(event: event, session: session, display_text: "test")
+    it "belongs to an event" do
+      pin = PinnedEvent.create!(event: event, display_text: "test")
       expect(pin.event).to eq(event)
-      expect(pin.session).to eq(session)
+    end
+
+    it "is accessible through session" do
+      pin = PinnedEvent.create!(event: event, display_text: "test")
+      expect(session.pinned_events).to eq([pin])
     end
 
     it "has many goals through goal_pinned_events" do
-      pin = PinnedEvent.create!(event: event, session: session, display_text: "test")
+      pin = PinnedEvent.create!(event: event, display_text: "test")
       goal = session.goals.create!(description: "goal")
       GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
 
@@ -43,7 +47,7 @@ RSpec.describe PinnedEvent do
     end
 
     it "destroys join records when destroyed" do
-      pin = PinnedEvent.create!(event: event, session: session, display_text: "test")
+      pin = PinnedEvent.create!(event: event, display_text: "test")
       goal = session.goals.create!(description: "goal")
       GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
 
@@ -53,7 +57,7 @@ RSpec.describe PinnedEvent do
 
   describe ".orphaned" do
     it "returns pins with no active goals" do
-      pin = PinnedEvent.create!(event: event, session: session, display_text: "test")
+      pin = PinnedEvent.create!(event: event, display_text: "test")
       goal = session.goals.create!(description: "done", status: "completed", completed_at: Time.current)
       GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
 
@@ -61,7 +65,7 @@ RSpec.describe PinnedEvent do
     end
 
     it "excludes pins with at least one active goal" do
-      pin = PinnedEvent.create!(event: event, session: session, display_text: "test")
+      pin = PinnedEvent.create!(event: event, display_text: "test")
       goal = session.goals.create!(description: "active")
       GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
 
@@ -69,7 +73,7 @@ RSpec.describe PinnedEvent do
     end
 
     it "returns pins with no goal associations at all" do
-      pin = PinnedEvent.create!(event: event, session: session, display_text: "test")
+      pin = PinnedEvent.create!(event: event, display_text: "test")
       expect(PinnedEvent.orphaned).to include(pin)
     end
   end

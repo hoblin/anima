@@ -31,6 +31,7 @@ class Event < ApplicationRecord
   BYTES_PER_TOKEN = 4
 
   belongs_to :session
+  has_many :pinned_events, dependent: :destroy
 
   validates :event_type, presence: true, inclusion: {in: TYPES}
   validates :payload, presence: true

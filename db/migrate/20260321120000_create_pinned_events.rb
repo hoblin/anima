@@ -7,15 +7,11 @@
 class CreatePinnedEvents < ActiveRecord::Migration[8.1]
   def change
     create_table :pinned_events do |t|
-      t.references :event, null: false, foreign_key: true
-      t.references :session, null: false, foreign_key: true
+      t.references :event, null: false, foreign_key: true, index: {unique: true}
       t.text :display_text, null: false
 
       t.timestamps
     end
-
-    # One event can only be pinned once per session.
-    add_index :pinned_events, [:session_id, :event_id], unique: true
 
     create_table :goal_pinned_events do |t|
       t.references :goal, null: false, foreign_key: true

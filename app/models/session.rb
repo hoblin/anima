@@ -16,7 +16,7 @@ class Session < ApplicationRecord
   has_many :events, -> { order(:id) }, dependent: :destroy
   has_many :goals, dependent: :destroy
   has_many :snapshots, dependent: :destroy
-  has_many :pinned_events, dependent: :destroy
+  has_many :pinned_events, through: :events
 
   belongs_to :parent_session, class_name: "Session", optional: true
   has_many :child_sessions, class_name: "Session", foreign_key: :parent_session_id, dependent: :destroy
@@ -561,9 +561,9 @@ class Session < ApplicationRecord
     return [] unless first_event_id
 
     pins = pinned_events
-      .includes(:event, goals: :sub_goals)
+      .includes(:event, :goals)
       .where("pinned_events.event_id < ?", first_event_id)
-      .order(:event_id)
+      .order("pinned_events.event_id")
 
     return [] if pins.empty?
 
