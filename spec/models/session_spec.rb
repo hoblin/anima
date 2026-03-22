@@ -25,9 +25,16 @@ RSpec.describe Session do
       expect(session.errors[:view_mode]).to be_present
     end
 
-    it "defaults view_mode to basic" do
+    it "defaults view_mode to the configured setting" do
+      allow(Anima::Settings).to receive(:default_view_mode).and_return("basic")
       session = Session.create!
       expect(session.view_mode).to eq("basic")
+    end
+
+    it "respects a non-default view mode from settings" do
+      allow(Anima::Settings).to receive(:default_view_mode).and_return("verbose")
+      session = Session.create!
+      expect(session.view_mode).to eq("verbose")
     end
   end
 

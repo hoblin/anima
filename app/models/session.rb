@@ -11,6 +11,8 @@ class Session < ApplicationRecord
 
   VIEW_MODES = %w[basic verbose debug].freeze
 
+  attribute :view_mode, :string, default: -> { Anima::Settings.default_view_mode }
+
   serialize :granted_tools, coder: JSON
 
   has_many :events, -> { order(:id) }, dependent: :destroy

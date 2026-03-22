@@ -98,6 +98,9 @@ soul = "{{ANIMA_HOME}}/soul.md"
 
 [session]
 
+# View mode for new sessions: "basic", "verbose", or "debug".
+default_view_mode = "basic"
+
 # Regenerate session name every N messages.
 name_generation_interval = 30
 
