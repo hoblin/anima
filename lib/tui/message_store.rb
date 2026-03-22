@@ -197,11 +197,18 @@ module TUI
       true
     end
 
+    # Dispatches entry insertion based on type:
+    # - system_prompt: always position 0 (no database ID)
+    # - entries with ID: sorted by event ID via {#insert_sorted_by_id}
+    # - entries without ID: appended at the end
+    #
+    # @param entry [Hash] the entry to insert
+    # @return [void]
     def insert_ordered(entry)
       if entry[:event_type] == "system_prompt"
         @entries.unshift(entry)
       elsif entry[:id]
-        insert_by_id(entry)
+        insert_sorted_by_id(entry)
       else
         @entries << entry
       end
@@ -209,7 +216,12 @@ module TUI
 
     # Inserts an entry in sorted order by event ID. Optimized for the
     # common case where events arrive in order (appends without scanning).
-    def insert_by_id(entry)
+    # Entries without IDs (tool counters, etc.) are skipped during the
+    # sort scan and don't affect insertion position.
+    #
+    # @param entry [Hash] entry with a non-nil +:id+
+    # @return [void]
+    def insert_sorted_by_id(entry)
       id = entry[:id]
 
       # Fast path: entry belongs at the end (typical during live streaming)
@@ -225,7 +237,9 @@ module TUI
     end
 
     # Returns the highest event ID in the entries array, scanning from the
-    # end for efficiency (ID-bearing entries are typically at the tail).
+    # end for efficiency (entries with IDs are typically at the tail).
+    #
+    # @return [Integer, nil] the highest event ID, or nil if no entries have IDs
     def last_entry_id
       @entries.reverse_each { |e| return e[:id] if e[:id] }
       nil
