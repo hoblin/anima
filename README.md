@@ -142,7 +142,7 @@ State directory (`~/.anima/`):
 └── tmp/
 ```
 
-Updates: `anima update` — upgrades the gem and merges new config settings into your existing `config.toml` without overwriting customized values. Use `anima update --migrate-only` to skip the gem upgrade and only add missing config keys.
+Updates: `anima update` — upgrades the gem, merges new config settings into your existing `config.toml` without overwriting customized values, and restarts the systemd service if it's running. Use `anima update --migrate-only` to skip the gem upgrade and only add missing config keys.
 
 ### Authentication Setup
 

@@ -4,8 +4,8 @@ require_relative "../config/environment"
 require "solid_queue/cli"
 
 # Run all Solid Queue components (worker, dispatcher, scheduler) as threads
-# in a single process. Fork mode spawns grandchild processes that can outlive
-# the supervisor and run stale code after gem updates.
+# in a single process. Fork mode spawns child processes that can outlive
+# the supervisor and run stale code after gem updates (#275).
 ENV["SOLID_QUEUE_SUPERVISOR_MODE"] = "async"
 
 SolidQueue::Cli.start(ARGV)

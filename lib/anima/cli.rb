@@ -20,7 +20,7 @@ module Anima
       Installer.new.run
     end
 
-    desc "update", "Upgrade gem and migrate config"
+    desc "update", "Upgrade gem, migrate config, and restart service"
     option :migrate_only, type: :boolean, default: false, desc: "Skip gem upgrade, only migrate config"
     def update
       unless options[:migrate_only]
@@ -48,7 +48,7 @@ module Anima
         result.additions.each do |addition|
           say "  added [#{addition.section}] #{addition.key} = #{addition.value.inspect}"
         end
-        say "Config updated. Changes take effect immediately — no restart needed."
+        say "Config updated."
       end
 
       restart_service_if_active
@@ -107,8 +107,11 @@ module Anima
 
     private
 
-    # Restarts the systemd user service if it is currently running.
-    # After a gem update the service still runs the old code until restarted.
+    # Restarts the systemd user service so updated code takes effect.
+    # Without this, the service continues running the old gem version
+    # until manually restarted (see #269).
+    #
+    # @return [void]
     def restart_service_if_active
       return unless system("systemctl", "--user", "is-active", "--quiet", "anima.service")
 
