@@ -1252,6 +1252,43 @@ RSpec.describe Session do
       expect { session.heal_orphaned_tool_calls! }.not_to change { session.events.count }
     end
 
+    it "heals multiple orphaned tool_calls in a single pass" do
+      expired_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (200 * 1_000_000_000)
+      session.events.create!(
+        event_type: "tool_call",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_a", "timeout" => 180},
+        tool_use_id: "toolu_a",
+        timestamp: expired_ts
+      )
+      session.events.create!(
+        event_type: "tool_call",
+        payload: {"tool_name" => "web_get", "tool_use_id" => "toolu_b", "timeout" => 60},
+        tool_use_id: "toolu_b",
+        timestamp: expired_ts
+      )
+
+      expect(session.heal_orphaned_tool_calls!).to eq(2)
+
+      expect(session.events.where(event_type: "tool_response", tool_use_id: "toolu_a")).to exist
+      expect(session.events.where(event_type: "tool_response", tool_use_id: "toolu_b")).to exist
+    end
+
+    it "falls back to Settings.tool_timeout when payload has no timeout key" do
+      allow(Anima::Settings).to receive(:tool_timeout).and_return(60)
+      expired_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (90 * 1_000_000_000)
+      session.events.create!(
+        event_type: "tool_call",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_no_timeout"},
+        tool_use_id: "toolu_no_timeout",
+        timestamp: expired_ts
+      )
+
+      expect { session.heal_orphaned_tool_calls! }.to change { session.events.where(event_type: "tool_response").count }.by(1)
+
+      response = session.events.find_by(event_type: "tool_response", tool_use_id: "toolu_no_timeout")
+      expect(response.payload["content"]).to include("60 seconds")
+    end
+
     it "is idempotent — second call creates no duplicates" do
       expired_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (200 * 1_000_000_000)
       session.events.create!(

@@ -27,12 +27,11 @@ module Tools
       }
     end
 
-    # @param input [Hash<String, Object>] string-keyed hash from the Anthropic API
-    # @return [Hash] `{body: String, content_type: String}` on success
-    # @return [Hash] `{error: String}` on failure
     # @param input [Hash<String, Object>] string-keyed hash from the Anthropic API.
     #   Supports optional "timeout" key (seconds) to override the global
     #   web_request_timeout setting.
+    # @return [Hash] `{body: String, content_type: String}` on success
+    # @return [Hash] `{error: String}` on failure
     def execute(input)
       validate_and_fetch(input["url"].to_s, timeout: input["timeout"])
     end
