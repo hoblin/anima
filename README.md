@@ -300,6 +300,7 @@ blocking_on_user_message = true
 event_window = 20
 
 [session]
+default_view_mode = "basic"
 name_generation_interval = 30
 ```
 

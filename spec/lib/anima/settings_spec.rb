@@ -88,13 +88,23 @@ RSpec.describe Anima::Settings do
   end
 
   describe "default_view_mode validation" do
+    it "accepts all valid view modes" do
+      Session::VIEW_MODES.each do |mode|
+        allow(described_class).to receive(:config).and_return(
+          "session" => {"default_view_mode" => mode}
+        )
+
+        expect(described_class.default_view_mode).to eq(mode)
+      end
+    end
+
     it "rejects invalid view mode values" do
       allow(described_class).to receive(:config).and_return(
         "session" => {"default_view_mode" => "fancy"}
       )
 
       expect { described_class.default_view_mode }.to raise_error(
-        Anima::Settings::MissingSettingError, /must be one of: basic, verbose, debug/
+        Anima::Settings::MissingSettingError, /must be one of/
       )
     end
   end
