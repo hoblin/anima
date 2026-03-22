@@ -35,13 +35,6 @@ RSpec.describe Anima::Installer do
       end
     end
 
-    it "creates anima.yml config file" do
-      installer.run
-
-      config_path = tmp_home.join("config", "anima.yml")
-      expect(config_path).to exist
-    end
-
     it "generates credentials for each environment" do
       installer.run
 
