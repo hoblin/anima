@@ -30,7 +30,6 @@ module Anima
       say "Installing Anima to #{anima_home}..."
       create_directories
       create_soul_file
-      create_config_file
       create_settings_config
       create_mcp_config
       generate_credentials
@@ -58,17 +57,6 @@ module Anima
       template = File.join(TEMPLATE_DIR, "soul.md")
       soul_path.write(File.read(template))
       say "  created #{soul_path}"
-    end
-
-    def create_config_file
-      config_path = anima_home.join("config", "anima.yml")
-      return if config_path.exist?
-
-      config_path.write(<<~YAML)
-        # Anima configuration
-        # See https://github.com/hoblin/anima for documentation
-      YAML
-      say "  created #{config_path}"
     end
 
     def create_settings_config
