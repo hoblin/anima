@@ -3,6 +3,7 @@
 require "spec_helper"
 require "anima/cli"
 require "anima/installer"
+require "anima/config_migrator"
 require "tui/cable_client"
 require "tui/app"
 
@@ -96,6 +97,82 @@ RSpec.describe Anima::CLI do
       }.to output(/Connecting to brain/).to_stdout
 
       expect(TUI::App).to have_received(:new).with(cable_client: cable_client, debug: true)
+    end
+  end
+
+  describe "update" do
+    let(:addition) { Anima::ConfigMigrator::Addition.new(section: "llm", key: "temperature", value: 0.7) }
+
+    before do
+      allow_any_instance_of(Kernel).to receive(:system).and_return(false)
+    end
+
+    context "with --migrate-only" do
+      context "when config is up to date" do
+        before do
+          allow(Anima::ConfigMigrator).to receive_message_chain(:new, :run)
+            .and_return(Anima::ConfigMigrator::Result.new(status: :up_to_date, additions: []))
+        end
+
+        it "restarts the service when it is active" do
+          allow_any_instance_of(Kernel).to receive(:system)
+            .with("systemctl", "--user", "is-active", "--quiet", "anima.service").and_return(true)
+          allow_any_instance_of(Kernel).to receive(:system)
+            .with("systemctl", "--user", "restart", "anima.service").and_return(true)
+
+          expect {
+            described_class.start(["update", "--migrate-only"])
+          }.to output(/Restarting anima service.*Service restarted/m).to_stdout
+        end
+
+        it "skips restart when the service is not active" do
+          expect {
+            described_class.start(["update", "--migrate-only"])
+          }.not_to output(/Restarting/).to_stdout
+        end
+
+        it "reports failure when restart fails" do
+          allow_any_instance_of(Kernel).to receive(:system)
+            .with("systemctl", "--user", "is-active", "--quiet", "anima.service").and_return(true)
+          allow_any_instance_of(Kernel).to receive(:system)
+            .with("systemctl", "--user", "restart", "anima.service").and_return(false)
+
+          expect {
+            described_class.start(["update", "--migrate-only"])
+          }.to output(/Service restart failed/).to_stdout
+        end
+      end
+
+      context "when config is updated" do
+        before do
+          allow(Anima::ConfigMigrator).to receive_message_chain(:new, :run)
+            .and_return(Anima::ConfigMigrator::Result.new(status: :updated, additions: [addition]))
+        end
+
+        it "reports added keys and restarts the service" do
+          allow_any_instance_of(Kernel).to receive(:system)
+            .with("systemctl", "--user", "is-active", "--quiet", "anima.service").and_return(true)
+          allow_any_instance_of(Kernel).to receive(:system)
+            .with("systemctl", "--user", "restart", "anima.service").and_return(true)
+
+          expect {
+            described_class.start(["update", "--migrate-only"])
+          }.to output(/\[llm\] temperature.*Config updated.*Service restarted/m).to_stdout
+        end
+      end
+
+      context "when config file is not found" do
+        before do
+          allow(Anima::ConfigMigrator).to receive_message_chain(:new, :run)
+            .and_return(Anima::ConfigMigrator::Result.new(status: :not_found, additions: []))
+        end
+
+        it "exits with an error" do
+          expect {
+            described_class.start(["update", "--migrate-only"])
+          }.to output(/Run 'anima install' first/).to_stdout.and raise_error(SystemExit)
+        end
+      end
     end
   end
 
