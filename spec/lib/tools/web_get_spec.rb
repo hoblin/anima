@@ -89,6 +89,29 @@ RSpec.describe Tools::WebGet do
       end
     end
 
+    context "with a custom timeout" do
+      let(:fake_response) { double("Response", body: "ok", content_type: "text/plain") }
+
+      it "passes the timeout to HTTParty" do
+        expect(HTTParty).to receive(:get).with(
+          "https://example.com",
+          hash_including(timeout: 300)
+        ).and_return(fake_response)
+
+        tool.execute("url" => "https://example.com", "timeout" => 300)
+      end
+
+      it "falls back to Settings.web_request_timeout when no timeout given" do
+        default_timeout = Anima::Settings.web_request_timeout
+        expect(HTTParty).to receive(:get).with(
+          "https://example.com",
+          hash_including(timeout: default_timeout)
+        ).and_return(fake_response)
+
+        tool.execute("url" => "https://example.com")
+      end
+    end
+
     context "when the request times out" do
       it "returns a timeout error" do
         allow(HTTParty).to receive(:get).and_raise(Net::ReadTimeout)

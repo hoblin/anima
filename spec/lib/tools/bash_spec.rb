@@ -80,6 +80,11 @@ RSpec.describe Tools::Bash do
       expect(result).to include("stdout:\nkept")
     end
 
+    it "passes timeout parameter to shell session" do
+      expect(shell_session).to receive(:run).with("echo hi", timeout: 300).and_return(stdout: "hi\n", stderr: "", exit_code: 0)
+      tool.execute("command" => "echo hi", "timeout" => 300)
+    end
+
     it "returns error for blank commands" do
       result = tool.execute("command" => "  ")
       expect(result).to be_a(Hash)

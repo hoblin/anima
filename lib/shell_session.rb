@@ -45,13 +45,15 @@ class ShellSession
   # automatically if the previous session died (timeout, crash, etc.).
   #
   # @param command [String] bash command to execute
+  # @param timeout [Integer, nil] per-call timeout in seconds; overrides
+  #   Settings.command_timeout when provided
   # @return [Hash] with :stdout, :stderr, :exit_code keys on success
   # @return [Hash] with :error key on failure
-  def run(command)
+  def run(command, timeout: nil)
     @mutex.synchronize do
       return {error: "Shell session is not running"} if @finalized
       restart unless @alive
-      execute_in_pty(command)
+      execute_in_pty(command, timeout: timeout)
     end
   rescue => error # rubocop:disable Lint/RescueException -- LLM must always get a result hash, never a stack trace
     {error: "#{error.class}: #{error.message}"}
@@ -227,10 +229,10 @@ class ShellSession
     end
   end
 
-  def execute_in_pty(command)
+  def execute_in_pty(command, timeout: nil)
     clear_stderr
     marker = "__ANIMA_#{SecureRandom.hex(8)}__"
-    timeout = Anima::Settings.command_timeout
+    timeout ||= Anima::Settings.command_timeout
     deadline = monotonic_now + timeout
 
     @pty_stdin.puts "#{command}; __anima_ec=$?; echo; echo '#{marker}' $__anima_ec"

@@ -251,6 +251,8 @@ class Session < ApplicationRecord
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @return [Array<Hash>] Anthropic Messages API format
   def messages_for_llm(token_budget: Anima::Settings.token_budget)
+    heal_orphaned_tool_calls!
+
     sliding_budget = token_budget
     snapshot_messages = []
     pinned_messages = []
@@ -273,7 +275,48 @@ class Session < ApplicationRecord
       recall_messages = assemble_recall_messages(budget: recall_budget)
     end
 
-    snapshot_messages + pinned_messages + recall_messages + assemble_messages(events)
+    snapshot_messages + pinned_messages + recall_messages + assemble_messages(ensure_atomic_tool_pairs(events))
+  end
+
+  # Detects orphaned tool_call events (those without a matching tool_response
+  # and whose timeout has expired) and creates synthetic error responses.
+  # An orphaned tool_call permanently breaks the session because the
+  # Anthropic API rejects conversations where a tool_use block has no
+  # matching tool_result.
+  #
+  # Respects the per-call timeout stored in the tool_call event payload —
+  # a tool_call is only healed after its deadline has passed. This avoids
+  # prematurely healing long-running tools that the agent intentionally
+  # gave an extended timeout.
+  #
+  # @return [Integer] number of synthetic responses created
+  def heal_orphaned_tool_calls!
+    now_ns = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+    responded_ids = events.where(event_type: "tool_response").where.not(tool_use_id: nil).select(:tool_use_id)
+    unresponded = events.where(event_type: "tool_call").where.not(tool_use_id: nil)
+      .where.not(tool_use_id: responded_ids)
+
+    healed = 0
+    unresponded.find_each do |orphan|
+      timeout = orphan.payload["timeout"] || Anima::Settings.tool_timeout
+      deadline_ns = orphan.timestamp + (timeout * 1_000_000_000)
+      next if now_ns < deadline_ns
+
+      events.create!(
+        event_type: "tool_response",
+        payload: {
+          "type" => "tool_response",
+          "content" => "Tool execution timed out after #{timeout} seconds — no result was returned.",
+          "tool_name" => orphan.payload["tool_name"],
+          "tool_use_id" => orphan.tool_use_id,
+          "success" => false
+        },
+        tool_use_id: orphan.tool_use_id,
+        timestamp: now_ns
+      )
+      healed += 1
+    end
+    healed
   end
 
   # Creates a user message event record directly (bypasses EventBus+Persister).
@@ -495,6 +538,28 @@ class Session < ApplicationRecord
   def trim_trailing_tool_calls(event_list)
     event_list.pop while event_list.last&.event_type == "tool_call"
     event_list
+  end
+
+  # Ensures every tool_call in the event list has a matching tool_response
+  # (and vice versa) by removing unpaired events. The Anthropic API requires
+  # every tool_use block to have a tool_result — a missing partner causes
+  # a permanent API error. Token budget cutoffs can split pairs when the
+  # boundary falls between a tool_call and its tool_response.
+  #
+  # @param event_list [Array<Event>] chronologically ordered events
+  # @return [Array<Event>] events with unpaired tool events removed
+  def ensure_atomic_tool_pairs(event_list)
+    tool_events = event_list.select { |e| e.tool_use_id.present? }
+    return event_list if tool_events.empty?
+
+    paired = tool_events.group_by(&:tool_use_id)
+    complete_ids = paired.each_with_object(Set.new) do |(id, evts), set|
+      has_call = evts.any? { |e| e.event_type == "tool_call" }
+      has_response = evts.any? { |e| e.event_type == "tool_response" }
+      set << id if has_call && has_response
+    end
+
+    event_list.reject { |e| e.tool_use_id.present? && !complete_ids.include?(e.tool_use_id) }
   end
 
   # Selects visible snapshots and formats them as Anthropic messages.

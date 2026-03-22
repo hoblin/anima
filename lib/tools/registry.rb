@@ -30,16 +30,21 @@ module Tools
       @tools[tool.tool_name] = tool
     end
 
-    # @return [Array<Hash>] schema array for the Anthropic tools API parameter
+    # @return [Array<Hash>] schema array for the Anthropic tools API parameter.
+    #   Each schema includes an optional `timeout` parameter (seconds) injected
+    #   by the registry. The agent can override the default per call for
+    #   long-running operations.
     def schemas
-      @tools.values.map(&:schema)
+      default = Anima::Settings.tool_timeout
+      @tools.values.map { |tool| inject_timeout(tool.schema, default) }
     end
 
     # Execute a tool by name. Classes are instantiated with the registry's
     # context; instances are called directly.
     #
     # @param name [String] registered tool name
-    # @param input [Hash] tool input parameters
+    # @param input [Hash] tool input parameters (may include "timeout" for
+    #   tools that support per-call timeout overrides)
     # @return [String, Hash] tool execution result
     # @raise [UnknownToolError] if no tool is registered with the given name
     def execute(name, input)
@@ -57,6 +62,20 @@ module Tools
     # @return [Boolean] whether any tools are registered
     def any?
       @tools.any?
+    end
+
+    private
+
+    # Injects an optional `timeout` parameter into the tool's input schema.
+    def inject_timeout(schema, default)
+      s = schema.deep_dup
+      s[:input_schema] ||= {type: "object", properties: {}}
+      s[:input_schema][:properties] ||= {}
+      s[:input_schema][:properties]["timeout"] = {
+        type: "integer",
+        description: "Max execution seconds (default: #{default}). Increase for long-running operations."
+      }
+      s
     end
   end
 end

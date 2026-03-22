@@ -102,6 +102,11 @@ module Anima
       # @return [Integer] seconds
       def web_request_timeout = get("timeouts", "web_request")
 
+      # Per-tool-call timeout. Used as the default deadline for orphan detection
+      # and as the default value for the tool's `timeout` input parameter.
+      # @return [Integer] seconds
+      def tool_timeout = get("timeouts", "tool")
+
       # ─── Shell ──────────────────────────────────────────────────────
 
       # Maximum bytes of command output before truncation.

@@ -49,7 +49,8 @@ module Tools
     def initialize(**) = nil
 
     # Execute the tool with the given input.
-    # @param input [Hash] parsed input matching {.input_schema}
+    # @param input [Hash] parsed input matching {.input_schema}. May include
+    #   a "timeout" key (seconds) for tools that support per-call timeout overrides.
     # @return [String, Hash] result content; Hash with :error key signals failure
     def execute(input)
       raise NotImplementedError, "#{self.class} must implement #execute"
