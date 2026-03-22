@@ -139,7 +139,7 @@ RSpec.describe Tools::RequestFeature do
         before do
           allow(Anima::Settings).to receive(:github_repo).and_return("  ")
           allow(Open3).to receive(:capture2)
-            .with("git", "remote", "get-url", "origin")
+            .with("git", "remote", "get-url", "origin", err: File::NULL)
             .and_return(["https://github.com/hoblin/anima.git\n", instance_double(Process::Status, exitstatus: 0)])
           allow(Open3).to receive(:capture3)
             .and_return([issue_url, "", instance_double(Process::Status, exitstatus: 0)])
@@ -161,7 +161,7 @@ RSpec.describe Tools::RequestFeature do
 
         it "falls back to git remote origin (HTTPS)" do
           allow(Open3).to receive(:capture2)
-            .with("git", "remote", "get-url", "origin")
+            .with("git", "remote", "get-url", "origin", err: File::NULL)
             .and_return(["https://github.com/hoblin/anima.git\n", instance_double(Process::Status, exitstatus: 0)])
           allow(Open3).to receive(:capture3)
             .and_return([issue_url, "", instance_double(Process::Status, exitstatus: 0)])
@@ -174,7 +174,7 @@ RSpec.describe Tools::RequestFeature do
 
         it "falls back to git remote origin (SSH)" do
           allow(Open3).to receive(:capture2)
-            .with("git", "remote", "get-url", "origin")
+            .with("git", "remote", "get-url", "origin", err: File::NULL)
             .and_return(["git@github.com:hoblin/anima.git\n", instance_double(Process::Status, exitstatus: 0)])
           allow(Open3).to receive(:capture3)
             .and_return([issue_url, "", instance_double(Process::Status, exitstatus: 0)])
@@ -187,7 +187,7 @@ RSpec.describe Tools::RequestFeature do
 
         it "falls back to git remote origin (HTTPS without .git)" do
           allow(Open3).to receive(:capture2)
-            .with("git", "remote", "get-url", "origin")
+            .with("git", "remote", "get-url", "origin", err: File::NULL)
             .and_return(["https://github.com/hoblin/anima\n", instance_double(Process::Status, exitstatus: 0)])
           allow(Open3).to receive(:capture3)
             .and_return([issue_url, "", instance_double(Process::Status, exitstatus: 0)])
@@ -200,7 +200,7 @@ RSpec.describe Tools::RequestFeature do
 
         it "returns error when remote URL is not GitHub" do
           allow(Open3).to receive(:capture2)
-            .with("git", "remote", "get-url", "origin")
+            .with("git", "remote", "get-url", "origin", err: File::NULL)
             .and_return(["https://gitlab.com/user/repo.git\n", instance_double(Process::Status, exitstatus: 0)])
 
           result = tool.execute("title" => "Feature", "description" => "Details")
@@ -210,7 +210,7 @@ RSpec.describe Tools::RequestFeature do
 
         it "returns error when git is not available" do
           allow(Open3).to receive(:capture2)
-            .with("git", "remote", "get-url", "origin")
+            .with("git", "remote", "get-url", "origin", err: File::NULL)
             .and_raise(Errno::ENOENT)
 
           result = tool.execute("title" => "Feature", "description" => "Details")

@@ -123,7 +123,7 @@ class EnvironmentProbe
   # @return [Hash{Symbol => String}, nil] keys: :remote, :repo_name, :branch,
   #   and optionally :pr_number (Integer) and :pr_state (String); nil when not in a repo
   def detect_git
-    _, status = Open3.capture2("git", "-C", @pwd, "rev-parse", "--is-inside-work-tree")
+    _, status = Open3.capture2("git", "-C", @pwd, "rev-parse", "--is-inside-work-tree", err: File::NULL)
     return unless status.success?
 
     info = {}
@@ -136,7 +136,7 @@ class EnvironmentProbe
 
   # Populates :remote and :repo_name on the info hash.
   def detect_git_remote(info)
-    remote, = Open3.capture2("git", "-C", @pwd, "remote", "get-url", "origin")
+    remote, = Open3.capture2("git", "-C", @pwd, "remote", "get-url", "origin", err: File::NULL)
     remote = remote.strip
     return unless remote.present?
 
@@ -146,7 +146,7 @@ class EnvironmentProbe
 
   # Populates :branch, :pr_number, and :pr_state on the info hash.
   def detect_git_branch(info)
-    branch, = Open3.capture2("git", "-C", @pwd, "rev-parse", "--abbrev-ref", "HEAD")
+    branch, = Open3.capture2("git", "-C", @pwd, "rev-parse", "--abbrev-ref", "HEAD", err: File::NULL)
     branch = branch.strip
     return unless branch.present?
 
@@ -181,7 +181,7 @@ class EnvironmentProbe
       output, status = Open3.capture2(
         "gh", "pr", "list", "--head", branch,
         "--json", "number,state", "--limit", "1",
-        chdir: @pwd
+        chdir: @pwd, err: File::NULL
       )
       return unless status.success?
 

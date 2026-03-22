@@ -130,7 +130,7 @@ RSpec.describe EnvironmentProbe do
     it "handles git not being installed" do
       allow(Open3).to receive(:capture2).and_call_original
       allow(Open3).to receive(:capture2)
-        .with("git", "-C", pwd, "rev-parse", "--is-inside-work-tree")
+        .with("git", "-C", pwd, "rev-parse", "--is-inside-work-tree", err: File::NULL)
         .and_raise(Errno::ENOENT)
 
       result = described_class.to_prompt(pwd)
@@ -140,7 +140,7 @@ RSpec.describe EnvironmentProbe do
     it "handles gh not being installed" do
       stub_git_repo
       allow(Open3).to receive(:capture2)
-        .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: pwd)
+        .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: pwd, err: File::NULL)
         .and_raise(Errno::ENOENT)
 
       result = described_class.to_prompt(pwd)
@@ -151,7 +151,7 @@ RSpec.describe EnvironmentProbe do
     it "handles gh timeout gracefully" do
       stub_git_repo
       allow(Open3).to receive(:capture2)
-        .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: pwd)
+        .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: pwd, err: File::NULL)
         .and_raise(Timeout::Error)
 
       result = described_class.to_prompt(pwd)
@@ -162,7 +162,7 @@ RSpec.describe EnvironmentProbe do
     it "handles malformed JSON from gh" do
       stub_git_repo
       allow(Open3).to receive(:capture2)
-        .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: pwd)
+        .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: pwd, err: File::NULL)
         .and_return(["not json at all", instance_double(Process::Status, success?: true)])
 
       result = described_class.to_prompt(pwd)
@@ -238,7 +238,7 @@ RSpec.describe EnvironmentProbe do
   def stub_no_git
     allow(Open3).to receive(:capture2).and_call_original
     allow(Open3).to receive(:capture2)
-      .with("git", "-C", pwd, "rev-parse", "--is-inside-work-tree")
+      .with("git", "-C", pwd, "rev-parse", "--is-inside-work-tree", err: File::NULL)
       .and_return(["false\n", instance_double(Process::Status, success?: false)])
   end
 
@@ -246,22 +246,22 @@ RSpec.describe EnvironmentProbe do
     ok = instance_double(Process::Status, success?: true)
     allow(Open3).to receive(:capture2).and_call_original
     allow(Open3).to receive(:capture2)
-      .with("git", "-C", pwd, "rev-parse", "--is-inside-work-tree")
+      .with("git", "-C", pwd, "rev-parse", "--is-inside-work-tree", err: File::NULL)
       .and_return(["true\n", ok])
     allow(Open3).to receive(:capture2)
-      .with("git", "-C", pwd, "remote", "get-url", "origin")
+      .with("git", "-C", pwd, "remote", "get-url", "origin", err: File::NULL)
       .and_return(["#{remote}\n", ok])
     allow(Open3).to receive(:capture2)
-      .with("git", "-C", pwd, "rev-parse", "--abbrev-ref", "HEAD")
+      .with("git", "-C", pwd, "rev-parse", "--abbrev-ref", "HEAD", err: File::NULL)
       .and_return(["#{branch}\n", ok])
     allow(Open3).to receive(:capture2)
-      .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: pwd)
+      .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: pwd, err: File::NULL)
       .and_return(["[]\n", ok])
   end
 
   def stub_pr(number:, state:)
     allow(Open3).to receive(:capture2)
-      .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: pwd)
+      .with("gh", "pr", "list", "--head", anything, "--json", "number,state", "--limit", "1", chdir: pwd, err: File::NULL)
       .and_return(["[{\"number\":#{number},\"state\":\"#{state}\"}]\n",
         instance_double(Process::Status, success?: true)])
   end
