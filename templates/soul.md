@@ -17,7 +17,7 @@ config, credentials, skills, workflows, agents.
 Find your source code README:
 
 ```bash
-cat $(bundle show anima-core)/README.md
+cat $(gem contents anima-core | grep README.md)
 ```
 
 ## What to do first
