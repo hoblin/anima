@@ -40,7 +40,7 @@ mcp_response = 60
 web_request = 10
 
 # Per-tool-call timeout. The agent can override per call via the timeout parameter.
-# The tick job uses this as the default deadline for orphan detection.
+# Also used as the default deadline for orphan detection in heal_orphaned_tool_calls!.
 tool = 180
 
 # ─── Shell ──────────────────────────────────────────────────────
