@@ -283,6 +283,123 @@ RSpec.describe TUI::MessageStore do
         expect(store.messages.first[:data]["content"]).to eq("hi (v3)")
       end
     end
+
+    context "with out-of-order event arrival" do
+      it "sorts rendered entries by event ID regardless of arrival order" do
+        store.process_event({"type" => "agent_message", "id" => 3,
+                             "rendered" => {"debug" => {"role" => "assistant", "content" => "third"}}})
+        store.process_event({"type" => "user_message", "id" => 1,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "first"}}})
+        store.process_event({"type" => "tool_call", "id" => 2,
+                             "rendered" => {"debug" => {"role" => "tool_call", "content" => "second"}}})
+
+        contents = store.messages.map { |m| m[:data]["content"] }
+        expect(contents).to eq(%w[first second third])
+      end
+
+      it "places system prompt at position 0 even when it arrives after other events" do
+        store.process_event({"type" => "user_message", "id" => 1,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "hello"}}})
+        store.process_event({"type" => "agent_message", "id" => 2,
+                             "rendered" => {"debug" => {"role" => "assistant", "content" => "hi"}}})
+        store.process_event({"type" => "system_prompt",
+                             "rendered" => {"debug" => {"role" => "system_prompt", "content" => "You are..."}}})
+
+        entries = store.messages
+        expect(entries.first[:data]["role"]).to eq("system_prompt")
+        expect(entries.map { |m| m[:data]["content"] }).to eq(["You are...", "hello", "hi"])
+      end
+
+      it "replaces previous system prompt when a new one arrives" do
+        store.process_event({"type" => "system_prompt",
+                             "rendered" => {"debug" => {"role" => "system_prompt", "content" => "v1"}}})
+        store.process_event({"type" => "user_message", "id" => 1,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "hello"}}})
+        store.process_event({"type" => "system_prompt",
+                             "rendered" => {"debug" => {"role" => "system_prompt", "content" => "v2"}}})
+
+        entries = store.messages
+        system_prompts = entries.select { |e| e[:event_type] == "system_prompt" }
+        expect(system_prompts.size).to eq(2)
+        expect(entries.first[:data]["content"]).to eq("v2")
+        expect(entries[1][:data]["content"]).to eq("v1")
+      end
+
+      it "appends in-order events without scanning (fast path)" do
+        store.process_event({"type" => "user_message", "id" => 1,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "first"}}})
+        store.process_event({"type" => "agent_message", "id" => 2,
+                             "rendered" => {"debug" => {"role" => "assistant", "content" => "second"}}})
+        store.process_event({"type" => "user_message", "id" => 3,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "third"}}})
+
+        contents = store.messages.map { |m| m[:data]["content"] }
+        expect(contents).to eq(%w[first second third])
+      end
+
+      it "handles a single out-of-order event in a large sequence" do
+        (1..5).each do |i|
+          next if i == 3
+          store.process_event({"type" => "user_message", "id" => i,
+                               "rendered" => {"debug" => {"role" => "user", "content" => "msg#{i}"}}})
+        end
+        # Event 3 arrives last
+        store.process_event({"type" => "user_message", "id" => 3,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "msg3"}}})
+
+        contents = store.messages.map { |m| m[:data]["content"] }
+        expect(contents).to eq(%w[msg1 msg2 msg3 msg4 msg5])
+      end
+
+      it "preserves non-ID entries alongside ID-sorted entries" do
+        store.process_event({"type" => "tool_call", "content" => "bash"})
+        store.process_event({"type" => "user_message", "id" => 2,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "second"}}})
+        store.process_event({"type" => "user_message", "id" => 1,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "first"}}})
+
+        entries = store.messages
+        expect(entries[0][:type]).to eq(:tool_counter)
+        expect(entries[1][:data]["content"]).to eq("first")
+        expect(entries[2][:data]["content"]).to eq("second")
+      end
+
+      it "deduplicates events with the same ID" do
+        store.process_event({"type" => "user_message", "id" => 1,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "original"}}})
+        store.process_event({"type" => "user_message", "id" => 1,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "duplicate"}}})
+
+        expect(store.size).to eq(1)
+        expect(store.messages.first[:data]["content"]).to eq("duplicate")
+      end
+
+      it "handles viewport replay after a live event (view mode switch race)" do
+        store.process_event({"type" => "agent_message", "id" => 100,
+                             "rendered" => {"debug" => {"role" => "assistant", "content" => "live"}}})
+        store.process_event({"type" => "user_message", "id" => 1,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "first"}}})
+        store.process_event({"type" => "agent_message", "id" => 2,
+                             "rendered" => {"debug" => {"role" => "assistant", "content" => "second"}}})
+        store.process_event({"type" => "user_message", "id" => 50,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "middle"}}})
+        store.process_event({"type" => "agent_message", "id" => 100,
+                             "rendered" => {"debug" => {"role" => "assistant", "content" => "replayed"}}})
+
+        ids = store.messages.map { |m| m[:id] }
+        expect(ids).to eq([1, 2, 50, 100])
+        expect(store.size).to eq(4)
+        expect(store.messages.last[:data]["content"]).to eq("replayed")
+      end
+
+      it "orders plain message events by ID" do
+        store.process_event({"type" => "user_message", "id" => 3, "content" => "third"})
+        store.process_event({"type" => "user_message", "id" => 1, "content" => "first"})
+        store.process_event({"type" => "agent_message", "id" => 2, "content" => "second"})
+
+        expect(store.messages.map { |m| m[:id] }).to eq([1, 2, 3])
+      end
+    end
   end
 
   describe "#clear" do
