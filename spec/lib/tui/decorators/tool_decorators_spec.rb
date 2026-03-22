@@ -73,6 +73,18 @@ RSpec.describe "Tool-specific decorators" do
       expect(style[:fg]).to eq("yellow")
     end
 
+    it "renders multi-line content on separate lines" do
+      input = "/tmp/soul.md\nline1\nline2\nline3"
+      data = {"role" => "tool_call", "tool" => "write", "input" => input}
+      lines = described_class.new(data).render_call(tui)
+
+      expect(lines.size).to eq(5)
+      expect(lines[1][:spans].first[:content]).to eq("  /tmp/soul.md")
+      expect(lines[2][:spans].first[:content]).to eq("  line1")
+      expect(lines[3][:spans].first[:content]).to eq("  line2")
+      expect(lines[4][:spans].first[:content]).to eq("  line3")
+    end
+
     it "renders response in default white" do
       data = {"role" => "tool_response", "tool" => "write", "content" => "written", "success" => true}
       lines = described_class.new(data).render_response(tui)
