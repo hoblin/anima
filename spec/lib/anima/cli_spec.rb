@@ -122,10 +122,14 @@ RSpec.describe Anima::CLI do
         allow_any_instance_of(Kernel).to receive(:system)
           .with("gem", "update", "anima-core", out: File::NULL, err: File::NULL).and_return(true)
 
+        # exec replaces the process; simulate by raising SystemExit
         expect_any_instance_of(Kernel).to receive(:exec)
           .with(File.join(Gem.bindir, "anima"), "update", "--migrate-only")
+          .and_raise(SystemExit.new(0))
 
-        described_class.start(["update"])
+        expect {
+          described_class.start(["update"])
+        }.to raise_error(SystemExit)
       end
     end
 
