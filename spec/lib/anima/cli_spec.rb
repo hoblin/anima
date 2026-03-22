@@ -4,6 +4,7 @@ require "spec_helper"
 require "anima/cli"
 require "anima/installer"
 require "anima/config_migrator"
+require "anima/spinner"
 require "tui/cable_client"
 require "tui/app"
 
@@ -122,7 +123,7 @@ RSpec.describe Anima::CLI do
 
           expect {
             described_class.start(["update", "--migrate-only"])
-          }.to output(/Restarting anima service.*Service restarted/m).to_stdout
+          }.to output(/✓ Restarting anima service/m).to_stdout
         end
 
         it "skips restart when the service is not active" do
@@ -139,7 +140,7 @@ RSpec.describe Anima::CLI do
 
           expect {
             described_class.start(["update", "--migrate-only"])
-          }.to output(/Service restart failed/).to_stdout
+          }.to output(/✗ Restarting anima service.*Run manually/m).to_stdout
         end
       end
 
@@ -157,7 +158,7 @@ RSpec.describe Anima::CLI do
 
           expect {
             described_class.start(["update", "--migrate-only"])
-          }.to output(/\[llm\] temperature.*Config updated.*Service restarted/m).to_stdout
+          }.to output(/\[llm\] temperature.*✓ Restarting anima service/m).to_stdout
         end
       end
 

@@ -23,10 +23,14 @@ module Anima
     desc "update", "Upgrade gem, migrate config, and restart service"
     option :migrate_only, type: :boolean, default: false, desc: "Skip gem upgrade, only migrate config"
     def update
+      require_relative "spinner"
+
       unless options[:migrate_only]
-        say "Upgrading anima-core gem..."
-        unless system("gem", "update", "anima-core")
-          say "Gem update failed.", :red
+        success = Spinner.run("Upgrading anima-core gem...") do
+          system("gem", "update", "anima-core", out: File::NULL, err: File::NULL)
+        end
+        unless success
+          say "Run manually for details: gem update anima-core", :red
           exit 1
         end
 
@@ -34,21 +38,21 @@ module Anima
         exec(File.join(Gem.bindir, "anima"), "update", "--migrate-only")
       end
 
-      say "Migrating configuration..."
       require_relative "config_migrator"
-      result = Anima::ConfigMigrator.new.run
+      result = Spinner.run("Migrating configuration...") do
+        Anima::ConfigMigrator.new.run
+      end
 
       case result.status
       when :not_found
         say "Config file not found. Run 'anima install' first.", :red
         exit 1
       when :up_to_date
-        say "Config is already up to date."
+        say "  Config is already up to date."
       when :updated
         result.additions.each do |addition|
           say "  added [#{addition.section}] #{addition.key} = #{addition.value.inspect}"
         end
-        say "Config updated."
       end
 
       restart_service_if_active
@@ -115,11 +119,11 @@ module Anima
     def restart_service_if_active
       return unless system("systemctl", "--user", "is-active", "--quiet", "anima.service")
 
-      say "Restarting anima service..."
-      if system("systemctl", "--user", "restart", "anima.service")
-        say "Service restarted.", :green
-      else
-        say "Service restart failed. Run: systemctl --user restart anima.service", :red
+      success = Spinner.run("Restarting anima service...") do
+        system("systemctl", "--user", "restart", "anima.service")
+      end
+      unless success
+        say "  Run manually: systemctl --user restart anima.service", :red
       end
     end
   end
