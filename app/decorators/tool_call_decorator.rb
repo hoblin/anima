@@ -105,11 +105,11 @@ class ToolCallDecorator < EventDecorator
   # Formats write tool input with file path header and content body.
   # Content newlines are preserved so the TUI can render them as
   # separate lines, matching how read tool responses display file content.
-  # @param input [Hash, nil] tool_input with "file_path" and "content"
-  # @return [String] path followed by content with real newlines
+  # @param input [Hash] tool input hash with "file_path" and "content" keys
+  # @return [String] path + content with real newlines, or TOON-encoded hash when content is empty
   def format_write_content(input)
-    path = input&.dig("file_path").to_s
-    content = input&.dig("content").to_s
+    path = input.dig("file_path").to_s
+    content = input.dig("content").to_s
     return Toon.encode(input) if content.empty?
 
     "#{path}\n#{content}"
