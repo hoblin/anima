@@ -4,6 +4,7 @@ require "spec_helper"
 require "anima/cli"
 require "anima/installer"
 require "anima/config_migrator"
+require "anima/spinner"
 require "tui/cable_client"
 require "tui/app"
 
@@ -107,6 +108,31 @@ RSpec.describe Anima::CLI do
       allow_any_instance_of(Kernel).to receive(:system).and_return(false)
     end
 
+    context "without --migrate-only" do
+      it "exits with error when gem update fails" do
+        allow_any_instance_of(Kernel).to receive(:system)
+          .with("gem", "update", "anima-core", out: File::NULL, err: File::NULL).and_return(false)
+
+        expect {
+          described_class.start(["update"])
+        }.to output(/Run manually for details: gem update anima-core/).to_stdout.and raise_error(SystemExit)
+      end
+
+      it "re-execs with --migrate-only after successful gem update" do
+        allow_any_instance_of(Kernel).to receive(:system)
+          .with("gem", "update", "anima-core", out: File::NULL, err: File::NULL).and_return(true)
+
+        # exec replaces the process; simulate by raising SystemExit
+        expect_any_instance_of(Kernel).to receive(:exec)
+          .with(File.join(Gem.bindir, "anima"), "update", "--migrate-only")
+          .and_raise(SystemExit.new(0))
+
+        expect {
+          described_class.start(["update"])
+        }.to raise_error(SystemExit)
+      end
+    end
+
     context "with --migrate-only" do
       context "when config is up to date" do
         before do
@@ -122,7 +148,7 @@ RSpec.describe Anima::CLI do
 
           expect {
             described_class.start(["update", "--migrate-only"])
-          }.to output(/Restarting anima service.*Service restarted/m).to_stdout
+          }.to output(/✓ Restarting anima service/m).to_stdout
         end
 
         it "skips restart when the service is not active" do
@@ -139,7 +165,7 @@ RSpec.describe Anima::CLI do
 
           expect {
             described_class.start(["update", "--migrate-only"])
-          }.to output(/Service restart failed/).to_stdout
+          }.to output(/✗ Restarting anima service.*Run manually/m).to_stdout
         end
       end
 
@@ -157,7 +183,7 @@ RSpec.describe Anima::CLI do
 
           expect {
             described_class.start(["update", "--migrate-only"])
-          }.to output(/\[llm\] temperature.*Config updated.*Service restarted/m).to_stdout
+          }.to output(/\[llm\] temperature.*✓ Restarting anima service/m).to_stdout
         end
       end
 
