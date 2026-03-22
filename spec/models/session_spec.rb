@@ -1183,20 +1183,45 @@ RSpec.describe Session do
   describe "#heal_orphaned_tool_calls!" do
     let(:session) { Session.create! }
 
-    it "creates synthetic responses for tool_calls without matching tool_response" do
+    it "creates synthetic responses for expired tool_calls without matching tool_response" do
+      expired_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (200 * 1_000_000_000)
       session.events.create!(
         event_type: "tool_call",
-        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_orphan"},
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_orphan", "timeout" => 180},
         tool_use_id: "toolu_orphan",
-        timestamp: 1
+        timestamp: expired_ts
       )
 
       expect { session.heal_orphaned_tool_calls! }.to change { session.events.where(event_type: "tool_response").count }.by(1)
 
       response = session.events.find_by(event_type: "tool_response", tool_use_id: "toolu_orphan")
       expect(response.payload["success"]).to be false
-      expect(response.payload["content"]).to include("interrupted")
+      expect(response.payload["content"]).to include("timed out")
       expect(response.payload["tool_name"]).to eq("bash")
+    end
+
+    it "does not heal tool_calls still within their timeout window" do
+      recent_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (10 * 1_000_000_000)
+      session.events.create!(
+        event_type: "tool_call",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_fresh", "timeout" => 180},
+        tool_use_id: "toolu_fresh",
+        timestamp: recent_ts
+      )
+
+      expect { session.heal_orphaned_tool_calls! }.not_to change { session.events.count }
+    end
+
+    it "respects per-call timeout override from the agent" do
+      called_5_min_ago = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (300 * 1_000_000_000)
+      session.events.create!(
+        event_type: "tool_call",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_long", "timeout" => 600},
+        tool_use_id: "toolu_long",
+        timestamp: called_5_min_ago
+      )
+
+      expect { session.heal_orphaned_tool_calls! }.not_to change { session.events.count }
     end
 
     it "does not create responses for tool_calls that already have one" do
@@ -1228,11 +1253,12 @@ RSpec.describe Session do
     end
 
     it "is idempotent — second call creates no duplicates" do
+      expired_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (200 * 1_000_000_000)
       session.events.create!(
         event_type: "tool_call",
-        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_orphan"},
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_orphan", "timeout" => 180},
         tool_use_id: "toolu_orphan",
-        timestamp: 1
+        timestamp: expired_ts
       )
 
       session.heal_orphaned_tool_calls!
@@ -1301,15 +1327,17 @@ RSpec.describe Session do
       expect(tool_results.length).to eq(2)
     end
 
-    it "heals orphaned tool_calls before assembling messages" do
+    it "heals expired orphaned tool_calls before assembling messages" do
+      expired_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (200 * 1_000_000_000)
+      now_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
       session.events.create!(
         event_type: "tool_call",
-        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_dead", "tool_input" => {}},
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_dead", "tool_input" => {}, "timeout" => 180},
         tool_use_id: "toolu_dead",
-        timestamp: 1,
+        timestamp: expired_ts,
         token_count: 10
       )
-      session.events.create!(event_type: "user_message", payload: {"content" => "what happened?"}, timestamp: 100, token_count: 10)
+      session.events.create!(event_type: "user_message", payload: {"content" => "what happened?"}, timestamp: now_ts, token_count: 10)
 
       result = session.messages_for_llm(token_budget: 1000)
 
@@ -1319,7 +1347,7 @@ RSpec.describe Session do
 
       response_block = tool_results.last[:content].first
       expect(response_block[:type]).to eq("tool_result")
-      expect(response_block[:content]).to include("interrupted")
+      expect(response_block[:content]).to include("timed out")
     end
   end
 

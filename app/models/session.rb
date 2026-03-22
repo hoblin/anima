@@ -278,36 +278,41 @@ class Session < ApplicationRecord
     snapshot_messages + pinned_messages + recall_messages + assemble_messages(ensure_atomic_tool_pairs(events))
   end
 
-  # Detects orphaned tool_call events (those without a matching tool_response)
-  # and creates synthetic error responses. An orphaned tool_call permanently
-  # breaks the session because the Anthropic API rejects conversations where
-  # a tool_use block has no matching tool_result.
+  # Detects orphaned tool_call events (those without a matching tool_response
+  # and whose timeout has expired) and creates synthetic error responses.
+  # An orphaned tool_call permanently breaks the session because the
+  # Anthropic API rejects conversations where a tool_use block has no
+  # matching tool_result.
   #
-  # Orphans arise when the process crashes, times out, or exits between
-  # emitting the tool_call event and the tool_response event. This method
-  # is called at the start of {#messages_for_llm} — safe because only one
-  # AgentRequestJob processes a session at a time, so any unpaired tool_call
-  # from a previous run is genuinely orphaned.
+  # Respects the per-call timeout stored in the tool_call event payload —
+  # a tool_call is only healed after its deadline has passed. This avoids
+  # prematurely healing long-running tools that the agent intentionally
+  # gave an extended timeout.
   #
   # @return [Integer] number of synthetic responses created
   def heal_orphaned_tool_calls!
+    now_ns = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
     responded_ids = events.where(event_type: "tool_response").where.not(tool_use_id: nil).select(:tool_use_id)
-    orphans = events.where(event_type: "tool_call").where.not(tool_use_id: nil)
+    unresponded = events.where(event_type: "tool_call").where.not(tool_use_id: nil)
       .where.not(tool_use_id: responded_ids)
 
     healed = 0
-    orphans.find_each do |orphan|
+    unresponded.find_each do |orphan|
+      timeout = orphan.payload["timeout"] || Anima::Settings.tool_timeout
+      deadline_ns = orphan.timestamp + (timeout * 1_000_000_000)
+      next if now_ns < deadline_ns
+
       events.create!(
         event_type: "tool_response",
         payload: {
           "type" => "tool_response",
-          "content" => "Tool execution interrupted — no result was returned.",
+          "content" => "Tool execution timed out after #{timeout} seconds — no result was returned.",
           "tool_name" => orphan.payload["tool_name"],
           "tool_use_id" => orphan.tool_use_id,
           "success" => false
         },
         tool_use_id: orphan.tool_use_id,
-        timestamp: orphan.timestamp + 1
+        timestamp: now_ns
       )
       healed += 1
     end
