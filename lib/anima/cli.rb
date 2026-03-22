@@ -50,6 +50,8 @@ module Anima
         end
         say "Config updated. Changes take effect immediately — no restart needed."
       end
+
+      restart_service_if_active
     end
 
     # Start the Anima brain server (Puma + Solid Queue) via Foreman.
@@ -104,5 +106,18 @@ module Anima
     subcommand "mcp", Mcp
 
     private
+
+    # Restarts the systemd user service if it is currently running.
+    # After a gem update the service still runs the old code until restarted.
+    def restart_service_if_active
+      return unless system("systemctl", "--user", "is-active", "--quiet", "anima.service")
+
+      say "Restarting anima service..."
+      if system("systemctl", "--user", "restart", "anima.service")
+        say "Service restarted.", :green
+      else
+        say "Service restart failed. Run: systemctl --user restart anima.service", :red
+      end
+    end
   end
 end
