@@ -283,6 +283,72 @@ RSpec.describe TUI::MessageStore do
         expect(store.messages.first[:data]["content"]).to eq("hi (v3)")
       end
     end
+
+    context "with out-of-order event arrival" do
+      it "sorts rendered entries by event ID regardless of arrival order" do
+        store.process_event({"type" => "agent_message", "id" => 3,
+                             "rendered" => {"debug" => {"role" => "assistant", "content" => "third"}}})
+        store.process_event({"type" => "user_message", "id" => 1,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "first"}}})
+        store.process_event({"type" => "tool_call", "id" => 2,
+                             "rendered" => {"debug" => {"role" => "tool_call", "content" => "second"}}})
+
+        contents = store.messages.map { |m| m[:data]["content"] }
+        expect(contents).to eq(%w[first second third])
+      end
+
+      it "places system prompt at position 0 even when it arrives after other events" do
+        store.process_event({"type" => "user_message", "id" => 1,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "hello"}}})
+        store.process_event({"type" => "agent_message", "id" => 2,
+                             "rendered" => {"debug" => {"role" => "assistant", "content" => "hi"}}})
+        store.process_event({"type" => "system_prompt",
+                             "rendered" => {"debug" => {"role" => "system_prompt", "content" => "You are..."}}})
+
+        entries = store.messages
+        expect(entries.first[:data]["role"]).to eq("system_prompt")
+        expect(entries.map { |m| m[:data]["content"] }).to eq(["You are...", "hello", "hi"])
+      end
+
+      it "appends in-order events without scanning (fast path)" do
+        store.process_event({"type" => "user_message", "id" => 1,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "first"}}})
+        store.process_event({"type" => "agent_message", "id" => 2,
+                             "rendered" => {"debug" => {"role" => "assistant", "content" => "second"}}})
+        store.process_event({"type" => "user_message", "id" => 3,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "third"}}})
+
+        contents = store.messages.map { |m| m[:data]["content"] }
+        expect(contents).to eq(%w[first second third])
+      end
+
+      it "handles a single out-of-order event in a large sequence" do
+        (1..5).each do |i|
+          next if i == 3
+          store.process_event({"type" => "user_message", "id" => i,
+                               "rendered" => {"debug" => {"role" => "user", "content" => "msg#{i}"}}})
+        end
+        # Event 3 arrives last
+        store.process_event({"type" => "user_message", "id" => 3,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "msg3"}}})
+
+        contents = store.messages.map { |m| m[:data]["content"] }
+        expect(contents).to eq(%w[msg1 msg2 msg3 msg4 msg5])
+      end
+
+      it "preserves non-ID entries alongside ID-sorted entries" do
+        store.process_event({"type" => "tool_call", "content" => "bash"})
+        store.process_event({"type" => "user_message", "id" => 2,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "second"}}})
+        store.process_event({"type" => "user_message", "id" => 1,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "first"}}})
+
+        entries = store.messages
+        expect(entries[0][:type]).to eq(:tool_counter)
+        expect(entries[1][:data]["content"]).to eq("first")
+        expect(entries[2][:data]["content"]).to eq("second")
+      end
+    end
   end
 
   describe "#clear" do

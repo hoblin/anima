@@ -183,14 +183,52 @@ module TUI
       event_data.dig("rendered")&.values&.compact&.first
     end
 
+    # Inserts a rendered entry at the correct chronological position.
+    # Entries with numeric IDs are sorted by ID to handle out-of-order
+    # WebSocket delivery during viewport re-broadcasts. System prompt
+    # entries (no ID) are always placed at position 0.
     def record_rendered(data, event_type: nil, id: nil)
       @mutex.synchronize do
         entry = {type: :rendered, data: data, event_type: event_type, id: id}
-        @entries << entry
+        insert_ordered(entry)
         @entries_by_id[id] = entry if id
         @version += 1
       end
       true
+    end
+
+    def insert_ordered(entry)
+      if entry[:event_type] == "system_prompt"
+        @entries.unshift(entry)
+      elsif entry[:id]
+        insert_by_id(entry)
+      else
+        @entries << entry
+      end
+    end
+
+    # Inserts an entry in sorted order by event ID. Optimized for the
+    # common case where events arrive in order (appends without scanning).
+    def insert_by_id(entry)
+      id = entry[:id]
+
+      # Fast path: entry belongs at the end (typical during live streaming)
+      last_id = last_entry_id
+      if last_id.nil? || last_id < id
+        @entries << entry
+        return
+      end
+
+      # Out-of-order arrival: insert before the first entry with a higher ID
+      insert_pos = @entries.index { |e| e[:id] && e[:id] > id } || @entries.size
+      @entries.insert(insert_pos, entry)
+    end
+
+    # Returns the highest event ID in the entries array, scanning from the
+    # end for efficiency (ID-bearing entries are typically at the tail).
+    def last_entry_id
+      @entries.reverse_each { |e| return e[:id] if e[:id] }
+      nil
     end
 
     def record_tool_call
