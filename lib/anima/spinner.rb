@@ -10,6 +10,9 @@ module Anima
   class Spinner
     FRAMES = %w[⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏].freeze
     FRAME_DELAY = 0.08
+    SUCCESS_ICON = "\u2713"
+    FAILURE_ICON = "\u2717"
+    JOIN_TIMEOUT = 2
 
     # Run a block with an animated spinner beside a status message.
     #
@@ -26,6 +29,7 @@ module Anima
     def initialize(message, output: $stdout)
       @message = message
       @output = output
+      @mutex = Mutex.new
       @running = false
     end
 
@@ -43,11 +47,15 @@ module Anima
 
     private
 
+    def running?
+      @mutex.synchronize { @running }
+    end
+
     def start_animation
-      @running = true
+      @mutex.synchronize { @running = true }
       Thread.new do
         idx = 0
-        while @running
+        while running?
           @output.print "\r#{FRAMES[idx % FRAMES.size]} #{@message}"
           @output.flush
           idx += 1
@@ -57,9 +65,9 @@ module Anima
     end
 
     def stop_animation(thread, success:)
-      @running = false
-      thread.join
-      icon = success ? "\u2713" : "\u2717"
+      @mutex.synchronize { @running = false }
+      thread.join(JOIN_TIMEOUT)
+      icon = success ? SUCCESS_ICON : FAILURE_ICON
       @output.print "\r#{icon} #{@message}\n"
       @output.flush
     end
