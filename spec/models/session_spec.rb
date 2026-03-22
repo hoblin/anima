@@ -1180,6 +1180,149 @@ RSpec.describe Session do
     end
   end
 
+  describe "#heal_orphaned_tool_calls!" do
+    let(:session) { Session.create! }
+
+    it "creates synthetic responses for tool_calls without matching tool_response" do
+      session.events.create!(
+        event_type: "tool_call",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_orphan"},
+        tool_use_id: "toolu_orphan",
+        timestamp: 1
+      )
+
+      expect { session.heal_orphaned_tool_calls! }.to change { session.events.where(event_type: "tool_response").count }.by(1)
+
+      response = session.events.find_by(event_type: "tool_response", tool_use_id: "toolu_orphan")
+      expect(response.payload["success"]).to be false
+      expect(response.payload["content"]).to include("interrupted")
+      expect(response.payload["tool_name"]).to eq("bash")
+    end
+
+    it "does not create responses for tool_calls that already have one" do
+      session.events.create!(
+        event_type: "tool_call",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_ok"},
+        tool_use_id: "toolu_ok",
+        timestamp: 1
+      )
+      session.events.create!(
+        event_type: "tool_response",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_ok", "content" => "output"},
+        tool_use_id: "toolu_ok",
+        timestamp: 2
+      )
+
+      expect { session.heal_orphaned_tool_calls! }.not_to change { session.events.count }
+    end
+
+    it "ignores tool_calls with nil tool_use_id" do
+      session.events.create!(
+        event_type: "tool_call",
+        payload: {"tool_name" => "bash"},
+        tool_use_id: nil,
+        timestamp: 1
+      )
+
+      expect { session.heal_orphaned_tool_calls! }.not_to change { session.events.count }
+    end
+
+    it "is idempotent — second call creates no duplicates" do
+      session.events.create!(
+        event_type: "tool_call",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_orphan"},
+        tool_use_id: "toolu_orphan",
+        timestamp: 1
+      )
+
+      session.heal_orphaned_tool_calls!
+      expect { session.heal_orphaned_tool_calls! }.not_to change { session.events.count }
+    end
+  end
+
+  describe "#messages_for_llm atomic tool pairs" do
+    let(:session) { Session.create! }
+
+    before do
+      allow(Anima::Settings).to receive(:mneme_l1_budget_fraction).and_return(0.0)
+      allow(Anima::Settings).to receive(:mneme_l2_budget_fraction).and_return(0.0)
+      allow(Anima::Settings).to receive(:mneme_pinned_budget_fraction).and_return(0.0)
+      allow(Anima::Settings).to receive(:recall_budget_fraction).and_return(0.0)
+    end
+
+    it "excludes tool_call events whose tool_response was cut off by token budget" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "go"}, timestamp: 1, token_count: 10)
+      session.events.create!(
+        event_type: "tool_call",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_cut", "tool_input" => {}},
+        tool_use_id: "toolu_cut",
+        timestamp: 2,
+        token_count: 10
+      )
+      session.events.create!(
+        event_type: "tool_response",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_cut", "content" => "ok"},
+        tool_use_id: "toolu_cut",
+        timestamp: 3,
+        token_count: 10
+      )
+      session.events.create!(event_type: "agent_message", payload: {"content" => "done"}, timestamp: 4, token_count: 10)
+      session.events.create!(event_type: "user_message", payload: {"content" => "more"}, timestamp: 5, token_count: 10)
+
+      # Budget fits newest 3 events but cuts the tool_call (event 2).
+      # tool_response (event 3) would be orphaned without atomic pair enforcement.
+      result = session.messages_for_llm(token_budget: 30)
+
+      tool_results = result.select { |m| m[:content].is_a?(Array) }
+      expect(tool_results).to be_empty
+    end
+
+    it "keeps complete tool pairs within the viewport" do
+      session.events.create!(event_type: "user_message", payload: {"content" => "go"}, timestamp: 1, token_count: 10)
+      session.events.create!(
+        event_type: "tool_call",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_1", "tool_input" => {}},
+        tool_use_id: "toolu_1",
+        timestamp: 2,
+        token_count: 10
+      )
+      session.events.create!(
+        event_type: "tool_response",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_1", "content" => "ok"},
+        tool_use_id: "toolu_1",
+        timestamp: 3,
+        token_count: 10
+      )
+      session.events.create!(event_type: "agent_message", payload: {"content" => "done"}, timestamp: 4, token_count: 10)
+
+      result = session.messages_for_llm(token_budget: 40)
+
+      tool_results = result.select { |m| m[:content].is_a?(Array) }
+      expect(tool_results.length).to eq(2)
+    end
+
+    it "heals orphaned tool_calls before assembling messages" do
+      session.events.create!(
+        event_type: "tool_call",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_dead", "tool_input" => {}},
+        tool_use_id: "toolu_dead",
+        timestamp: 1,
+        token_count: 10
+      )
+      session.events.create!(event_type: "user_message", payload: {"content" => "what happened?"}, timestamp: 100, token_count: 10)
+
+      result = session.messages_for_llm(token_budget: 1000)
+
+      # After healing, the orphaned tool_call has a synthetic tool_response
+      tool_results = result.select { |m| m[:content].is_a?(Array) }
+      expect(tool_results.length).to eq(2)
+
+      response_block = tool_results.last[:content].first
+      expect(response_block[:type]).to eq("tool_result")
+      expect(response_block[:content]).to include("interrupted")
+    end
+  end
+
   describe "#promote_pending_messages!" do
     let(:session) { Session.create! }
 

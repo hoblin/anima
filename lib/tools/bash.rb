@@ -27,14 +27,16 @@ module Tools
       @shell_session = shell_session
     end
 
-    # @param input [Hash<String, Object>] string-keyed hash from the Anthropic API
+    # @param input [Hash<String, Object>] string-keyed hash from the Anthropic API.
+    #   Supports optional "timeout" key (seconds) to override the global
+    #   command_timeout setting for long-running operations.
     # @return [String] formatted output with stdout, stderr, and exit code
     # @return [Hash] with :error key on failure
     def execute(input)
       command = input["command"].to_s
       return {error: "Command cannot be blank"} if command.strip.empty?
 
-      result = @shell_session.run(command)
+      result = @shell_session.run(command, timeout: input["timeout"])
       return result if result.key?(:error)
 
       format_result(result[:stdout], result[:stderr], result[:exit_code])

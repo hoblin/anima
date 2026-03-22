@@ -181,12 +181,14 @@ module LLM
       name = tool_use["name"]
       id = tool_use["id"]
       input = tool_use["input"] || {}
+      timeout = input["timeout"] || Anima::Settings.tool_timeout
 
       log(:debug, "tool_call: #{name}(#{input.to_json})")
 
       Events::Bus.emit(Events::ToolCall.new(
         content: "Calling #{name}", tool_name: name,
-        tool_input: input, tool_use_id: id, session_id: session_id
+        tool_input: input, tool_use_id: id, timeout: timeout,
+        session_id: session_id
       ))
 
       result = begin

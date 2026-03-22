@@ -30,14 +30,17 @@ module Tools
     # @param input [Hash<String, Object>] string-keyed hash from the Anthropic API
     # @return [Hash] `{body: String, content_type: String}` on success
     # @return [Hash] `{error: String}` on failure
+    # @param input [Hash<String, Object>] string-keyed hash from the Anthropic API.
+    #   Supports optional "timeout" key (seconds) to override the global
+    #   web_request_timeout setting.
     def execute(input)
-      validate_and_fetch(input["url"].to_s)
+      validate_and_fetch(input["url"].to_s, timeout: input["timeout"])
     end
 
     private
 
-    def validate_and_fetch(url)
-      timeout = Anima::Settings.web_request_timeout
+    def validate_and_fetch(url, timeout: nil)
+      timeout ||= Anima::Settings.web_request_timeout
       scheme = URI.parse(url).scheme
 
       unless %w[http https].include?(scheme)

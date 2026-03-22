@@ -28,20 +28,27 @@ RSpec.describe Tools::Registry do
   end
 
   describe "#schemas" do
+    before { allow(Anima::Settings).to receive(:tool_timeout).and_return(180) }
+
     it "returns empty array when no tools registered" do
       expect(registry.schemas).to eq([])
     end
 
-    it "returns schema array for registered tools" do
+    it "returns schema array for registered tools with injected timeout parameter" do
       registry.register(tool_class)
+      schemas = registry.schemas
 
-      expect(registry.schemas).to eq([
-        {
-          name: "echo",
-          description: "Echoes input back",
-          input_schema: {type: "object", properties: {text: {type: "string"}}, required: ["text"]}
-        }
-      ])
+      expect(schemas.length).to eq(1)
+      expect(schemas.first[:name]).to eq("echo")
+      expect(schemas.first[:input_schema][:properties][:text]).to eq({type: "string"})
+      expect(schemas.first[:input_schema][:properties]["timeout"]).to include(type: "integer")
+    end
+
+    it "does not mutate the original tool schema" do
+      registry.register(tool_class)
+      registry.schemas
+
+      expect(tool_class.input_schema[:properties]).not_to have_key("timeout")
     end
   end
 
@@ -93,6 +100,8 @@ RSpec.describe Tools::Registry do
   end
 
   describe "instance-based tools" do
+    before { allow(Anima::Settings).to receive(:tool_timeout).and_return(180) }
+
     let(:tool_instance) do
       instance_double(Tools::McpTool,
         tool_name: "server__tool",
