@@ -14,6 +14,11 @@ module TUI
   # rendered content fall back to existing behavior: tool events aggregate
   # into counters, messages store role and content.
   #
+  # Entries with event IDs are maintained in ID order (ascending)
+  # regardless of arrival order, preventing misordering from race
+  # conditions between live broadcasts and viewport replays.
+  # Duplicate IDs are deduplicated by updating the existing entry.
+  #
   # Tool counters aggregate per agent turn: a new counter starts when a
   # tool_call arrives after a message entry. Consecutive tool events
   # increment the same counter until the next message breaks the chain.
@@ -184,34 +189,45 @@ module TUI
     end
 
     # Inserts a rendered entry at the correct chronological position.
-    # Entries with numeric IDs are sorted by ID to handle out-of-order
-    # WebSocket delivery during viewport re-broadcasts. System prompt
-    # entries (no ID) are always placed at position 0.
+    # System prompt entries (no ID) are always placed at position 0.
     def record_rendered(data, event_type: nil, id: nil)
       @mutex.synchronize do
         entry = {type: :rendered, data: data, event_type: event_type, id: id}
         insert_ordered(entry)
-        @entries_by_id[id] = entry if id
         @version += 1
       end
       true
     end
 
-    # Dispatches entry insertion based on type:
-    # - system_prompt: always position 0 (no database ID)
-    # - entries with ID: sorted by event ID via {#insert_sorted_by_id}
-    # - entries without ID: appended at the end
+    # Inserts an entry in event-ID order. Entries without an ID are
+    # appended. If an entry with the same ID already exists, updates
+    # it in-place (deduplication for live/viewport replay races).
+    # System prompt entries are always placed at position 0.
     #
     # @param entry [Hash] the entry to insert
     # @return [void]
     def insert_ordered(entry)
       if entry[:event_type] == "system_prompt"
         @entries.unshift(entry)
-      elsif entry[:id]
-        insert_sorted_by_id(entry)
-      else
-        @entries << entry
+        return
       end
+
+      id = entry[:id]
+      unless id
+        @entries << entry
+        return
+      end
+
+      existing = @entries_by_id[id]
+      if existing
+        existing[:data] = entry[:data] if entry.key?(:data)
+        existing[:content] = entry[:content] if entry.key?(:content)
+        existing[:event_type] = entry[:event_type] if entry.key?(:event_type)
+        return
+      end
+
+      insert_sorted_by_id(entry)
+      @entries_by_id[id] = entry
     end
 
     # Inserts an entry in sorted order by event ID. Optimized for the
@@ -273,12 +289,9 @@ module TUI
       content = event_data["content"]
       return false if content.nil?
 
-      event_id = event_data["id"]
-
       @mutex.synchronize do
-        entry = {type: :message, role: ROLE_MAP.fetch(event_data["type"]), content: content, id: event_id}
-        @entries << entry
-        @entries_by_id[event_id] = entry if event_id
+        entry = {type: :message, role: ROLE_MAP.fetch(event_data["type"]), content: content, id: event_data["id"]}
+        insert_ordered(entry)
         @version += 1
       end
       true

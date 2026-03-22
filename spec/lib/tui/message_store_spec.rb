@@ -363,6 +363,42 @@ RSpec.describe TUI::MessageStore do
         expect(entries[1][:data]["content"]).to eq("first")
         expect(entries[2][:data]["content"]).to eq("second")
       end
+
+      it "deduplicates events with the same ID" do
+        store.process_event({"type" => "user_message", "id" => 1,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "original"}}})
+        store.process_event({"type" => "user_message", "id" => 1,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "duplicate"}}})
+
+        expect(store.size).to eq(1)
+        expect(store.messages.first[:data]["content"]).to eq("duplicate")
+      end
+
+      it "handles viewport replay after a live event (view mode switch race)" do
+        store.process_event({"type" => "agent_message", "id" => 100,
+                             "rendered" => {"debug" => {"role" => "assistant", "content" => "live"}}})
+        store.process_event({"type" => "user_message", "id" => 1,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "first"}}})
+        store.process_event({"type" => "agent_message", "id" => 2,
+                             "rendered" => {"debug" => {"role" => "assistant", "content" => "second"}}})
+        store.process_event({"type" => "user_message", "id" => 50,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "middle"}}})
+        store.process_event({"type" => "agent_message", "id" => 100,
+                             "rendered" => {"debug" => {"role" => "assistant", "content" => "replayed"}}})
+
+        ids = store.messages.map { |m| m[:id] }
+        expect(ids).to eq([1, 2, 50, 100])
+        expect(store.size).to eq(4)
+        expect(store.messages.last[:data]["content"]).to eq("replayed")
+      end
+
+      it "orders plain message events by ID" do
+        store.process_event({"type" => "user_message", "id" => 3, "content" => "third"})
+        store.process_event({"type" => "user_message", "id" => 1, "content" => "first"})
+        store.process_event({"type" => "agent_message", "id" => 2, "content" => "second"})
+
+        expect(store.messages.map { |m| m[:id] }).to eq([1, 2, 3])
+      end
     end
   end
 
