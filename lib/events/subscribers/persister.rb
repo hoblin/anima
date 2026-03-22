@@ -28,10 +28,10 @@ module Events
 
       # Receives a Rails.event notification hash and persists it.
       #
-      # Skips non-pending user messages — those are persisted by
-      # {AgentRequestJob} inside a transaction with LLM delivery
-      # (Bounce Back, #236). Also skips event types not in {Event::TYPES}
-      # (transient events like {Events::BounceBack}).
+      # Skips non-pending user messages — those are persisted by their
+      # callers ({SessionChannel#speak} for idle sessions,
+      # {AgentLoop#process} for direct usage). Also skips event types
+      # not in {Event::TYPES} (transient events like {Events::BounceBack}).
       #
       # @param event [Hash] with :payload containing event data
       def emit(event)
@@ -63,9 +63,10 @@ module Events
 
       private
 
-      # Non-pending user messages are persisted by {AgentRequestJob} inside
-      # a transaction with LLM delivery. Pending messages are still
-      # auto-persisted here because they queue while the session is busy.
+      # Non-pending user messages are persisted by their callers
+      # ({SessionChannel#speak}, {AgentLoop#process}). Pending messages
+      # are still auto-persisted here because they queue while the
+      # session is busy.
       def persisted_by_job?(event_type, payload)
         event_type == "user_message" && payload[:status] != Event::PENDING_STATUS
       end

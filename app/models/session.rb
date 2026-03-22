@@ -322,7 +322,7 @@ class Session < ApplicationRecord
   end
 
   # Creates a user message event record directly (bypasses EventBus+Persister).
-  # Used by {AgentRequestJob} (Bounce Back transaction), {AgentLoop#process},
+  # Used by {SessionChannel#speak} (immediate display), {AgentLoop#process},
   # and sub-agent spawn tools ({Tools::SpawnSubagent}, {Tools::SpawnSpecialist})
   # because the global {Events::Subscribers::Persister} skips non-pending user
   # messages — these callers own the persistence lifecycle.

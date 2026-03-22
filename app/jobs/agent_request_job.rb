@@ -5,16 +5,18 @@
 #
 # Supports two modes:
 #
-# **Bounce Back (content provided):** Persists the user event and verifies
-# LLM delivery inside a single transaction. If the first API call fails,
-# the transaction rolls back (event never existed) and a {Events::BounceBack}
-# is emitted so clients can restore the text to the input field.
+# **Immediate Persist (event_id provided):** The user event was already
+# persisted and broadcast by the caller (e.g. {SessionChannel#speak}).
+# The job verifies LLM delivery — if the first API call fails, the
+# event is deleted and a {Events::BounceBack} is emitted so clients
+# can restore the text to the input field.
 #
-# **Standard (no content):** Processes already-persisted events (e.g. after
-# pending message promotion). Uses ActiveJob retry/discard for error handling.
+# **Standard (no event_id):** Processes already-persisted events (e.g.
+# after pending message promotion). Uses ActiveJob retry/discard for
+# error handling.
 #
-# @example Bounce Back — event-driven via AgentDispatcher
-#   AgentRequestJob.perform_later(session.id, content: "hello")
+# @example Immediate Persist — event already saved by SessionChannel
+#   AgentRequestJob.perform_later(session.id, event_id: 42)
 #
 # @example Standard — pending message processing
 #   AgentRequestJob.perform_later(session.id)
@@ -24,7 +26,7 @@ class AgentRequestJob < ApplicationJob
   # ActionCable action signaling clients to prompt for an API token.
   AUTH_REQUIRED_ACTION = "authentication_required"
 
-  # Standard path only — bounce back handles its own errors.
+  # Standard path only — immediate persist handles its own errors.
   retry_on Providers::Anthropic::TransientError,
     wait: :polynomially_longer, attempts: 5 do |job, error|
     Events::Bus.emit(Events::SystemMessage.new(
@@ -47,8 +49,8 @@ class AgentRequestJob < ApplicationJob
   end
 
   # @param session_id [Integer] ID of the session to process
-  # @param content [String, nil] user message text (triggers Bounce Back when present)
-  def perform(session_id, content: nil)
+  # @param event_id [Integer, nil] ID of a pre-persisted user event (triggers delivery verification)
+  def perform(session_id, event_id: nil)
     session = Session.find(session_id)
 
     # Atomic: only one job processes a session at a time.
@@ -58,8 +60,8 @@ class AgentRequestJob < ApplicationJob
 
     agent_loop = AgentLoop.new(session: session)
 
-    if content
-      deliver_with_bounce_back(session, content, agent_loop)
+    if event_id
+      deliver_persisted_event(session, event_id, agent_loop)
     else
       agent_loop.run
     end
@@ -80,51 +82,39 @@ class AgentRequestJob < ApplicationJob
 
   private
 
-  # Persists the user event and verifies LLM delivery atomically.
+  # Verifies LLM delivery for a pre-persisted user event.
   #
-  # Inside a transaction: creates the event record, broadcasts it for
-  # optimistic UI, and makes the first LLM API call. If the call fails,
-  # a {Events::BounceBack} is emitted and the exception re-raised to
-  # trigger rollback — the event never existed in the database.
+  # The event was already created and broadcast by the caller, so
+  # the user sees their message immediately. This method makes the
+  # first LLM API call — if it fails, the event is deleted and a
+  # {Events::BounceBack} notifies clients to remove the phantom
+  # message and restore the text to the input field.
   #
-  # After commit: continues the agent loop (tool execution, subsequent
-  # API calls) outside the transaction so tool events broadcast in
-  # real time.
+  # After successful delivery, continues the agent loop (tool
+  # execution, subsequent API calls).
   #
   # @param session [Session] the conversation session
-  # @param content [String] user message text
-  # @param agent_loop [AgentLoop] agent loop instance (reused after commit)
-  def deliver_with_bounce_back(session, content, agent_loop)
-    event_id = nil
+  # @param event_id [Integer] database ID of the pre-persisted user event
+  # @param agent_loop [AgentLoop] agent loop instance (reused for continuation)
+  def deliver_persisted_event(session, event_id, agent_loop)
+    event = Event.find_by(id: event_id, session_id: session.id)
+    return unless event
 
-    ActiveRecord::Base.transaction do
-      event = persist_user_event(session, content)
-      event_id = event.id
-      event.broadcast_now!
-
+    begin
       agent_loop.deliver!
     rescue => error
+      event.destroy!
       Events::Bus.emit(Events::BounceBack.new(
-        content: content,
+        content: event.payload["content"],
         error: error.message,
         session_id: session.id,
         event_id: event_id
       ))
-      raise
+      broadcast_auth_required(session.id, error) if error.is_a?(Providers::Anthropic::AuthenticationError)
+      return
     end
 
-    # Transaction committed — first call succeeded.
-    # Continue processing (tool execution, etc.) outside the transaction.
     agent_loop.run
-  rescue => error
-    # Bounce already emitted inside the transaction rescue.
-    # Also trigger auth popup for authentication errors.
-    broadcast_auth_required(session.id, error) if error.is_a?(Providers::Anthropic::AuthenticationError)
-  end
-
-  # @see Session#create_user_event
-  def persist_user_event(session, content)
-    session.create_user_event(content)
   end
 
   def broadcast_auth_required(session_id, error)

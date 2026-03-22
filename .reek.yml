@@ -39,6 +39,8 @@ detectors:
       - "Tools::SubagentPrompts#assign_nickname_via_brain"
       # Validation methods naturally reference the validated value more than self.
       - "AnalyticalBrain::Tools::AssignNickname#validate"
+      # Delivery method orchestrates session, event, and agent_loop — inherent.
+      - "AgentRequestJob#deliver_persisted_event"
   # Private helpers don't need instance state to be valid.
   # ActiveJob#perform is always a utility function by design.
   # No-op tools (Think, EverythingIsReady) don't need instance state — by design.
@@ -90,6 +92,8 @@ detectors:
       - "Tools::Remember"
       # Nickname validation checks parent_session for existence then queries — two calls, one guard.
       - "AnalyticalBrain::Tools::AssignNickname#sibling_nickname_taken?"
+      # Delivery method references session.id for event lookup and error broadcasting.
+      - "AgentRequestJob#deliver_persisted_event"
   # Method length is enforced by code review, not arbitrary line counts
   # build_sections passes context through to sub-methods — inherent to assembly.
   LongParameterList:
