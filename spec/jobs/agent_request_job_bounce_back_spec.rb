@@ -134,6 +134,44 @@ RSpec.describe AgentRequestJob, "bounce back" do
       end
     end
 
+    context "when LLM delivery raises an unexpected error" do
+      before do
+        allow(agent_loop).to receive(:deliver!).and_raise(
+          StandardError, "Something broke"
+        )
+      end
+
+      it "deletes the event and emits BounceBack" do
+        expect {
+          described_class.perform_now(session.id, event_id: event.id)
+        }.to change(Event, :count).by(-1)
+
+        emitted = []
+        allow(Events::Bus).to receive(:emit).and_wrap_original do |method, emitted_event|
+          emitted << emitted_event
+          method.call(emitted_event)
+        end
+
+        event2 = session.create_user_event("retry")
+        described_class.perform_now(session.id, event_id: event2.id)
+
+        bounce = emitted.find { |e| e.is_a?(Events::BounceBack) }
+        expect(bounce).to be_present
+        expect(bounce.content).to eq("retry")
+        expect(bounce.error).to include("Something broke")
+      end
+
+      it "does not broadcast authentication_required" do
+        broadcasts = []
+        allow(ActionCable.server).to receive(:broadcast) { |stream, data| broadcasts << data }
+
+        described_class.perform_now(session.id, event_id: event.id)
+
+        auth_required = broadcasts.find { |b| b["action"] == "authentication_required" }
+        expect(auth_required).to be_nil
+      end
+    end
+
     context "when event was already deleted" do
       before do
         event.destroy!

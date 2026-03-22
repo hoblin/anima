@@ -88,7 +88,15 @@ class AgentRequestJob < ApplicationJob
   # the user sees their message immediately. This method makes the
   # first LLM API call — if it fails, the event is deleted and a
   # {Events::BounceBack} notifies clients to remove the phantom
-  # message and restore the text to the input field.
+  # message and restore the text to the input field. For
+  # {Providers::Anthropic::AuthenticationError}, an additional
+  # +authentication_required+ broadcast prompts the client to show
+  # the token entry dialog.
+  #
+  # Unlike the standard path (which uses +retry_on+ / +discard_on+),
+  # all errors here are caught and swallowed after emitting a
+  # BounceBack — the job completes normally so ActiveJob does not
+  # retry a message the user will re-send manually.
   #
   # After successful delivery, continues the agent loop (tool
   # execution, subsequent API calls).
@@ -98,14 +106,19 @@ class AgentRequestJob < ApplicationJob
   # @param agent_loop [AgentLoop] agent loop instance (reused for continuation)
   def deliver_persisted_event(session, event_id, agent_loop)
     event = Event.find_by(id: event_id, session_id: session.id)
+    # Event may have been deleted between SessionChannel#speak and job
+    # execution (e.g. user recalled the message). Exit silently — there
+    # is nothing to deliver or bounce back.
     return unless event
+
+    content = event.payload["content"]
 
     begin
       agent_loop.deliver!
     rescue => error
       event.destroy!
       Events::Bus.emit(Events::BounceBack.new(
-        content: event.payload["content"],
+        content: content,
         error: error.message,
         session_id: session.id,
         event_id: event_id

@@ -92,7 +92,7 @@ detectors:
       - "Tools::Remember"
       # Nickname validation checks parent_session for existence then queries — two calls, one guard.
       - "AnalyticalBrain::Tools::AssignNickname#sibling_nickname_taken?"
-      # Delivery method references session.id for event lookup and error broadcasting.
+      # Delivery method references session.id for lookup, BounceBack, and auth broadcast.
       - "AgentRequestJob#deliver_persisted_event"
   # Method length is enforced by code review, not arbitrary line counts
   # build_sections passes context through to sub-methods — inherent to assembly.

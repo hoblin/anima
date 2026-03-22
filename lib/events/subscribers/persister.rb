@@ -64,9 +64,10 @@ module Events
       private
 
       # Non-pending user messages are persisted by their callers
-      # ({SessionChannel#speak}, {AgentLoop#process}). Pending messages
-      # are still auto-persisted here because they queue while the
-      # session is busy.
+      # ({SessionChannel#speak}, {AgentLoop#process}) so the event ID
+      # is available for bounce-back cleanup if LLM delivery fails.
+      # Pending messages are still auto-persisted here because they
+      # queue while the session is busy.
       def persisted_by_job?(event_type, payload)
         event_type == "user_message" && payload[:status] != Event::PENDING_STATUS
       end
