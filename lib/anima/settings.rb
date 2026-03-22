@@ -133,6 +133,19 @@ module Anima
 
       # ─── Session ────────────────────────────────────────────────────
 
+      # View mode applied to new sessions: "basic", "verbose", or "debug".
+      # Changing this setting only affects sessions created afterwards.
+      # @return [String]
+      # @raise [MissingSettingError] if the value is not a valid view mode
+      def default_view_mode
+        value = get("session", "default_view_mode")
+        unless Session::VIEW_MODES.include?(value)
+          raise MissingSettingError,
+            "[session] default_view_mode must be one of: #{Session::VIEW_MODES.join(", ")} (got #{value.inspect})"
+        end
+        value
+      end
+
       # Regenerate session name every N messages.
       # @return [Integer]
       def name_generation_interval = get("session", "name_generation_interval")

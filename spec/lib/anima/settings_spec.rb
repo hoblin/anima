@@ -16,7 +16,7 @@ RSpec.describe Anima::Settings do
       "shell" => {"max_output_bytes" => 100_000},
       "tools" => {"max_file_size" => 10_485_760, "max_read_lines" => 2_000, "max_read_bytes" => 50_000, "max_web_response_bytes" => 100_000},
       "paths" => {"soul" => "/home/test/.anima/soul.md"},
-      "session" => {"name_generation_interval" => 30},
+      "session" => {"default_view_mode" => "basic", "name_generation_interval" => 30},
       "analytical_brain" => {"max_tokens" => 128, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "event_window" => 20},
       "environment" => {"project_files" => ["CLAUDE.md", "AGENTS.md", "README.md", "CONTRIBUTING.md"], "project_files_max_depth" => 3},
       "github" => {"repo" => "hoblin/anima", "label" => "anima-wants"}
@@ -51,6 +51,7 @@ RSpec.describe Anima::Settings do
       expect(described_class.max_read_lines).to eq(2_000)
       expect(described_class.max_read_bytes).to eq(50_000)
       expect(described_class.max_web_response_bytes).to eq(100_000)
+      expect(described_class.default_view_mode).to eq("basic")
       expect(described_class.name_generation_interval).to eq(30)
     end
 
@@ -82,6 +83,28 @@ RSpec.describe Anima::Settings do
     it "raises MissingConfigError" do
       expect { described_class.model }.to raise_error(
         Anima::Settings::MissingConfigError, /not found/
+      )
+    end
+  end
+
+  describe "default_view_mode validation" do
+    it "accepts all valid view modes" do
+      Session::VIEW_MODES.each do |mode|
+        allow(described_class).to receive(:config).and_return(
+          "session" => {"default_view_mode" => mode}
+        )
+
+        expect(described_class.default_view_mode).to eq(mode)
+      end
+    end
+
+    it "rejects invalid view mode values" do
+      allow(described_class).to receive(:config).and_return(
+        "session" => {"default_view_mode" => "fancy"}
+      )
+
+      expect { described_class.default_view_mode }.to raise_error(
+        Anima::Settings::MissingSettingError, /must be one of/
       )
     end
   end
@@ -150,6 +173,7 @@ RSpec.describe Anima::Settings do
         max_read_bytes = 1000
         max_web_response_bytes = 1000
         [session]
+        default_view_mode = "basic"
         name_generation_interval = 5
         [analytical_brain]
         max_tokens = 128
@@ -201,6 +225,7 @@ RSpec.describe Anima::Settings do
         max_read_bytes = 1000
         max_web_response_bytes = 1000
         [session]
+        default_view_mode = "basic"
         name_generation_interval = 5
         [analytical_brain]
         max_tokens = 128
