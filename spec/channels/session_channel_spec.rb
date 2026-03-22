@@ -282,60 +282,44 @@ RSpec.describe SessionChannel, type: :channel do
 
     before { subscribe(session_id: session_id) }
 
-    it "emits a user_message event on the EventBus" do
-      emitted = []
-      subscriber = double("subscriber")
-      allow(subscriber).to receive(:emit) { |event| emitted << event }
-      Events::Bus.subscribe(subscriber)
+    it "persists the user event immediately" do
+      expect {
+        perform(:speak, {"content" => "hello brain"})
+      }.to change { session.events.where(event_type: "user_message").count }.by(1)
 
-      perform(:speak, {"content" => "hello brain"})
-
-      user_event = emitted.find { |e| e.dig(:payload, :type) == "user_message" }
-      expect(user_event).to be_present
-      expect(user_event.dig(:payload, :content)).to eq("hello brain")
-      expect(user_event.dig(:payload, :session_id)).to eq(session_id)
-
-      Events::Bus.unsubscribe(subscriber)
+      event = session.events.last
+      expect(event.payload["content"]).to eq("hello brain")
     end
 
-    it "emits event that causes AgentDispatcher to enqueue job" do
-      dispatcher = Events::Subscribers::AgentDispatcher.new
-      Events::Bus.subscribe(dispatcher)
-
+    it "enqueues AgentRequestJob with event_id" do
       expect { perform(:speak, {"content" => "process this"}) }
-        .to have_enqueued_job(AgentRequestJob).with(session_id, content: "process this")
+        .to have_enqueued_job(AgentRequestJob)
 
-      Events::Bus.unsubscribe(dispatcher)
+      event = session.events.last
+      expect(AgentRequestJob).to have_been_enqueued.with(session_id, event_id: event.id)
     end
 
     it "ignores empty content" do
       expect { perform(:speak, {"content" => "  "}) }
-        .not_to have_enqueued_job(AgentRequestJob)
+        .not_to change(Event, :count)
     end
 
     it "ignores nil content" do
       expect { perform(:speak, {"content" => nil}) }
-        .not_to have_enqueued_job(AgentRequestJob)
+        .not_to change(Event, :count)
     end
 
     it "strips whitespace from content" do
-      emitted = []
-      subscriber = double("subscriber")
-      allow(subscriber).to receive(:emit) { |event| emitted << event }
-      Events::Bus.subscribe(subscriber)
-
       perform(:speak, {"content" => "  hello  "})
 
-      user_event = emitted.find { |e| e.dig(:payload, :type) == "user_message" }
-      expect(user_event.dig(:payload, :content)).to eq("hello")
-
-      Events::Bus.unsubscribe(subscriber)
+      event = session.events.last
+      expect(event.payload["content"]).to eq("hello")
     end
 
     context "when session is processing" do
       before { session.update!(processing: true) }
 
-      it "emits a pending user_message event" do
+      it "emits a pending user_message event via EventBus" do
         emitted = []
         subscriber = double("subscriber")
         allow(subscriber).to receive(:emit) { |event| emitted << event }

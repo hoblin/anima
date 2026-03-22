@@ -4,7 +4,7 @@ require "rails_helper"
 
 RSpec.describe AgentRequestJob, "bounce back" do
   let(:session) { Session.create! }
-  let(:agent_loop) { instance_double(AgentLoop, run: nil, finalize: nil) }
+  let(:agent_loop) { instance_double(AgentLoop, deliver!: nil, run: nil, finalize: nil) }
 
   before do
     allow(AgentLoop).to receive(:new).and_return(agent_loop)
@@ -13,36 +13,22 @@ RSpec.describe AgentRequestJob, "bounce back" do
     allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(false)
   end
 
-  describe "deliver_with_bounce_back" do
+  describe "deliver_persisted_event" do
+    let!(:event) { session.create_user_event("hello") }
+
     context "when LLM delivery succeeds" do
       before do
         allow(agent_loop).to receive(:deliver!)
       end
 
-      it "persists the user event" do
+      it "keeps the user event" do
         expect {
-          described_class.perform_now(session.id, content: "hello")
-        }.to change { session.events.where(event_type: "user_message").count }.by(1)
+          described_class.perform_now(session.id, event_id: event.id)
+        }.not_to change(Event, :count)
       end
 
-      it "stores the correct content in the event payload" do
-        described_class.perform_now(session.id, content: "hello")
-
-        event = session.events.last
-        expect(event.payload["content"]).to eq("hello")
-        expect(event.event_type).to eq("user_message")
-      end
-
-      it "broadcasts the event for optimistic UI" do
-        expect(ActionCable.server).to receive(:broadcast)
-          .with("session_#{session.id}", a_hash_including("type" => "user_message"))
-          .at_least(:once)
-
-        described_class.perform_now(session.id, content: "hello")
-      end
-
-      it "continues the agent loop after transaction commit" do
-        described_class.perform_now(session.id, content: "hello")
+      it "continues the agent loop after delivery" do
+        described_class.perform_now(session.id, event_id: event.id)
 
         expect(agent_loop).to have_received(:deliver!)
         expect(agent_loop).to have_received(:run)
@@ -50,7 +36,6 @@ RSpec.describe AgentRequestJob, "bounce back" do
       end
 
       it "processes pending messages after the main loop" do
-        # Create a pending message
         session.events.create!(
           event_type: "user_message",
           payload: {"type" => "user_message", "content" => "pending msg", "status" => "pending"},
@@ -58,7 +43,7 @@ RSpec.describe AgentRequestJob, "bounce back" do
           timestamp: 1
         )
 
-        described_class.perform_now(session.id, content: "hello")
+        described_class.perform_now(session.id, event_id: event.id)
 
         expect(session.events.pending.count).to eq(0)
       end
@@ -71,51 +56,52 @@ RSpec.describe AgentRequestJob, "bounce back" do
         )
       end
 
-      it "rolls back the user event (never persisted)" do
+      it "deletes the pre-persisted user event" do
         expect {
-          described_class.perform_now(session.id, content: "hello")
-        }.not_to change(Event, :count)
+          described_class.perform_now(session.id, event_id: event.id)
+        }.to change(Event, :count).by(-1)
       end
 
-      it "emits a BounceBack event" do
+      it "emits a BounceBack event with original content and event_id" do
         emitted = []
-        allow(Events::Bus).to receive(:emit).and_wrap_original do |method, event|
-          emitted << event
-          method.call(event)
+        allow(Events::Bus).to receive(:emit).and_wrap_original do |method, emitted_event|
+          emitted << emitted_event
+          method.call(emitted_event)
         end
 
-        described_class.perform_now(session.id, content: "hello")
+        described_class.perform_now(session.id, event_id: event.id)
 
         bounce = emitted.find { |e| e.is_a?(Events::BounceBack) }
         expect(bounce).to be_present
         expect(bounce.content).to eq("hello")
         expect(bounce.error).to include("No token configured")
+        expect(bounce.event_id).to eq(event.id)
       end
 
       it "broadcasts authentication_required for auth errors" do
         broadcasts = []
         allow(ActionCable.server).to receive(:broadcast) { |stream, data| broadcasts << data }
 
-        described_class.perform_now(session.id, content: "hello")
+        described_class.perform_now(session.id, event_id: event.id)
 
         auth_required = broadcasts.find { |b| b["action"] == "authentication_required" }
         expect(auth_required).to be_present
       end
 
       it "does not continue the agent loop" do
-        described_class.perform_now(session.id, content: "hello")
+        described_class.perform_now(session.id, event_id: event.id)
 
         expect(agent_loop).not_to have_received(:run)
       end
 
       it "still releases the processing lock" do
-        described_class.perform_now(session.id, content: "hello")
+        described_class.perform_now(session.id, event_id: event.id)
 
         expect(session.reload.processing?).to be false
       end
 
       it "still finalizes the agent loop" do
-        described_class.perform_now(session.id, content: "hello")
+        described_class.perform_now(session.id, event_id: event.id)
 
         expect(agent_loop).to have_received(:finalize)
       end
@@ -128,33 +114,79 @@ RSpec.describe AgentRequestJob, "bounce back" do
         )
       end
 
-      it "rolls back the user event" do
+      it "deletes the pre-persisted user event" do
         expect {
-          described_class.perform_now(session.id, content: "hello")
-        }.not_to change(Event, :count)
+          described_class.perform_now(session.id, event_id: event.id)
+        }.to change(Event, :count).by(-1)
       end
 
       it "emits a BounceBack with the rate limit error" do
         emitted = []
-        allow(Events::Bus).to receive(:emit).and_wrap_original do |method, event|
-          emitted << event
-          method.call(event)
+        allow(Events::Bus).to receive(:emit).and_wrap_original do |method, emitted_event|
+          emitted << emitted_event
+          method.call(emitted_event)
         end
 
-        described_class.perform_now(session.id, content: "hello")
+        described_class.perform_now(session.id, event_id: event.id)
 
         bounce = emitted.find { |e| e.is_a?(Events::BounceBack) }
         expect(bounce.error).to include("Rate limit exceeded")
       end
     end
-  end
 
-  describe "standard path (no content)" do
-    before do
-      allow(agent_loop).to receive(:deliver!)
+    context "when LLM delivery raises an unexpected error" do
+      before do
+        allow(agent_loop).to receive(:deliver!).and_raise(
+          StandardError, "Something broke"
+        )
+      end
+
+      it "deletes the event and emits BounceBack" do
+        expect {
+          described_class.perform_now(session.id, event_id: event.id)
+        }.to change(Event, :count).by(-1)
+
+        emitted = []
+        allow(Events::Bus).to receive(:emit).and_wrap_original do |method, emitted_event|
+          emitted << emitted_event
+          method.call(emitted_event)
+        end
+
+        event2 = session.create_user_event("retry")
+        described_class.perform_now(session.id, event_id: event2.id)
+
+        bounce = emitted.find { |e| e.is_a?(Events::BounceBack) }
+        expect(bounce).to be_present
+        expect(bounce.content).to eq("retry")
+        expect(bounce.error).to include("Something broke")
+      end
+
+      it "does not broadcast authentication_required" do
+        broadcasts = []
+        allow(ActionCable.server).to receive(:broadcast) { |stream, data| broadcasts << data }
+
+        described_class.perform_now(session.id, event_id: event.id)
+
+        auth_required = broadcasts.find { |b| b["action"] == "authentication_required" }
+        expect(auth_required).to be_nil
+      end
     end
 
-    it "runs the agent loop without transaction wrapping" do
+    context "when event was already deleted" do
+      before do
+        event.destroy!
+      end
+
+      it "exits gracefully without calling deliver!" do
+        described_class.perform_now(session.id, event_id: event.id)
+
+        expect(agent_loop).not_to have_received(:deliver!)
+      end
+    end
+  end
+
+  describe "standard path (no event_id)" do
+    it "runs the agent loop without delivery verification" do
       session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       described_class.perform_now(session.id)

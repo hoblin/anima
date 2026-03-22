@@ -6,11 +6,9 @@
 Rails.application.config.after_initialize do
   unless Rails.env.test?
     # Global persister handles events from all sessions (brain server, background jobs).
-    # Skips non-pending user messages — those are persisted by AgentRequestJob.
+    # Skips non-pending user messages — those are persisted by their callers
+    # (SessionChannel#speak for idle sessions, AgentLoop#process for direct usage).
     Events::Bus.subscribe(Events::Subscribers::Persister.new)
-
-    # Schedules AgentRequestJob when a non-pending user message is emitted.
-    Events::Bus.subscribe(Events::Subscribers::AgentDispatcher.new)
 
     # Bridges transient events (e.g. BounceBack) to ActionCable for client delivery.
     Events::Bus.subscribe(Events::Subscribers::TransientBroadcaster.new)

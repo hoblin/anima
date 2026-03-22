@@ -87,6 +87,10 @@ Always clean up tmux sessions when done. Use `anima-test` as the session name fo
 
 Analytical brain debug log (dev only): `tail -f log/analytical_brain.log`
 
+## Triggering API 400 for smoke testing
+
+Temporarily break `OAUTH_PASSPHRASE` in `lib/providers/anthropic.rb` — revert after.
+
 ## VCR over WebMock
 
 Use VCR cassettes for all HTTP tests — never `stub_request`. Add `:vcr` metadata (bare symbol, no cassette path) and VCR auto-names cassettes from the spec description. Use a real token via `CredentialStore` for happy-path tests.
