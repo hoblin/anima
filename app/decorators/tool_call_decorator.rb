@@ -6,7 +6,8 @@ require "toon"
 # Hidden in basic mode — tool activity is represented by the
 # aggregated tool counter instead. Verbose mode returns tool name
 # and a formatted preview of the input arguments. Debug mode shows
-# full untruncated input in TOON format with tool_use_id.
+# full untruncated input with tool_use_id — TOON format for most
+# tools, but write tool content preserves actual newlines.
 #
 # Think tool calls are special: "aloud" thoughts are shown in all
 # view modes (with a thought bubble), while "inner" thoughts are
@@ -41,7 +42,7 @@ class ToolCallDecorator < EventDecorator
     {
       role: :tool_call,
       tool: payload["tool_name"],
-      input: Toon.encode(payload["tool_input"] || {}),
+      input: format_debug_input,
       tool_use_id: payload["tool_use_id"],
       timestamp: timestamp
     }
@@ -88,6 +89,30 @@ class ToolCallDecorator < EventDecorator
   # @return [Hash] think event for debug mode — full metadata
   def render_think_debug
     {role: :think, content: thoughts, visibility: visibility, tool_use_id: payload["tool_use_id"], timestamp: timestamp}
+  end
+
+  # Full tool input for debug mode. Write tool content is shown with
+  # preserved newlines instead of TOON-escaping them into literal \n.
+  # @return [String] formatted debug input
+  def format_debug_input
+    input = tool_input
+    case payload["tool_name"]
+    when "write" then format_write_content(input)
+    else Toon.encode(input)
+    end
+  end
+
+  # Formats write tool input with file path header and content body.
+  # Content newlines are preserved so the TUI can render them as
+  # separate lines, matching how read tool responses display file content.
+  # @param input [Hash] tool input hash with "file_path" and "content" keys
+  # @return [String] path + content with real newlines, or TOON-encoded hash when content is empty
+  def format_write_content(input)
+    path = input.dig("file_path").to_s
+    content = input.dig("content").to_s
+    return Toon.encode(input) if content.empty?
+
+    "#{path}\n#{content}"
   end
 
   # Formats tool input for display, with tool-specific formatting for

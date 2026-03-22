@@ -328,6 +328,42 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       expect(result[:input]).to eq(Toon.encode({"command" => "ls"}))
     end
 
+    context "write tool" do
+      it "preserves newlines in multi-line content" do
+        input = {"file_path" => "/tmp/soul.md", "content" => "line1\nline2\nline3"}
+        event = session.events.create!(
+          event_type: "tool_call",
+          payload: {
+            "content" => "writing", "tool_name" => "write",
+            "tool_input" => input, "tool_use_id" => "toolu_write1"
+          },
+          timestamp: 1,
+          tool_use_id: "toolu_write1"
+        )
+        decorator = EventDecorator.for(event)
+        result = decorator.render_debug
+
+        expect(result[:input]).to eq("/tmp/soul.md\nline1\nline2\nline3")
+      end
+
+      it "falls back to TOON when content is empty" do
+        input = {"file_path" => "/tmp/empty.txt", "content" => ""}
+        event = session.events.create!(
+          event_type: "tool_call",
+          payload: {
+            "content" => "writing", "tool_name" => "write",
+            "tool_input" => input, "tool_use_id" => "toolu_write2"
+          },
+          timestamp: 1,
+          tool_use_id: "toolu_write2"
+        )
+        decorator = EventDecorator.for(event)
+        result = decorator.render_debug
+
+        expect(result[:input]).to eq(Toon.encode(input))
+      end
+    end
+
     context "think tool" do
       it "returns think role with full metadata" do
         event = session.events.create!(
