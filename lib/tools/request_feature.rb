@@ -71,7 +71,9 @@ module Tools
 
     # @return [String, nil] owner/repo parsed from +git remote get-url origin+
     def git_remote_repo
-      url, _status = Open3.capture2("git", "remote", "get-url", "origin", err: File::NULL)
+      url, status = Open3.capture2("git", "remote", "get-url", "origin", err: File::NULL)
+      return unless status.success?
+
       parse_owner_repo(url.strip)
     rescue Errno::ENOENT
       nil
