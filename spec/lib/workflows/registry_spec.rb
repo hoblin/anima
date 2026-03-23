@@ -64,10 +64,8 @@ RSpec.describe Workflows::Registry do
       write_workflow(builtin_dir, "builtin.md", name: "builtin", description: "Built-in workflow")
       write_workflow(user_dir, "custom.md", name: "custom", description: "User workflow")
 
-      stub_const("Workflows::Registry::BUILTIN_DIR", builtin_dir)
-      stub_const("Workflows::Registry::USER_DIR", user_dir)
-
-      registry.load_all
+      registry.load_directory(builtin_dir)
+      registry.load_directory(user_dir)
 
       expect(registry.size).to eq(2)
       expect(registry.find("builtin")).to be_present
@@ -84,10 +82,8 @@ RSpec.describe Workflows::Registry do
       write_workflow(builtin_dir, "shared.md", name: "shared", description: "Built-in version")
       write_workflow(user_dir, "shared.md", name: "shared", description: "User version")
 
-      stub_const("Workflows::Registry::BUILTIN_DIR", builtin_dir)
-      stub_const("Workflows::Registry::USER_DIR", user_dir)
-
-      registry.load_all
+      registry.load_directory(builtin_dir)
+      registry.load_directory(user_dir)
 
       expect(registry.size).to eq(1)
       expect(registry.find("shared").description).to eq("User version")

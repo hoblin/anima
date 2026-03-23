@@ -113,9 +113,9 @@ RSpec.describe Skills::Registry do
       write_skill(user_dir, "custom.md", name: "custom", description: "User skill")
 
       stub_const("Skills::Registry::BUILTIN_DIR", builtin_dir)
-      stub_const("Skills::Registry::USER_DIR", user_dir)
 
-      registry.load_all
+      registry.load_directory(builtin_dir)
+      registry.load_directory(user_dir)
 
       expect(registry.size).to eq(2)
       expect(registry.find("builtin")).to be_present
@@ -132,10 +132,8 @@ RSpec.describe Skills::Registry do
       write_skill(builtin_dir, "shared.md", name: "shared", description: "Built-in version")
       write_skill(user_dir, "shared.md", name: "shared", description: "User version")
 
-      stub_const("Skills::Registry::BUILTIN_DIR", builtin_dir)
-      stub_const("Skills::Registry::USER_DIR", user_dir)
-
-      registry.load_all
+      registry.load_directory(builtin_dir)
+      registry.load_directory(user_dir)
 
       expect(registry.size).to eq(1)
       expect(registry.find("shared").description).to eq("User version")

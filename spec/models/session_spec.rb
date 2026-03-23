@@ -500,8 +500,8 @@ RSpec.describe Session do
           Write thorough tests.
         MD
 
-        stub_const("Skills::Registry::USER_DIR", tmp_dir)
         Skills::Registry.reload!
+        Skills::Registry.instance.load_directory(tmp_dir)
       end
 
       after { FileUtils.remove_entry(tmp_dir) }
