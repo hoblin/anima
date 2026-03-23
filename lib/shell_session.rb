@@ -390,10 +390,11 @@ class ShellSession
 
   def truncate(output)
     max_bytes = @max_output_bytes
+    output = output.dup.force_encoding("UTF-8").scrub
+
     return output if output.bytesize <= max_bytes
 
     output.byteslice(0, max_bytes)
-      .force_encoding("UTF-8")
       .scrub +
       "\n\n[Truncated: output exceeded #{max_bytes} bytes]"
   end

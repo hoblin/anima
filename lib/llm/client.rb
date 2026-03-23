@@ -191,13 +191,7 @@ module LLM
         session_id: session_id
       ))
 
-      result = begin
-        registry.execute(name, input)
-      rescue => error
-        Rails.logger.error("Tool #{name} raised #{error.class}: #{error.message}")
-        {error: "#{error.class}: #{error.message}"}
-      end
-
+      result = registry.execute(name, input)
       result = ToolDecorator.call(name, result)
       result_content = format_tool_result(result)
       log(:debug, "tool_result: #{name} → #{result_content.to_s.truncate(200)}")
@@ -209,6 +203,23 @@ module LLM
       ))
 
       {type: "tool_result", tool_use_id: id, content: result_content}
+    rescue => error
+      error_detail = "#{error.class}: #{error.message}"
+      Rails.logger.error("Tool #{name} raised #{error_detail}")
+      error_content = format_tool_result(error: error_detail)
+
+      # Emission can fail (e.g. encoding errors in ActionCable/SQLite),
+      # but losing the tool_result would permanently corrupt the session.
+      begin
+        Events::Bus.emit(Events::ToolResponse.new(
+          content: error_content, tool_name: name, tool_use_id: id,
+          success: false, session_id: session_id
+        ))
+      rescue => emit_error
+        Rails.logger.error("ToolResponse emission failed: #{emit_error.class}: #{emit_error.message}")
+      end
+
+      {type: "tool_result", tool_use_id: id, content: error_content}
     end
 
     # Creates a synthetic "Stopped by user" result for a tool that was not

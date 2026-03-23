@@ -301,6 +301,34 @@ RSpec.describe LLM::Client do
       end
     end
 
+    context "when post-execution code raises", :vcr do
+      let(:messages) { [{role: "user", content: "Use the web_get tool to fetch https://example.com"}] }
+
+      it "still produces a tool_result and emits ToolResponse" do
+        allow(ToolDecorator).to receive(:call).and_raise(
+          Encoding::CompatibilityError, "incompatible character encodings: ASCII-8BIT and UTF-8"
+        )
+
+        events = []
+        subscriber = spy("sub")
+        allow(subscriber).to receive(:emit) { |e| events << e }
+        Events::Bus.subscribe(subscriber)
+
+        result = client.chat_with_tools(messages, registry: registry, session_id: session.id)
+
+        expect(result).to be_present
+        tool_response = events.find { |e| e[:payload][:type] == "tool_response" }
+        expect(tool_response).to be_present
+        expect(tool_response[:payload][:tool_name]).to eq("web_get")
+        expect(tool_response[:payload][:tool_use_id]).to be_present
+        expect(tool_response[:payload][:success]).to be false
+        expect(tool_response[:payload][:content]).to include("Encoding::CompatibilityError")
+        expect(tool_response[:payload][:content]).to include("incompatible character encodings")
+      ensure
+        Events::Bus.unsubscribe(subscriber)
+      end
+    end
+
     context "when the tool loop exceeds max_tool_rounds" do
       it "halts and returns an error message" do
         VCR.use_cassette("llm_client/tool_loop_forever",
