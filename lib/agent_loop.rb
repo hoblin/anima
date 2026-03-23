@@ -129,6 +129,11 @@ class AgentLoop
   # @return [Array<Class<Tools::Base>>]
   STANDARD_TOOLS = [Tools::Bash, Tools::Read, Tools::Write, Tools::Edit, Tools::WebGet, Tools::Think, Tools::Remember].freeze
 
+  # Tools that bypass {Session#granted_tools} filtering.
+  # The agent's reasoning depends on these regardless of task scope.
+  # @return [Array<Class<Tools::Base>>]
+  ALWAYS_GRANTED_TOOLS = [Tools::Think].freeze
+
   # Name-to-class mapping for tool restriction validation and registry building.
   # @return [Hash{String => Class<Tools::Base>}]
   STANDARD_TOOLS_BY_NAME = STANDARD_TOOLS.index_by(&:tool_name).freeze
@@ -194,12 +199,15 @@ class AgentLoop
 
   # Standard tools available to this session.
   # Returns all when {Session#granted_tools} is nil (no restriction).
-  # Returns only matching tools when granted_tools is an array.
+  # Returns only matching tools when granted_tools is an array,
+  # always including {ALWAYS_GRANTED_TOOLS}.
   #
   # @return [Array<Class<Tools::Base>>] tool classes to register
   def granted_standard_tools
-    return STANDARD_TOOLS unless @session.granted_tools
+    granted = @session.granted_tools
+    return STANDARD_TOOLS unless granted
 
-    @session.granted_tools.filter_map { |name| STANDARD_TOOLS_BY_NAME[name] }
+    explicitly_granted = granted.filter_map { |name| STANDARD_TOOLS_BY_NAME[name] }
+    (ALWAYS_GRANTED_TOOLS + explicitly_granted).uniq
   end
 end
