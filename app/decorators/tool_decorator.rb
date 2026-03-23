@@ -21,19 +21,44 @@ class ToolDecorator
     "web_get" => "WebGetToolDecorator"
   }.freeze
 
-  # Factory: dispatches to the tool-specific decorator or passes through.
+  # Factory: dispatches to the tool-specific decorator, then sanitizes
+  # the result for safe LLM consumption.
+  #
+  # Sanitization guarantees the final string is UTF-8 encoded, free of
+  # ANSI escape codes, and stripped of control characters that carry no
+  # meaning for an LLM. This is the single gate — no tool or decorator
+  # subclass needs to think about encoding or terminal noise.
   #
   # @param tool_name [String] registered tool name
   # @param result [String, Hash] raw tool execution result
-  # @return [String, Hash] decorated result (String) or original error Hash
+  # @return [String, Hash] sanitized result (String) or original error Hash
   def self.call(tool_name, result)
     return result if result.is_a?(Hash) && result.key?(:error)
 
     klass_name = DECORATOR_MAP[tool_name]
-    return result unless klass_name
+    result = klass_name.constantize.new.call(result) if klass_name
 
-    klass_name.constantize.new.call(result)
+    sanitize_for_llm(result)
   end
+
+  # Ensures a tool result string is safe for LLM consumption:
+  #   1. Force-encode to UTF-8, replacing invalid/undefined bytes with U+FFFD
+  #   2. Strip ANSI escape codes (CSI, OSC, and single-character escapes)
+  #   3. Strip C0 control characters except newline and tab
+  #
+  # Non-string results pass through unchanged.
+  #
+  # @param result [String, Object] tool output to sanitize
+  # @return [String, Object] sanitized string or original object
+  def self.sanitize_for_llm(result)
+    return result unless result.is_a?(String)
+
+    result
+      .encode("UTF-8", invalid: :replace, undef: :replace, replace: "\uFFFD")
+      .gsub(/\e\[[0-9;]*[A-Za-z]|\e\][^\a\e]*(?:\a|\e\\)|\e[()][0-9A-Za-z]|\e[>=<78NOMDEHcn]/, "")
+      .gsub(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/, "")
+  end
+  private_class_method :sanitize_for_llm
 
   # Subclasses override to transform the raw tool result.
   #
