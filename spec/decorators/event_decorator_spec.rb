@@ -20,13 +20,13 @@ RSpec.describe EventDecorator, type: :decorator do
       end
 
       it "returns ToolCallDecorator for tool_call events" do
-        event = session.events.create!(event_type: "tool_call", payload: {"content" => "calling bash"}, timestamp: 1)
+        event = session.events.create!(event_type: "tool_call", payload: {"content" => "calling bash"}, tool_use_id: "toolu_test1", timestamp: 1)
 
         expect(described_class.for(event)).to be_a(ToolCallDecorator)
       end
 
       it "returns ToolResponseDecorator for tool_response events" do
-        event = session.events.create!(event_type: "tool_response", payload: {"content" => "output"}, timestamp: 1)
+        event = session.events.create!(event_type: "tool_response", payload: {"content" => "output"}, tool_use_id: "toolu_test2", timestamp: 1)
 
         expect(described_class.for(event)).to be_a(ToolResponseDecorator)
       end

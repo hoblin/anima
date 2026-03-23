@@ -179,7 +179,7 @@ module LLM
     # conversation history and breaks the session.
     def execute_single_tool(tool_use, registry, session_id)
       name = tool_use["name"]
-      id = tool_use["id"]
+      id = tool_use["id"] || SecureRandom.uuid
       input = tool_use["input"] || {}
       timeout = input["timeout"] || Anima::Settings.tool_timeout
 
@@ -231,7 +231,7 @@ module LLM
     # @return [Hash] tool_result content block
     def interrupt_tool(tool_use, session_id)
       name = tool_use["name"]
-      id = tool_use["id"]
+      id = tool_use["id"] || SecureRandom.uuid
       input = tool_use["input"] || {}
 
       Events::Bus.emit(Events::ToolCall.new(

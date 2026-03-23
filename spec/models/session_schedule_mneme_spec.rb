@@ -20,6 +20,7 @@ RSpec.describe Session, "#schedule_mneme!" do
     session.events.create!(
       event_type: type,
       payload: payload,
+      tool_use_id: payload["tool_use_id"],
       timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
       token_count: token_count
     )

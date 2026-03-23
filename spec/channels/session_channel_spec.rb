@@ -195,7 +195,7 @@ RSpec.describe SessionChannel, type: :channel do
       session = Session.create!(id: session_id)
       session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
       session.events.create!(event_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi there"}, timestamp: 2)
-      session.events.create!(event_type: "tool_call", payload: {"type" => "tool_call", "content" => "calling bash"}, timestamp: 3)
+      session.events.create!(event_type: "tool_call", payload: {"type" => "tool_call", "content" => "calling bash"}, tool_use_id: "toolu_test1", timestamp: 3)
 
       subscribe(session_id: session_id)
 
@@ -210,7 +210,7 @@ RSpec.describe SessionChannel, type: :channel do
       session = Session.create!(id: session_id)
       session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
       session.events.create!(event_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi"}, timestamp: 2)
-      session.events.create!(event_type: "tool_call", payload: {"type" => "tool_call", "content" => "calling bash"}, timestamp: 3)
+      session.events.create!(event_type: "tool_call", payload: {"type" => "tool_call", "content" => "calling bash"}, tool_use_id: "toolu_test2", timestamp: 3)
 
       subscribe(session_id: session_id)
 

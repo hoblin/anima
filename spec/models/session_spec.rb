@@ -828,30 +828,44 @@ RSpec.describe Session do
           event_type: "tool_call",
           payload: {"content" => "Calling web_get", "tool_name" => "web_get",
                     "tool_input" => {"url" => "https://example.com"}, "tool_use_id" => "toolu_123"},
+          tool_use_id: "toolu_123",
           timestamp: 1
+        )
+        session.events.create!(
+          event_type: "tool_response",
+          payload: {"content" => "<html>hello</html>", "tool_name" => "web_get",
+                    "tool_use_id" => "toolu_123", "success" => true},
+          tool_use_id: "toolu_123",
+          timestamp: 2
         )
 
         result = session.messages_for_llm
-        expect(result).to eq([
-          {role: "assistant", content: [
-            {type: "tool_use", id: "toolu_123", name: "web_get", input: {"url" => "https://example.com"}}
-          ]}
+        assistant_msg = result.find { |m| m[:role] == "assistant" }
+        expect(assistant_msg[:content]).to eq([
+          {type: "tool_use", id: "toolu_123", name: "web_get", input: {"url" => "https://example.com"}}
         ])
       end
 
       it "assembles tool_response events as user messages with tool_result blocks" do
         session.events.create!(
+          event_type: "tool_call",
+          payload: {"content" => "Calling web_get", "tool_name" => "web_get",
+                    "tool_input" => {"url" => "https://example.com"}, "tool_use_id" => "toolu_123"},
+          tool_use_id: "toolu_123",
+          timestamp: 1
+        )
+        session.events.create!(
           event_type: "tool_response",
           payload: {"content" => "<html>hello</html>", "tool_name" => "web_get",
                     "tool_use_id" => "toolu_123", "success" => true},
-          timestamp: 1
+          tool_use_id: "toolu_123",
+          timestamp: 2
         )
 
         result = session.messages_for_llm
-        expect(result).to eq([
-          {role: "user", content: [
-            {type: "tool_result", tool_use_id: "toolu_123", content: "<html>hello</html>"}
-          ]}
+        user_msg = result.find { |m| m[:role] == "user" }
+        expect(user_msg[:content]).to eq([
+          {type: "tool_result", tool_use_id: "toolu_123", content: "<html>hello</html>"}
         ])
       end
 
@@ -860,37 +874,65 @@ RSpec.describe Session do
           event_type: "tool_call",
           payload: {"content" => "Calling web_get", "tool_name" => "web_get",
                     "tool_input" => {"url" => "https://a.com"}, "tool_use_id" => "toolu_1"},
+          tool_use_id: "toolu_1",
           timestamp: 1
         )
         session.events.create!(
           event_type: "tool_call",
           payload: {"content" => "Calling web_get", "tool_name" => "web_get",
                     "tool_input" => {"url" => "https://b.com"}, "tool_use_id" => "toolu_2"},
+          tool_use_id: "toolu_2",
           timestamp: 2
         )
-
-        result = session.messages_for_llm
-        expect(result.length).to eq(1)
-        expect(result.first[:role]).to eq("assistant")
-        expect(result.first[:content].length).to eq(2)
-      end
-
-      it "groups consecutive tool_response events into one user message" do
         session.events.create!(
           event_type: "tool_response",
           payload: {"content" => "page A", "tool_name" => "web_get", "tool_use_id" => "toolu_1"},
-          timestamp: 1
+          tool_use_id: "toolu_1",
+          timestamp: 3
         )
         session.events.create!(
           event_type: "tool_response",
           payload: {"content" => "page B", "tool_name" => "web_get", "tool_use_id" => "toolu_2"},
-          timestamp: 2
+          tool_use_id: "toolu_2",
+          timestamp: 4
         )
 
         result = session.messages_for_llm
-        expect(result.length).to eq(1)
-        expect(result.first[:role]).to eq("user")
-        expect(result.first[:content].length).to eq(2)
+        assistant_msg = result.find { |m| m[:role] == "assistant" }
+        expect(assistant_msg[:content].length).to eq(2)
+      end
+
+      it "groups consecutive tool_response events into one user message" do
+        session.events.create!(
+          event_type: "tool_call",
+          payload: {"content" => "Calling web_get", "tool_name" => "web_get",
+                    "tool_input" => {"url" => "https://a.com"}, "tool_use_id" => "toolu_1"},
+          tool_use_id: "toolu_1",
+          timestamp: 1
+        )
+        session.events.create!(
+          event_type: "tool_call",
+          payload: {"content" => "Calling web_get", "tool_name" => "web_get",
+                    "tool_input" => {"url" => "https://b.com"}, "tool_use_id" => "toolu_2"},
+          tool_use_id: "toolu_2",
+          timestamp: 2
+        )
+        session.events.create!(
+          event_type: "tool_response",
+          payload: {"content" => "page A", "tool_name" => "web_get", "tool_use_id" => "toolu_1"},
+          tool_use_id: "toolu_1",
+          timestamp: 3
+        )
+        session.events.create!(
+          event_type: "tool_response",
+          payload: {"content" => "page B", "tool_name" => "web_get", "tool_use_id" => "toolu_2"},
+          tool_use_id: "toolu_2",
+          timestamp: 4
+        )
+
+        result = session.messages_for_llm
+        user_msg = result.find { |m| m[:role] == "user" }
+        expect(user_msg[:content].length).to eq(2)
       end
 
       it "assembles a full tool conversation correctly" do
@@ -899,12 +941,14 @@ RSpec.describe Session do
           event_type: "tool_call",
           payload: {"content" => "Calling web_get", "tool_name" => "web_get",
                     "tool_input" => {"url" => "https://example.com"}, "tool_use_id" => "toolu_abc"},
+          tool_use_id: "toolu_abc",
           timestamp: 2
         )
         session.events.create!(
           event_type: "tool_response",
           payload: {"content" => "<html>Example Domain</html>", "tool_name" => "web_get",
                     "tool_use_id" => "toolu_abc", "success" => true},
+          tool_use_id: "toolu_abc",
           timestamp: 3
         )
         session.events.create!(event_type: "agent_message", payload: {"content" => "The page says Example Domain."}, timestamp: 4)
@@ -1248,15 +1292,16 @@ RSpec.describe Session do
       expect { session.heal_orphaned_tool_calls! }.not_to change { session.events.count }
     end
 
-    it "ignores tool_calls with nil tool_use_id" do
-      session.events.create!(
+    it "rejects tool_calls with nil tool_use_id at validation" do
+      event = session.events.new(
         event_type: "tool_call",
         payload: {"tool_name" => "bash"},
         tool_use_id: nil,
         timestamp: 1
       )
 
-      expect { session.heal_orphaned_tool_calls! }.not_to change { session.events.count }
+      expect(event).not_to be_valid
+      expect(event.errors[:tool_use_id]).to include("can't be blank")
     end
 
     it "heals multiple orphaned tool_calls in a single pass" do
@@ -1556,12 +1601,14 @@ RSpec.describe Session do
         event_type: "tool_call",
         payload: {"content" => "Calling spawn_specialist", "tool_name" => "spawn_specialist",
                   "tool_input" => {"name" => "codebase-analyzer"}, "tool_use_id" => "toolu_sibling"},
+        tool_use_id: "toolu_sibling",
         timestamp: 3, token_count: 10
       )
       parent.events.create!(
         event_type: "tool_response",
         payload: {"content" => "Specialist @sibling spawned", "tool_name" => "spawn_specialist",
                   "tool_use_id" => "toolu_sibling"},
+        tool_use_id: "toolu_sibling",
         timestamp: 4, token_count: 10
       )
 
@@ -1581,12 +1628,14 @@ RSpec.describe Session do
         event_type: "tool_call",
         payload: {"content" => "Calling spawn_subagent", "tool_name" => "spawn_subagent",
                   "tool_input" => {"task" => "research"}, "tool_use_id" => "toolu_self"},
+        tool_use_id: "toolu_self",
         timestamp: 3, token_count: 10
       )
       parent.events.create!(
         event_type: "tool_response",
         payload: {"content" => "Sub-agent spawned", "tool_name" => "spawn_subagent",
                   "tool_use_id" => "toolu_self"},
+        tool_use_id: "toolu_self",
         timestamp: 4, token_count: 10
       )
 
@@ -1604,12 +1653,14 @@ RSpec.describe Session do
         event_type: "tool_call",
         payload: {"content" => "Calling bash", "tool_name" => "bash",
                   "tool_input" => {"command" => "ls"}, "tool_use_id" => "toolu_bash"},
+        tool_use_id: "toolu_bash",
         timestamp: 3, token_count: 10
       )
       parent.events.create!(
         event_type: "tool_response",
         payload: {"content" => "file1.rb", "tool_name" => "bash",
                   "tool_use_id" => "toolu_bash"},
+        tool_use_id: "toolu_bash",
         timestamp: 4, token_count: 10
       )
 
@@ -1627,6 +1678,7 @@ RSpec.describe Session do
         event_type: "tool_call",
         payload: {"content" => "Calling spawn_subagent", "tool_name" => "spawn_subagent",
                   "tool_input" => {"task" => "research"}, "tool_use_id" => "toolu_orphan"},
+        tool_use_id: "toolu_orphan",
         timestamp: 3, token_count: 10
       )
 
@@ -1772,6 +1824,7 @@ RSpec.describe Session do
       event = session.events.create!(
         event_type: "tool_call",
         payload: {"tool_name" => "think", "tool_input" => {"thoughts" => "Deep thought"}, "tool_use_id" => "t1"},
+        tool_use_id: "t1",
         timestamp: 1
       )
 
@@ -1782,6 +1835,7 @@ RSpec.describe Session do
       event = session.events.create!(
         event_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_input" => {"cmd" => "ls"}, "tool_use_id" => "t1"},
+        tool_use_id: "t1",
         timestamp: 1
       )
 
@@ -1804,6 +1858,7 @@ RSpec.describe Session do
       event = session.events.create!(
         event_type: "tool_call",
         payload: {"content" => "calling", "tool_name" => "bash", "tool_input" => {"command" => "ls"}},
+        tool_use_id: "toolu_est1",
         timestamp: 1
       )
 

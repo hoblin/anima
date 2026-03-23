@@ -38,6 +38,25 @@ RSpec.describe Event do
       expect(event).not_to be_valid
     end
 
+    it "requires tool_use_id for tool_call events" do
+      event = Event.new(session: session, event_type: "tool_call", payload: {content: "run"}, timestamp: 1)
+      expect(event).not_to be_valid
+      expect(event.errors[:tool_use_id]).to include("can't be blank")
+    end
+
+    it "requires tool_use_id for tool_response events" do
+      event = Event.new(session: session, event_type: "tool_response", payload: {content: "ok"}, timestamp: 1)
+      expect(event).not_to be_valid
+      expect(event.errors[:tool_use_id]).to include("can't be blank")
+    end
+
+    it "does not require tool_use_id for non-tool events" do
+      %w[system_message user_message agent_message].each do |type|
+        event = Event.new(session: session, event_type: type, payload: {content: "hi"}, timestamp: 1)
+        expect(event).to be_valid, "expected #{type} to be valid without tool_use_id"
+      end
+    end
+
     it "is valid with all required attributes" do
       event = Event.new(session: session, event_type: "user_message", payload: {content: "hi"}, timestamp: 1)
       expect(event).to be_valid
@@ -49,7 +68,7 @@ RSpec.describe Event do
       session.events.create!(event_type: "user_message", payload: {content: "hi"}, timestamp: 1)
       session.events.create!(event_type: "agent_message", payload: {content: "hello"}, timestamp: 2)
       session.events.create!(event_type: "system_message", payload: {content: "boot"}, timestamp: 3)
-      session.events.create!(event_type: "tool_call", payload: {content: "run", tool_name: "bash", tool_input: {}}, timestamp: 4)
+      session.events.create!(event_type: "tool_call", payload: {content: "run", tool_name: "bash", tool_input: {}}, tool_use_id: "toolu_test1", timestamp: 4)
 
       expect(Event.llm_messages.pluck(:event_type)).to match_array(%w[user_message agent_message])
     end
@@ -81,7 +100,7 @@ RSpec.describe Event do
     end
 
     it "raises KeyError for non-LLM event types" do
-      event = session.events.create!(event_type: "tool_call", payload: {content: "run"}, timestamp: 1)
+      event = session.events.create!(event_type: "tool_call", payload: {content: "run"}, tool_use_id: "toolu_test1", timestamp: 1)
       expect { event.api_role }.to raise_error(KeyError)
     end
   end
@@ -91,8 +110,8 @@ RSpec.describe Event do
       session.events.create!(event_type: "user_message", payload: {content: "hi"}, timestamp: 1)
       session.events.create!(event_type: "agent_message", payload: {content: "hello"}, timestamp: 2)
       session.events.create!(event_type: "system_message", payload: {content: "boot"}, timestamp: 3)
-      session.events.create!(event_type: "tool_call", payload: {content: "run", tool_name: "web_get"}, timestamp: 4)
-      session.events.create!(event_type: "tool_response", payload: {content: "ok", tool_name: "web_get"}, timestamp: 5)
+      session.events.create!(event_type: "tool_call", payload: {content: "run", tool_name: "web_get"}, tool_use_id: "toolu_test1", timestamp: 4)
+      session.events.create!(event_type: "tool_response", payload: {content: "ok", tool_name: "web_get"}, tool_use_id: "toolu_test1", timestamp: 5)
 
       expect(Event.context_events.pluck(:event_type)).to match_array(
         %w[system_message user_message agent_message tool_call tool_response]
@@ -185,6 +204,7 @@ RSpec.describe Event do
       event = session.events.create!(
         event_type: "tool_call",
         payload: {"content" => "calling", "tool_name" => "bash", "tool_input" => {"command" => "ls"}},
+        tool_use_id: "toolu_test1",
         timestamp: 1
       )
       json_size = event.payload.to_json.bytesize
@@ -212,23 +232,23 @@ RSpec.describe Event do
 
   describe ".excluding_spawn_events" do
     it "excludes spawn_subagent tool_call events" do
-      session.events.create!(event_type: "tool_call", payload: {"tool_name" => "spawn_subagent", "content" => "spawning"}, timestamp: 1)
-      kept = session.events.create!(event_type: "tool_call", payload: {"tool_name" => "bash", "content" => "running"}, timestamp: 2)
+      session.events.create!(event_type: "tool_call", payload: {"tool_name" => "spawn_subagent", "content" => "spawning"}, tool_use_id: "toolu_spawn1", timestamp: 1)
+      kept = session.events.create!(event_type: "tool_call", payload: {"tool_name" => "bash", "content" => "running"}, tool_use_id: "toolu_bash1", timestamp: 2)
 
       expect(session.events.excluding_spawn_events).to eq([kept])
     end
 
     it "excludes spawn_specialist tool_call events" do
-      session.events.create!(event_type: "tool_call", payload: {"tool_name" => "spawn_specialist", "content" => "spawning"}, timestamp: 1)
+      session.events.create!(event_type: "tool_call", payload: {"tool_name" => "spawn_specialist", "content" => "spawning"}, tool_use_id: "toolu_spawn1", timestamp: 1)
       kept = session.events.create!(event_type: "user_message", payload: {"content" => "hello"}, timestamp: 2)
 
       expect(session.events.excluding_spawn_events).to eq([kept])
     end
 
     it "excludes spawn tool_response events" do
-      session.events.create!(event_type: "tool_response", payload: {"tool_name" => "spawn_subagent", "content" => "spawned"}, timestamp: 1)
-      session.events.create!(event_type: "tool_response", payload: {"tool_name" => "spawn_specialist", "content" => "spawned"}, timestamp: 2)
-      kept = session.events.create!(event_type: "tool_response", payload: {"tool_name" => "bash", "content" => "output"}, timestamp: 3)
+      session.events.create!(event_type: "tool_response", payload: {"tool_name" => "spawn_subagent", "content" => "spawned"}, tool_use_id: "toolu_spawn1", timestamp: 1)
+      session.events.create!(event_type: "tool_response", payload: {"tool_name" => "spawn_specialist", "content" => "spawned"}, tool_use_id: "toolu_spawn2", timestamp: 2)
+      kept = session.events.create!(event_type: "tool_response", payload: {"tool_name" => "bash", "content" => "output"}, tool_use_id: "toolu_bash1", timestamp: 3)
 
       expect(session.events.excluding_spawn_events).to eq([kept])
     end
@@ -237,15 +257,15 @@ RSpec.describe Event do
       user_msg = session.events.create!(event_type: "user_message", payload: {"content" => "hello"}, timestamp: 1)
       agent_msg = session.events.create!(event_type: "agent_message", payload: {"content" => "hi"}, timestamp: 2)
       sys_msg = session.events.create!(event_type: "system_message", payload: {"content" => "boot"}, timestamp: 3)
-      session.events.create!(event_type: "tool_call", payload: {"tool_name" => "spawn_specialist", "content" => "spawning"}, timestamp: 4)
+      session.events.create!(event_type: "tool_call", payload: {"tool_name" => "spawn_specialist", "content" => "spawning"}, tool_use_id: "toolu_spawn1", timestamp: 4)
 
       expect(session.events.excluding_spawn_events).to eq([user_msg, agent_msg, sys_msg])
     end
 
     it "preserves non-spawn tool events" do
-      bash_call = session.events.create!(event_type: "tool_call", payload: {"tool_name" => "bash", "content" => "running"}, timestamp: 1)
-      bash_response = session.events.create!(event_type: "tool_response", payload: {"tool_name" => "bash", "content" => "output"}, timestamp: 2)
-      read_call = session.events.create!(event_type: "tool_call", payload: {"tool_name" => "read", "content" => "reading"}, timestamp: 3)
+      bash_call = session.events.create!(event_type: "tool_call", payload: {"tool_name" => "bash", "content" => "running"}, tool_use_id: "toolu_bash1", timestamp: 1)
+      bash_response = session.events.create!(event_type: "tool_response", payload: {"tool_name" => "bash", "content" => "output"}, tool_use_id: "toolu_bash1", timestamp: 2)
+      read_call = session.events.create!(event_type: "tool_call", payload: {"tool_name" => "read", "content" => "reading"}, tool_use_id: "toolu_read1", timestamp: 3)
 
       expect(session.events.excluding_spawn_events).to eq([bash_call, bash_response, read_call])
     end

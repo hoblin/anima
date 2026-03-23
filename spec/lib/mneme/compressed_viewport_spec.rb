@@ -20,6 +20,7 @@ RSpec.describe Mneme::CompressedViewport do
     session.events.create!(
       event_type: type,
       payload: payload,
+      tool_use_id: payload["tool_use_id"],
       timestamp: timestamp || Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
       token_count: token_count
     )

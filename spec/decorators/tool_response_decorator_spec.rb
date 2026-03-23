@@ -10,6 +10,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => "file.txt", "tool_name" => "bash", "success" => true},
+        tool_use_id: "toolu_basic1",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -27,6 +28,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => "OK", "tool_name" => "think", "success" => true},
+        tool_use_id: "toolu_think_r1",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -40,6 +42,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => "file.txt", "tool_name" => "bash", "success" => true},
+        tool_use_id: "toolu_verbose1",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -53,6 +56,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => "command not found", "tool_name" => "bash", "success" => false},
+        tool_use_id: "toolu_verbose2",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -67,6 +71,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => long_output, "tool_name" => "bash", "success" => true},
+        tool_use_id: "toolu_verbose3",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -81,6 +86,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => output, "tool_name" => "bash", "success" => true},
+        tool_use_id: "toolu_verbose4",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -92,6 +98,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => nil, "tool_name" => "bash", "success" => true},
+        tool_use_id: "toolu_verbose5",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -103,6 +110,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => "", "tool_name" => "bash", "success" => true},
+        tool_use_id: "toolu_verbose6",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -114,6 +122,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => "output", "tool_name" => "bash"},
+        tool_use_id: "toolu_verbose7",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -139,6 +148,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
         event = session.events.create!(
           event_type: "tool_response",
           payload: {"content" => "OK", "tool_name" => "think", "success" => true},
+          tool_use_id: "toolu_think_v1",
           timestamp: 1
         )
         decorator = EventDecorator.for(event)
@@ -215,6 +225,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => "some output", "tool_name" => "bash", "success" => true},
+        tool_use_id: "toolu_tokens1",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -266,6 +277,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => "file1.rb\nfile2.rb", "tool_name" => "bash", "success" => true},
+        tool_use_id: "toolu_brain1",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -277,6 +289,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => "command not found", "tool_name" => "bash", "success" => false},
+        tool_use_id: "toolu_brain2",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -288,6 +301,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => "OK", "tool_name" => "think", "success" => true},
+        tool_use_id: "toolu_brain3",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -299,6 +313,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_response",
         payload: {"content" => "output", "tool_name" => "bash"},
+        tool_use_id: "toolu_brain4",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)

@@ -237,11 +237,13 @@ RSpec.describe AnalyticalBrain::Runner do
           event_type: "tool_call",
           payload: {"content" => "Calling bash", "tool_name" => "bash",
                     "tool_input" => {"command" => "ls"}, "tool_use_id" => "t1"},
+          tool_use_id: "t1",
           timestamp: 2
         )
         session.events.create!(
           event_type: "tool_response",
           payload: {"content" => "file1.rb\nfile2.rb", "tool_name" => "bash", "tool_use_id" => "t1"},
+          tool_use_id: "t1",
           timestamp: 3
         )
         session.events.create!(event_type: "agent_message", payload: {"content" => "Here are the files."}, timestamp: 4)
@@ -284,11 +286,13 @@ RSpec.describe AnalyticalBrain::Runner do
                     "tool_input" => {"thoughts" => "Three auth failures all in OAuth — config issue, not individual tests.",
                                      "visibility" => "inner"},
                     "tool_use_id" => "t_think"},
+          tool_use_id: "t_think",
           timestamp: 2
         )
         session.events.create!(
           event_type: "tool_response",
           payload: {"content" => "OK", "tool_name" => "think", "tool_use_id" => "t_think"},
+          tool_use_id: "t_think",
           timestamp: 3
         )
       end
