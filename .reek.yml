@@ -81,9 +81,11 @@ detectors:
       # Runner checks session type to compose responsibilities — the core dispatch.
       - "AnalyticalBrain::Runner"
   # EventDecorator holds shared rendering constants (icons, markers, dispatch maps).
+  # Event model holds domain type constants (TYPES, CONTEXT_TYPES, SPAWN_TOOLS, etc.).
   TooManyConstants:
     exclude:
       - "EventDecorator"
+      - "Event"
   # encode_utf8 is descriptive — the digit triggers a false positive.
   UncommunicativeMethodName:
     exclude:

@@ -1550,6 +1550,78 @@ RSpec.describe Session do
       expect(contents).not_to include("parent continues")
     end
 
+    it "excludes spawn tool events from parent context" do
+      # Sibling spawn events should not appear in sub-agent's viewport
+      parent.events.create!(
+        event_type: "tool_call",
+        payload: {"content" => "Calling spawn_specialist", "tool_name" => "spawn_specialist",
+                  "tool_input" => {"name" => "codebase-analyzer"}, "tool_use_id" => "toolu_sibling"},
+        timestamp: 3, token_count: 10
+      )
+      parent.events.create!(
+        event_type: "tool_response",
+        payload: {"content" => "Specialist @sibling spawned", "tool_name" => "spawn_specialist",
+                  "tool_use_id" => "toolu_sibling"},
+        timestamp: 4, token_count: 10
+      )
+
+      child.events.create!(event_type: "user_message", payload: {"content" => "my task"}, timestamp: 5, token_count: 10)
+
+      events = child.viewport_events
+      tool_names = events.select { |e| e.event_type.in?(%w[tool_call tool_response]) }
+        .map { |e| e.payload["tool_name"] }
+
+      expect(tool_names).not_to include("spawn_specialist")
+      expect(events.map { |e| e.payload["content"] }).to include("parent msg 1", "parent reply 1", "my task")
+    end
+
+    it "excludes own spawn events from parent context" do
+      # The sub-agent's own spawn pair is also noise — the task is already its first user_message
+      parent.events.create!(
+        event_type: "tool_call",
+        payload: {"content" => "Calling spawn_subagent", "tool_name" => "spawn_subagent",
+                  "tool_input" => {"task" => "research"}, "tool_use_id" => "toolu_self"},
+        timestamp: 3, token_count: 10
+      )
+      parent.events.create!(
+        event_type: "tool_response",
+        payload: {"content" => "Sub-agent spawned", "tool_name" => "spawn_subagent",
+                  "tool_use_id" => "toolu_self"},
+        timestamp: 4, token_count: 10
+      )
+
+      child.events.create!(event_type: "user_message", payload: {"content" => "my task"}, timestamp: 5, token_count: 10)
+
+      events = child.viewport_events
+      tool_names = events.select { |e| e.event_type.in?(%w[tool_call tool_response]) }
+        .map { |e| e.payload["tool_name"] }
+
+      expect(tool_names).not_to include("spawn_subagent")
+    end
+
+    it "preserves non-spawn tool events in parent context" do
+      parent.events.create!(
+        event_type: "tool_call",
+        payload: {"content" => "Calling bash", "tool_name" => "bash",
+                  "tool_input" => {"command" => "ls"}, "tool_use_id" => "toolu_bash"},
+        timestamp: 3, token_count: 10
+      )
+      parent.events.create!(
+        event_type: "tool_response",
+        payload: {"content" => "file1.rb", "tool_name" => "bash",
+                  "tool_use_id" => "toolu_bash"},
+        timestamp: 4, token_count: 10
+      )
+
+      child.events.create!(event_type: "user_message", payload: {"content" => "my task"}, timestamp: 5, token_count: 10)
+
+      events = child.viewport_events
+      tool_names = events.select { |e| e.event_type.in?(%w[tool_call tool_response]) }
+        .map { |e| e.payload["tool_name"] }
+
+      expect(tool_names).to eq(%w[bash bash])
+    end
+
     it "trims trailing tool_call events from parent viewport" do
       parent.events.create!(
         event_type: "tool_call",
