@@ -210,6 +210,47 @@ RSpec.describe Event do
     end
   end
 
+  describe ".excluding_spawn_events" do
+    it "excludes spawn_subagent tool_call events" do
+      session.events.create!(event_type: "tool_call", payload: {"tool_name" => "spawn_subagent", "content" => "spawning"}, timestamp: 1)
+      kept = session.events.create!(event_type: "tool_call", payload: {"tool_name" => "bash", "content" => "running"}, timestamp: 2)
+
+      expect(session.events.excluding_spawn_events).to eq([kept])
+    end
+
+    it "excludes spawn_specialist tool_call events" do
+      session.events.create!(event_type: "tool_call", payload: {"tool_name" => "spawn_specialist", "content" => "spawning"}, timestamp: 1)
+      kept = session.events.create!(event_type: "user_message", payload: {"content" => "hello"}, timestamp: 2)
+
+      expect(session.events.excluding_spawn_events).to eq([kept])
+    end
+
+    it "excludes spawn tool_response events" do
+      session.events.create!(event_type: "tool_response", payload: {"tool_name" => "spawn_subagent", "content" => "spawned"}, timestamp: 1)
+      session.events.create!(event_type: "tool_response", payload: {"tool_name" => "spawn_specialist", "content" => "spawned"}, timestamp: 2)
+      kept = session.events.create!(event_type: "tool_response", payload: {"tool_name" => "bash", "content" => "output"}, timestamp: 3)
+
+      expect(session.events.excluding_spawn_events).to eq([kept])
+    end
+
+    it "preserves non-tool events" do
+      user_msg = session.events.create!(event_type: "user_message", payload: {"content" => "hello"}, timestamp: 1)
+      agent_msg = session.events.create!(event_type: "agent_message", payload: {"content" => "hi"}, timestamp: 2)
+      sys_msg = session.events.create!(event_type: "system_message", payload: {"content" => "boot"}, timestamp: 3)
+      session.events.create!(event_type: "tool_call", payload: {"tool_name" => "spawn_specialist", "content" => "spawning"}, timestamp: 4)
+
+      expect(session.events.excluding_spawn_events).to eq([user_msg, agent_msg, sys_msg])
+    end
+
+    it "preserves non-spawn tool events" do
+      bash_call = session.events.create!(event_type: "tool_call", payload: {"tool_name" => "bash", "content" => "running"}, timestamp: 1)
+      bash_response = session.events.create!(event_type: "tool_response", payload: {"tool_name" => "bash", "content" => "output"}, timestamp: 2)
+      read_call = session.events.create!(event_type: "tool_call", payload: {"tool_name" => "read", "content" => "reading"}, timestamp: 3)
+
+      expect(session.events.excluding_spawn_events).to eq([bash_call, bash_response, read_call])
+    end
+  end
+
   describe "#conversation_or_think?" do
     it "returns true for user_message" do
       expect(Event.new(event_type: "user_message", payload: {})).to be_conversation_or_think

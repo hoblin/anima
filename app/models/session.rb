@@ -501,9 +501,14 @@ class Session < ApplicationRecord
   end
 
   # Scopes parent events created before this session's fork point.
+  # Excludes spawn tool events — sub-agents don't need to see sibling
+  # spawn pairs, which cause role confusion (the sub-agent mistakes
+  # itself for the parent when it sees "Specialist @sibling spawned...").
   # @return [ActiveRecord::Relation]
   def parent_event_scope(include_pending)
-    scope = parent_session.events.context_events.where(created_at: ...created_at)
+    scope = parent_session.events.context_events
+      .excluding_spawn_events
+      .where(created_at: ...created_at)
     include_pending ? scope : scope.deliverable
   end
 

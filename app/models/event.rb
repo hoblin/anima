@@ -23,6 +23,7 @@ class Event < ApplicationRecord
   CONTEXT_TYPES = %w[system_message user_message agent_message tool_call tool_response].freeze
   CONVERSATION_TYPES = %w[user_message agent_message system_message].freeze
   THINK_TOOL = "think"
+  SPAWN_TOOLS = %w[spawn_subagent spawn_specialist].freeze
   PENDING_STATUS = "pending"
 
   ROLE_MAP = {"user_message" => "user", "agent_message" => "assistant"}.freeze
@@ -59,6 +60,17 @@ class Event < ApplicationRecord
   #   NULL status means delivered/processed — the only excluded value is "pending".
   #   @return [ActiveRecord::Relation]
   scope :deliverable, -> { where(status: nil) }
+
+  # @!method self.excluding_spawn_events
+  #   Excludes spawn_subagent/spawn_specialist tool_call and tool_response events.
+  #   Used when building parent context for sub-agents — spawn events cause role
+  #   confusion because the sub-agent sees sibling spawn results and mistakes
+  #   itself for the parent.
+  #   @return [ActiveRecord::Relation]
+  scope :excluding_spawn_events, -> {
+    where.not("event_type IN (?) AND json_extract(payload, '$.tool_name') IN (?)",
+      %w[tool_call tool_response], SPAWN_TOOLS)
+  }
 
   # Maps event_type to the Anthropic Messages API role.
   # @return [String] "user" or "assistant"
