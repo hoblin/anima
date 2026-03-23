@@ -55,11 +55,13 @@ module Mneme
     #
     # @return [Array<Hash>] raw database rows
     def execute_fts_query
-      if @session_id
-        connection.select_all(scoped_sql, "Mneme::Search", [@terms, @session_id, @limit]).to_a
+      sql = if @session_id
+        Arel.sql(scoped_sql, @terms, @session_id, @limit)
       else
-        connection.select_all(global_sql, "Mneme::Search", [@terms, @limit]).to_a
+        Arel.sql(global_sql, @terms, @limit)
       end
+
+      connection.select_all(sql, "Mneme::Search").to_a
     end
 
     # FTS5 query across all sessions.

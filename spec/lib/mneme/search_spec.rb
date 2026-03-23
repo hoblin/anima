@@ -137,5 +137,27 @@ RSpec.describe Mneme::Search do
 
       expect(results.size).to eq(1)
     end
+
+    # Regression: #289 — common words like "bash" were interpolated as column
+    # references instead of string values when bind params were passed as a
+    # raw array to select_all.
+    it "handles terms that resemble SQL column names" do
+      event = create_event(session, type: "user_message", content: "Learn bash scripting basics.")
+
+      results = described_class.query("bash")
+
+      expect(results.size).to eq(1)
+      expect(results.first.event_id).to eq(event.id)
+    end
+
+    it "handles terms that resemble SQL column names with session scope" do
+      event = create_event(session, type: "user_message", content: "Learn bash scripting basics.")
+      create_event(other_session, type: "user_message", content: "More bash tips here.")
+
+      results = described_class.query("bash", session_id: session.id)
+
+      expect(results.size).to eq(1)
+      expect(results.first.event_id).to eq(event.id)
+    end
   end
 end
