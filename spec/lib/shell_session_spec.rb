@@ -131,6 +131,20 @@ RSpec.describe ShellSession do
       end
     end
 
+    context "encoding" do
+      it "returns UTF-8 encoded stdout even when PTY emits binary" do
+        result = shell.run("printf '\\xc0\\xff valid ascii'")
+        expect(result[:stdout].encoding).to eq(Encoding::UTF_8)
+        expect(result[:stdout]).to be_valid_encoding
+      end
+
+      it "returns UTF-8 encoded stdout for normal output" do
+        result = shell.run("echo hello")
+        expect(result[:stdout].encoding).to eq(Encoding::UTF_8)
+        expect(result[:stdout]).to be_valid_encoding
+      end
+    end
+
     context "pager prevention" do
       it "disables pagers via PAGER and tool-specific env vars" do
         result = shell.run("echo $PAGER")
