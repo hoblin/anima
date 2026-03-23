@@ -1810,4 +1810,57 @@ RSpec.describe Session do
       expect(session.send(:estimate_tokens, event)).to eq(event.estimate_tokens)
     end
   end
+
+  describe "#enqueue_user_message" do
+    let(:session) { Session.create! }
+
+    context "when session is idle" do
+      it "persists a deliverable event and enqueues AgentRequestJob" do
+        expect { session.enqueue_user_message("hello") }
+          .to change { session.events.where(event_type: "user_message", status: nil).count }.by(1)
+
+        expect(AgentRequestJob).to have_been_enqueued.with(session.id)
+      end
+
+      it "passes event_id to job when bounce_back is true" do
+        session.enqueue_user_message("hello", bounce_back: true)
+
+        event = session.events.last
+        expect(AgentRequestJob).to have_been_enqueued.with(session.id, event_id: event.id)
+      end
+    end
+
+    context "when session is processing" do
+      before { session.update!(processing: true) }
+
+      it "emits a pending user_message via EventBus" do
+        emitted = []
+        subscriber = double("subscriber")
+        allow(subscriber).to receive(:emit) { |event| emitted << event }
+        Events::Bus.subscribe(subscriber)
+
+        session.enqueue_user_message("hello")
+
+        user_event = emitted.find { |e| e.dig(:payload, :type) == "user_message" }
+        expect(user_event).to be_present
+        expect(user_event.dig(:payload, :status)).to eq(Event::PENDING_STATUS)
+        expect(user_event.dig(:payload, :session_id)).to eq(session.id)
+        expect(user_event.dig(:payload, :content)).to eq("hello")
+      ensure
+        Events::Bus.unsubscribe(subscriber)
+      end
+
+      it "does not enqueue AgentRequestJob" do
+        session.enqueue_user_message("hello")
+
+        expect(AgentRequestJob).not_to have_been_enqueued
+      end
+
+      it "does not persist a deliverable event" do
+        session.enqueue_user_message("hello")
+
+        expect(session.events.where(event_type: "user_message", status: nil).count).to eq(0)
+      end
+    end
+  end
 end

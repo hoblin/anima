@@ -9,39 +9,78 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
     let(:parent) { Session.create! }
     let(:child) { Session.create!(parent_session: parent, prompt: "sub-agent", name: "loop-sleuth") }
 
-    it "persists an attributed user_message in the parent session" do
-      event = Events::AgentMessage.new(content: "Here's my analysis.", session_id: child.id)
-      router.emit(name: event.event_name, payload: event.to_h)
+    context "when parent is idle" do
+      it "persists an attributed user_message in the parent session" do
+        event = Events::AgentMessage.new(content: "Here's my analysis.", session_id: child.id)
+        router.emit(name: event.event_name, payload: event.to_h)
 
-      parent_msg = parent.events.find_by(event_type: "user_message")
-      expect(parent_msg).to be_present
-      expect(parent_msg.payload["content"]).to include("loop-sleuth")
-      expect(parent_msg.payload["content"]).to include("Here's my analysis.")
+        parent_msg = parent.events.find_by(event_type: "user_message")
+        expect(parent_msg).to be_present
+        expect(parent_msg.payload["content"]).to include("loop-sleuth")
+        expect(parent_msg.payload["content"]).to include("Here's my analysis.")
+      end
+
+      it "uses attribution format with @name prefix" do
+        event = Events::AgentMessage.new(content: "Done!", session_id: child.id)
+        router.emit(name: event.event_name, payload: event.to_h)
+
+        parent_msg = parent.events.find_by(event_type: "user_message")
+        expect(parent_msg.payload["content"]).to eq("[sub-agent @loop-sleuth]: Done!")
+      end
+
+      it "enqueues AgentRequestJob for the parent session" do
+        event = Events::AgentMessage.new(content: "Result ready.", session_id: child.id)
+        router.emit(name: event.event_name, payload: event.to_h)
+
+        expect(AgentRequestJob).to have_been_enqueued.with(parent.id)
+      end
+
+      it "falls back to agent-N when child has no name" do
+        unnamed = Session.create!(parent_session: parent, prompt: "sub-agent")
+
+        event = Events::AgentMessage.new(content: "Result", session_id: unnamed.id)
+        router.emit(name: event.event_name, payload: event.to_h)
+
+        parent_msg = parent.events.find_by(event_type: "user_message")
+        expect(parent_msg.payload["content"]).to start_with("[sub-agent @agent-#{unnamed.id}]:")
+      end
     end
 
-    it "uses attribution format with @name prefix" do
-      event = Events::AgentMessage.new(content: "Done!", session_id: child.id)
-      router.emit(name: event.event_name, payload: event.to_h)
+    context "when parent is processing" do
+      before { parent.update!(processing: true) }
 
-      parent_msg = parent.events.find_by(event_type: "user_message")
-      expect(parent_msg.payload["content"]).to eq("[sub-agent @loop-sleuth]: Done!")
-    end
+      it "emits a pending user_message via EventBus" do
+        emitted = []
+        subscriber = double("subscriber")
+        allow(subscriber).to receive(:emit) { |event| emitted << event }
+        Events::Bus.subscribe(subscriber)
 
-    it "enqueues AgentRequestJob for the parent session" do
-      event = Events::AgentMessage.new(content: "Result ready.", session_id: child.id)
-      router.emit(name: event.event_name, payload: event.to_h)
+        event = Events::AgentMessage.new(content: "Here's my analysis.", session_id: child.id)
+        router.emit(name: event.event_name, payload: event.to_h)
 
-      expect(AgentRequestJob).to have_been_enqueued.with(parent.id)
-    end
+        user_event = emitted.find { |e| e.dig(:payload, :type) == "user_message" }
+        expect(user_event).to be_present
+        expect(user_event.dig(:payload, :status)).to eq(Event::PENDING_STATUS)
+        expect(user_event.dig(:payload, :session_id)).to eq(parent.id)
+        expect(user_event.dig(:payload, :content)).to include("[sub-agent @loop-sleuth]:")
+        expect(user_event.dig(:payload, :content)).to include("Here's my analysis.")
+      ensure
+        Events::Bus.unsubscribe(subscriber)
+      end
 
-    it "falls back to agent-N when child has no name" do
-      unnamed = Session.create!(parent_session: parent, prompt: "sub-agent")
+      it "does not enqueue AgentRequestJob" do
+        event = Events::AgentMessage.new(content: "Result ready.", session_id: child.id)
+        router.emit(name: event.event_name, payload: event.to_h)
 
-      event = Events::AgentMessage.new(content: "Result", session_id: unnamed.id)
-      router.emit(name: event.event_name, payload: event.to_h)
+        expect(AgentRequestJob).not_to have_been_enqueued
+      end
 
-      parent_msg = parent.events.find_by(event_type: "user_message")
-      expect(parent_msg.payload["content"]).to start_with("[sub-agent @agent-#{unnamed.id}]:")
+      it "does not persist a deliverable event directly" do
+        event = Events::AgentMessage.new(content: "Result ready.", session_id: child.id)
+        router.emit(name: event.event_name, payload: event.to_h)
+
+        expect(parent.events.where(event_type: "user_message", status: nil).count).to eq(0)
+      end
     end
 
     it "ignores non-agent_message events" do
@@ -134,6 +173,51 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
       router.emit(name: event.event_name, payload: event.to_h)
 
       expect(unnamed.events.where(event_type: "user_message").count).to eq(0)
+    end
+
+    context "when child is processing" do
+      before { child_a.update!(processing: true) }
+
+      it "emits a pending user_message via EventBus" do
+        emitted = []
+        subscriber = double("subscriber")
+        allow(subscriber).to receive(:emit) { |event| emitted << event }
+        Events::Bus.subscribe(subscriber)
+
+        event = Events::AgentMessage.new(
+          content: "@loop-sleuth Check the edit tool next.",
+          session_id: parent.id
+        )
+        router.emit(name: event.event_name, payload: event.to_h)
+
+        user_event = emitted.find { |e| e.dig(:payload, :type) == "user_message" }
+        expect(user_event).to be_present
+        expect(user_event.dig(:payload, :status)).to eq(Event::PENDING_STATUS)
+        expect(user_event.dig(:payload, :session_id)).to eq(child_a.id)
+        expect(user_event.dig(:payload, :content)).to include("Check the edit tool next.")
+      ensure
+        Events::Bus.unsubscribe(subscriber)
+      end
+
+      it "does not enqueue AgentRequestJob" do
+        event = Events::AgentMessage.new(
+          content: "@loop-sleuth Check the edit tool next.",
+          session_id: parent.id
+        )
+        router.emit(name: event.event_name, payload: event.to_h)
+
+        expect(AgentRequestJob).not_to have_been_enqueued
+      end
+
+      it "does not persist a deliverable event directly" do
+        event = Events::AgentMessage.new(
+          content: "@loop-sleuth Check the edit tool next.",
+          session_id: parent.id
+        )
+        router.emit(name: event.event_name, payload: event.to_h)
+
+        expect(child_a.events.where(event_type: "user_message", status: nil).count).to eq(0)
+      end
     end
   end
 end
