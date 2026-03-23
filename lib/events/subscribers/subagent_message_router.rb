@@ -6,16 +6,20 @@ module Events
     # bidirectional @mention communication.
     #
     # **Child → Parent:** When a sub-agent emits an {Events::AgentMessage},
-    # the router persists a {Events::UserMessage} in the parent session
-    # with attribution prefix, then wakes the parent via {AgentRequestJob}.
+    # the router creates a {Events::UserMessage} in the parent session
+    # with attribution prefix. If the parent is idle, persists directly
+    # and wakes it via {AgentRequestJob}. If the parent is mid-turn,
+    # emits a pending message that is promoted after the current loop
+    # completes — same mechanism as {SessionChannel#speak}.
     #
     # **Parent → Child:** When a parent agent emits an {Events::AgentMessage}
     # containing `@name` mentions, the router persists the message in each
     # matching child session and wakes them via {AgentRequestJob}.
     #
-    # Both directions use direct persistence + job enqueue (same pattern as
-    # {Tools::SpawnSubagent#spawn_child}) to avoid conflicts with the global
-    # {Persister} which skips non-pending user messages.
+    # Parent → child uses direct persistence + job enqueue (same pattern as
+    # {Tools::SpawnSubagent#spawn_child}). Child → parent uses the same
+    # pattern when the parent is idle, but defers via pending queue when
+    # the parent is mid-turn to avoid breaking tool_use/tool_result pairs.
     #
     # This replaces the +return_result+ tool — sub-agents communicate
     # through natural text messages instead of structured tool calls.
@@ -61,8 +65,14 @@ module Events
       private
 
       # Forwards a sub-agent's text message to its parent session.
-      # Persists directly and enqueues a job so the parent agent wakes
-      # up to process the message.
+      #
+      # When the parent is idle, persists directly and enqueues a job so
+      # the parent agent wakes up to process the message.
+      #
+      # When the parent is mid-turn ({Session#processing?}), emits a
+      # pending {Events::UserMessage} instead. The pending event is
+      # promoted after the current agent loop completes, preventing
+      # interleaving between tool_use/tool_result pairs.
       #
       # @param child [Session] the sub-agent session
       # @param content [String] the sub-agent's message text
@@ -72,9 +82,17 @@ module Events
 
         name = child.name || "agent-#{child.id}"
         attributed = format(ATTRIBUTION_FORMAT, name, content)
+        parent_id = parent.id
 
-        parent.create_user_event(attributed)
-        AgentRequestJob.perform_later(parent.id)
+        if parent.processing?
+          Events::Bus.emit(Events::UserMessage.new(
+            content: attributed, session_id: parent_id,
+            status: Event::PENDING_STATUS
+          ))
+        else
+          parent.create_user_event(attributed)
+          AgentRequestJob.perform_later(parent_id)
+        end
       end
 
       # Scans a parent agent's message for @mentions and routes the message
