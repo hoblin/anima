@@ -308,7 +308,7 @@ RSpec.describe AgentLoop do
     end
 
     context "with tool restriction" do
-      it "registers only granted tools for restricted sub-agents" do
+      it "registers only granted tools plus always-granted tools for restricted sub-agents" do
         parent = Session.create!
         child = Session.create!(parent_session: parent, prompt: "reader agent", granted_tools: ["read", "web_get"])
         child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
@@ -317,6 +317,7 @@ RSpec.describe AgentLoop do
         allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
           expect(registry.registered?("read")).to be true
           expect(registry.registered?("web_get")).to be true
+          expect(registry.registered?("think")).to be true
           expect(registry.registered?("bash")).to be false
           expect(registry.registered?("write")).to be false
           expect(registry.registered?("edit")).to be false
@@ -327,15 +328,20 @@ RSpec.describe AgentLoop do
         sub_loop.finalize
       end
 
-      it "registers no standard tools for empty tools array (pure reasoning)" do
+      it "registers only always-granted tools for empty tools array (pure reasoning)" do
         parent = Session.create!
         child = Session.create!(parent_session: parent, prompt: "thinker agent", granted_tools: [])
         child.events.create!(event_type: "user_message", payload: {"content" => "think"}, timestamp: 1)
 
         sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
         allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
+          always_granted = AgentLoop::ALWAYS_GRANTED_TOOLS.map(&:tool_name)
           AgentLoop::STANDARD_TOOLS_BY_NAME.each_key do |name|
-            expect(registry.registered?(name)).to be false
+            if always_granted.include?(name)
+              expect(registry.registered?(name)).to be(true), "expected #{name} to be registered (always granted)"
+            else
+              expect(registry.registered?(name)).to be(false), "expected #{name} not to be registered"
+            end
           end
           "done"
         end
