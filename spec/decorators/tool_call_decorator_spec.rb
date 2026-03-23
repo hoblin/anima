@@ -10,6 +10,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_call",
         payload: {"content" => "calling bash", "tool_name" => "bash", "tool_input" => {"command" => "ls"}},
+        tool_use_id: "toolu_basic1",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -28,6 +29,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
         event = session.events.create!(
           event_type: "tool_call",
           payload: {"content" => "thinking", "tool_name" => "think", "tool_input" => {"thoughts" => "Planning next step"}},
+          tool_use_id: "toolu_think1",
           timestamp: 1
         )
         decorator = EventDecorator.for(event)
@@ -40,6 +42,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
           event_type: "tool_call",
           payload: {"content" => "thinking", "tool_name" => "think",
                     "tool_input" => {"thoughts" => "Planning next step", "visibility" => "inner"}},
+          tool_use_id: "toolu_think2",
           timestamp: 1
         )
         decorator = EventDecorator.for(event)
@@ -52,6 +55,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
           event_type: "tool_call",
           payload: {"content" => "thinking aloud", "tool_name" => "think",
                     "tool_input" => {"thoughts" => "Checking the config first.", "visibility" => "aloud"}},
+          tool_use_id: "toolu_think3",
           timestamp: 1
         )
         decorator = EventDecorator.for(event)
@@ -81,6 +85,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_call",
         payload: {"content" => "running git status", "tool_name" => "bash", "tool_input" => {"command" => "git status"}},
+        tool_use_id: "toolu_verbose1",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -94,6 +99,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_call",
         payload: {"content" => "fetching", "tool_name" => "web_get", "tool_input" => {"url" => "https://example.com/api"}},
+        tool_use_id: "toolu_verbose2",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -108,6 +114,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
         event_type: "tool_call",
         payload: {"content" => "reading", "tool_name" => "read",
                   "tool_input" => {"file_path" => "/app/models/user.rb"}},
+        tool_use_id: "toolu_verbose3",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -122,6 +129,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
         event_type: "tool_call",
         payload: {"content" => "editing", "tool_name" => "edit",
                   "tool_input" => {"file_path" => "/app/models/user.rb", "changes" => "..."}},
+        tool_use_id: "toolu_verbose4",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -136,6 +144,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
         event_type: "tool_call",
         payload: {"content" => "writing", "tool_name" => "write",
                   "tool_input" => {"file_path" => "/tmp/output.txt", "content" => "data"}},
+        tool_use_id: "toolu_verbose5",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -149,6 +158,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_call",
         payload: {"content" => "calling custom", "tool_name" => "custom_tool", "tool_input" => {"key" => "value"}},
+        tool_use_id: "toolu_verbose6",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -163,6 +173,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_call",
         payload: {"content" => "calling", "tool_name" => "custom", "tool_input" => input},
+        tool_use_id: "toolu_verbose7",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -176,6 +187,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_call",
         payload: {"content" => "calling bash", "tool_name" => "bash", "tool_input" => nil},
+        tool_use_id: "toolu_verbose8",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -204,6 +216,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
           event_type: "tool_call",
           payload: {"content" => "thinking", "tool_name" => "think",
                     "tool_input" => {"thoughts" => "I should check the logs", "visibility" => "inner"}},
+          tool_use_id: "toolu_think_v1",
           timestamp: 1
         )
         decorator = EventDecorator.for(event)
@@ -218,6 +231,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
           event_type: "tool_call",
           payload: {"content" => "thinking", "tool_name" => "think",
                     "tool_input" => {"thoughts" => "Checking the logs now", "visibility" => "aloud"}},
+          tool_use_id: "toolu_think_v2",
           timestamp: 1
         )
         decorator = EventDecorator.for(event)
@@ -232,6 +246,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
           event_type: "tool_call",
           payload: {"content" => "thinking", "tool_name" => "think",
                     "tool_input" => {"thoughts" => "Planning"}},
+          tool_use_id: "toolu_think_v3",
           timestamp: 1
         )
         decorator = EventDecorator.for(event)
@@ -304,6 +319,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_call",
         payload: {"content" => "calling", "tool_name" => "bash", "tool_input" => nil},
+        tool_use_id: "toolu_debug_nil",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -417,6 +433,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
         event_type: "tool_call",
         payload: {"content" => "calling bash", "tool_name" => "bash",
                   "tool_input" => {"command" => "ls -la"}},
+        tool_use_id: "toolu_brain1",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -429,6 +446,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
         event_type: "tool_call",
         payload: {"content" => "thinking", "tool_name" => "think",
                   "tool_input" => {"thoughts" => "OAuth config is wrong, not individual tests."}},
+        tool_use_id: "toolu_brain2",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)
@@ -440,6 +458,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       event = session.events.create!(
         event_type: "tool_call",
         payload: {"content" => "calling", "tool_name" => "bash", "tool_input" => nil},
+        tool_use_id: "toolu_brain3",
         timestamp: 1
       )
       decorator = EventDecorator.for(event)

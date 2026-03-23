@@ -294,8 +294,8 @@ class Session < ApplicationRecord
   # @return [Integer] number of synthetic responses created
   def heal_orphaned_tool_calls!
     now_ns = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
-    responded_ids = events.where(event_type: "tool_response").where.not(tool_use_id: nil).select(:tool_use_id)
-    unresponded = events.where(event_type: "tool_call").where.not(tool_use_id: nil)
+    responded_ids = events.where(event_type: "tool_response").select(:tool_use_id)
+    unresponded = events.where(event_type: "tool_call")
       .where.not(tool_use_id: responded_ids)
 
     healed = 0

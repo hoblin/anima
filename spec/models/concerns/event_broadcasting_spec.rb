@@ -51,6 +51,7 @@ RSpec.describe Event::Broadcasting do
           event_type: "tool_call",
           payload: {"type" => "tool_call", "content" => "calling bash", "tool_name" => "bash",
                     "tool_input" => {}, "session_id" => session.id},
+          tool_use_id: "toolu_broadcast1",
           timestamp: 1
         )
       }.to have_broadcasted_to("session_#{session.id}")

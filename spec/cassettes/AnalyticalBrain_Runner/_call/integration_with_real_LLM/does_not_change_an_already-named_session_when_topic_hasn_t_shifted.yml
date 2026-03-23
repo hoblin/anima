@@ -12,213 +12,6 @@ http_interactions:
         task matches, rename the session if needed, then call everything_is_ready.\"}],\"max_tokens\":4096,\"tools\":[{\"name\":\"rename_session\",\"description\":\"Rename
         the conversation session. Use one emoji followed by 1-3 descriptive words.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"emoji\":{\"type\":\"string\",\"description\":\"A
         single emoji representing the conversation topic\"},\"name\":{\"type\":\"string\",\"description\":\"1-3
-        word descriptive name for the session\"}},\"required\":[\"emoji\",\"name\"]}},{\"name\":\"activate_skill\",\"description\":\"Activate
-        a domain knowledge skill on the main session. The skill's content will be
-        injected into the agent's system prompt.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"description\":\"Name
-        of the skill to activate (from the available skills list)\"}},\"required\":[\"name\"]}},{\"name\":\"deactivate_skill\",\"description\":\"Deactivate
-        a skill that is no longer relevant. The skill's content will be removed from
-        the agent's system prompt.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"description\":\"Name
-        of the skill to deactivate (from the currently active skills list)\"}},\"required\":[\"name\"]}},{\"name\":\"read_workflow\",\"description\":\"Read
-        a workflow's full content and activate it on the session. Use the content
-        to create appropriate goals with set_goal.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"description\":\"Name
-        of the workflow to read (from the available workflows list)\"}},\"required\":[\"name\"]}},{\"name\":\"deactivate_workflow\",\"description\":\"Deactivate
-        the current workflow when it is complete or no longer relevant.\",\"input_schema\":{\"type\":\"object\",\"properties\":{},\"required\":[]}},{\"name\":\"set_goal\",\"description\":\"Create
-        a goal on the main session. Omit parent_goal_id for a root goal, or provide
-        it to create a sub-goal (TODO item).\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\",\"description\":\"What
-        needs to be accomplished (1-2 sentences)\"},\"parent_goal_id\":{\"type\":\"integer\",\"description\":\"ID
-        of the parent goal (omit for root goals)\"}},\"required\":[\"description\"]}},{\"name\":\"update_goal\",\"description\":\"Update
-        a goal's description. Use this to refine a goal as understanding evolves.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"goal_id\":{\"type\":\"integer\",\"description\":\"ID
-        of the goal to update\"},\"description\":{\"type\":\"string\",\"description\":\"New
-        description for the goal (1-2 sentences)\"}},\"required\":[\"goal_id\",\"description\"]}},{\"name\":\"finish_goal\",\"description\":\"Mark
-        a goal as completed. Use this when the main agent has finished the work described
-        by the goal.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"goal_id\":{\"type\":\"integer\",\"description\":\"ID
-        of the goal to mark as completed\"}},\"required\":[\"goal_id\"]}},{\"name\":\"everything_is_ready\",\"description\":\"Signal
-        that no changes are needed. Call this when the session name and active skills
-        are already appropriate.\",\"input_schema\":{\"type\":\"object\",\"properties\":{},\"required\":[]}}],\"system\":[{\"type\":\"text\",\"text\":\"You
-        are Claude Code, Anthropic's official CLI for Claude.\"},{\"type\":\"text\",\"text\":\"You
-        are a background automation that manages session metadata.\\nYou MUST ONLY
-        communicate through tool calls — NEVER output text.\\nAlways finish by calling
-        everything_is_ready.\\n\\n──────────────────────────────\\nSESSION NAMING\\n──────────────────────────────\\nCall
-        rename_session when the topic becomes clear or shifts.\\nFormat: one emoji
-        + 1-3 descriptive words.\\n\\n──────────────────────────────\\nSKILL MANAGEMENT\\n──────────────────────────────\\nCall
-        activate_skill when the conversation matches a skill's description.\\nCall
-        deactivate_skill when the agent moves to a different domain.\\nMultiple skills
-        can be active at once.\\n\\n──────────────────────────────\\nWORKFLOW MANAGEMENT\\n──────────────────────────────\\nCall
-        read_workflow when the user starts a multi-step task matching a workflow description.\\nRead
-        the returned content and use judgment to create appropriate goals — not a
-        mechanical 1:1 mapping.\\nAdapt to context: skip irrelevant steps, add extra
-        steps for unfamiliar areas.\\nCall deactivate_workflow when the workflow completes
-        or the user shifts focus.\\nOnly one workflow can be active at a time — activating
-        a new one replaces the previous.\\n\\n──────────────────────────────\\nGOAL
-        TRACKING\\n──────────────────────────────\\nCall set_goal to create a root
-        goal when the user starts a multi-step task.\\nCall set_goal with parent_goal_id
-        to add sub-goals (TODO items) under it.\\nCall update_goal to refine a goal's
-        description as understanding evolves.\\nCall finish_goal when the main agent
-        completes work a goal describes.\\nFinishing a root goal cascades — all active
-        sub-goals are completed too.\\nNever duplicate an existing goal — check the
-        active goals list first.\\n\\n──────────────────────────────\\nCOMPLETION\\n──────────────────────────────\\nCall
-        everything_is_ready as your LAST tool call, every time.\\nIf nothing needs
-        changing, call it immediately as your only tool call.\\n\\n──────────────────────────────\\nCURRENT
-        STATE\\n──────────────────────────────\\nSession name: \U0001F527 Existing
-        Name\\nActive skills: None\\nActive workflow: None\\n\\n──────────────────────────────\\nAVAILABLE
-        SKILLS\\n──────────────────────────────\\n- activerecord — ActiveRecord patterns
-        — associations, validations, queries, migrations, eager loading. Activate
-        when working with models, migrations, database schema, N+1 queries, scopes,
-        includes/preload/eager_load, callbacks, or editing files in app/models/ or
-        db/migrate/.\\n- dragonruby — DragonRuby 2D game development — game loops,
-        sprites, input, collisions, scenes. Activate when building games with DragonRuby/DRGTK,
-        working with args.outputs/state/inputs, or editing game files.\\n- draper-decorators
-        — Draper decorator patterns for Rails views. Activate when creating or testing
-        decorators, moving formatting logic out of models/views, editing *_decorator.rb
-        files, or working in app/decorators/.\\n- gh-issue — GitHub issue writing
-        with WHAT/WHY/HOW framework. Activate when user creates issues, writes tickets,
-        drafts GitHub issues, or edits issue descriptions.\\n- mcp-server — MCP server
-        development in Ruby — tools, prompts, resources, transport. Activate when
-        building Model Context Protocol servers, defining tools/prompts/resources,
-        working with the mcp gem, or discussing LLM tool integrations.\\n- ratatui-ruby
-        — RatatuiRuby terminal UI development — widgets, layouts, events, Tea MVU.
-        Activate when building TUI apps, working with RatatuiRuby, terminal rendering,
-        or editing TUI application files.\\n- rspec — RSpec testing with FactoryBot
-        — matchers, test doubles, shared examples. Activate when writing specs, fixing
-        failing tests, working with describe/it/expect blocks, editing *_spec.rb files,
-        planning test strategy, or discussing unit/integration tests.\\n\\n──────────────────────────────\\nAVAILABLE
-        WORKFLOWS\\n──────────────────────────────\\n- commit — Create focused git
-        commits with user approval.\\n- create_handoff — Create handoff document for
-        transferring work context to another session.\\n- create_note — Capture findings
-        or context as a persistent note in the thoughts system.\\n- create_plan —
-        Create detailed implementation plans through interactive research and iteration.\\n-
-        decompose_ticket — Decompose a feature ticket into vertical slices — testable,
-        deliverable units ordered by dependency.\\n- feature — Implement a GitHub
-        issue end-to-end: branch, research, code, test, commit, PR, self-review.\\n-
-        implement_plan — Implement an approved technical plan phase by phase with
-        verification.\\n- iterate_plan — Iterate on existing implementation plans
-        with research and targeted updates.\\n- research_codebase — Comprehensive
-        codebase research by spawning parallel specialists and synthesizing findings.\\n-
-        resume_handoff — Resume work from a handoff document with context analysis
-        and validation.\\n- review_pr — Multi-agent PR review with three modes: review,
-        re-review, self-review.\\n- thoughts_init — Initialize the thoughts system
-        for the current repository.\\n- validate_plan — Validate implementation against
-        plan, verify success criteria, and identify issues.\\n\"}]}"
-    headers:
-      Authorization:
-      - "<AUTHORIZATION>"
-      Anthropic-Version:
-      - '2023-06-01'
-      Anthropic-Beta:
-      - oauth-2025-04-20
-      Content-Type:
-      - application/json
-      Accept-Encoding:
-      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
-      Accept:
-      - "*/*"
-      User-Agent:
-      - Ruby
-  response:
-    status:
-      code: 200
-      message: OK
-    headers:
-      Date:
-      - Thu, 19 Mar 2026 20:33:16 GMT
-      Content-Type:
-      - application/json
-      Transfer-Encoding:
-      - chunked
-      Connection:
-      - keep-alive
-      Anthropic-Ratelimit-Unified-Status:
-      - allowed_warning
-      Anthropic-Ratelimit-Unified-5h-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1773954000'
-      Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.2'
-      Anthropic-Ratelimit-Unified-7d-Status:
-      - allowed_warning
-      Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1773986400'
-      Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.93'
-      Anthropic-Ratelimit-Unified-7d-Surpassed-Threshold:
-      - '0.75'
-      Anthropic-Ratelimit-Unified-Representative-Claim:
-      - seven_day
-      Anthropic-Ratelimit-Unified-Fallback-Percentage:
-      - '0.5'
-      Anthropic-Ratelimit-Unified-Reset:
-      - '1773986400'
-      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
-      - org_level_disabled
-      Anthropic-Ratelimit-Unified-Overage-Status:
-      - rejected
-      Request-Id:
-      - "<REQUEST_ID>"
-      Strict-Transport-Security:
-      - max-age=31536000; includeSubDomains; preload
-      Anthropic-Organization-Id:
-      - "<ANTHROPIC_ORG_ID>"
-      Server:
-      - cloudflare
-      X-Envoy-Upstream-Service-Time:
-      - '2577'
-      Vary:
-      - Accept-Encoding
-      Server-Timing:
-      - proxy;dur=2578
-      Set-Cookie:
-      - "<CLOUDFLARE_COOKIE>"
-      X-Robots-Tag:
-      - none
-      Cf-Cache-Status:
-      - DYNAMIC
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
-      Cf-Ray:
-      - "<CF_RAY>"
-    body:
-      encoding: ASCII-8BIT
-      base64_string: |
-        eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMVZlY2VxRGFIR2NrVVRiczJESDVxYWsiLCJ0eXBlIjoibWVzc2FnZSIs
-        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
-        InRleHQiOiJJIGRvbid0IGhhdmUgZW5vdWdoIGNvbnRleHQgdG8gZGV0ZXJt
-        aW5lIHdoYXQgc3BlY2lmaWMgd29yayBpcyBiZWluZyBjb250aW51ZWQgb3Ig
-        d2hhdCBmaXggaXMgYmVpbmcgYWRkcmVzc2VkLiBUaGUgY29udmVyc2F0aW9u
-        IGZyYWdtZW50IFwiQ29udGludWUgd2l0aCB0aGUgZml4XCIgaXMgdG9vIHZh
-        Z3VlIHRvIGluZmVyOlxuXG4tIFdoYXQgZG9tYWluIG9yIHRlY2hub2xvZ3kg
-        aXMgaW52b2x2ZWRcbi0gV2hldGhlciBhIHdvcmtmbG93IHNob3VsZCBiZSBh
-        Y3RpdmF0ZWRcbi0gV2hhdCBnb2FscyBuZWVkIHRvIGJlIHNldCBvciB1cGRh
-        dGVkXG4tIFdoYXQgc2tpbGxzIGFyZSByZWxldmFudFxuXG5Db3VsZCB5b3Ug
-        cHJvdmlkZSBtb3JlIGRldGFpbHMgYWJvdXQ6XG4xLiAqKldoYXQgZml4IGlz
-        IGJlaW5nIHdvcmtlZCBvbj8qKiAoZS5nLiwgYSBidWcsIGZlYXR1cmUsIHRl
-        c3QgZmFpbHVyZSlcbjIuICoqV2hhdCB0ZWNobm9sb2d5L2RvbWFpbj8qKiAo
-        ZS5nLiwgUmFpbHMgbW9kZWxzLCBSU3BlYyB0ZXN0cywgZ2FtZSBkZXZlbG9w
-        bWVudClcbjMuICoqV2hhdCdzIHRoZSBjdXJyZW50IHN0YXRlIG9mIHByb2dy
-        ZXNzPyoqIChlLmcuLCBhcmUgdGhlcmUgZXhpc3RpbmcgZ29hbHMsIHdoYXQg
-        c3RlcCBhcmUgd2Ugb24pXG5cbk9uY2UgSSB1bmRlcnN0YW5kIHRoZSBjb250
-        ZXh0LCBJIGNhbiBwcm9wZXJseSBtYW5hZ2UgdGhlIHNlc3Npb24gbWV0YWRh
-        dGEuIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5j
-        ZSI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyNjE2LCJjYWNoZV9j
-        cmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9r
-        ZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRf
-        dG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0
-        cHV0X3Rva2VucyI6MTc1LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImlu
-        ZmVyZW5jZV9nZW8iOiJub3RfYXZhaWxhYmxlIn19
-  recorded_at: Thu, 19 Mar 2026 20:33:16 GMT
-- request:
-    method: post
-    uri: https://api.anthropic.com/v1/messages
-    body:
-      encoding: UTF-8
-      string: "{\"model\":\"claude-haiku-4-5\",\"messages\":[{\"role\":\"user\",\"content\":\"The
-        main session is working on this:\\n```\\nUser: Continue with the fix\\nAssistant:
-        Sure, continuing.\\n```\\n\\nObserve the conversation and take action: manage
-        goals, activate or deactivate relevant skills, read workflows when a multi-step
-        task matches, rename the session if needed, then call everything_is_ready.\"}],\"max_tokens\":4096,\"tools\":[{\"name\":\"rename_session\",\"description\":\"Rename
-        the conversation session. Use one emoji followed by 1-3 descriptive words.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"emoji\":{\"type\":\"string\",\"description\":\"A
-        single emoji representing the conversation topic\"},\"name\":{\"type\":\"string\",\"description\":\"1-3
         word descriptive name for the session\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Max
         execution seconds (default: 180). Increase for long-running operations.\"}},\"required\":[\"emoji\",\"name\"]}},{\"name\":\"activate_skill\",\"description\":\"Activate
         a domain knowledge skill on the main session. The skill's content will be
@@ -336,7 +129,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sun, 22 Mar 2026 09:39:16 GMT
+      - Mon, 23 Mar 2026 14:37:03 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -348,21 +141,21 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1774173600'
+      - '1774292400'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.13'
+      - '0.07'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1774591200'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.3'
+      - '0.48'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1774173600'
+      - '1774292400'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -376,49 +169,51 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1765'
+      - '2500'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=1866
-      Set-Cookie:
-      - "<CLOUDFLARE_COOKIE>"
-      X-Robots-Tag:
-      - none
+      - x-originResponse;dur=2503
       Cf-Cache-Status:
       - DYNAMIC
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
       Content-Security-Policy:
       - default-src 'none'; frame-ancestors 'none'
+      X-Robots-Tag:
+      - none
       Cf-Ray:
       - "<CF_RAY>"
     body:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMURtUThMUFlqZDlRb1E2cUo4bUxOYVUiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMVB3Z2lvclZlWFVnR2lDOENyamFyQnkiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
-        InRleHQiOiJJIGRvbid0IGhhdmUgZW5vdWdoIGNvbnRleHQgdG8gZGV0ZXJt
-        aW5lIHdoYXQgXCJ0aGUgZml4XCIgcmVmZXJzIHRvIG9yIHdoYXQgd29yayBp
-        cyBiZWluZyBjb250aW51ZWQuIFRoZSBjb252ZXJzYXRpb24gc25pcHBldCBk
-        b2Vzbid0IGluZGljYXRlOlxuXG4tIFdoYXQgc3BlY2lmaWMgaXNzdWUgb3Ig
-        YnVnIGlzIGJlaW5nIGZpeGVkXG4tIFdoYXQgZG9tYWluL3RlY2hub2xvZ3kg
-        aXMgaW52b2x2ZWRcbi0gV2hhdCBwcm9ncmVzcyBoYXMgYWxyZWFkeSBiZWVu
-        IG1hZGVcbi0gV2hhdCB0aGUgbmV4dCBzdGVwcyBzaG91bGQgYmVcblxuV2l0
-        aG91dCB0aGlzIGluZm9ybWF0aW9uLCBJIGNhbm5vdDpcbi0gUmVuYW1lIHRo
-        ZSBzZXNzaW9uIGFwcHJvcHJpYXRlbHlcbi0gQWN0aXZhdGUgdGhlIHJpZ2h0
-        IHNraWxsc1xuLSBDcmVhdGUgb3IgdXBkYXRlIGdvYWxzXG4tIFJlYWQgYSBy
-        ZWxldmFudCB3b3JrZmxvd1xuXG5Db3VsZCB5b3UgcHJvdmlkZSBtb3JlIGNv
-        bnRleHQgYWJvdXQ6XG4xLiBXaGF0IGlzIGJlaW5nIGZpeGVkIChzcGVjaWZp
-        YyBpc3N1ZSwgZmVhdHVyZSwgYnVnKT9cbjIuIFdoYXQgdGVjaG5vbG9neS9k
-        b21haW4gaXMgaW52b2x2ZWQ/XG4zLiBXaGF0IGhhcyBiZWVuIGRvbmUgc28g
-        ZmFyP1xuNC4gV2hhdCBhcmUgdGhlIG5leHQgc3RlcHM/XG5cbldpdGggdGhh
-        dCBpbmZvcm1hdGlvbiwgSSBjYW4gcHJvcGVybHkgc2V0IHVwIHRoZSBzZXNz
-        aW9uIG1hbmFnZW1lbnQuIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwi
-        c3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoy
-        ODkxLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3Jl
-        YWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVy
-        YWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9r
-        ZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MTY3LCJzZXJ2aWNlX3RpZXIiOiJz
-        dGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJub3RfYXZhaWxhYmxlIn19
-  recorded_at: Sun, 22 Mar 2026 09:39:16 GMT
+        InRleHQiOiJJIGNhbiBzZWUgdGhlIHNlc3Npb24gaXMgY29udGludWluZyB3
+        b3JrIG9uIGEgZml4LCBidXQgdGhlIGNvbnRleHQgaXMgbWluaW1hbC4gV2l0
+        aG91dCBtb3JlIGRldGFpbHMgYWJvdXQgd2hhdCB0aGUgZml4IGVudGFpbHMs
+        IEkgY2Fubm90IGRldGVybWluZTpcblxuMS4gV2hpY2ggc2tpbGxzIHNob3Vs
+        ZCBiZSBhY3RpdmUgKGNvdWxkIGJlIFJhaWxzLCB0ZXN0aW5nLCBnYW1lIGRl
+        dmVsb3BtZW50LCBUVUksIE1DUCwgZXRjLilcbjIuIFdoZXRoZXIgYSB3b3Jr
+        ZmxvdyBzaG91bGQgYmUgYWN0aXZhdGVkXG4zLiBXaGF0IGdvYWxzIG5lZWQg
+        dG8gYmUgY3JlYXRlZCBvciB1cGRhdGVkXG40LiBBbiBhcHByb3ByaWF0ZSBz
+        ZXNzaW9uIG5hbWVcblxuKipJIG5lZWQgbW9yZSBpbmZvcm1hdGlvbiB0byB0
+        YWtlIGFjdGlvbi4qKiBDb3VsZCB5b3UgY2xhcmlmeTpcblxuLSBXaGF0IGZp
+        eCBpcyBiZWluZyB3b3JrZWQgb24/IChlLmcuLCBidWcgaW4gYSBSYWlscyBt
+        b2RlbCwgZmFpbGluZyB0ZXN0LCBnYW1lIGNvbGxpc2lvbiBpc3N1ZSwgZXRj
+        Lilcbi0gV2hhdCBmaWxlcyBvciBkb21haW4gYXJlIGludm9sdmVkP1xuLSBX
+        aGF0J3MgdGhlIGN1cnJlbnQgcHJvZ3Jlc3Mgb3IgbmV4dCBzdGVwP1xuXG5P
+        bmNlIHlvdSBwcm92aWRlIHRoZXNlIGRldGFpbHMsIEkgY2FuIHByb3Blcmx5
+        IG1hbmFnZSB0aGUgc2Vzc2lvbiBtZXRhZGF0YSAocmVuYW1lIGl0LCBhY3Rp
+        dmF0ZSByZWxldmFudCBza2lsbHMsIGNyZWF0ZS91cGRhdGUgZ29hbHMsIG9y
+        IHJlYWQgYW4gYXBwcm9wcmlhdGUgd29ya2Zsb3cpLiJ9XSwic3RvcF9yZWFz
+        b24iOiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7
+        ImlucHV0X3Rva2VucyI6Mjg5MSwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9r
+        ZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3Jl
+        YXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1l
+        cmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjE4Niwi
+        c2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90
+        X2F2YWlsYWJsZSJ9fQ==
+  recorded_at: Mon, 23 Mar 2026 14:37:03 GMT
 recorded_with: VCR 6.4.0

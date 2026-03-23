@@ -19,6 +19,7 @@ RSpec.describe Tools::Remember do
     sess.events.create!(
       event_type: type,
       payload: payload,
+      tool_use_id: payload["tool_use_id"],
       timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
     )
   end
@@ -82,6 +83,7 @@ RSpec.describe Tools::Remember do
       session.events.create!(
         event_type: "tool_response",
         payload: {"content" => "file1.rb\nfile2.rb", "tool_use_id" => tc.payload["tool_use_id"]},
+        tool_use_id: tc.tool_use_id,
         timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
       )
       target = create_event(session, type: "user_message", content: "Next step")

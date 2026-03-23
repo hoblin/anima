@@ -40,7 +40,7 @@ module Skills
     # @return [self]
     def load_all
       load_directory(BUILTIN_DIR)
-      load_directory(USER_DIR)
+      load_directory(USER_DIR) unless Rails.env.test?
       self
     end
 

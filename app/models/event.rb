@@ -14,7 +14,9 @@
 # @!attribute token_count
 #   @return [Integer] cached token count for this event's payload (0 until counted)
 # @!attribute tool_use_id
-#   @return [String, nil] Anthropic-assigned ID correlating tool_call and tool_response
+#   @return [String] ID correlating tool_call and tool_response events
+#     (Anthropic-assigned, or a SecureRandom.uuid fallback when the API returns nil;
+#     required for tool_call and tool_response events)
 class Event < ApplicationRecord
   include Event::Broadcasting
 
@@ -25,6 +27,9 @@ class Event < ApplicationRecord
   THINK_TOOL = "think"
   SPAWN_TOOLS = %w[spawn_subagent spawn_specialist].freeze
   PENDING_STATUS = "pending"
+
+  # Event types that require a tool_use_id to pair call with response.
+  TOOL_TYPES = %w[tool_call tool_response].freeze
 
   ROLE_MAP = {"user_message" => "user", "agent_message" => "assistant"}.freeze
 
@@ -37,6 +42,8 @@ class Event < ApplicationRecord
   validates :event_type, presence: true, inclusion: {in: TYPES}
   validates :payload, presence: true
   validates :timestamp, presence: true
+  # Anthropic requires every tool_use to have a matching tool_result with the same ID
+  validates :tool_use_id, presence: true, if: -> { event_type.in?(TOOL_TYPES) }
 
   after_create :schedule_token_count, if: :llm_message?
 
@@ -69,7 +76,7 @@ class Event < ApplicationRecord
   #   @return [ActiveRecord::Relation]
   scope :excluding_spawn_events, -> {
     where.not("event_type IN (?) AND json_extract(payload, '$.tool_name') IN (?)",
-      %w[tool_call tool_response], SPAWN_TOOLS)
+      TOOL_TYPES, SPAWN_TOOLS)
   }
 
   # Maps event_type to the Anthropic Messages API role.
@@ -106,7 +113,7 @@ class Event < ApplicationRecord
   #
   # @return [Integer] estimated token count (at least 1)
   def estimate_tokens
-    text = if event_type.in?(%w[tool_call tool_response])
+    text = if event_type.in?(TOOL_TYPES)
       payload.to_json
     else
       payload["content"].to_s
