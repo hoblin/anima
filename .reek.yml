@@ -80,6 +80,10 @@ detectors:
   TooManyConstants:
     exclude:
       - "EventDecorator"
+  # encode_utf8 is descriptive — the digit triggers a false positive.
+  UncommunicativeMethodName:
+    exclude:
+      - "ToolDecorator#self.encode_utf8"
   # Abstract base class methods declare parameters for the subclass contract.
   UnusedParameters:
     exclude:

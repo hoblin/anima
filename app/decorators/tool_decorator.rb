@@ -41,10 +41,8 @@ class ToolDecorator
     sanitize_for_llm(result)
   end
 
-  # Ensures a tool result string is safe for LLM consumption:
-  #   1. Force-encode to UTF-8, replacing invalid/undefined bytes with U+FFFD
-  #   2. Strip ANSI escape codes (CSI, OSC, and single-character escapes)
-  #   3. Strip C0 control characters except newline and tab
+  # Ensures a tool result string is safe for LLM consumption by
+  # composing {encode_utf8}, {strip_ansi}, and {strip_control_chars}.
   #
   # Non-string results pass through unchanged.
   #
@@ -53,16 +51,44 @@ class ToolDecorator
   def self.sanitize_for_llm(result)
     return result unless result.is_a?(String)
 
-    # ANSI escape codes: CSI (colors, cursor, DEC private modes),
-    # OSC (terminal title), charset designation, single-char commands
-    ansi = /\e\[[?>=<0-9;]*[A-Za-z]|\e\][^\a\e]*(?:\a|\e\\)|\e[()][0-9A-Za-z]|\e[>=<78NOMDEHcn]/
-
-    result
-      .encode("UTF-8", invalid: :replace, undef: :replace, replace: "\uFFFD")
-      .gsub(ansi, "")
-      .gsub(/[\x00-\x08\x0B-\x0D\x0E-\x1F\x7F]/, "")
+    strip_control_chars(strip_ansi(encode_utf8(result)))
   end
   private_class_method :sanitize_for_llm
+
+  # Force-encodes a string to UTF-8, replacing invalid or undefined
+  # bytes with the Unicode replacement character (U+FFFD).
+  #
+  # @param str [String] input in any encoding (commonly ASCII-8BIT from PTY)
+  # @return [String] valid UTF-8 string
+  def self.encode_utf8(str)
+    str.encode("UTF-8", invalid: :replace, undef: :replace, replace: "\uFFFD")
+  end
+  private_class_method :encode_utf8
+
+  # CSI (colors, cursor, DEC private modes), OSC (terminal title),
+  # charset designation, single-char commands
+  ANSI_ESCAPE = /\e\[[?>=<0-9;]*[A-Za-z]|\e\][^\a\e]*(?:\a|\e\\)|\e[()][0-9A-Za-z]|\e[>=<78NOMDEHcn]/
+  private_constant :ANSI_ESCAPE
+
+  # Strips ANSI escape sequences that are meaningless noise to an LLM
+  # but can dominate terminal output payloads.
+  #
+  # @param str [String] UTF-8 string possibly containing escape codes
+  # @return [String] cleaned string
+  def self.strip_ansi(str)
+    str.gsub(ANSI_ESCAPE, "")
+  end
+  private_class_method :strip_ansi
+
+  # Strips C0 control characters (NUL, BEL, BS, CR, etc.) that carry
+  # no meaning for an LLM. Preserves newline (\n) and tab (\t).
+  #
+  # @param str [String] UTF-8 string possibly containing control chars
+  # @return [String] cleaned string
+  def self.strip_control_chars(str)
+    str.gsub(/[\x00-\x08\x0B-\x0D\x0E-\x1F\x7F]/, "")
+  end
+  private_class_method :strip_control_chars
 
   # Subclasses override to transform the raw tool result.
   #
