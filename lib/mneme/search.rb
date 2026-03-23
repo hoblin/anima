@@ -21,7 +21,7 @@ module Mneme
     # @!attribute session_id [Integer] the session owning this event
     # @!attribute snippet [String] highlighted excerpt from the matching content
     # @!attribute rank [Float] FTS5 relevance score (lower = more relevant)
-    # @!attribute event_type [String] one of Event::TYPES
+    # @!attribute event_type [String] friendly label: human, anima, system, or thought
     Result = Struct.new(:event_id, :session_id, :snippet, :rank, :event_type, keyword_init: true)
 
     # Searches event history for the given terms.
@@ -110,17 +110,25 @@ module Mneme
       SQL
     end
 
+    FRIENDLY_EVENT_TYPES = {
+      "user_message" => "human",
+      "agent_message" => "anima",
+      "system_message" => "system",
+      "tool_call" => "thought"
+    }.freeze
+
     # Builds a Result from a raw database row.
     #
     # @param row [Hash]
     # @return [Result]
     def build_result(row)
+      raw_type = row["event_type"]
       Result.new(
         event_id: row["event_id"],
         session_id: row["session_id"],
         snippet: row["snippet"],
         rank: row["rank"],
-        event_type: row["event_type"]
+        event_type: FRIENDLY_EVENT_TYPES.fetch(raw_type, raw_type)
       )
     end
 

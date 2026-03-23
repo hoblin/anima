@@ -38,7 +38,7 @@ RSpec.describe Mneme::Search do
       expect(results.size).to eq(1)
       expect(results.first.event_id).to eq(event.id)
       expect(results.first.session_id).to eq(session.id)
-      expect(results.first.event_type).to eq("user_message")
+      expect(results.first.event_type).to eq("human")
     end
 
     it "finds agent messages by keyword" do
@@ -48,6 +48,7 @@ RSpec.describe Mneme::Search do
 
       expect(results.size).to eq(1)
       expect(results.first.event_id).to eq(event.id)
+      expect(results.first.event_type).to eq("anima")
     end
 
     it "finds think events by keyword" do
@@ -58,6 +59,7 @@ RSpec.describe Mneme::Search do
 
       expect(results.size).to eq(1)
       expect(results.first.event_id).to eq(event.id)
+      expect(results.first.event_type).to eq("thought")
     end
 
     it "finds system messages by keyword" do
@@ -67,7 +69,7 @@ RSpec.describe Mneme::Search do
 
       expect(results.size).to eq(1)
       expect(results.first.event_id).to eq(event.id)
-      expect(results.first.event_type).to eq("system_message")
+      expect(results.first.event_type).to eq("system")
     end
 
     it "does not index non-think tool_call events" do
