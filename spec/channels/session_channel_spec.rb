@@ -329,7 +329,8 @@ RSpec.describe SessionChannel, type: :channel do
 
         user_event = emitted.find { |e| e.dig(:payload, :type) == "user_message" }
         expect(user_event.dig(:payload, :status)).to eq("pending")
-
+        expect(user_event.dig(:payload, :session_id)).to eq(session.id)
+      ensure
         Events::Bus.unsubscribe(subscriber)
       end
 

@@ -321,7 +321,6 @@ class Session < ApplicationRecord
     healed
   end
 
-  # Creates a user message event record directly (bypasses EventBus+Persister).
   # Delivers a user message respecting the session's processing state.
   #
   # When idle, persists the event directly and enqueues {AgentRequestJob}

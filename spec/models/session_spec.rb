@@ -1844,6 +1844,7 @@ RSpec.describe Session do
         user_event = emitted.find { |e| e.dig(:payload, :type) == "user_message" }
         expect(user_event).to be_present
         expect(user_event.dig(:payload, :status)).to eq(Event::PENDING_STATUS)
+        expect(user_event.dig(:payload, :session_id)).to eq(session.id)
         expect(user_event.dig(:payload, :content)).to eq("hello")
       ensure
         Events::Bus.unsubscribe(subscriber)

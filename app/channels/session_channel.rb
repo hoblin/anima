@@ -51,6 +51,7 @@ class SessionChannel < ApplicationCable::Channel
   # until the current agent loop completes.
   #
   # @param data [Hash] must include "content" with the user's message text
+  # @see Session#enqueue_user_message
   def speak(data)
     content = data["content"].to_s.strip
     return if content.empty?
