@@ -319,8 +319,11 @@ RSpec.describe LLM::Client do
         expect(result).to be_present
         tool_response = events.find { |e| e[:payload][:type] == "tool_response" }
         expect(tool_response).to be_present
+        expect(tool_response[:payload][:tool_name]).to eq("web_get")
+        expect(tool_response[:payload][:tool_use_id]).to be_present
         expect(tool_response[:payload][:success]).to be false
         expect(tool_response[:payload][:content]).to include("Encoding::CompatibilityError")
+        expect(tool_response[:payload][:content]).to include("incompatible character encodings")
       ensure
         Events::Bus.unsubscribe(subscriber)
       end

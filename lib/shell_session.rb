@@ -395,7 +395,6 @@ class ShellSession
     return output if output.bytesize <= max_bytes
 
     output.byteslice(0, max_bytes)
-      .force_encoding("UTF-8")
       .scrub +
       "\n\n[Truncated: output exceeded #{max_bytes} bytes]"
   end

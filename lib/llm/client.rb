@@ -208,6 +208,8 @@ module LLM
       Rails.logger.error("Tool #{name} raised #{error_detail}")
       error_content = format_tool_result(error: error_detail)
 
+      # Emission can fail (e.g. encoding errors in ActionCable/SQLite),
+      # but losing the tool_result would permanently corrupt the session.
       begin
         Events::Bus.emit(Events::ToolResponse.new(
           content: error_content, tool_name: name, tool_use_id: id,
