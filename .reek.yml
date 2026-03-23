@@ -39,6 +39,10 @@ detectors:
       - "Tools::SubagentPrompts#assign_nickname_via_brain"
       # Validation methods naturally reference the validated value more than self.
       - "AnalyticalBrain::Tools::AssignNickname#validate"
+      # Tool execute methods naturally reference input hash and shell result hash.
+      - "Tools::Bash#execute"
+      - "Tools::Bash#execute_single"
+      - "Tools::Bash#execute_batch"
       # Delivery method orchestrates session, event, and agent_loop — inherent.
       - "AgentRequestJob#deliver_persisted_event"
   # Private helpers don't need instance state to be valid.
