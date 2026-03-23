@@ -329,6 +329,46 @@ RSpec.describe LLM::Client do
       end
     end
 
+    context "when Anthropic returns nil tool_use id" do
+      it "generates a fallback UUID for execute_single_tool" do
+        events = []
+        subscriber = spy("sub")
+        allow(subscriber).to receive(:emit) { |e| events << e }
+        Events::Bus.subscribe(subscriber)
+
+        tool_use = {"name" => "web_get", "id" => nil, "input" => {"url" => "https://example.com"}}
+        result = client.send(:execute_single_tool, tool_use, registry, session.id)
+
+        expect(result[:tool_use_id]).to match(/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/)
+
+        tool_call = events.find { |e| e[:payload][:type] == "tool_call" }
+        tool_response = events.find { |e| e[:payload][:type] == "tool_response" }
+        expect(tool_call[:payload][:tool_use_id]).to eq(result[:tool_use_id])
+        expect(tool_response[:payload][:tool_use_id]).to eq(result[:tool_use_id])
+      ensure
+        Events::Bus.unsubscribe(subscriber)
+      end
+
+      it "generates a fallback UUID for interrupt_tool" do
+        events = []
+        subscriber = spy("sub")
+        allow(subscriber).to receive(:emit) { |e| events << e }
+        Events::Bus.subscribe(subscriber)
+
+        tool_use = {"name" => "web_get", "id" => nil, "input" => {}}
+        result = client.send(:interrupt_tool, tool_use, session.id)
+
+        expect(result[:tool_use_id]).to match(/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/)
+
+        tool_call = events.find { |e| e[:payload][:type] == "tool_call" }
+        tool_response = events.find { |e| e[:payload][:type] == "tool_response" }
+        expect(tool_call[:payload][:tool_use_id]).to eq(result[:tool_use_id])
+        expect(tool_response[:payload][:tool_use_id]).to eq(result[:tool_use_id])
+      ensure
+        Events::Bus.unsubscribe(subscriber)
+      end
+    end
+
     context "when the tool loop exceeds max_tool_rounds" do
       it "halts and returns an error message" do
         VCR.use_cassette("llm_client/tool_loop_forever",
