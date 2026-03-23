@@ -161,3 +161,9 @@ budget_fraction = 0.05
 
 # Maximum tokens per individual recall snippet.
 max_snippet_tokens = 512
+
+# Recency decay factor for search ranking. Blends FTS5 relevance with event
+# age so recent memories win ties. 0.0 = pure relevance, higher = stronger
+# recency bias. At 0.3 a one-year-old result needs ~30% better keyword
+# relevance to beat an identical match from today.
+recency_decay = 0.3

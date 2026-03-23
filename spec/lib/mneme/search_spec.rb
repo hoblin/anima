@@ -38,7 +38,7 @@ RSpec.describe Mneme::Search do
       expect(results.size).to eq(1)
       expect(results.first.event_id).to eq(event.id)
       expect(results.first.session_id).to eq(session.id)
-      expect(results.first.event_type).to eq("user_message")
+      expect(results.first.event_type).to eq("human")
     end
 
     it "finds agent messages by keyword" do
@@ -48,6 +48,7 @@ RSpec.describe Mneme::Search do
 
       expect(results.size).to eq(1)
       expect(results.first.event_id).to eq(event.id)
+      expect(results.first.event_type).to eq("anima")
     end
 
     it "finds think events by keyword" do
@@ -58,6 +59,7 @@ RSpec.describe Mneme::Search do
 
       expect(results.size).to eq(1)
       expect(results.first.event_id).to eq(event.id)
+      expect(results.first.event_type).to eq("thought")
     end
 
     it "finds system messages by keyword" do
@@ -67,7 +69,7 @@ RSpec.describe Mneme::Search do
 
       expect(results.size).to eq(1)
       expect(results.first.event_id).to eq(event.id)
-      expect(results.first.event_type).to eq("system_message")
+      expect(results.first.event_type).to eq("system")
     end
 
     it "does not index non-think tool_call events" do
@@ -136,6 +138,38 @@ RSpec.describe Mneme::Search do
       results = described_class.query('"full text search"')
 
       expect(results.size).to eq(1)
+    end
+
+    it "ranks recent events higher than older ones with equal relevance" do
+      old_event = create_event(session, type: "user_message", content: "Deploy the Ruby application.")
+      old_event.update_column(:created_at, 1.year.ago)
+      new_event = create_event(session, type: "user_message", content: "Deploy the Ruby application.")
+
+      results = described_class.query("Ruby")
+
+      expect(results.first.event_id).to eq(new_event.id)
+    end
+
+    # Regression: #289 — common words like "bash" were interpolated as column
+    # references instead of string values when bind params were passed as a
+    # raw array to select_all.
+    it "handles terms that resemble SQL column names" do
+      event = create_event(session, type: "user_message", content: "Learn bash scripting basics.")
+
+      results = described_class.query("bash")
+
+      expect(results.size).to eq(1)
+      expect(results.first.event_id).to eq(event.id)
+    end
+
+    it "handles terms that resemble SQL column names with session scope" do
+      event = create_event(session, type: "user_message", content: "Learn bash scripting basics.")
+      create_event(other_session, type: "user_message", content: "More bash tips here.")
+
+      results = described_class.query("bash", session_id: session.id)
+
+      expect(results.size).to eq(1)
+      expect(results.first.event_id).to eq(event.id)
     end
   end
 end

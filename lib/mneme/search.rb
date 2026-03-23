@@ -21,7 +21,7 @@ module Mneme
     # @!attribute session_id [Integer] the session owning this event
     # @!attribute snippet [String] highlighted excerpt from the matching content
     # @!attribute rank [Float] FTS5 relevance score (lower = more relevant)
-    # @!attribute event_type [String] one of Event::TYPES
+    # @!attribute event_type [String] friendly label: human, anima, system, or thought
     Result = Struct.new(:event_id, :session_id, :snippet, :rank, :event_type, keyword_init: true)
 
     # Searches event history for the given terms.
@@ -38,6 +38,7 @@ module Mneme
       @terms = sanitize_query(terms)
       @session_id = session_id
       @limit = limit
+      @recency_decay = Anima::Settings.recall_recency_decay
     end
 
     # @return [Array<Result>] ranked by relevance (best first)
@@ -55,15 +56,23 @@ module Mneme
     #
     # @return [Array<Hash>] raw database rows
     def execute_fts_query
-      if @session_id
-        connection.select_all(scoped_sql, "Mneme::Search", [@terms, @session_id, @limit]).to_a
+      sql = if @session_id
+        Arel.sql(scoped_sql, @recency_decay, @terms, @session_id, @limit)
       else
-        connection.select_all(global_sql, "Mneme::Search", [@terms, @limit]).to_a
+        Arel.sql(global_sql, @recency_decay, @terms, @limit)
       end
+
+      connection.select_all(sql, "Mneme::Search").to_a
     end
 
     # FTS5 query across all sessions.
     # Contentless FTS5 can't use snippet() — extract content from events directly.
+    #
+    # Ranking blends BM25 relevance with recency: rank is negative (more
+    # negative = better match), so dividing by a factor > 1 for older events
+    # moves them closer to zero (less relevant). At decay 0.3, a one-year-old
+    # result needs ~30% better keyword relevance to beat an identical match
+    # from today.
     def global_sql
       <<~SQL
         SELECT
@@ -76,7 +85,7 @@ module Mneme
             WHEN e.event_type = 'tool_call'
               THEN substr(json_extract(e.payload, '$.tool_input.thoughts'), 1, 300)
           END AS snippet,
-          rank
+          rank / (1.0 + ? * (julianday('now') - julianday(e.created_at)) / 365.0) AS rank
         FROM events_fts
         JOIN events e ON e.id = events_fts.rowid
         WHERE events_fts MATCH ?
@@ -98,7 +107,7 @@ module Mneme
             WHEN e.event_type = 'tool_call'
               THEN substr(json_extract(e.payload, '$.tool_input.thoughts'), 1, 300)
           END AS snippet,
-          rank
+          rank / (1.0 + ? * (julianday('now') - julianday(e.created_at)) / 365.0) AS rank
         FROM events_fts
         JOIN events e ON e.id = events_fts.rowid
         WHERE events_fts MATCH ?
@@ -108,17 +117,25 @@ module Mneme
       SQL
     end
 
+    FRIENDLY_EVENT_TYPES = {
+      "user_message" => "human",
+      "agent_message" => "anima",
+      "system_message" => "system",
+      "tool_call" => "thought"
+    }.freeze
+
     # Builds a Result from a raw database row.
     #
     # @param row [Hash]
     # @return [Result]
     def build_result(row)
+      raw_type = row["event_type"]
       Result.new(
         event_id: row["event_id"],
         session_id: row["session_id"],
         snippet: row["snippet"],
         rank: row["rank"],
-        event_type: row["event_type"]
+        event_type: FRIENDLY_EVENT_TYPES.fetch(raw_type, raw_type)
       )
     end
 
