@@ -38,6 +38,7 @@ module Mneme
       @terms = sanitize_query(terms)
       @session_id = session_id
       @limit = limit
+      @recency_decay = Anima::Settings.recall_recency_decay
     end
 
     # @return [Array<Result>] ranked by relevance (best first)
@@ -56,9 +57,9 @@ module Mneme
     # @return [Array<Hash>] raw database rows
     def execute_fts_query
       sql = if @session_id
-        Arel.sql(scoped_sql, @terms, @session_id, @limit)
+        Arel.sql(scoped_sql, @recency_decay, @terms, @session_id, @limit)
       else
-        Arel.sql(global_sql, @terms, @limit)
+        Arel.sql(global_sql, @recency_decay, @terms, @limit)
       end
 
       connection.select_all(sql, "Mneme::Search").to_a
@@ -66,6 +67,12 @@ module Mneme
 
     # FTS5 query across all sessions.
     # Contentless FTS5 can't use snippet() — extract content from events directly.
+    #
+    # Ranking blends BM25 relevance with recency: rank is negative (more
+    # negative = better match), so dividing by a factor > 1 for older events
+    # moves them closer to zero (less relevant). At decay 0.3, a one-year-old
+    # result needs ~30% better keyword relevance to beat an identical match
+    # from today.
     def global_sql
       <<~SQL
         SELECT
@@ -78,7 +85,7 @@ module Mneme
             WHEN e.event_type = 'tool_call'
               THEN substr(json_extract(e.payload, '$.tool_input.thoughts'), 1, 300)
           END AS snippet,
-          rank
+          rank / (1.0 + ? * (julianday('now') - julianday(e.created_at)) / 365.0) AS rank
         FROM events_fts
         JOIN events e ON e.id = events_fts.rowid
         WHERE events_fts MATCH ?
@@ -100,7 +107,7 @@ module Mneme
             WHEN e.event_type = 'tool_call'
               THEN substr(json_extract(e.payload, '$.tool_input.thoughts'), 1, 300)
           END AS snippet,
-          rank
+          rank / (1.0 + ? * (julianday('now') - julianday(e.created_at)) / 365.0) AS rank
         FROM events_fts
         JOIN events e ON e.id = events_fts.rowid
         WHERE events_fts MATCH ?

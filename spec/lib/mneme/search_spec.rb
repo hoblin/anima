@@ -140,6 +140,16 @@ RSpec.describe Mneme::Search do
       expect(results.size).to eq(1)
     end
 
+    it "ranks recent events higher than older ones with equal relevance" do
+      old_event = create_event(session, type: "user_message", content: "Deploy the Ruby application.")
+      old_event.update_column(:created_at, 1.year.ago)
+      new_event = create_event(session, type: "user_message", content: "Deploy the Ruby application.")
+
+      results = described_class.query("Ruby")
+
+      expect(results.first.event_id).to eq(new_event.id)
+    end
+
     # Regression: #289 — common words like "bash" were interpolated as column
     # references instead of string values when bind params were passed as a
     # raw array to select_all.

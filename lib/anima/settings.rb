@@ -236,6 +236,10 @@ module Anima
       # @return [Integer]
       def recall_max_snippet_tokens = get("recall", "max_snippet_tokens")
 
+      # Recency decay factor for search ranking (0.0 = pure relevance).
+      # @return [Float]
+      def recall_recency_decay = get("recall", "recency_decay")
+
       private
 
       # Reads a setting from the config file.
