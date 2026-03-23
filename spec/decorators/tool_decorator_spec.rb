@@ -92,6 +92,13 @@ RSpec.describe ToolDecorator do
         expect(result).to eq("Content")
       end
 
+      it "strips DEC private mode sequences (show/hide cursor)" do
+        ansi = "\e[?25lhidden cursor\e[?25h"
+        result = described_class.call("bash", ansi)
+
+        expect(result).to eq("hidden cursor")
+      end
+
       it "handles gh issue view output with heavy ANSI formatting" do
         gh_output = "\e[1;34m#42\e[0m \e[1mFix the bug\e[0m\n\e[32mOpen\e[0m · 3 comments"
         result = described_class.call("bash", gh_output)
@@ -129,6 +136,16 @@ RSpec.describe ToolDecorator do
       it "strips DEL character" do
         result = described_class.call("bash", "text\x7Fmore")
         expect(result).to eq("textmore")
+      end
+
+      it "strips carriage return characters" do
+        result = described_class.call("bash", "line1\rline2")
+        expect(result).to eq("line1line2")
+      end
+
+      it "normalizes CRLF to LF" do
+        result = described_class.call("bash", "line1\r\nline2\r\n")
+        expect(result).to eq("line1\nline2\n")
       end
     end
 

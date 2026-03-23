@@ -53,10 +53,14 @@ class ToolDecorator
   def self.sanitize_for_llm(result)
     return result unless result.is_a?(String)
 
+    # ANSI escape codes: CSI (colors, cursor, DEC private modes),
+    # OSC (terminal title), charset designation, single-char commands
+    ansi = /\e\[[?>=<0-9;]*[A-Za-z]|\e\][^\a\e]*(?:\a|\e\\)|\e[()][0-9A-Za-z]|\e[>=<78NOMDEHcn]/
+
     result
       .encode("UTF-8", invalid: :replace, undef: :replace, replace: "\uFFFD")
-      .gsub(/\e\[[0-9;]*[A-Za-z]|\e\][^\a\e]*(?:\a|\e\\)|\e[()][0-9A-Za-z]|\e[>=<78NOMDEHcn]/, "")
-      .gsub(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/, "")
+      .gsub(ansi, "")
+      .gsub(/[\x00-\x08\x0B-\x0D\x0E-\x1F\x7F]/, "")
   end
   private_class_method :sanitize_for_llm
 
