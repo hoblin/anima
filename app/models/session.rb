@@ -322,7 +322,35 @@ class Session < ApplicationRecord
   end
 
   # Creates a user message event record directly (bypasses EventBus+Persister).
-  # Used by {SessionChannel#speak} (immediate display), {AgentLoop#process},
+  # Delivers a user message respecting the session's processing state.
+  #
+  # When idle, persists the event directly and enqueues {AgentRequestJob}
+  # to process it. When mid-turn ({#processing?}), emits a pending
+  # {Events::UserMessage} via {Events::Bus} so it queues until the
+  # current agent loop completes — preventing interleaving between
+  # tool_use/tool_result pairs.
+  #
+  # @param content [String] user message text
+  # @param bounce_back [Boolean] when true, passes +event_id+ to the job
+  #   so failed LLM delivery triggers a {Events::BounceBack} (used by
+  #   {SessionChannel#speak} for immediate-display messages)
+  # @return [void]
+  def enqueue_user_message(content, bounce_back: false)
+    if processing?
+      Events::Bus.emit(Events::UserMessage.new(
+        content: content, session_id: id,
+        status: Event::PENDING_STATUS
+      ))
+    else
+      event = create_user_event(content)
+      job_args = bounce_back ? {event_id: event.id} : {}
+      AgentRequestJob.perform_later(id, **job_args)
+    end
+  end
+
+  # Persists a user message event directly, bypassing the pending queue.
+  #
+  # Used by {#enqueue_user_message} (idle path), {AgentLoop#process},
   # and sub-agent spawn tools ({Tools::SpawnSubagent}, {Tools::SpawnSpecialist})
   # because the global {Events::Subscribers::Persister} skips non-pending user
   # messages — these callers own the persistence lifecycle.

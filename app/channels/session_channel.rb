@@ -58,12 +58,7 @@ class SessionChannel < ApplicationCable::Channel
     session = Session.find_by(id: @current_session_id)
     return unless session
 
-    if session.processing?
-      Events::Bus.emit(Events::UserMessage.new(content: content, session_id: @current_session_id, status: Event::PENDING_STATUS))
-    else
-      event = session.create_user_event(content)
-      AgentRequestJob.perform_later(session.id, event_id: event.id)
-    end
+    session.enqueue_user_message(content, bounce_back: true)
   end
 
   # Recalls the most recent pending message for editing. Deletes the

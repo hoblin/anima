@@ -16,10 +16,9 @@ module Events
     # containing `@name` mentions, the router persists the message in each
     # matching child session and wakes them via {AgentRequestJob}.
     #
-    # Parent → child uses direct persistence + job enqueue (same pattern as
-    # {Tools::SpawnSubagent#spawn_child}). Child → parent uses the same
-    # pattern when the parent is idle, but defers via pending queue when
-    # the parent is mid-turn to avoid breaking tool_use/tool_result pairs.
+    # Both directions delegate to {Session#enqueue_user_message}, which
+    # respects the target session's processing state — persisting directly
+    # when idle, deferring via pending queue when mid-turn.
     #
     # This replaces the +return_result+ tool — sub-agents communicate
     # through natural text messages instead of structured tool calls.
@@ -64,15 +63,8 @@ module Events
 
       private
 
-      # Forwards a sub-agent's text message to its parent session.
-      #
-      # When the parent is idle, persists directly and enqueues a job so
-      # the parent agent wakes up to process the message.
-      #
-      # When the parent is mid-turn ({Session#processing?}), emits a
-      # pending {Events::UserMessage} instead. The pending event is
-      # promoted after the current agent loop completes, preventing
-      # interleaving between tool_use/tool_result pairs.
+      # Forwards a sub-agent's text message to its parent session
+      # via {Session#enqueue_user_message}.
       #
       # @param child [Session] the sub-agent session
       # @param content [String] the sub-agent's message text
@@ -82,17 +74,8 @@ module Events
 
         name = child.name || "agent-#{child.id}"
         attributed = format(ATTRIBUTION_FORMAT, name, content)
-        parent_id = parent.id
 
-        if parent.processing?
-          Events::Bus.emit(Events::UserMessage.new(
-            content: attributed, session_id: parent_id,
-            status: Event::PENDING_STATUS
-          ))
-        else
-          parent.create_user_event(attributed)
-          AgentRequestJob.perform_later(parent_id)
-        end
+        parent.enqueue_user_message(attributed)
       end
 
       # Scans a parent agent's message for @mentions and routes the message
@@ -111,8 +94,7 @@ module Events
           child = active_children[name]
           next unless child
 
-          child.create_user_event(content)
-          AgentRequestJob.perform_later(child.id)
+          child.enqueue_user_message(content)
         end
       end
     end
