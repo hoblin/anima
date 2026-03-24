@@ -1,6 +1,6 @@
 ---
 name: thoughts-analyzer
-description: Searches thoughts/ — the project's design decisions, architecture notes, and rationale. Answers why and how things should work by design.
+description: "thoughts/ holds design decisions, architecture notes, and implementation rationale. Answers WHY things work the way they do and how they should work by design."
 tools: read, bash
 ---
 
