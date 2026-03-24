@@ -33,14 +33,14 @@ RSpec.describe Tools::Remember do
       schema = described_class.schema
 
       expect(schema[:name]).to eq("remember")
-      expect(schema[:description]).to include("fractal")
-      expect(schema[:input_schema][:required]).to include("event_id")
+      expect(schema[:description]).to include("conversation")
+      expect(schema[:input_schema][:required]).to include("message_id")
     end
   end
 
   describe "#execute" do
     it "returns error for nonexistent event" do
-      result = tool.execute("event_id" => 999999)
+      result = tool.execute("message_id" => 999999)
 
       expect(result).to be_a(Hash)
       expect(result[:error]).to include("not found")
@@ -50,7 +50,7 @@ RSpec.describe Tools::Remember do
       events = 10.times.map { |i| create_event(session, type: "user_message", content: "Message #{i}") }
       target = events[5]
 
-      result = tool.execute("event_id" => target.id)
+      result = tool.execute("message_id" => target.id)
 
       expect(result).to include("FULL CONTEXT")
       expect(result).to include("Message 5")
@@ -60,7 +60,7 @@ RSpec.describe Tools::Remember do
     it "marks the target event with an arrow" do
       target = create_event(session, type: "user_message", content: "Target message")
 
-      result = tool.execute("event_id" => target.id)
+      result = tool.execute("message_id" => target.id)
 
       expect(result).to include("→ event #{target.id}")
     end
@@ -70,7 +70,7 @@ RSpec.describe Tools::Remember do
       target = create_event(session, type: "user_message", content: "The target event")
       create_event(session, type: "user_message", content: "After target")
 
-      result = tool.execute("event_id" => target.id)
+      result = tool.execute("message_id" => target.id)
 
       expect(result).to include("Before target")
       expect(result).to include("The target event")
@@ -88,7 +88,7 @@ RSpec.describe Tools::Remember do
       )
       target = create_event(session, type: "user_message", content: "Next step")
 
-      result = tool.execute("event_id" => target.id)
+      result = tool.execute("message_id" => target.id)
 
       expect(result).to include("ToolResult: [ok]")
       expect(result).not_to include("file1.rb")
@@ -98,7 +98,7 @@ RSpec.describe Tools::Remember do
       target = create_event(session, type: "tool_call", tool_name: "think",
         content: "Deep reasoning about the problem")
 
-      result = tool.execute("event_id" => target.id)
+      result = tool.execute("message_id" => target.id)
 
       expect(result).to include("Think: Deep reasoning about the problem")
     end
@@ -118,7 +118,7 @@ RSpec.describe Tools::Remember do
       10.times { create_event(session, type: "user_message", content: "Filler message") }
       target = create_event(session, type: "user_message", content: "Later message")
 
-      result = tool.execute("event_id" => target.id)
+      result = tool.execute("message_id" => target.id)
 
       expect(result).to include("PREVIOUS CONTEXT")
       expect(result).to include("Earlier discussion about deployment.")
@@ -128,7 +128,7 @@ RSpec.describe Tools::Remember do
       other_session = Session.create!(name: "Old Session")
       target = create_event(other_session, type: "user_message", content: "Important finding")
 
-      result = tool.execute("event_id" => target.id)
+      result = tool.execute("message_id" => target.id)
 
       expect(result).to include("recalled from: Old Session")
       expect(result).to include("Important finding")
@@ -138,7 +138,7 @@ RSpec.describe Tools::Remember do
       named_session = Session.create!(name: "Auth Refactoring")
       target = create_event(named_session, type: "user_message", content: "test")
 
-      result = tool.execute("event_id" => target.id)
+      result = tool.execute("message_id" => target.id)
 
       expect(result).to include("recalled from: Auth Refactoring")
     end

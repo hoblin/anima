@@ -28,24 +28,17 @@ module Tools
 
     def self.tool_name = "remember"
 
-    def self.description
-      "Recall the full context around a past event. " \
-        "Returns a fractal-resolution window: high detail at the center " \
-        "(the target event and its neighbors), compressed context at the edges " \
-        "(snapshots before and after). Use this when search results surface " \
-        "a relevant event and you need the surrounding conversation."
-    end
+    # Exposed as `message_id` in the tool schema for natural agent UX,
+    # mapped to `event_id` internally since events are the persistence layer.
+    def self.description = "Recall the full conversation around a past message."
 
     def self.input_schema
       {
         type: "object",
         properties: {
-          event_id: {
-            type: "integer",
-            description: "The event ID to zoom into (from search results or recall snippets)"
-          }
+          message_id: {type: "integer"}
         },
-        required: ["event_id"]
+        required: ["message_id"]
       }
     end
 
@@ -53,10 +46,10 @@ module Tools
       @session = session
     end
 
-    # @param input [Hash] with "event_id"
-    # @return [String] fractal-resolution window around the target event
+    # @param input [Hash] with "message_id" (maps to internal event ID)
+    # @return [String] fractal-resolution window around the target message
     def execute(input)
-      event_id = input["event_id"].to_i
+      event_id = input["message_id"].to_i
       target = Event.find_by(id: event_id)
       return {error: "Event #{event_id} not found"} unless target
 
