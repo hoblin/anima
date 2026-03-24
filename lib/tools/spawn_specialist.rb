@@ -21,9 +21,8 @@ module Tools
 
     # Builds description dynamically to include available specialists.
     def self.description
-      base = "Spawn a named specialist sub-agent to work on a task autonomously. " \
-        "The specialist has a predefined role, system prompt, and tool set. " \
-        "Its text messages are forwarded to you automatically. " \
+      base = "Spawn a specialist to work on a task. " \
+        "Its messages are forwarded to you. " \
         "Address it via @name to send follow-up instructions."
 
       registry = Agents::Registry.instance
@@ -39,14 +38,8 @@ module Tools
         type: "object",
         properties: {
           name: name_property,
-          task: {
-            type: "string",
-            description: "What the specialist should do (persisted as its first user message)"
-          },
-          expected_output: {
-            type: "string",
-            description: "Description of the expected deliverable"
-          }
+          task: {type: "string"},
+          expected_output: {type: "string", description: "What the specialist should deliver."}
         },
         required: %w[name task expected_output]
       }
@@ -57,7 +50,7 @@ module Tools
       registry = Agents::Registry.instance
       prop = {
         type: "string",
-        description: "Named specialist agent to spawn from the registry."
+        description: "Specialist to spawn."
       }
       prop[:enum] = registry.names if registry.any?
       prop
