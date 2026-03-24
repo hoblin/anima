@@ -33,12 +33,12 @@ RSpec.describe Tools::SpawnSubagent do
   end
 
   describe ".input_schema" do
-    it "defines task and expected_output as required string properties" do
+    it "defines task as the only required string property" do
       schema = described_class.input_schema
       expect(schema[:type]).to eq("object")
       expect(schema[:properties][:task][:type]).to eq("string")
-      expect(schema[:properties][:expected_output][:type]).to eq("string")
-      expect(schema[:required]).to contain_exactly("task", "expected_output")
+      expect(schema[:properties]).not_to have_key(:expected_output)
+      expect(schema[:required]).to contain_exactly("task")
     end
 
     it "defines tools as an optional array property" do
@@ -75,8 +75,7 @@ RSpec.describe Tools::SpawnSubagent do
   describe "#execute" do
     let(:input) do
       {
-        "task" => "Read lib/agent_loop.rb and summarize the tool execution flow",
-        "expected_output" => "A summary of how tools are dispatched"
+        "task" => "Read lib/agent_loop.rb and summarize the tool execution flow"
       }
     end
 
@@ -92,7 +91,7 @@ RSpec.describe Tools::SpawnSubagent do
 
       child = Session.last
       expect(child.prompt).to include("focused sub-agent")
-      expect(child.prompt).to include("Expected deliverable: A summary of how tools are dispatched")
+      expect(child.prompt).not_to include("Expected deliverable")
     end
 
     it "persists a user_message event in the child session" do
@@ -170,20 +169,13 @@ RSpec.describe Tools::SpawnSubagent do
 
     context "with blank task" do
       it "returns error" do
-        result = tool.execute("task" => "  ", "expected_output" => "something")
+        result = tool.execute("task" => "  ")
         expect(result).to eq({error: "Task cannot be blank"})
       end
 
       it "does not create a child session" do
-        expect { tool.execute("task" => "", "expected_output" => "something") }
+        expect { tool.execute("task" => "") }
           .not_to change(Session, :count)
-      end
-    end
-
-    context "with blank expected_output" do
-      it "returns error" do
-        result = tool.execute("task" => "do something", "expected_output" => "  ")
-        expect(result).to eq({error: "Expected output cannot be blank"})
       end
     end
 

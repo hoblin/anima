@@ -8,8 +8,6 @@ module Tools
       "When you finish, write your final summary and stop — no special tool needed. " \
       "If you need clarification, just ask — the parent can reply."
 
-    EXPECTED_DELIVERABLE_PREFIX = "Expected deliverable: "
-
     private
 
     # Runs the analytical brain synchronously to assign a nickname.

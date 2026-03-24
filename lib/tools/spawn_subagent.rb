@@ -19,9 +19,8 @@ module Tools
     def self.tool_name = "spawn_subagent"
 
     def self.description
-      "Spawn a generic sub-agent to work on a task autonomously. " \
-        "The sub-agent inherits your conversation context, works independently, " \
-        "and its text messages are forwarded to you automatically. " \
+      "Spawn a sub-agent to work on a task. " \
+        "It inherits your conversation context and its messages are forwarded to you. " \
         "Address it via @nickname to send follow-up instructions."
     end
 
@@ -29,14 +28,7 @@ module Tools
       {
         type: "object",
         properties: {
-          task: {
-            type: "string",
-            description: "What the sub-agent should do (persisted as its first user message)"
-          },
-          expected_output: {
-            type: "string",
-            description: "Description of the expected deliverable"
-          },
+          task: {type: "string"},
           tools: {
             type: "array",
             items: {type: "string"},
@@ -45,7 +37,7 @@ module Tools
               "Valid tools: #{AgentLoop::STANDARD_TOOLS_BY_NAME.keys.join(", ")}"
           }
         },
-        required: %w[task expected_output]
+        required: %w[task]
       }
     end
 
@@ -58,22 +50,20 @@ module Tools
     # persists the task as a user message, and queues background processing.
     # Returns immediately after brain completes (blocking for ~200ms).
     #
-    # @param input [Hash<String, Object>] with "task", "expected_output", and optional "tools"
+    # @param input [Hash<String, Object>] with "task" and optional "tools"
     # @return [String] confirmation with child session ID and @nickname
     # @return [Hash{Symbol => String}] with :error key on validation failure
     def execute(input)
       task = input["task"].to_s.strip
-      expected_output = input["expected_output"].to_s.strip
 
       return {error: "Task cannot be blank"} if task.empty?
-      return {error: "Expected output cannot be blank"} if expected_output.empty?
 
       tools = normalize_tools(input["tools"])
 
       error = validate_tools(tools)
       return error if error
 
-      child = spawn_child(task, expected_output, tools)
+      child = spawn_child(task, tools)
       nickname = child.name
       "Sub-agent @#{nickname} spawned (session #{child.id}). " \
         "Its messages will appear in your conversation. " \
@@ -82,10 +72,10 @@ module Tools
 
     private
 
-    def spawn_child(task, expected_output, granted_tools)
+    def spawn_child(task, granted_tools)
       child = Session.create!(
         parent_session_id: @session.id,
-        prompt: "#{GENERIC_PROMPT}\n#{EXPECTED_DELIVERABLE_PREFIX}#{expected_output}",
+        prompt: GENERIC_PROMPT,
         granted_tools: granted_tools
       )
       child.create_user_event(task)

@@ -38,10 +38,9 @@ module Tools
         type: "object",
         properties: {
           name: name_property,
-          task: {type: "string", description: "State the goal — the specialist knows its method."},
-          expected_output: {type: "string", description: "What the specialist should deliver."}
+          task: {type: "string", description: "State the goal — the specialist knows its method."}
         },
-        required: %w[name task expected_output]
+        required: %w[name task]
       }
     end
 
@@ -69,22 +68,20 @@ module Tools
     # persists the task as a user message, and queues background processing.
     # Returns immediately (non-blocking).
     #
-    # @param input [Hash<String, Object>] with "name", "task", and "expected_output"
+    # @param input [Hash<String, Object>] with "name" and "task"
     # @return [String] confirmation with child session ID
     # @return [Hash{Symbol => String}] with :error key on validation failure
     def execute(input)
       task = input["task"].to_s.strip
-      expected_output = input["expected_output"].to_s.strip
       name = input["name"].to_s.strip
 
       return {error: "Name cannot be blank"} if name.empty?
       return {error: "Task cannot be blank"} if task.empty?
-      return {error: "Expected output cannot be blank"} if expected_output.empty?
 
       definition = @agent_registry.get(name)
       return {error: "Unknown agent: #{name}"} unless definition
 
-      child = spawn_child(definition, task, expected_output)
+      child = spawn_child(definition, task)
       nickname = child.name
       "Specialist @#{nickname} spawned (session #{child.id}). " \
         "Its messages will appear in your conversation. " \
@@ -93,11 +90,10 @@ module Tools
 
     private
 
-    def spawn_child(definition, task, expected_output)
-      prompt = build_prompt(definition, expected_output)
+    def spawn_child(definition, task)
       child = Session.create!(
         parent_session_id: @session.id,
-        prompt: prompt,
+        prompt: build_prompt(definition),
         granted_tools: definition.tools
       )
       child.create_user_event(task)
@@ -107,8 +103,8 @@ module Tools
       child
     end
 
-    def build_prompt(definition, expected_output)
-      "#{definition.prompt}\n\n#{COMMUNICATION_INSTRUCTION}\n\n#{EXPECTED_DELIVERABLE_PREFIX}#{expected_output}"
+    def build_prompt(definition)
+      "#{definition.prompt}\n\n#{COMMUNICATION_INSTRUCTION}"
     end
   end
 end
