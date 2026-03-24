@@ -175,7 +175,7 @@ class AgentLoop
     unless @session.sub_agent?
       registry.register(Tools::SpawnSubagent)
       registry.register(Tools::SpawnSpecialist)
-      registry.register(Tools::RequestFeature)
+      registry.register(Tools::OpenIssue)
     end
 
     register_mcp_tools(registry)
