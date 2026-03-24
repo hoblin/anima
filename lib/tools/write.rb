@@ -17,14 +17,14 @@ module Tools
   class Write < Base
     def self.tool_name = "write"
 
-    def self.description = "Create or overwrite a file. Creates intermediate directories automatically. Use for new files or full replacement."
+    def self.description = "Write file."
 
     def self.input_schema
       {
         type: "object",
         properties: {
-          path: {type: "string", description: "Absolute or relative file path (relative resolved against working directory)"},
-          content: {type: "string", description: "Full file content to write"}
+          path: {type: "string", description: "Relative paths resolve against working directory. Creates intermediate directories."},
+          content: {type: "string"}
         },
         required: %w[path content]
       }

@@ -21,24 +21,17 @@ module Tools
   class Think < Base
     def self.tool_name = "think"
 
-    def self.description
-      "Express your internal reasoning between tool calls. " \
-        "Use this to analyze intermediate results, plan next steps, or make decisions before continuing. " \
-        "Set visibility to \"aloud\" when you want the user to see your thought process."
-    end
+    def self.description = "Think out loud or silently."
 
     def self.input_schema
       {
         type: "object",
         properties: {
-          thoughts: {
-            type: "string",
-            description: "Your reasoning, analysis, or internal monologue"
-          },
+          thoughts: {type: "string"},
           visibility: {
             type: "string",
             enum: ["inner", "aloud"],
-            description: "\"inner\" (default) for silent reasoning; \"aloud\" to narrate for the user"
+            description: "inner (default) is silent. aloud is shown to the user."
           }
         },
         required: ["thoughts"]

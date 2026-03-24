@@ -18,17 +18,15 @@ module Tools
   class Edit < Base
     def self.tool_name = "edit"
 
-    def self.description = "Replace exact text in a file. old_text must match exactly one location; " \
-                           "include surrounding lines for uniqueness. Use for surgical edits; " \
-                           "use write for new files or full replacement."
+    def self.description = "Replace text in a file."
 
     def self.input_schema
       {
         type: "object",
         properties: {
-          path: {type: "string", description: "Absolute or relative file path (relative resolved against working directory)"},
-          old_text: {type: "string", description: "Exact text to find (must match exactly one location — include surrounding context if needed)"},
-          new_text: {type: "string", description: "Replacement text (empty string to delete)"}
+          path: {type: "string", description: "Relative paths resolve against working directory."},
+          old_text: {type: "string", description: "Must match exactly one location. Include surrounding lines for uniqueness."},
+          new_text: {type: "string", description: "Empty string to delete."}
         },
         required: %w[path old_text new_text]
       }

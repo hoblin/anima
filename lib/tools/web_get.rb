@@ -15,13 +15,13 @@ module Tools
   class WebGet < Base
     def self.tool_name = "web_get"
 
-    def self.description = "Fetch content from a URL via HTTP GET and return the response body"
+    def self.description = "Fetch a URL."
 
     def self.input_schema
       {
         type: "object",
         properties: {
-          url: {type: "string", description: "The URL to fetch (http or https)"}
+          url: {type: "string"}
         },
         required: ["url"]
       }

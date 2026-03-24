@@ -18,15 +18,15 @@ module Tools
   class Read < Base
     def self.tool_name = "read"
 
-    def self.description = "Read file contents. Returns plain text with smart truncation. Use offset/limit to page through large files."
+    def self.description = "Read file. Relative paths resolve against working directory."
 
     def self.input_schema
       {
         type: "object",
         properties: {
-          path: {type: "string", description: "Absolute or relative file path (relative resolved against working directory)"},
-          offset: {type: "integer", description: "1-indexed line number to start from (default: 1)"},
-          limit: {type: "integer", description: "Maximum lines to read (subject to line and byte caps from config)"}
+          path: {type: "string"},
+          offset: {type: "integer", description: "1-indexed line number (default: 1)."},
+          limit: {type: "integer", description: "Max lines to return."}
         },
         required: ["path"]
       }
