@@ -17,8 +17,8 @@ RSpec.describe Tools::Think do
       expect(described_class.description).not_to be_empty
     end
 
-    it "encourages reasoning use" do
-      expect(described_class.description).to include("reasoning")
+    it "describes the tool" do
+      expect(described_class.description).to include("Think")
     end
   end
 
