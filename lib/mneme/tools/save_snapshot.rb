@@ -12,10 +12,7 @@ module Mneme
     class SaveSnapshot < ::Tools::Base
       def self.tool_name = "save_snapshot"
 
-      def self.description = "Save a summary of the conversation context " \
-        "that is about to leave the viewport. Write a concise summary " \
-        "capturing key decisions, topics discussed, and important context. " \
-        "Focus on WHAT was decided and WHY, not mechanical details."
+      def self.description = "Summarize what's leaving the viewport."
 
       def self.input_schema
         {
@@ -23,8 +20,7 @@ module Mneme
           properties: {
             text: {
               type: "string",
-              description: "The summary text. Be concise but preserve key decisions, " \
-                "goals discussed, and important context. Max #{Anima::Settings.mneme_max_tokens} tokens."
+              description: "Max #{Anima::Settings.mneme_max_tokens} tokens."
             }
           },
           required: %w[text]
