@@ -1,6 +1,6 @@
 ---
 name: web-search-researcher
-description: Deep web research across multiple sources with cross-referencing and synthesis. Use for complex questions, not single lookups.
+description: Researches topics across multiple web sources. Use when a single page won't answer the question.
 tools: web_get, bash, read
 color: yellow
 ---
