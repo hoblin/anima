@@ -14,32 +14,24 @@ module Tools
   class Bash < Base
     def self.tool_name = "bash"
 
-    def self.description
-      <<~DESC.squish
-        Execute a bash command. Working directory and environment persist across calls within a conversation.
-        Accepts either `command` (string) for a single command, or `commands` (array of strings) to run
-        multiple commands as a batch — each command gets its own timeout and result. Batch `mode` controls
-        error handling: "sequential" (default) stops on the first failure, "parallel" runs all regardless.
-      DESC
-    end
+    def self.description = "Execute shell commands. Working directory and environment persist between calls."
 
     def self.input_schema
       {
         type: "object",
         properties: {
           command: {
-            type: "string",
-            description: "The bash command to execute"
+            type: "string"
           },
           commands: {
             type: "array",
             items: {type: "string"},
-            description: "Array of bash commands to execute as a batch. Each runs independently with its own timeout and result."
+            description: "Each command gets its own timeout and result."
           },
           mode: {
             type: "string",
             enum: ["sequential", "parallel"],
-            description: 'Batch error handling: "sequential" (default) stops on first non-zero exit; "parallel" runs all commands regardless of failures.'
+            description: "sequential (default) stops on first failure."
           }
         }
       }

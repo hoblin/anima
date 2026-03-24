@@ -73,7 +73,7 @@ module Tools
       s[:input_schema][:properties] ||= {}
       s[:input_schema][:properties]["timeout"] = {
         type: "integer",
-        description: "Max execution seconds (default: #{default}). Increase for long-running operations."
+        description: "Seconds (default: #{default})."
       }
       s
     end

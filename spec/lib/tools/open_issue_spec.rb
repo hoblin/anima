@@ -2,17 +2,17 @@
 
 require "rails_helper"
 
-RSpec.describe Tools::RequestFeature do
+RSpec.describe Tools::OpenIssue do
   subject(:tool) { described_class.new }
 
   describe ".tool_name" do
-    it "returns request_feature" do
-      expect(described_class.tool_name).to eq("request_feature")
+    it "returns open_issue" do
+      expect(described_class.tool_name).to eq("open_issue")
     end
   end
 
   describe ".description" do
-    it "returns a motivational, non-empty description" do
+    it "returns a non-empty description" do
       expect(described_class.description).to be_a(String)
       expect(described_class.description).not_to be_empty
     end
@@ -31,7 +31,7 @@ RSpec.describe Tools::RequestFeature do
   describe ".schema" do
     it "builds valid Anthropic tool schema" do
       schema = described_class.schema
-      expect(schema).to include(name: "request_feature", description: a_kind_of(String))
+      expect(schema).to include(name: "open_issue", description: a_kind_of(String))
       expect(schema[:input_schema]).to be_a(Hash)
     end
   end

@@ -3,32 +3,29 @@
 require "open3"
 
 module Tools
-  # Creates a GitHub issue via the +gh+ CLI, letting the agent request
-  # capabilities it discovers are missing during real work. Every issue
-  # is tagged with the label from +[github] label+ in +config.toml+ so
-  # the developer can filter agent-originated requests from human ones.
+  # Opens a GitHub issue on Anima's repository via the +gh+ CLI,
+  # giving the agent a voice to report bugs, pain points, or ideas.
+  # Every issue is tagged with the label from +[github] label+ in
+  # +config.toml+ so maintainers can filter agent-originated issues.
   #
   # The repository is read from +[github] repo+ in +config.toml+; when
   # unset, the tool falls back to parsing the +origin+ remote URL.
   #
   # @see https://github.com/hoblin/anima/issues/103
-  class RequestFeature < Base
+  class OpenIssue < Base
     # @return [String] tool identifier used in the Anthropic API schema
-    def self.tool_name = "request_feature"
+    def self.tool_name = "open_issue"
 
-    # @return [String] motivational description shown to the LLM
-    def self.description
-      "Don't have the right tool for this task? Request it! " \
-        "Creates a GitHub issue so the developer knows what you need."
-    end
+    # @return [String] description shown to the LLM
+    def self.description = "Something broken, missing, or could be better in Anima? Say it here."
 
     # @return [Hash] JSON Schema for the tool's input parameters
     def self.input_schema
       {
         type: "object",
         properties: {
-          title: {type: "string", description: "Short, descriptive title for the feature request"},
-          description: {type: "string", description: "What you need and why — what were you trying to do, and what's missing?"}
+          title: {type: "string"},
+          description: {type: "string", description: "Use gh-issue skill for guidance."}
         },
         required: %w[title description]
       }

@@ -283,7 +283,7 @@ RSpec.describe AgentLoop do
       allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
         expect(registry.registered?("spawn_subagent")).to be true
         expect(registry.registered?("spawn_specialist")).to be true
-        expect(registry.registered?("request_feature")).to be true
+        expect(registry.registered?("open_issue")).to be true
         "ok"
       end
 
@@ -299,7 +299,7 @@ RSpec.describe AgentLoop do
       allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
         expect(registry.registered?("spawn_subagent")).to be false
         expect(registry.registered?("spawn_specialist")).to be false
-        expect(registry.registered?("request_feature")).to be false
+        expect(registry.registered?("open_issue")).to be false
         "done"
       end
 
