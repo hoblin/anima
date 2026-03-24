@@ -12,38 +12,38 @@ http_interactions:
         task matches, rename the session if needed, then call everything_is_ready.\"}],\"max_tokens\":4096,\"tools\":[{\"name\":\"rename_session\",\"description\":\"Rename
         the conversation session. Use one emoji followed by 1-3 descriptive words.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"emoji\":{\"type\":\"string\",\"description\":\"A
         single emoji representing the conversation topic\"},\"name\":{\"type\":\"string\",\"description\":\"1-3
-        word descriptive name for the session\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Max
-        execution seconds (default: 180). Increase for long-running operations.\"}},\"required\":[\"emoji\",\"name\"]}},{\"name\":\"activate_skill\",\"description\":\"Activate
+        word descriptive name for the session\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"emoji\",\"name\"]}},{\"name\":\"activate_skill\",\"description\":\"Activate
         a domain knowledge skill on the main session. The skill's content will be
         injected into the agent's system prompt.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"description\":\"Name
-        of the skill to activate (from the available skills list)\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Max
-        execution seconds (default: 180). Increase for long-running operations.\"}},\"required\":[\"name\"]}},{\"name\":\"deactivate_skill\",\"description\":\"Deactivate
+        of the skill to activate (from the available skills list)\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"name\"]}},{\"name\":\"deactivate_skill\",\"description\":\"Deactivate
         a skill that is no longer relevant. The skill's content will be removed from
         the agent's system prompt.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"description\":\"Name
-        of the skill to deactivate (from the currently active skills list)\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Max
-        execution seconds (default: 180). Increase for long-running operations.\"}},\"required\":[\"name\"]}},{\"name\":\"read_workflow\",\"description\":\"Read
+        of the skill to deactivate (from the currently active skills list)\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"name\"]}},{\"name\":\"read_workflow\",\"description\":\"Read
         a workflow's full content and activate it on the session. Use the content
         to create appropriate goals with set_goal.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"description\":\"Name
-        of the workflow to read (from the available workflows list)\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Max
-        execution seconds (default: 180). Increase for long-running operations.\"}},\"required\":[\"name\"]}},{\"name\":\"deactivate_workflow\",\"description\":\"Deactivate
-        the current workflow when it is complete or no longer relevant.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"timeout\":{\"type\":\"integer\",\"description\":\"Max
-        execution seconds (default: 180). Increase for long-running operations.\"}},\"required\":[]}},{\"name\":\"set_goal\",\"description\":\"Create
+        of the workflow to read (from the available workflows list)\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"name\"]}},{\"name\":\"deactivate_workflow\",\"description\":\"Deactivate
+        the current workflow when it is complete or no longer relevant.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[]}},{\"name\":\"set_goal\",\"description\":\"Create
         a goal on the main session. Omit parent_goal_id for a root goal, or provide
         it to create a sub-goal (TODO item).\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\",\"description\":\"What
         needs to be accomplished (1-2 sentences)\"},\"parent_goal_id\":{\"type\":\"integer\",\"description\":\"ID
-        of the parent goal (omit for root goals)\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Max
-        execution seconds (default: 180). Increase for long-running operations.\"}},\"required\":[\"description\"]}},{\"name\":\"update_goal\",\"description\":\"Update
+        of the parent goal (omit for root goals)\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"description\"]}},{\"name\":\"update_goal\",\"description\":\"Update
         a goal's description. Use this to refine a goal as understanding evolves.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"goal_id\":{\"type\":\"integer\",\"description\":\"ID
         of the goal to update\"},\"description\":{\"type\":\"string\",\"description\":\"New
-        description for the goal (1-2 sentences)\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Max
-        execution seconds (default: 180). Increase for long-running operations.\"}},\"required\":[\"goal_id\",\"description\"]}},{\"name\":\"finish_goal\",\"description\":\"Mark
+        description for the goal (1-2 sentences)\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"goal_id\",\"description\"]}},{\"name\":\"finish_goal\",\"description\":\"Mark
         a goal as completed. Use this when the main agent has finished the work described
         by the goal.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"goal_id\":{\"type\":\"integer\",\"description\":\"ID
-        of the goal to mark as completed\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Max
-        execution seconds (default: 180). Increase for long-running operations.\"}},\"required\":[\"goal_id\"]}},{\"name\":\"everything_is_ready\",\"description\":\"Signal
+        of the goal to mark as completed\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"goal_id\"]}},{\"name\":\"everything_is_ready\",\"description\":\"Signal
         that no changes are needed. Call this when the session name and active skills
-        are already appropriate.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"timeout\":{\"type\":\"integer\",\"description\":\"Max
-        execution seconds (default: 180). Increase for long-running operations.\"}},\"required\":[]}}],\"system\":[{\"type\":\"text\",\"text\":\"You
+        are already appropriate.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[]}}],\"system\":[{\"type\":\"text\",\"text\":\"You
         are Claude Code, Anthropic's official CLI for Claude.\"},{\"type\":\"text\",\"text\":\"You
         are a background automation that manages session metadata.\\nYou MUST ONLY
         communicate through tool calls — NEVER output text.\\nAlways finish by calling
@@ -129,7 +129,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Mon, 23 Mar 2026 14:37:03 GMT
+      - Tue, 24 Mar 2026 06:25:16 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -141,21 +141,21 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1774292400'
+      - '1774335600'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.07'
+      - '0.06'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1774591200'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.48'
+      - '0.52'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1774292400'
+      - '1774335600'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -169,11 +169,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2500'
+      - '3520'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=2503
+      - x-originResponse;dur=3521
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -188,32 +188,39 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMVB3Z2lvclZlWFVnR2lDOENyamFyQnkiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMTVEQWlxdENDbkRTRUd3YWh3NDRROEwiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
-        InRleHQiOiJJIGNhbiBzZWUgdGhlIHNlc3Npb24gaXMgY29udGludWluZyB3
-        b3JrIG9uIGEgZml4LCBidXQgdGhlIGNvbnRleHQgaXMgbWluaW1hbC4gV2l0
-        aG91dCBtb3JlIGRldGFpbHMgYWJvdXQgd2hhdCB0aGUgZml4IGVudGFpbHMs
-        IEkgY2Fubm90IGRldGVybWluZTpcblxuMS4gV2hpY2ggc2tpbGxzIHNob3Vs
-        ZCBiZSBhY3RpdmUgKGNvdWxkIGJlIFJhaWxzLCB0ZXN0aW5nLCBnYW1lIGRl
-        dmVsb3BtZW50LCBUVUksIE1DUCwgZXRjLilcbjIuIFdoZXRoZXIgYSB3b3Jr
-        ZmxvdyBzaG91bGQgYmUgYWN0aXZhdGVkXG4zLiBXaGF0IGdvYWxzIG5lZWQg
-        dG8gYmUgY3JlYXRlZCBvciB1cGRhdGVkXG40LiBBbiBhcHByb3ByaWF0ZSBz
-        ZXNzaW9uIG5hbWVcblxuKipJIG5lZWQgbW9yZSBpbmZvcm1hdGlvbiB0byB0
-        YWtlIGFjdGlvbi4qKiBDb3VsZCB5b3UgY2xhcmlmeTpcblxuLSBXaGF0IGZp
-        eCBpcyBiZWluZyB3b3JrZWQgb24/IChlLmcuLCBidWcgaW4gYSBSYWlscyBt
-        b2RlbCwgZmFpbGluZyB0ZXN0LCBnYW1lIGNvbGxpc2lvbiBpc3N1ZSwgZXRj
-        Lilcbi0gV2hhdCBmaWxlcyBvciBkb21haW4gYXJlIGludm9sdmVkP1xuLSBX
-        aGF0J3MgdGhlIGN1cnJlbnQgcHJvZ3Jlc3Mgb3IgbmV4dCBzdGVwP1xuXG5P
-        bmNlIHlvdSBwcm92aWRlIHRoZXNlIGRldGFpbHMsIEkgY2FuIHByb3Blcmx5
-        IG1hbmFnZSB0aGUgc2Vzc2lvbiBtZXRhZGF0YSAocmVuYW1lIGl0LCBhY3Rp
-        dmF0ZSByZWxldmFudCBza2lsbHMsIGNyZWF0ZS91cGRhdGUgZ29hbHMsIG9y
-        IHJlYWQgYW4gYXBwcm9wcmlhdGUgd29ya2Zsb3cpLiJ9XSwic3RvcF9yZWFz
-        b24iOiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7
-        ImlucHV0X3Rva2VucyI6Mjg5MSwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9r
-        ZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3Jl
-        YXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1l
-        cmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjE4Niwi
-        c2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90
-        X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Mon, 23 Mar 2026 14:37:03 GMT
+        InRleHQiOiJJIGRvbid0IGhhdmUgZW5vdWdoIGNvbnRleHQgdG8gZGV0ZXJt
+        aW5lIHdoYXQgXCJ0aGUgZml4XCIgcmVmZXJzIHRvLiBUaGUgY29udmVyc2F0
+        aW9uIHNuaXBwZXQgc2hvd3MgdGhlIHVzZXIgYXNraW5nIHRvIGNvbnRpbnVl
+        IHdpdGggYSBmaXgsIGJ1dCB0aGVyZSdzIG5vIHByaW9yIGNvbnRleHQgYWJv
+        dXQ6XG5cbjEuIFdoYXQgc3BlY2lmaWMgaXNzdWUgb3IgcHJvYmxlbSBpcyBi
+        ZWluZyBmaXhlZFxuMi4gV2hhdCBkb21haW4vdGVjaG5vbG9neSBpcyBpbnZv
+        bHZlZCAoUmFpbHMsIGdhbWUgZGV2ZWxvcG1lbnQsIHRlc3RpbmcsIGV0Yy4p
+        XG4zLiBXaGF0IHdvcmsgaGFzIGFscmVhZHkgYmVlbiBkb25lXG40LiBXaGF0
+        IHRoZSBuZXh0IHN0ZXBzIHNob3VsZCBiZVxuXG5UbyBwcm9wZXJseSBtYW5h
+        Z2UgdGhpcyBzZXNzaW9uLCBJIHdvdWxkIG5lZWQgdG8gc2VlOlxuLSBUaGUg
+        ZnVsbCBjb252ZXJzYXRpb24gaGlzdG9yeSBvciBjb250ZXh0IGFib3V0IHdo
+        YXQncyBiZWluZyB3b3JrZWQgb25cbi0gVGhlIHNwZWNpZmljIHByb2JsZW0g
+        ZGVzY3JpcHRpb25cbi0gQW55IHJlbGV2YW50IGNvZGUgb3IgZXJyb3IgbWVz
+        c2FnZXNcbi0gV2hhdCB0b29scy9za2lsbHMgbWlnaHQgYmUgbmVlZGVkXG5c
+        bkNvdWxkIHlvdSBwcm92aWRlIG1vcmUgZGV0YWlscyBhYm91dCB3aGF0IFwi
+        dGhlIGZpeFwiIGlzPyBGb3IgZXhhbXBsZTpcbi0gSXMgdGhpcyBhIGJ1ZyBm
+        aXgsIGZlYXR1cmUgaW1wbGVtZW50YXRpb24sIG9yIHJlZmFjdG9yaW5nP1xu
+        LSBXaGF0IHRlY2hub2xvZ3kgc3RhY2sgKFJhaWxzLCBSU3BlYywgZXRjLik/
+        XG4tIFdoYXQncyB0aGUgY3VycmVudCBzdGF0ZSBvZiB0aGUgd29yaz9cbi0g
+        V2hhdCBuZWVkcyB0byBoYXBwZW4gbmV4dD9cblxuT25jZSBJIGhhdmUgdGhp
+        cyBpbmZvcm1hdGlvbiwgSSBjYW4gYXBwcm9wcmlhdGVseTpcbi0gUmVuYW1l
+        IHRoZSBzZXNzaW9uIHdpdGggYSBkZXNjcmlwdGl2ZSBlbW9qaSBhbmQgdGl0
+        bGVcbi0gQWN0aXZhdGUgcmVsZXZhbnQgc2tpbGxzXG4tIENyZWF0ZSBvciB1
+        cGRhdGUgZ29hbHMgdG8gdHJhY2sgcHJvZ3Jlc3Ncbi0gQWN0aXZhdGUgd29y
+        a2Zsb3dzIGlmIHRoaXMgaXMgYSBtdWx0aS1zdGVwIHByb2Nlc3MifV0sInN0
+        b3BfcmVhc29uIjoiZW5kX3R1cm4iLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJ1
+        c2FnZSI6eyJpbnB1dF90b2tlbnMiOjI4MTksImNhY2hlX2NyZWF0aW9uX2lu
+        cHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNh
+        Y2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAs
+        ImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5z
+        IjoyNTcsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dl
+        byI6Im5vdF9hdmFpbGFibGUifX0=
+  recorded_at: Tue, 24 Mar 2026 06:25:16 GMT
 recorded_with: VCR 6.4.0
