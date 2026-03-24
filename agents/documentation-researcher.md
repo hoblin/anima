@@ -1,6 +1,6 @@
 ---
 name: documentation-researcher
-description: Fetches library and framework documentation from the web. Provides setup guides, API usage examples, and implementation patterns tailored to your use case.
+description: Fetches official docs. Returns ready-to-use code examples.
 tools: web_get, read
 color: cyan
 ---

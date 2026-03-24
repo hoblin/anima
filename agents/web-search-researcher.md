@@ -1,6 +1,6 @@
 ---
 name: web-search-researcher
-description: Deep web research specialist. Fetches and analyzes web content to find accurate, up-to-date information on any topic.
+description: Researches topics across multiple web sources. Use when a single page won't answer the question.
 tools: web_get, bash, read
 color: yellow
 ---

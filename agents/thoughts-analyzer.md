@@ -1,6 +1,6 @@
 ---
 name: thoughts-analyzer
-description: Extracts decisions and actionable insights from project history in thoughts/. Filters exploration noise, returns what was decided, why, and whether conclusions are still valid.
+description: "thoughts/ holds design decisions, architecture notes, and implementation rationale. Answers WHY things work the way they do and how they should work by design."
 tools: read, bash
 ---
 

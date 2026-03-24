@@ -55,13 +55,13 @@ RSpec.describe Tools::SpawnSpecialist do
   describe ".input_schema" do
     before { allow(Agents::Registry).to receive(:instance).and_return(agent_registry) }
 
-    it "requires name, task, and expected_output" do
+    it "requires name and task" do
       schema = described_class.input_schema
       expect(schema[:type]).to eq("object")
       expect(schema[:properties][:name][:type]).to eq("string")
       expect(schema[:properties][:task][:type]).to eq("string")
-      expect(schema[:properties][:expected_output][:type]).to eq("string")
-      expect(schema[:required]).to contain_exactly("name", "task", "expected_output")
+      expect(schema[:properties]).not_to have_key(:expected_output)
+      expect(schema[:required]).to contain_exactly("name", "task")
     end
 
     it "does not include a tools property" do
@@ -87,8 +87,7 @@ RSpec.describe Tools::SpawnSpecialist do
     let(:input) do
       {
         "name" => "analyzer",
-        "task" => "Read lib/agent_loop.rb and summarize the tool execution flow",
-        "expected_output" => "A summary of how tools are dispatched"
+        "task" => "Read lib/agent_loop.rb and summarize the tool execution flow"
       }
     end
 
@@ -113,11 +112,11 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(child.prompt).to include("automatically forwarded to the parent agent")
     end
 
-    it "appends the expected deliverable to the prompt" do
+    it "does not append an expected deliverable to the prompt" do
       tool.execute(input)
 
       child = Session.last
-      expect(child.prompt).to include("Expected deliverable: A summary of how tools are dispatched")
+      expect(child.prompt).not_to include("Expected deliverable")
     end
 
     it "assigns nickname via the analytical brain" do
@@ -200,18 +199,6 @@ RSpec.describe Tools::SpawnSpecialist do
 
       it "does not create a child session" do
         expect { tool.execute(input.merge("task" => "  ")) }
-          .not_to change(Session, :count)
-      end
-    end
-
-    context "with blank expected_output" do
-      it "returns error" do
-        result = tool.execute(input.merge("expected_output" => "  "))
-        expect(result).to eq({error: "Expected output cannot be blank"})
-      end
-
-      it "does not create a child session" do
-        expect { tool.execute(input.merge("expected_output" => "  ")) }
           .not_to change(Session, :count)
       end
     end

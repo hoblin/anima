@@ -1,6 +1,6 @@
 ---
 name: codebase-analyzer
-description: Analyzes codebase implementation details with precise file:line references. Call when you need to understand how specific code works.
+description: Traces data flow and explains how code works. Returns file:line references.
 tools: read, bash
 ---
 

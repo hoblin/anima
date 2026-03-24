@@ -458,4 +458,15 @@ RSpec.describe AgentLoop do
       sub_loop.finalize
     end
   end
+
+  describe "integration smoke test", :vcr do
+    it "processes a message with the full production tool set and system prompt" do
+      loop = described_class.new(session: session)
+      result = loop.process("What is the latest issue on hoblin/anima repo?")
+      loop.finalize
+
+      expect(result).to be_a(String)
+      expect(result).to be_present
+    end
+  end
 end
