@@ -38,7 +38,7 @@ module Tools
         type: "object",
         properties: {
           name: name_property,
-          task: {type: "string"},
+          task: {type: "string", description: "State the goal — the specialist knows its method."},
           expected_output: {type: "string", description: "What the specialist should deliver."}
         },
         required: %w[name task expected_output]
