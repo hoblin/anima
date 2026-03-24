@@ -1,6 +1,6 @@
 ---
 name: codebase-pattern-finder
-description: Finds existing implementations to use as templates. Returns concrete code snippets.
+description: Finds similar implementations, usage examples, and existing patterns to model after. Returns concrete code examples.
 tools: read, bash
 ---
 
