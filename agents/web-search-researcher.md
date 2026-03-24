@@ -1,6 +1,6 @@
 ---
 name: web-search-researcher
-description: General-purpose web research. Use when the answer isn't in code or library docs.
+description: Deep web research across multiple sources with cross-referencing and synthesis. Use for complex questions, not single lookups.
 tools: web_get, bash, read
 color: yellow
 ---
