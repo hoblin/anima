@@ -40,18 +40,8 @@ VCR.configure do |config|
       !http_message.body.valid_encoding?
   end
 
-  # :new_episodes in dev (record new requests, replay existing), :none in CI (all must be pre-recorded).
-  # Override with VCR_MODE=rec to force re-recording: VCR_MODE=rec bundle exec rspec spec/path:42
-  record_mode = if /rec/i.match?(ENV["VCR_MODE"])
-    :all
-  elsif ENV["CI"]
-    :none
-  else
-    :new_episodes
-  end
-
   config.default_cassette_options = {
-    record: record_mode,
+    record: ENV["CI"] ? :none : :new_episodes,
     match_requests_on: [:method, :uri, :body]
   }
 end

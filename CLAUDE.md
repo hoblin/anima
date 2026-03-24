@@ -24,6 +24,8 @@ Never hardcode tunable values as constants — expose them through `Anima::Setti
 
 The development environment is fully configured (LLM API keys, credentials, dependencies). Don't ask — just run things.
 
+Use HEREDOC syntax for multiline Ruby/Python one-liners in Bash: `ruby -e '...'` breaks on quotes and newlines.
+
 ## Starting the dev environment
 
 Start the brain in a detached tmux session so it persists across commands:
