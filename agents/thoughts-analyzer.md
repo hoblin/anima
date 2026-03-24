@@ -1,6 +1,6 @@
 ---
 name: thoughts-analyzer
-description: Mines thoughts/ for decisions and constraints. Validates whether conclusions still hold.
+description: Searches thoughts/ — the project's design decisions, architecture notes, and rationale. Answers why and how things should work by design.
 tools: read, bash
 ---
 
