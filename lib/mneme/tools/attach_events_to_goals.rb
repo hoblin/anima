@@ -12,10 +12,7 @@ module Mneme
     class AttachEventsToGoals < ::Tools::Base
       def self.tool_name = "attach_events_to_goals"
 
-      def self.description = "Pin critical events to active goals so they survive " \
-        "viewport eviction. Use this for events that are too important to lose — " \
-        "exact user instructions, key decisions, critical corrections. " \
-        "Events stay pinned until all attached goals complete."
+      def self.description = "Pin critical messages to goals so they survive viewport eviction."
 
       def self.input_schema
         {
@@ -23,13 +20,11 @@ module Mneme
           properties: {
             event_ids: {
               type: "array",
-              items: {type: "integer"},
-              description: "Database IDs of events to pin (from `event N` prefixes in the viewport)"
+              items: {type: "integer"}
             },
             goal_ids: {
               type: "array",
-              items: {type: "integer"},
-              description: "IDs of active goals to attach the events to"
+              items: {type: "integer"}
             }
           },
           required: %w[event_ids goal_ids]
@@ -51,7 +46,8 @@ module Mneme
         return "Error: goal_ids cannot be empty" if goal_ids.empty?
 
         events = @session.events.where(id: event_ids)
-        goals = @session.goals.active.where(id: goal_ids)
+        all_goals = @session.goals
+        goals = all_goals.active.where(id: goal_ids)
 
         missing_events = event_ids - events.pluck(:id)
         inactive_goal_ids = goal_ids - goals.pluck(:id)
@@ -60,7 +56,7 @@ module Mneme
         errors << "Events not found: #{missing_events.join(", ")}" if missing_events.any?
 
         if inactive_goal_ids.any?
-          completed_ids = @session.goals.completed.where(id: inactive_goal_ids).pluck(:id)
+          completed_ids = all_goals.completed.where(id: inactive_goal_ids).pluck(:id)
           not_found_ids = inactive_goal_ids - completed_ids
           errors << "Goals already completed: #{completed_ids.join(", ")}" if completed_ids.any?
           errors << "Goals not found: #{not_found_ids.join(", ")}" if not_found_ids.any?
