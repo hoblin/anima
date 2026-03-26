@@ -9,15 +9,15 @@ module AnalyticalBrain
     class ReadWorkflow < ::Tools::Base
       def self.tool_name = "read_workflow"
 
-      def self.description = "Activate a workflow and return its full content."
+      def self.description = "Activate a workflow and return its content for goal planning."
 
       def self.input_schema
         {
           type: "object",
           properties: {
-            name: {type: "string"}
+            workflow_name: {type: "string"}
           },
-          required: %w[name]
+          required: %w[workflow_name]
         }
       end
 
@@ -26,11 +26,11 @@ module AnalyticalBrain
         @main_session = main_session
       end
 
-      # @param input [Hash<String, Object>] with "name" key
+      # @param input [Hash<String, Object>] with "workflow_name" key
       # @return [String] workflow name, description, and full content
       # @return [Hash] with :error key on validation failure
       def execute(input)
-        workflow_name = input["name"].to_s.strip
+        workflow_name = input["workflow_name"].to_s.strip
         return {error: "Workflow name cannot be blank"} if workflow_name.empty?
 
         workflow = @main_session.activate_workflow(workflow_name)

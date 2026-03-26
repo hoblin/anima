@@ -15,7 +15,7 @@ module AnalyticalBrain
     class UpdateGoal < ::Tools::Base
       def self.tool_name = "update_goal"
 
-      def self.description = "Revise a goal's description."
+      def self.description = "Refine a goal's wording as understanding evolves."
 
       def self.input_schema
         {
@@ -24,7 +24,7 @@ module AnalyticalBrain
             goal_id: {type: "integer"},
             description: {
               type: "string",
-              description: "1-2 sentences."
+              description: "1 sentence."
             }
           },
           required: %w[goal_id description]

@@ -8,15 +8,15 @@ module AnalyticalBrain
     class ActivateSkill < ::Tools::Base
       def self.tool_name = "activate_skill"
 
-      def self.description = "Inject a skill's content into the agent's context."
+      def self.description = "Give the agent domain knowledge relevant to the current conversation."
 
       def self.input_schema
         {
           type: "object",
           properties: {
-            name: {type: "string"}
+            skill_name: {type: "string"}
           },
-          required: %w[name]
+          required: %w[skill_name]
         }
       end
 
@@ -25,11 +25,11 @@ module AnalyticalBrain
         @main_session = main_session
       end
 
-      # @param input [Hash<String, Object>] with "name" key
+      # @param input [Hash<String, Object>] with "skill_name" key
       # @return [String] confirmation message with skill description
       # @return [Hash] with :error key on validation failure
       def execute(input)
-        skill_name = input["name"].to_s.strip
+        skill_name = input["skill_name"].to_s.strip
         return {error: "Skill name cannot be blank"} if skill_name.empty?
 
         skill = @main_session.activate_skill(skill_name)

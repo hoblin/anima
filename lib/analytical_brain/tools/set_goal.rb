@@ -16,7 +16,7 @@ module AnalyticalBrain
           properties: {
             description: {
               type: "string",
-              description: "1-2 sentences."
+              description: "1 sentence."
             },
             parent_goal_id: {type: "integer"}
           },

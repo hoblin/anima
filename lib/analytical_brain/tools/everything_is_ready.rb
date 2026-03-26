@@ -11,7 +11,7 @@ module AnalyticalBrain
     class EverythingIsReady < ::Tools::Base
       def self.tool_name = "everything_is_ready"
 
-      def self.description = "Signal that all maintenance is complete."
+      def self.description = "Nothing else to do."
 
       def self.input_schema
         {type: "object", properties: {}, required: []}

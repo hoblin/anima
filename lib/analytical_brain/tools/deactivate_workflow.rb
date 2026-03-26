@@ -7,7 +7,7 @@ module AnalyticalBrain
     class DeactivateWorkflow < ::Tools::Base
       def self.tool_name = "deactivate_workflow"
 
-      def self.description = "Deactivate the current workflow."
+      def self.description = "Deactivate the current workflow when it is complete or no longer relevant."
 
       def self.input_schema
         {

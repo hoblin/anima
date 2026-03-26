@@ -15,8 +15,8 @@ RSpec.describe AnalyticalBrain::Tools::ActivateSkill do
 
       expect(schema[:name]).to eq("activate_skill")
       expect(schema[:description]).to be_present
-      expect(schema[:input_schema][:required]).to eq(%w[name])
-      expect(schema[:input_schema][:properties]).to have_key(:name)
+      expect(schema[:input_schema][:required]).to eq(%w[skill_name])
+      expect(schema[:input_schema][:properties]).to have_key(:skill_name)
     end
   end
 
@@ -25,7 +25,7 @@ RSpec.describe AnalyticalBrain::Tools::ActivateSkill do
     let(:tool) { described_class.new(main_session: session) }
 
     it "activates a skill and returns confirmation" do
-      result = tool.execute({"name" => "gh-issue"})
+      result = tool.execute({"skill_name" => "gh-issue"})
 
       expect(result).to include("Activated skill: gh-issue")
       expect(result).to include("GitHub issue writing")
@@ -33,28 +33,28 @@ RSpec.describe AnalyticalBrain::Tools::ActivateSkill do
     end
 
     it "returns error for unknown skill" do
-      result = tool.execute({"name" => "nonexistent"})
+      result = tool.execute({"skill_name" => "nonexistent"})
 
       expect(result).to eq({error: "Unknown skill: nonexistent"})
       expect(session.reload.active_skills).to be_empty
     end
 
     it "returns error when name is blank" do
-      result = tool.execute({"name" => ""})
+      result = tool.execute({"skill_name" => ""})
 
       expect(result).to eq({error: "Skill name cannot be blank"})
     end
 
     it "is idempotent — does not duplicate active skill" do
-      tool.execute({"name" => "gh-issue"})
-      tool.execute({"name" => "gh-issue"})
+      tool.execute({"skill_name" => "gh-issue"})
+      tool.execute({"skill_name" => "gh-issue"})
 
       expect(session.reload.active_skills.count("gh-issue")).to eq(1)
     end
 
     it "accepts context kwargs without error" do
       tool = described_class.new(main_session: session, extra_stuff: "ignored")
-      result = tool.execute({"name" => "gh-issue"})
+      result = tool.execute({"skill_name" => "gh-issue"})
 
       expect(result).to include("Activated skill: gh-issue")
     end
