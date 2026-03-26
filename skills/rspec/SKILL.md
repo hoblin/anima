@@ -1,6 +1,6 @@
 ---
 name: rspec
-description: "RSpec testing with FactoryBot — matchers, test doubles, shared examples. Activate when writing specs, fixing failing tests, working with describe/it/expect blocks, editing *_spec.rb files, planning test strategy, or discussing unit/integration tests."
+description: "Testing with FactoryBot — matchers, test doubles, shared examples. Activate when writing specs, fixing failing tests, working with describe/it/expect blocks, editing *_spec.rb files, planning test strategy, or discussing unit/integration tests."
 ---
 
 # RSpec Testing
