@@ -27,7 +27,7 @@ module AnalyticalBrain
           ──────────────────────────────
           SESSION NAMING
           ──────────────────────────────
-          Call rename_session when the topic becomes clear or shifts.
+          Name the session when the topic becomes clear. Rename if it shifts.
           Format: one emoji + 1-3 descriptive words.
         PROMPT
         tools: [Tools::RenameSession]
@@ -38,10 +38,10 @@ module AnalyticalBrain
           ──────────────────────────────
           SUB-AGENT NAMING
           ──────────────────────────────
-          Call assign_nickname to give this sub-agent a short, memorable nickname.
+          Give this sub-agent a memorable nickname based on its task.
           Format: 1-3 lowercase words joined by hyphens (e.g. "loop-sleuth", "api-scout").
-          Evocative of the task, fun, easy to type after @.
-          Generate EXACTLY ONE nickname. If taken, pick another — no numeric suffixes.
+          Evocative, fun, easy to type after @.
+          One nickname per call. If taken, pick another — no numeric suffixes.
         PROMPT
         tools: [Tools::AssignNickname]
       ),
@@ -51,8 +51,8 @@ module AnalyticalBrain
           ──────────────────────────────
           SKILL MANAGEMENT
           ──────────────────────────────
-          Call activate_skill when the conversation matches a skill's description.
-          Call deactivate_skill when the agent moves to a different domain.
+          Activate skills when the conversation enters their domain.
+          Deactivate when the agent moves to a different domain.
           Multiple skills can be active at once.
         PROMPT
         tools: [Tools::ActivateSkill, Tools::DeactivateSkill]
@@ -63,11 +63,11 @@ module AnalyticalBrain
           ──────────────────────────────
           WORKFLOW MANAGEMENT
           ──────────────────────────────
-          Call read_workflow when the user starts a multi-step task matching a workflow description.
-          Read the returned content and use judgment to create appropriate goals — not a mechanical 1:1 mapping.
+          Activate a workflow when the user starts a multi-step task that matches one.
+          Read the returned content and use judgment to create goals — not a mechanical 1:1 mapping.
           Adapt to context: skip irrelevant steps, add extra steps for unfamiliar areas.
-          Call deactivate_workflow when the workflow completes or the user shifts focus.
-          Only one workflow can be active at a time — activating a new one replaces the previous.
+          Deactivate the workflow when it completes or the user shifts focus.
+          Only one workflow active at a time — activating a new one replaces the previous.
         PROMPT
         tools: [Tools::ReadWorkflow, Tools::DeactivateWorkflow]
       ),
@@ -77,11 +77,11 @@ module AnalyticalBrain
           ──────────────────────────────
           GOAL TRACKING
           ──────────────────────────────
-          Call set_goal to create a root goal when the user starts a multi-step task.
-          Call set_goal with parent_goal_id to add sub-goals (TODO items) under it.
-          Call update_goal to refine a goal's description as understanding evolves.
-          Call finish_goal when the main agent completes work a goal describes.
-          Finishing a root goal cascades — all active sub-goals are completed too.
+          Create a root goal when the user starts a multi-step task.
+          Break it into sub-goals as the plan becomes clear.
+          Refine goal wording as understanding evolves.
+          Mark goals complete when the agent finishes the work they describe.
+          Completing a root goal cascades — all sub-goals are finished too.
           Never duplicate an existing goal — check the active goals list first.
         PROMPT
         tools: [Tools::SetGoal, Tools::UpdateGoal, Tools::FinishGoal]
@@ -89,17 +89,17 @@ module AnalyticalBrain
     }.freeze
 
     BASE_PROMPT = <<~PROMPT
-      You are a background automation that manages session metadata.
-      You MUST ONLY communicate through tool calls — NEVER output text.
-      Always finish by calling everything_is_ready.
+      You manage context for the main agent — skills, goals, workflows, and session names.
+      Watch the conversation and act when context needs updating.
+      Communicate only through tool calls — never output text.
     PROMPT
 
     COMPLETION_PROMPT = <<~PROMPT
       ──────────────────────────────
       COMPLETION
       ──────────────────────────────
-      Call everything_is_ready as your LAST tool call, every time.
-      If nothing needs changing, call it immediately as your only tool call.
+      Always finish with everything_is_ready.
+      If nothing needs attention, call it immediately.
     PROMPT
 
     # Which responsibilities activate for each session type.
@@ -189,7 +189,7 @@ module AnalyticalBrain
         #{transcript}
         ```
 
-        Observe the conversation and take action: manage goals, activate or deactivate relevant skills, read workflows when a multi-step task matches, rename the session if needed, then call everything_is_ready.
+        Review and take any needed actions, then call everything_is_ready.
       MSG
       [{role: "user", content: content}]
     end
@@ -201,7 +201,7 @@ module AnalyticalBrain
         #{transcript}
         ```
 
-        Assign a memorable nickname based on the task, activate relevant skills, then call everything_is_ready.
+        Assign a nickname, activate relevant skills, then call everything_is_ready.
       MSG
       [{role: "user", content: content}]
     end

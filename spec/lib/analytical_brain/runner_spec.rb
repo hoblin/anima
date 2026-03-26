@@ -65,7 +65,7 @@ RSpec.describe AnalyticalBrain::Runner do
 
         runner.call
 
-        expect(captured_opts[:system]).to include("background automation")
+        expect(captured_opts[:system]).to include("manage context for the main agent")
         expect(captured_opts[:system]).to include("(unnamed)")
       end
 
@@ -133,8 +133,8 @@ RSpec.describe AnalyticalBrain::Runner do
         runner.call
 
         expect(captured_opts[:system]).to include("GOAL TRACKING")
-        expect(captured_opts[:system]).to include("set_goal")
-        expect(captured_opts[:system]).to include("update_goal")
+        expect(captured_opts[:system]).to include("root goal")
+        expect(captured_opts[:system]).to include("sub-goals")
         expect(captured_opts[:system]).to include("cascades")
       end
 
@@ -204,7 +204,7 @@ RSpec.describe AnalyticalBrain::Runner do
         expect(captured_opts[:system]).not_to include("Done goal")
       end
 
-      it "mentions goal management in the user message" do
+      it "includes action instruction in the user message" do
         captured_messages = nil
         allow(client).to receive(:chat_with_tools) { |msgs, **_opts|
           captured_messages = msgs
@@ -213,7 +213,7 @@ RSpec.describe AnalyticalBrain::Runner do
 
         runner.call
 
-        expect(captured_messages.first[:content]).to include("manage goals")
+        expect(captured_messages.first[:content]).to include("take any needed actions")
       end
 
       it "does not register standard tools (bash, read, etc.)" do
@@ -582,7 +582,7 @@ RSpec.describe AnalyticalBrain::Runner do
         content = captured_messages.first[:content]
         expect(content).to include("A sub-agent has been spawned with this task:")
         expect(content).to include("Read lib/agent_loop.rb")
-        expect(content).to include("Assign a memorable nickname")
+        expect(content).to include("Assign a nickname")
       end
 
       it "includes active siblings in system prompt when siblings exist" do

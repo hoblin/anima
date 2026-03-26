@@ -6,10 +6,8 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":"The
-        main session is working on this:\n```\nUser: Hello\nAssistant: Hi\n```\n\nObserve
-        the conversation and take action: manage goals, activate or deactivate relevant
-        skills, read workflows when a multi-step task matches, rename the session
-        if needed, then call everything_is_ready."}],"max_tokens":4096,"tools":[{"name":"rename_session","description":"Rename
+        main session is working on this:\n```\nUser: Hello\nAssistant: Hi\n```\n\nReview
+        and take any needed actions, then call everything_is_ready."}],"max_tokens":4096,"tools":[{"name":"rename_session","description":"Rename
         the session.","input_schema":{"type":"object","properties":{"emoji":{"type":"string"},"name":{"type":"string","description":"1-3
         words."},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["emoji","name"]}},{"name":"activate_skill","description":"Give
         the agent domain knowledge relevant to the current conversation.","input_schema":{"type":"object","properties":{"skill_name":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
@@ -30,28 +28,27 @@ http_interactions:
         else to do.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":[]}}],"system":[{"type":"text","text":"You are
         Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
-        are a background automation that manages session metadata.\nYou MUST ONLY
-        communicate through tool calls — NEVER output text.\nAlways finish by calling
-        everything_is_ready.\n\n──────────────────────────────\nSESSION NAMING\n──────────────────────────────\nCall
-        rename_session when the topic becomes clear or shifts.\nFormat: one emoji
-        + 1-3 descriptive words.\n\n──────────────────────────────\nSKILL MANAGEMENT\n──────────────────────────────\nCall
-        activate_skill when the conversation matches a skill''s description.\nCall
-        deactivate_skill when the agent moves to a different domain.\nMultiple skills
-        can be active at once.\n\n──────────────────────────────\nWORKFLOW MANAGEMENT\n──────────────────────────────\nCall
-        read_workflow when the user starts a multi-step task matching a workflow description.\nRead
-        the returned content and use judgment to create appropriate goals — not a
-        mechanical 1:1 mapping.\nAdapt to context: skip irrelevant steps, add extra
-        steps for unfamiliar areas.\nCall deactivate_workflow when the workflow completes
-        or the user shifts focus.\nOnly one workflow can be active at a time — activating
-        a new one replaces the previous.\n\n──────────────────────────────\nGOAL TRACKING\n──────────────────────────────\nCall
-        set_goal to create a root goal when the user starts a multi-step task.\nCall
-        set_goal with parent_goal_id to add sub-goals (TODO items) under it.\nCall
-        update_goal to refine a goal''s description as understanding evolves.\nCall
-        finish_goal when the main agent completes work a goal describes.\nFinishing
-        a root goal cascades — all active sub-goals are completed too.\nNever duplicate
-        an existing goal — check the active goals list first.\n\n──────────────────────────────\nCOMPLETION\n──────────────────────────────\nCall
-        everything_is_ready as your LAST tool call, every time.\nIf nothing needs
-        changing, call it immediately as your only tool call.\n\n──────────────────────────────\nCURRENT
+        manage context for the main agent — skills, goals, workflows, and session
+        names.\nWatch the conversation and act when context needs updating.\nCommunicate
+        only through tool calls — never output text.\n\n──────────────────────────────\nSESSION
+        NAMING\n──────────────────────────────\nName the session when the topic becomes
+        clear. Rename if it shifts.\nFormat: one emoji + 1-3 descriptive words.\n\n──────────────────────────────\nSKILL
+        MANAGEMENT\n──────────────────────────────\nActivate skills when the conversation
+        enters their domain.\nDeactivate when the agent moves to a different domain.\nMultiple
+        skills can be active at once.\n\n──────────────────────────────\nWORKFLOW
+        MANAGEMENT\n──────────────────────────────\nActivate a workflow when the user
+        starts a multi-step task that matches one.\nRead the returned content and
+        use judgment to create goals — not a mechanical 1:1 mapping.\nAdapt to context:
+        skip irrelevant steps, add extra steps for unfamiliar areas.\nDeactivate the
+        workflow when it completes or the user shifts focus.\nOnly one workflow active
+        at a time — activating a new one replaces the previous.\n\n──────────────────────────────\nGOAL
+        TRACKING\n──────────────────────────────\nCreate a root goal when the user
+        starts a multi-step task.\nBreak it into sub-goals as the plan becomes clear.\nRefine
+        goal wording as understanding evolves.\nMark goals complete when the agent
+        finishes the work they describe.\nCompleting a root goal cascades — all sub-goals
+        are finished too.\nNever duplicate an existing goal — check the active goals
+        list first.\n\n──────────────────────────────\nCOMPLETION\n──────────────────────────────\nAlways
+        finish with everything_is_ready.\nIf nothing needs attention, call it immediately.\n\n──────────────────────────────\nCURRENT
         STATE\n──────────────────────────────\nSession name: (unnamed)\nActive skills:
         None\nActive workflow: None\n\n──────────────────────────────\nAVAILABLE SKILLS\n──────────────────────────────\n-
         activerecord — Associations, validations, queries, migrations, eager loading.
@@ -111,7 +108,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 26 Mar 2026 16:20:32 GMT
+      - Thu, 26 Mar 2026 17:33:01 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -125,13 +122,13 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1774555200'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.09'
+      - '0.26'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1774591200'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.7'
+      - '0.72'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
@@ -151,11 +148,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1612'
+      - '1597'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=1614
+      - x-originResponse;dur=1600
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
       X-Robots-Tag:
@@ -170,37 +167,37 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMUdQYmZQUm9rV2F6NVcxNkhxY0V5V1giLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMUIxc0Q1YVRvcnc2bjF0R1lXbVgxSlMiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
-        InRleHQiOiJUaGUgY29udmVyc2F0aW9uIGlzIG1pbmltYWwgYW5kIGRvZXNu
-        J3QgaW5kaWNhdGUgYSBjbGVhciB0YXNrIG9yIGRvbWFpbi4gVGhlcmUncyBq
-        dXN0IGEgZ3JlZXRpbmcgZXhjaGFuZ2Ugd2l0aCBubyBhY3Rpb25hYmxlIHdv
-        cmsgc3RhcnRpbmcuXG5cbkknbGwgY2FsbCBldmVyeXRoaW5nX2lzX3JlYWR5
-        IHNpbmNlIHRoZXJlJ3Mgbm90aGluZyB0byBzZXQgdXAgeWV0LiJ9LHsidHlw
-        ZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMVZINnY5QVp2Q1ljWHdtQUd2
-        NWVwWFoiLCJuYW1lIjoiZXZlcnl0aGluZ19pc19yZWFkeSIsImlucHV0Ijp7
-        fSwiY2FsbGVyIjp7InR5cGUiOiJkaXJlY3QifX1dLCJzdG9wX3JlYXNvbiI6
-        InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsiaW5w
-        dXRfdG9rZW5zIjoyNTM4LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMi
-        OjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlv
-        biI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxf
-        MWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6ODQsInNlcnZp
-        Y2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFp
-        bGFibGUifX0=
-  recorded_at: Thu, 26 Mar 2026 16:20:32 GMT
+        InRleHQiOiJUaGUgbWFpbiBzZXNzaW9uIGhhcyBqdXN0IHN0YXJ0ZWQgd2l0
+        aCBhIHNpbXBsZSBncmVldGluZyBleGNoYW5nZS4gVGhlcmUncyBubyBjbGVh
+        ciB0YXNrLCB3b3JrZmxvdywgb3IgZG9tYWluIGZvY3VzIHlldC4gTm8gc2tp
+        bGxzIG9yIHdvcmtmbG93cyBuZWVkIHRvIGJlIGFjdGl2YXRlZCBhdCB0aGlz
+        IHN0YWdlLlxuXG5MZXQgbWUgY2FsbCBldmVyeXRoaW5nX2lzX3JlYWR5IHNp
+        bmNlIHRoZXJlJ3Mgbm90aGluZyB0byBjb25maWd1cmU6In0seyJ0eXBlIjoi
+        dG9vbF91c2UiLCJpZCI6InRvb2x1XzAxV2hhQjFpUFp6eWlxVTlvazlrOHRE
+        eCIsIm5hbWUiOiJldmVyeXRoaW5nX2lzX3JlYWR5IiwiaW5wdXQiOnt9LCJj
+        YWxsZXIiOnsidHlwZSI6ImRpcmVjdCJ9fV0sInN0b3BfcmVhc29uIjoidG9v
+        bF91c2UiLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90
+        b2tlbnMiOjI0NzIsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwi
+        Y2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7
+        ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9p
+        bnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjo5Miwic2VydmljZV90
+        aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJs
+        ZSJ9fQ==
+  recorded_at: Thu, 26 Mar 2026 17:33:01 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
       string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":"The
-        main session is working on this:\n```\nUser: Hello\nAssistant: Hi\n```\n\nObserve
-        the conversation and take action: manage goals, activate or deactivate relevant
-        skills, read workflows when a multi-step task matches, rename the session
-        if needed, then call everything_is_ready."},{"role":"assistant","content":[{"type":"text","text":"The
-        conversation is minimal and doesn''t indicate a clear task or domain. There''s
-        just a greeting exchange with no actionable work starting.\n\nI''ll call everything_is_ready
-        since there''s nothing to set up yet."},{"type":"tool_use","id":"toolu_01VH6v9AZvCYcXwmAGv5epXZ","name":"everything_is_ready","input":{},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01VH6v9AZvCYcXwmAGv5epXZ","content":"Acknowledged.
+        main session is working on this:\n```\nUser: Hello\nAssistant: Hi\n```\n\nReview
+        and take any needed actions, then call everything_is_ready."},{"role":"assistant","content":[{"type":"text","text":"The
+        main session has just started with a simple greeting exchange. There''s no
+        clear task, workflow, or domain focus yet. No skills or workflows need to
+        be activated at this stage.\n\nLet me call everything_is_ready since there''s
+        nothing to configure:"},{"type":"tool_use","id":"toolu_01WhaB1iPZzyiqU9ok9k8tDx","name":"everything_is_ready","input":{},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01WhaB1iPZzyiqU9ok9k8tDx","content":"Acknowledged.
         No changes needed."}]}],"max_tokens":4096,"tools":[{"name":"rename_session","description":"Rename
         the session.","input_schema":{"type":"object","properties":{"emoji":{"type":"string"},"name":{"type":"string","description":"1-3
         words."},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["emoji","name"]}},{"name":"activate_skill","description":"Give
@@ -222,28 +219,27 @@ http_interactions:
         else to do.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":[]}}],"system":[{"type":"text","text":"You are
         Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
-        are a background automation that manages session metadata.\nYou MUST ONLY
-        communicate through tool calls — NEVER output text.\nAlways finish by calling
-        everything_is_ready.\n\n──────────────────────────────\nSESSION NAMING\n──────────────────────────────\nCall
-        rename_session when the topic becomes clear or shifts.\nFormat: one emoji
-        + 1-3 descriptive words.\n\n──────────────────────────────\nSKILL MANAGEMENT\n──────────────────────────────\nCall
-        activate_skill when the conversation matches a skill''s description.\nCall
-        deactivate_skill when the agent moves to a different domain.\nMultiple skills
-        can be active at once.\n\n──────────────────────────────\nWORKFLOW MANAGEMENT\n──────────────────────────────\nCall
-        read_workflow when the user starts a multi-step task matching a workflow description.\nRead
-        the returned content and use judgment to create appropriate goals — not a
-        mechanical 1:1 mapping.\nAdapt to context: skip irrelevant steps, add extra
-        steps for unfamiliar areas.\nCall deactivate_workflow when the workflow completes
-        or the user shifts focus.\nOnly one workflow can be active at a time — activating
-        a new one replaces the previous.\n\n──────────────────────────────\nGOAL TRACKING\n──────────────────────────────\nCall
-        set_goal to create a root goal when the user starts a multi-step task.\nCall
-        set_goal with parent_goal_id to add sub-goals (TODO items) under it.\nCall
-        update_goal to refine a goal''s description as understanding evolves.\nCall
-        finish_goal when the main agent completes work a goal describes.\nFinishing
-        a root goal cascades — all active sub-goals are completed too.\nNever duplicate
-        an existing goal — check the active goals list first.\n\n──────────────────────────────\nCOMPLETION\n──────────────────────────────\nCall
-        everything_is_ready as your LAST tool call, every time.\nIf nothing needs
-        changing, call it immediately as your only tool call.\n\n──────────────────────────────\nCURRENT
+        manage context for the main agent — skills, goals, workflows, and session
+        names.\nWatch the conversation and act when context needs updating.\nCommunicate
+        only through tool calls — never output text.\n\n──────────────────────────────\nSESSION
+        NAMING\n──────────────────────────────\nName the session when the topic becomes
+        clear. Rename if it shifts.\nFormat: one emoji + 1-3 descriptive words.\n\n──────────────────────────────\nSKILL
+        MANAGEMENT\n──────────────────────────────\nActivate skills when the conversation
+        enters their domain.\nDeactivate when the agent moves to a different domain.\nMultiple
+        skills can be active at once.\n\n──────────────────────────────\nWORKFLOW
+        MANAGEMENT\n──────────────────────────────\nActivate a workflow when the user
+        starts a multi-step task that matches one.\nRead the returned content and
+        use judgment to create goals — not a mechanical 1:1 mapping.\nAdapt to context:
+        skip irrelevant steps, add extra steps for unfamiliar areas.\nDeactivate the
+        workflow when it completes or the user shifts focus.\nOnly one workflow active
+        at a time — activating a new one replaces the previous.\n\n──────────────────────────────\nGOAL
+        TRACKING\n──────────────────────────────\nCreate a root goal when the user
+        starts a multi-step task.\nBreak it into sub-goals as the plan becomes clear.\nRefine
+        goal wording as understanding evolves.\nMark goals complete when the agent
+        finishes the work they describe.\nCompleting a root goal cascades — all sub-goals
+        are finished too.\nNever duplicate an existing goal — check the active goals
+        list first.\n\n──────────────────────────────\nCOMPLETION\n──────────────────────────────\nAlways
+        finish with everything_is_ready.\nIf nothing needs attention, call it immediately.\n\n──────────────────────────────\nCURRENT
         STATE\n──────────────────────────────\nSession name: (unnamed)\nActive skills:
         None\nActive workflow: None\n\n──────────────────────────────\nAVAILABLE SKILLS\n──────────────────────────────\n-
         activerecord — Associations, validations, queries, migrations, eager loading.
@@ -303,7 +299,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 26 Mar 2026 16:20:32 GMT
+      - Thu, 26 Mar 2026 17:33:03 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -317,13 +313,13 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1774555200'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.09'
+      - '0.26'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1774591200'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.7'
+      - '0.72'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
@@ -343,11 +339,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '620'
+      - '979'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=622
+      - x-originResponse;dur=983
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
       X-Robots-Tag:
@@ -362,14 +358,14 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMVRwcm92dGkzaFdzNlp5VjJwTkhZejMiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMU54c0hRaEo5SGZHd2dWdXpQN2NMeDQiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24i
         OiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7Imlu
-        cHV0X3Rva2VucyI6MjY0MCwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5z
+        cHV0X3Rva2VucyI6MjU4MiwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5z
         IjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRp
         b24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFs
         XzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjIsInNlcnZp
         Y2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFp
         bGFibGUifX0=
-  recorded_at: Thu, 26 Mar 2026 16:20:32 GMT
+  recorded_at: Thu, 26 Mar 2026 17:33:03 GMT
 recorded_with: VCR 6.4.0
