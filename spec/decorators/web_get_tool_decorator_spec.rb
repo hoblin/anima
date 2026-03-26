@@ -39,19 +39,201 @@ RSpec.describe WebGetToolDecorator do
         expect(result).not_to include("body{}")
       end
 
-      it "strips nav elements" do
+      it "strips nav elements when no semantic container exists" do
         result = decorator.call(body: html, content_type: "text/html")
         expect(result).not_to include("Home")
       end
 
-      it "strips footer elements" do
+      it "strips footer elements when no semantic container exists" do
         result = decorator.call(body: html, content_type: "text/html")
         expect(result).not_to include("Copyright")
+      end
+
+      it "strips noscript tags" do
+        noscript_html = "<html><body><noscript><p>Enable JavaScript</p></noscript><p>Content here is visible and real.</p></body></html>"
+        result = decorator.call(body: noscript_html, content_type: "text/html")
+
+        expect(result).not_to include("Enable JavaScript")
+        expect(result).to include("Content here")
+      end
+
+      it "strips iframe tags" do
+        iframe_html = "<html><body><iframe src='https://example.com'><p>Fallback text</p></iframe><p>Visible page content for testing purposes.</p></body></html>"
+        result = decorator.call(body: iframe_html, content_type: "text/html")
+
+        expect(result).not_to include("Fallback text")
+        expect(result).to include("Visible page content")
+      end
+
+      it "strips svg tags" do
+        svg_html = "<html><body><svg><circle cx='50' cy='50' r='40'/></svg><p>Real text content that should be extracted properly.</p></body></html>"
+        result = decorator.call(body: svg_html, content_type: "text/html")
+
+        expect(result).not_to include("circle")
+        expect(result).to include("Real text content")
+      end
+
+      it "strips form elements when no semantic container exists" do
+        form_html = "<html><body><form><input type='text'/><p>Form label</p></form><p>Page content that is long enough to avoid the short content warning flag.</p></body></html>"
+        result = decorator.call(body: form_html, content_type: "text/html")
+
+        expect(result).not_to include("Form label")
+        expect(result).to include("Page content")
+      end
+
+      it "strips menu elements when no semantic container exists" do
+        menu_html = "<html><body><menu><li>Option A</li></menu><menuitem>Hidden item</menuitem><p>Main page content that exceeds the minimum character threshold easily.</p></body></html>"
+        result = decorator.call(body: menu_html, content_type: "text/html")
+
+        expect(result).not_to include("Option A")
+        expect(result).to include("Main page content")
       end
 
       it "handles Content-Type with charset parameter" do
         result = decorator.call(body: html, content_type: "text/html; charset=utf-8")
         expect(result).to start_with("[Converted: HTML → Markdown]")
+      end
+    end
+
+    context "with HTML containing a <main> element" do
+      let(:html) do
+        <<~HTML
+          <html><body>
+            <header><nav>Site Nav</nav></header>
+            <main>
+              <h1>Primary Content</h1>
+              <p>This is the main article text with enough length to pass the threshold easily.</p>
+              <nav aria-label="pagination"><a href="/page/2">Next</a></nav>
+            </main>
+            <footer>Footer links</footer>
+          </body></html>
+        HTML
+      end
+
+      it "extracts content from <main> instead of stripping noise" do
+        result = decorator.call(body: html, content_type: "text/html")
+
+        expect(result).to include("Primary Content")
+        expect(result).to include("main article text")
+      end
+
+      it "preserves nav elements inside <main>" do
+        result = decorator.call(body: html, content_type: "text/html")
+
+        expect(result).to include("Next")
+      end
+
+      it "excludes content outside <main>" do
+        result = decorator.call(body: html, content_type: "text/html")
+
+        expect(result).not_to include("Site Nav")
+        expect(result).not_to include("Footer links")
+      end
+    end
+
+    context "with HTML containing an <article> element" do
+      let(:html) do
+        <<~HTML
+          <html><body>
+            <nav>Navigation</nav>
+            <article>
+              <h2>Blog Post Title</h2>
+              <p>Article body with enough content to be meaningful for reading and extraction.</p>
+            </article>
+            <aside>Sidebar</aside>
+          </body></html>
+        HTML
+      end
+
+      it "extracts content from <article>" do
+        result = decorator.call(body: html, content_type: "text/html")
+
+        expect(result).to include("Blog Post Title")
+        expect(result).to include("Article body")
+      end
+
+      it "excludes nav and aside outside <article>" do
+        result = decorator.call(body: html, content_type: "text/html")
+
+        expect(result).not_to include("Navigation")
+        expect(result).not_to include("Sidebar")
+      end
+    end
+
+    context "with HTML containing role='main'" do
+      it "extracts content from the role='main' element" do
+        html = <<~HTML
+          <html><body>
+            <header>Header</header>
+            <div role="main">
+              <h1>Accessible Content</h1>
+              <p>This page uses ARIA role instead of the semantic main element for its content.</p>
+            </div>
+            <footer>Footer</footer>
+          </body></html>
+        HTML
+
+        result = decorator.call(body: html, content_type: "text/html")
+
+        expect(result).to include("Accessible Content")
+        expect(result).not_to include("Header")
+        expect(result).not_to include("Footer")
+      end
+    end
+
+    context "when content exists only in structural noise tags" do
+      it "warns when no semantic container and noise removal leaves little content" do
+        html = <<~HTML
+          <html><body>
+            <nav>
+              <h1>Issues</h1>
+              <ul><li>Bug #1: Fix the widget so it renders properly in production.</li></ul>
+            </nav>
+          </body></html>
+        HTML
+
+        result = decorator.call(body: html, content_type: "text/html")
+
+        # No semantic container → falls back to noise removal → content lost
+        # This is expected behavior; the warning flag signals the problem
+        expect(result).to include("[Warning:")
+      end
+    end
+
+    context "with short content warning" do
+      it "warns when extracted content is below threshold" do
+        html = "<html><body><p>Short</p></body></html>"
+        result = decorator.call(body: html, content_type: "text/html")
+
+        expect(result).to include("[Warning:")
+        expect(result).to include("content may be incomplete")
+      end
+
+      it "warns at one below threshold (99 chars)" do
+        html = "<html><body><p>#{"x" * 99}</p></body></html>"
+        result = decorator.call(body: html, content_type: "text/html")
+
+        expect(result).to include("[Warning:")
+      end
+
+      it "does not warn at exactly the threshold (100 chars)" do
+        html = "<html><body><p>#{"x" * 100}</p></body></html>"
+        result = decorator.call(body: html, content_type: "text/html")
+
+        expect(result).not_to include("[Warning:")
+      end
+
+      it "does not warn when content is above threshold" do
+        html = "<html><body><p>#{"x" * 200}</p></body></html>"
+        result = decorator.call(body: html, content_type: "text/html")
+
+        expect(result).not_to include("[Warning:")
+      end
+
+      it "does not warn on empty body" do
+        result = decorator.call(body: "", content_type: "text/html")
+
+        expect(result).not_to include("[Warning:")
       end
     end
 
@@ -148,7 +330,7 @@ RSpec.describe WebGetToolDecorator do
     end
 
     context "with empty body" do
-      it "returns empty string for empty HTML" do
+      it "returns metadata tag for empty HTML" do
         result = decorator.call(body: "", content_type: "text/html")
 
         expect(result).to start_with("[Converted: HTML → Markdown]")
@@ -187,6 +369,22 @@ RSpec.describe WebGetToolDecorator do
         expect(result).not_to match(/\n{3,}/)
       end
     end
+
+    context "with <main> preferred over <article>" do
+      it "uses <main> when both exist" do
+        html = <<~HTML
+          <html><body>
+            <article><p>Article content that should be ignored when main is present.</p></article>
+            <main><p>Main content is the primary extraction target for the converter.</p></main>
+          </body></html>
+        HTML
+
+        result = decorator.call(body: html, content_type: "text/html")
+
+        expect(result).to include("Main content")
+        expect(result).not_to include("Article content")
+      end
+    end
   end
 
   describe "#decorate" do
@@ -197,7 +395,7 @@ RSpec.describe WebGetToolDecorator do
 
     it "dispatches text/html to text_html" do
       result = decorator.decorate("<b>hi</b>", content_type: "text/html")
-      expect(result[:meta]).to eq("[Converted: HTML → Markdown]")
+      expect(result[:meta]).to start_with("[Converted: HTML → Markdown]")
     end
 
     it "dispatches unknown types to method_missing passthrough" do

@@ -131,6 +131,10 @@ module Anima
       # @return [Integer]
       def max_web_response_bytes = get("tools", "max_web_response_bytes")
 
+      # Minimum characters of extracted web content before flagging as possibly incomplete.
+      # @return [Integer]
+      def min_web_content_chars = get("tools", "min_web_content_chars")
+
       # ─── Session ────────────────────────────────────────────────────
 
       # View mode applied to new sessions: "basic", "verbose", or "debug".
