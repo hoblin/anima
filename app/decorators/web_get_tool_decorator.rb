@@ -25,7 +25,7 @@ class WebGetToolDecorator < ToolDecorator
   # Structural elements stripped only when no semantic content container is found.
   STRUCTURAL_TAGS = %w[nav footer aside form header menu menuitem].freeze
 
-  # Semantic HTML5 containers that hold primary page content.
+  # Semantic HTML5 containers in preference order (first match wins).
   CONTENT_SELECTORS = ["main", "article", "[role='main']"].freeze
 
   # @param result [Hash] `{body: String, content_type: String}`
@@ -109,6 +109,10 @@ class WebGetToolDecorator < ToolDecorator
   end
 
   # Extracts the primary content from a parsed HTML document.
+  #
+  # Prefers semantic containers ({CONTENT_SELECTORS}) and returns the first
+  # match. When none exist, strips {STRUCTURAL_TAGS} from the +<body>+ and
+  # returns what remains.
   #
   # @param doc [Nokogiri::HTML::Document]
   # @return [String] inner HTML of the best content node

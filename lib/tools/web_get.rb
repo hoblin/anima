@@ -70,9 +70,10 @@ module Tools
         "\n\n[Truncated: response exceeded #{max_bytes} bytes]"
     end
 
-    # Lightweight regex passes that strip tags which never carry readable
-    # content. Each pattern targets one tag type for easy maintenance.
-    # Nokogiri is intentionally avoided to skip a full DOM parse.
+    # First-stage noise stripping — runs before truncation so that the
+    # byte budget is spent on content, not on scripts/SVGs/metadata.
+    # Each pattern targets one tag type for easy maintenance.
+    # The decorator applies a second, structure-aware pass via Nokogiri.
     HTML_NOISE_PATTERNS = [
       %r{<head\b[^>]*>.*?</head>}mi,       # metadata, link/meta tags
       %r{<script\b[^>]*>.*?</script>}mi,   # JavaScript

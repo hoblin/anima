@@ -49,6 +49,46 @@ RSpec.describe WebGetToolDecorator do
         expect(result).not_to include("Copyright")
       end
 
+      it "strips noscript tags" do
+        noscript_html = "<html><body><noscript><p>Enable JavaScript</p></noscript><p>Content here is visible and real.</p></body></html>"
+        result = decorator.call(body: noscript_html, content_type: "text/html")
+
+        expect(result).not_to include("Enable JavaScript")
+        expect(result).to include("Content here")
+      end
+
+      it "strips iframe tags" do
+        iframe_html = "<html><body><iframe src='https://example.com'><p>Fallback text</p></iframe><p>Visible page content for testing purposes.</p></body></html>"
+        result = decorator.call(body: iframe_html, content_type: "text/html")
+
+        expect(result).not_to include("Fallback text")
+        expect(result).to include("Visible page content")
+      end
+
+      it "strips svg tags" do
+        svg_html = "<html><body><svg><circle cx='50' cy='50' r='40'/></svg><p>Real text content that should be extracted properly.</p></body></html>"
+        result = decorator.call(body: svg_html, content_type: "text/html")
+
+        expect(result).not_to include("circle")
+        expect(result).to include("Real text content")
+      end
+
+      it "strips form elements when no semantic container exists" do
+        form_html = "<html><body><form><input type='text'/><p>Form label</p></form><p>Page content that is long enough to avoid the short content warning flag.</p></body></html>"
+        result = decorator.call(body: form_html, content_type: "text/html")
+
+        expect(result).not_to include("Form label")
+        expect(result).to include("Page content")
+      end
+
+      it "strips menu elements when no semantic container exists" do
+        menu_html = "<html><body><menu><li>Option A</li></menu><menuitem>Hidden item</menuitem><p>Main page content that exceeds the minimum character threshold easily.</p></body></html>"
+        result = decorator.call(body: menu_html, content_type: "text/html")
+
+        expect(result).not_to include("Option A")
+        expect(result).to include("Main page content")
+      end
+
       it "handles Content-Type with charset parameter" do
         result = decorator.call(body: html, content_type: "text/html; charset=utf-8")
         expect(result).to start_with("[Converted: HTML → Markdown]")
@@ -141,8 +181,8 @@ RSpec.describe WebGetToolDecorator do
       end
     end
 
-    context "with HTML where all content is in noise tags" do
-      it "preserves content when no semantic container or body content exists" do
+    context "when content exists only in structural noise tags" do
+      it "warns when no semantic container and noise removal leaves little content" do
         html = <<~HTML
           <html><body>
             <nav>
@@ -167,6 +207,20 @@ RSpec.describe WebGetToolDecorator do
 
         expect(result).to include("[Warning:")
         expect(result).to include("content may be incomplete")
+      end
+
+      it "warns at one below threshold (99 chars)" do
+        html = "<html><body><p>#{"x" * 99}</p></body></html>"
+        result = decorator.call(body: html, content_type: "text/html")
+
+        expect(result).to include("[Warning:")
+      end
+
+      it "does not warn at exactly the threshold (100 chars)" do
+        html = "<html><body><p>#{"x" * 100}</p></body></html>"
+        result = decorator.call(body: html, content_type: "text/html")
+
+        expect(result).not_to include("[Warning:")
       end
 
       it "does not warn when content is above threshold" do
