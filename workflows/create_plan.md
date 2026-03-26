@@ -1,6 +1,6 @@
 ---
 name: create_plan
-description: "Create detailed implementation plans through interactive research and iteration."
+description: "For epics and multi-ticket efforts — research the problem space and design a phased implementation strategy before writing code."
 ---
 
 # Implementation Plan
