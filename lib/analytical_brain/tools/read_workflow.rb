@@ -9,17 +9,13 @@ module AnalyticalBrain
     class ReadWorkflow < ::Tools::Base
       def self.tool_name = "read_workflow"
 
-      def self.description = "Read a workflow's full content and activate it on the session. " \
-        "Use the content to create appropriate goals with set_goal."
+      def self.description = "Activate a workflow and return its full content."
 
       def self.input_schema
         {
           type: "object",
           properties: {
-            name: {
-              type: "string",
-              description: "Name of the workflow to read (from the available workflows list)"
-            }
+            name: {type: "string"}
           },
           required: %w[name]
         }

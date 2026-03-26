@@ -7,17 +7,13 @@ module AnalyticalBrain
     class DeactivateSkill < ::Tools::Base
       def self.tool_name = "deactivate_skill"
 
-      def self.description = "Deactivate a skill that is no longer relevant. " \
-        "The skill's content will be removed from the agent's system prompt."
+      def self.description = "Remove a skill's content from the agent's context."
 
       def self.input_schema
         {
           type: "object",
           properties: {
-            name: {
-              type: "string",
-              description: "Name of the skill to deactivate (from the currently active skills list)"
-            }
+            name: {type: "string"}
           },
           required: %w[name]
         }

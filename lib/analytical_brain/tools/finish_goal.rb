@@ -7,17 +7,13 @@ module AnalyticalBrain
     class FinishGoal < ::Tools::Base
       def self.tool_name = "finish_goal"
 
-      def self.description = "Mark a goal as completed. " \
-        "Use this when the main agent has finished the work described by the goal."
+      def self.description = "Mark a goal as completed."
 
       def self.input_schema
         {
           type: "object",
           properties: {
-            goal_id: {
-              type: "integer",
-              description: "ID of the goal to mark as completed"
-            }
+            goal_id: {type: "integer"}
           },
           required: %w[goal_id]
         }
@@ -49,7 +45,8 @@ module AnalyticalBrain
       # brain learns to check status before retrying.
       def complete(goal)
         id = goal.id
-        return {error: "Goal already completed: #{goal.description} (id: #{id})"} if goal.completed?
+        desc = goal.description
+        return {error: "Goal already completed: #{desc} (id: #{id})"} if goal.completed?
 
         released = 0
         Goal.transaction do
@@ -58,7 +55,7 @@ module AnalyticalBrain
           released = goal.release_orphaned_pins!
         end
 
-        msg = "Goal completed: #{goal.description} (id: #{id})"
+        msg = "Goal completed: #{desc} (id: #{id})"
         msg += " (released #{released} orphaned pins)" if released > 0
         msg
       end

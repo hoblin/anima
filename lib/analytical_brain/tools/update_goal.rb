@@ -15,20 +15,16 @@ module AnalyticalBrain
     class UpdateGoal < ::Tools::Base
       def self.tool_name = "update_goal"
 
-      def self.description = "Update a goal's description. " \
-        "Use this to refine a goal as understanding evolves."
+      def self.description = "Revise a goal's description."
 
       def self.input_schema
         {
           type: "object",
           properties: {
-            goal_id: {
-              type: "integer",
-              description: "ID of the goal to update"
-            },
+            goal_id: {type: "integer"},
             description: {
               type: "string",
-              description: "New description for the goal (1-2 sentences)"
+              description: "1-2 sentences."
             }
           },
           required: %w[goal_id description]

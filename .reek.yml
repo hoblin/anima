@@ -37,6 +37,8 @@ detectors:
       - "Tools::SpawnSpecialist#execute"
       # Nickname assignment operates on child session and parent's children — inherent.
       - "Tools::SubagentPrompts#assign_nickname_via_brain"
+      # Goal tools operate on goal objects — inherent to the pattern.
+      - "AnalyticalBrain::Tools::UpdateGoal#execute"
       # Validation methods naturally reference the validated value more than self.
       - "AnalyticalBrain::Tools::AssignNickname#validate"
       # Tool execute methods naturally reference input hash and shell result hash.

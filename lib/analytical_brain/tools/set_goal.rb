@@ -8,8 +8,7 @@ module AnalyticalBrain
     class SetGoal < ::Tools::Base
       def self.tool_name = "set_goal"
 
-      def self.description = "Create a goal on the main session. " \
-        "Omit parent_goal_id for a root goal, or provide it to create a sub-goal (TODO item)."
+      def self.description = "Create a goal or sub-goal."
 
       def self.input_schema
         {
@@ -17,12 +16,9 @@ module AnalyticalBrain
           properties: {
             description: {
               type: "string",
-              description: "What needs to be accomplished (1-2 sentences)"
+              description: "1-2 sentences."
             },
-            parent_goal_id: {
-              type: "integer",
-              description: "ID of the parent goal (omit for root goals)"
-            }
+            parent_goal_id: {type: "integer"}
           },
           required: %w[description]
         }

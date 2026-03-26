@@ -8,17 +8,13 @@ module AnalyticalBrain
     class ActivateSkill < ::Tools::Base
       def self.tool_name = "activate_skill"
 
-      def self.description = "Activate a domain knowledge skill on the main session. " \
-        "The skill's content will be injected into the agent's system prompt."
+      def self.description = "Inject a skill's content into the agent's context."
 
       def self.input_schema
         {
           type: "object",
           properties: {
-            name: {
-              type: "string",
-              description: "Name of the skill to activate (from the available skills list)"
-            }
+            name: {type: "string"}
           },
           required: %w[name]
         }
