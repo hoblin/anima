@@ -8,7 +8,7 @@ module Mneme
     class EverythingOk < ::Tools::Base
       def self.tool_name = "everything_ok"
 
-      def self.description = "Nothing worth remembering."
+      def self.description = "Nothing else worth remembering."
 
       def self.input_schema
         {type: "object", properties: {}, required: []}

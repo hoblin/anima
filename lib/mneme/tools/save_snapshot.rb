@@ -20,7 +20,7 @@ module Mneme
           properties: {
             text: {
               type: "string",
-              description: "Max #{Anima::Settings.mneme_max_tokens} tokens."
+              maxLength: Anima::Settings.mneme_max_tokens * Event::BYTES_PER_TOKEN
             }
           },
           required: %w[text]

@@ -12,7 +12,7 @@ module Mneme
     class AttachEventsToGoals < ::Tools::Base
       def self.tool_name = "attach_events_to_goals"
 
-      def self.description = "Events stay pinned until all attached goals complete."
+      def self.description = "Pin critical messages to goals so they survive viewport eviction."
 
       def self.input_schema
         {
@@ -20,8 +20,7 @@ module Mneme
           properties: {
             event_ids: {
               type: "array",
-              items: {type: "integer"},
-              description: "The N from `event N` markers."
+              items: {type: "integer"}
             },
             goal_ids: {
               type: "array",
