@@ -121,7 +121,7 @@ class AgentRequestJob < ApplicationJob
         content: content,
         error: error.message,
         session_id: session.id,
-        event_id: message_id
+        message_id: message_id
       ))
       broadcast_auth_required(session.id, error) if error.is_a?(Providers::Anthropic::AuthenticationError)
       return

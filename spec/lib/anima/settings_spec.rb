@@ -68,6 +68,10 @@ RSpec.describe Anima::Settings do
       expect(described_class.project_files_max_depth).to eq(3)
     end
 
+    it "reads agent settings" do
+      expect(described_class.agent_name).to eq("Anima")
+    end
+
     it "reads GitHub settings" do
       expect(described_class.github_repo).to eq("hoblin/anima")
       expect(described_class.github_label).to eq("anima-wants")
@@ -180,7 +184,7 @@ RSpec.describe Anima::Settings do
         max_tokens = 128
         blocking_on_user_message = true
         blocking_on_agent_message = false
-        event_window = 20
+        message_window = 20
         [environment]
         project_files = ["CLAUDE.md", "README.md"]
         project_files_max_depth = 3
@@ -232,7 +236,7 @@ RSpec.describe Anima::Settings do
         max_tokens = 128
         blocking_on_user_message = true
         blocking_on_agent_message = false
-        event_window = 20
+        message_window = 20
       TOML
       config_file.flush
       FileUtils.touch(config_file.path, mtime: Time.now + 1)

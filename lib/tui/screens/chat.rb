@@ -352,7 +352,7 @@ module TUI
       # because LLM delivery failed. Removes the phantom message from the
       # chat, restores the text to the input field, and shows a flash.
       def handle_bounce_back(msg)
-        message_id = msg["event_id"]
+        message_id = msg["message_id"]
         content = msg["content"]
         error = msg["error"]
 

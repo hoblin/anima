@@ -16,7 +16,7 @@
 # @!attribute to_message_id
 #   @return [Integer] last message ID covered by this snapshot
 # @!attribute level
-#   @return [Integer] compression level (1 = from raw events, 2 = from L1 snapshots)
+#   @return [Integer] compression level (1 = from raw messages, 2 = from L1 snapshots)
 # @!attribute token_count
 #   @return [Integer] cached token count of the summary text
 class Snapshot < ApplicationRecord
