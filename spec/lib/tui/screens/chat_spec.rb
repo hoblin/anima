@@ -22,7 +22,7 @@ RSpec.describe TUI::Screens::Chat do
     allow(cable_client).to receive(:change_view_mode)
   end
 
-  # RatatuiRuby::Event uses method_missing for dynamic predicates,
+  # RatatuiRuby::Message uses method_missing for dynamic predicates,
   # so we use plain doubles instead of instance_double
   def key_event(code:, modifiers: nil, **overrides)
     defaults = {
@@ -44,7 +44,7 @@ RSpec.describe TUI::Screens::Chat do
     defaults[:right?] = true if code == "right"
     defaults[:home?] = true if code == "home"
     defaults[:end?] = true if code == "end"
-    double("Event", **defaults, code: code, modifiers: modifiers, **overrides)
+    double("Message", **defaults, code: code, modifiers: modifiers, **overrides)
   end
 
   def paste_event(content:)
@@ -227,8 +227,8 @@ RSpec.describe TUI::Screens::Chat do
         screen.send(:process_incoming_messages)
 
         expect(screen.messages).to match([
-          a_hash_including(type: :rendered, data: {"role" => "user", "content" => "hello"}, event_type: "user_message"),
-          a_hash_including(type: :rendered, data: {"role" => "assistant", "content" => "hi"}, event_type: "agent_message")
+          a_hash_including(type: :rendered, data: {"role" => "user", "content" => "hello"}, message_type: "user_message"),
+          a_hash_including(type: :rendered, data: {"role" => "assistant", "content" => "hi"}, message_type: "agent_message")
         ])
       end
 
@@ -292,7 +292,7 @@ RSpec.describe TUI::Screens::Chat do
                                      "rendered" => {"basic" => {"role" => "user", "content" => "pending", "status" => "pending"}}})
 
         allow(cable_client).to receive(:drain_messages).and_return([
-          {"action" => "user_message_recalled", "event_id" => 42}
+          {"action" => "user_message_recalled", "message_id" => 42}
         ])
         screen.send(:process_incoming_messages)
 
@@ -310,7 +310,7 @@ RSpec.describe TUI::Screens::Chat do
         allow(cable_client).to receive(:drain_messages).and_return([
           {"type" => "agent_message", "id" => 4, "action" => "create",
            "rendered" => {"basic" => {"role" => "assistant", "content" => "new reply"}},
-           "evicted_event_ids" => [1, 2]}
+           "evicted_message_ids" => [1, 2]}
         ])
         screen.send(:process_incoming_messages)
 
@@ -318,14 +318,14 @@ RSpec.describe TUI::Screens::Chat do
         expect(ids).to eq([3, 4])
       end
 
-      it "ignores evicted_event_ids when not an array" do
+      it "ignores evicted_message_ids when not an array" do
         message_store.process_event({"type" => "user_message", "id" => 1,
                                      "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
 
         allow(cable_client).to receive(:drain_messages).and_return([
           {"type" => "agent_message", "id" => 2, "action" => "create",
            "rendered" => {"basic" => {"role" => "assistant", "content" => "reply"}},
-           "evicted_event_ids" => "not-an-array"}
+           "evicted_message_ids" => "not-an-array"}
         ])
         screen.send(:process_incoming_messages)
 
@@ -1171,7 +1171,7 @@ RSpec.describe TUI::Screens::Chat do
     it "updates session info including name" do
       allow(cable_client).to receive(:drain_messages).and_return([session_changed_msg])
       screen.send(:process_incoming_messages)
-      expect(screen.session_info).to eq({id: 99, name: nil, message_count: 5, active_skills: [], active_workflow: nil, goals: [], children: []})
+      expect(screen.session_info).to eq({id: 99, name: nil, agent_name: "Anima", message_count: 5, active_skills: [], active_workflow: nil, goals: [], children: []})
     end
 
     it "stores session name from session_changed payload" do
@@ -1710,7 +1710,7 @@ RSpec.describe TUI::Screens::Chat do
       screen.send(:process_incoming_messages)
 
       expect(screen.messages).to match([
-        a_hash_including(type: :rendered, data: {"role" => "system_prompt", "content" => "You are Anima.", "tokens" => 4, "estimated" => true}, event_type: "system_prompt")
+        a_hash_including(type: :rendered, data: {"role" => "system_prompt", "content" => "You are Anima.", "tokens" => 4, "estimated" => true}, message_type: "system_prompt")
       ])
     end
   end
@@ -1758,28 +1758,28 @@ RSpec.describe TUI::Screens::Chat do
     end
 
     it "estimates rendered tool_call without separator" do
-      entry = {type: :rendered, event_type: "tool_call", data: {"content" => "result"}}
+      entry = {type: :rendered, message_type: "tool_call", data: {"content" => "result"}}
       height = screen.send(:estimate_entry_height, entry, 80)
       # 1 line content + 1 header = 2 (no separator for tool_call)
       expect(height).to eq(2)
     end
 
     it "estimates rendered non-tool_call with separator" do
-      entry = {type: :rendered, event_type: "tool_response", data: {"content" => "result"}}
+      entry = {type: :rendered, message_type: "tool_response", data: {"content" => "result"}}
       height = screen.send(:estimate_entry_height, entry, 80)
       # 1 line content + 1 header + 1 separator = 3
       expect(height).to eq(3)
     end
 
     it "combines content and input for rendered entries" do
-      entry = {type: :rendered, event_type: "tool_call", data: {"content" => "desc", "input" => "code"}}
+      entry = {type: :rendered, message_type: "tool_call", data: {"content" => "desc", "input" => "code"}}
       height = screen.send(:estimate_entry_height, entry, 80)
       # 2 lines (content\ninput joined) + 1 header = 3
       expect(height).to eq(3)
     end
 
     it "handles nil content in rendered entries" do
-      entry = {type: :rendered, event_type: "assistant", data: {"content" => nil}}
+      entry = {type: :rendered, message_type: "assistant", data: {"content" => nil}}
       height = screen.send(:estimate_entry_height, entry, 80)
       # empty text → 1 line + 1 header + 1 separator = 3
       expect(height).to eq(3)

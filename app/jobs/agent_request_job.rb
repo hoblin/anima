@@ -5,18 +5,18 @@
 #
 # Supports two modes:
 #
-# **Immediate Persist (event_id provided):** The user event was already
+# **Immediate Persist (message_id provided):** The user message was already
 # persisted and broadcast by the caller (e.g. {SessionChannel#speak}).
 # The job verifies LLM delivery — if the first API call fails, the
-# event is deleted and a {Events::BounceBack} is emitted so clients
+# message is deleted and a {Events::BounceBack} is emitted so clients
 # can restore the text to the input field.
 #
-# **Standard (no event_id):** Processes already-persisted events (e.g.
+# **Standard (no message_id):** Processes already-persisted messages (e.g.
 # after pending message promotion). Uses ActiveJob retry/discard for
 # error handling.
 #
-# @example Immediate Persist — event already saved by SessionChannel
-#   AgentRequestJob.perform_later(session.id, event_id: 42)
+# @example Immediate Persist — message already saved by SessionChannel
+#   AgentRequestJob.perform_later(session.id, message_id: 42)
 #
 # @example Standard — pending message processing
 #   AgentRequestJob.perform_later(session.id)
@@ -49,8 +49,8 @@ class AgentRequestJob < ApplicationJob
   end
 
   # @param session_id [Integer] ID of the session to process
-  # @param event_id [Integer, nil] ID of a pre-persisted user event (triggers delivery verification)
-  def perform(session_id, event_id: nil)
+  # @param message_id [Integer, nil] ID of a pre-persisted user message (triggers delivery verification)
+  def perform(session_id, message_id: nil)
     session = Session.find(session_id)
 
     # Atomic: only one job processes a session at a time.
@@ -60,8 +60,8 @@ class AgentRequestJob < ApplicationJob
 
     agent_loop = AgentLoop.new(session: session)
 
-    if event_id
-      deliver_persisted_event(session, event_id, agent_loop)
+    if message_id
+      deliver_persisted_message(session, message_id, agent_loop)
     else
       agent_loop.run
     end
@@ -82,11 +82,11 @@ class AgentRequestJob < ApplicationJob
 
   private
 
-  # Verifies LLM delivery for a pre-persisted user event.
+  # Verifies LLM delivery for a pre-persisted user message.
   #
-  # The event was already created and broadcast by the caller, so
+  # The message was already created and broadcast by the caller, so
   # the user sees their message immediately. This method makes the
-  # first LLM API call — if it fails, the event is deleted and a
+  # first LLM API call — if it fails, the message is deleted and a
   # {Events::BounceBack} notifies clients to remove the phantom
   # message and restore the text to the input field. For
   # {Providers::Anthropic::AuthenticationError}, an additional
@@ -102,26 +102,26 @@ class AgentRequestJob < ApplicationJob
   # execution, subsequent API calls).
   #
   # @param session [Session] the conversation session
-  # @param event_id [Integer] database ID of the pre-persisted user event
+  # @param message_id [Integer] database ID of the pre-persisted user message
   # @param agent_loop [AgentLoop] agent loop instance (reused for continuation)
-  def deliver_persisted_event(session, event_id, agent_loop)
-    event = Event.find_by(id: event_id, session_id: session.id)
-    # Event may have been deleted between SessionChannel#speak and job
+  def deliver_persisted_message(session, message_id, agent_loop)
+    message = Message.find_by(id: message_id, session_id: session.id)
+    # Message may have been deleted between SessionChannel#speak and job
     # execution (e.g. user recalled the message). Exit silently — there
     # is nothing to deliver or bounce back.
-    return unless event
+    return unless message
 
-    content = event.payload["content"]
+    content = message.payload["content"]
 
     begin
       agent_loop.deliver!
     rescue => error
-      event.destroy!
+      message.destroy!
       Events::Bus.emit(Events::BounceBack.new(
         content: content,
         error: error.message,
         session_id: session.id,
-        event_id: event_id
+        event_id: message_id
       ))
       broadcast_auth_required(session.id, error) if error.is_a?(Providers::Anthropic::AuthenticationError)
       return

@@ -24,7 +24,7 @@ RSpec.describe Mneme::Tools::SaveSnapshot do
   end
 
   describe "#execute" do
-    let(:tool) { described_class.new(main_session: session, from_event_id: 1, to_event_id: 50) }
+    let(:tool) { described_class.new(main_session: session, from_message_id: 1, to_message_id: 50) }
 
     it "creates a snapshot record" do
       expect {
@@ -38,8 +38,8 @@ RSpec.describe Mneme::Tools::SaveSnapshot do
       snapshot = Snapshot.last
       expect(snapshot.session).to eq(session)
       expect(snapshot.text).to eq("The user discussed authentication flow.")
-      expect(snapshot.from_event_id).to eq(1)
-      expect(snapshot.to_event_id).to eq(50)
+      expect(snapshot.from_message_id).to eq(1)
+      expect(snapshot.to_message_id).to eq(50)
       expect(snapshot.level).to eq(1)
       expect(snapshot.token_count).to be > 0
     end
@@ -49,11 +49,11 @@ RSpec.describe Mneme::Tools::SaveSnapshot do
       expect(Snapshot.last.level).to eq(1)
     end
 
-    it "returns a confirmation string with event range" do
-      result = tool.execute("text" => "Summary of events.")
+    it "returns a confirmation string with message range" do
+      result = tool.execute("text" => "Summary of messages.")
 
       expect(result).to include("Snapshot saved")
-      expect(result).to include("events 1..50")
+      expect(result).to include("messages 1..50")
     end
 
     it "returns an error string for blank text" do
@@ -76,15 +76,15 @@ RSpec.describe Mneme::Tools::SaveSnapshot do
     end
 
     context "with level 2 context" do
-      let(:l2_tool) { described_class.new(main_session: session, from_event_id: 1, to_event_id: 100, level: 2) }
+      let(:l2_tool) { described_class.new(main_session: session, from_message_id: 1, to_message_id: 100, level: 2) }
 
       it "creates a Level 2 snapshot" do
         l2_tool.execute("text" => "Meta-summary of L1 snapshots.")
 
         snapshot = Snapshot.last
         expect(snapshot.level).to eq(2)
-        expect(snapshot.from_event_id).to eq(1)
-        expect(snapshot.to_event_id).to eq(100)
+        expect(snapshot.from_message_id).to eq(1)
+        expect(snapshot.to_message_id).to eq(100)
       end
     end
   end

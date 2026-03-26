@@ -12,7 +12,7 @@ RSpec.describe "Mneme terminal event trigger integration" do
   end
 
   # Helper to create events with predetermined token counts.
-  def create_event(type:, content: "msg", token_count: 100, tool_name: nil, tool_input: nil)
+  def create_message(type:, content: "msg", token_count: 100, tool_name: nil, tool_input: nil)
     payload = case type
     when "tool_call"
       {"content" => "Calling #{tool_name}", "tool_name" => tool_name,
@@ -23,8 +23,8 @@ RSpec.describe "Mneme terminal event trigger integration" do
       {"content" => content}
     end
 
-    session.events.create!(
-      event_type: type,
+    session.messages.create!(
+      message_type: type,
       payload: payload,
       tool_use_id: payload["tool_use_id"],
       timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
@@ -44,25 +44,25 @@ RSpec.describe "Mneme terminal event trigger integration" do
 
     it "initializes boundary on first event, triggers when it evicts" do
       # Step 1: Create first event — boundary should be initialized
-      first = create_event(type: "user_message", content: "first message", token_count: event_size)
+      first = create_message(type: "user_message", content: "first message", token_count: event_size)
       session.recalculate_viewport!
       session.schedule_mneme!
-      expect(session.reload.mneme_boundary_event_id).to eq(first.id)
+      expect(session.reload.mneme_boundary_message_id).to eq(first.id)
 
       # Step 2: Fill viewport (3 events fit in budget)
-      create_event(type: "agent_message", content: "reply 1", token_count: event_size)
-      create_event(type: "user_message", content: "question 2", token_count: event_size)
+      create_message(type: "agent_message", content: "reply 1", token_count: event_size)
+      create_message(type: "user_message", content: "question 2", token_count: event_size)
       session.recalculate_viewport!
       session.schedule_mneme!
       # Boundary still in viewport — no job
-      expect(session.reload.mneme_boundary_event_id).to eq(first.id)
+      expect(session.reload.mneme_boundary_message_id).to eq(first.id)
 
       # Step 3: Add one more event — pushes first event out of viewport
-      create_event(type: "agent_message", content: "reply 2", token_count: event_size)
+      create_message(type: "agent_message", content: "reply 2", token_count: event_size)
       session.recalculate_viewport!
 
       # Boundary event is no longer in viewport
-      expect(session.viewport_event_ids).not_to include(first.id)
+      expect(session.viewport_message_ids).not_to include(first.id)
 
       # Mneme should be triggered
       expect { session.schedule_mneme! }.to have_enqueued_job(MnemeJob).with(session.id)
@@ -74,12 +74,12 @@ RSpec.describe "Mneme terminal event trigger integration" do
 
     it "creates a snapshot and advances boundary through full cycle" do
       # Create conversation events
-      first = create_event(type: "user_message", content: "Implement auth flow")
-      create_event(type: "agent_message", content: "I'll start with OAuth")
-      create_event(type: "user_message", content: "Use PKCE")
-      last = create_event(type: "agent_message", content: "Done with PKCE implementation")
+      first = create_message(type: "user_message", content: "Implement auth flow")
+      create_message(type: "agent_message", content: "I'll start with OAuth")
+      create_message(type: "user_message", content: "Use PKCE")
+      last = create_message(type: "agent_message", content: "Done with PKCE implementation")
 
-      session.update_column(:mneme_boundary_event_id, first.id)
+      session.update_column(:mneme_boundary_message_id, first.id)
 
       # Mock LLM to call save_snapshot
       allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
@@ -100,8 +100,8 @@ RSpec.describe "Mneme terminal event trigger integration" do
 
       # Boundary was advanced past the old boundary
       session.reload
-      expect(session.mneme_boundary_event_id).to eq(last.id)
-      expect(session.mneme_snapshot_last_event_id).to eq(last.id)
+      expect(session.mneme_boundary_message_id).to eq(last.id)
+      expect(session.mneme_snapshot_last_message_id).to eq(last.id)
     end
   end
 
@@ -116,16 +116,16 @@ RSpec.describe "Mneme terminal event trigger integration" do
 
     it "fires Mneme again when the new boundary leaves viewport" do
       # Fill viewport: budget=2000, each event 500 tokens → holds 4 events.
-      first = create_event(type: "user_message", content: "msg 1", token_count: event_size)
-      create_event(type: "agent_message", content: "msg 2", token_count: event_size)
-      create_event(type: "user_message", content: "msg 3", token_count: event_size)
-      create_event(type: "agent_message", content: "msg 4", token_count: event_size)
+      first = create_message(type: "user_message", content: "msg 1", token_count: event_size)
+      create_message(type: "agent_message", content: "msg 2", token_count: event_size)
+      create_message(type: "user_message", content: "msg 3", token_count: event_size)
+      create_message(type: "agent_message", content: "msg 4", token_count: event_size)
 
-      session.update_column(:mneme_boundary_event_id, first.id)
+      session.update_column(:mneme_boundary_message_id, first.id)
       session.recalculate_viewport!
 
       # 5th event pushes first out of viewport
-      create_event(type: "user_message", content: "msg 5", token_count: event_size)
+      create_message(type: "user_message", content: "msg 5", token_count: event_size)
       session.recalculate_viewport!
 
       # First Mneme run — creates snapshot and advances boundary
@@ -137,19 +137,19 @@ RSpec.describe "Mneme terminal event trigger integration" do
       runner = Mneme::Runner.new(session, client: client)
       runner.call
 
-      new_boundary = session.reload.mneme_boundary_event_id
+      new_boundary = session.reload.mneme_boundary_message_id
       expect(new_boundary).to be > first.id
 
       # Add enough events to guarantee the new boundary evicts.
       # Budget holds 4 events; we need 4 new events beyond the boundary.
       4.times do |i|
         type = i.even? ? "agent_message" : "user_message"
-        create_event(type: type, content: "msg #{6 + i}", token_count: event_size)
+        create_message(type: type, content: "msg #{6 + i}", token_count: event_size)
       end
       session.recalculate_viewport!
 
       # New boundary must have left viewport — unconditional assertion
-      expect(session.viewport_event_ids).not_to include(new_boundary)
+      expect(session.viewport_message_ids).not_to include(new_boundary)
       expect { session.schedule_mneme! }.to have_enqueued_job(MnemeJob).with(session.id)
 
       expect(Snapshot.count).to eq(1)
@@ -167,11 +167,11 @@ RSpec.describe "Mneme terminal event trigger integration" do
 
     it "snapshot appears in messages_for_llm after source events evict" do
       # Create events and a snapshot covering them
-      e1 = create_event(type: "user_message", content: "old conversation", token_count: 100)
-      e2 = create_event(type: "agent_message", content: "old reply", token_count: 100)
+      e1 = create_message(type: "user_message", content: "old conversation", token_count: 100)
+      e2 = create_message(type: "agent_message", content: "old reply", token_count: 100)
 
       session.snapshots.create!(
-        text: "Discussed old topic", from_event_id: e1.id, to_event_id: e2.id, level: 1, token_count: 50
+        text: "Discussed old topic", from_message_id: e1.id, to_message_id: e2.id, level: 1, token_count: 50
       )
 
       # While source events are in viewport — snapshot should NOT appear
@@ -180,7 +180,7 @@ RSpec.describe "Mneme terminal event trigger integration" do
       expect(snapshot_messages).to be_empty
 
       # Add events that push old ones out (reduce budget so old events evict)
-      3.times { |i| create_event(type: "user_message", content: "new #{i}", token_count: 3000) }
+      3.times { |i| create_message(type: "user_message", content: "new #{i}", token_count: 3000) }
 
       # Now snapshot should appear (source events evicted)
       messages_after_eviction = session.messages_for_llm(token_budget: 10_000)
@@ -202,19 +202,19 @@ RSpec.describe "Mneme terminal event trigger integration" do
 
     it "L2 compression replaces L1 snapshots in viewport" do
       # Create old events (will evict) then a recent one that fills the sliding window
-      e1 = create_event(type: "user_message", content: "old 1", token_count: 500)
-      e2 = create_event(type: "agent_message", content: "old 2", token_count: 500)
-      e3 = create_event(type: "user_message", content: "old 3", token_count: 500)
-      e4 = create_event(type: "agent_message", content: "old 4", token_count: 500)
-      e5 = create_event(type: "user_message", content: "old 5", token_count: 500)
-      e6 = create_event(type: "agent_message", content: "old 6", token_count: 500)
+      e1 = create_message(type: "user_message", content: "old 1", token_count: 500)
+      e2 = create_message(type: "agent_message", content: "old 2", token_count: 500)
+      e3 = create_message(type: "user_message", content: "old 3", token_count: 500)
+      e4 = create_message(type: "agent_message", content: "old 4", token_count: 500)
+      e5 = create_message(type: "user_message", content: "old 5", token_count: 500)
+      e6 = create_message(type: "agent_message", content: "old 6", token_count: 500)
       # Recent event large enough to fill the entire sliding window (800 tokens after fractions)
-      create_event(type: "user_message", content: "recent", token_count: 750)
+      create_message(type: "user_message", content: "recent", token_count: 750)
 
       # L1 snapshots with contiguous ranges covering old events
-      session.snapshots.create!(text: "L1 first", from_event_id: e1.id, to_event_id: e2.id, level: 1, token_count: 50)
-      session.snapshots.create!(text: "L1 second", from_event_id: e3.id, to_event_id: e4.id, level: 1, token_count: 50)
-      session.snapshots.create!(text: "L1 third", from_event_id: e5.id, to_event_id: e6.id, level: 1, token_count: 50)
+      session.snapshots.create!(text: "L1 first", from_message_id: e1.id, to_message_id: e2.id, level: 1, token_count: 50)
+      session.snapshots.create!(text: "L1 second", from_message_id: e3.id, to_message_id: e4.id, level: 1, token_count: 50)
+      session.snapshots.create!(text: "L1 third", from_message_id: e5.id, to_message_id: e6.id, level: 1, token_count: 50)
 
       # Budget tight so old events evict, making snapshots visible
       messages_before = session.messages_for_llm(token_budget: 1000)

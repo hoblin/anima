@@ -23,7 +23,6 @@ module TUI
 
       ROLE_USER = "user"
       ROLE_ASSISTANT = "assistant"
-      ROLE_LABELS = {ROLE_USER => "You", ROLE_ASSISTANT => "Anima"}.freeze
 
       SCROLL_STEP = 1
       MOUSE_SCROLL_STEP = 2
@@ -64,7 +63,7 @@ module TUI
         @max_scroll = 0
         @input_scroll_offset = 0
         @view_mode = "basic"
-        @session_info = {id: cable_client.session_id || 0, message_count: 0, active_skills: [], active_workflow: nil, goals: [], children: []}
+        @session_info = {id: cable_client.session_id || 0, agent_name: "Anima", message_count: 0, active_skills: [], active_workflow: nil, goals: [], children: []}
         @sessions_list = nil
         @parent_session_id = nil
         @authentication_required = false
@@ -274,7 +273,7 @@ module TUI
           when "sessions_list"
             @sessions_list = msg["sessions"]
           when "user_message_recalled"
-            @message_store.remove_by_id(msg["event_id"]) if msg["event_id"]
+            @message_store.remove_by_id(msg["message_id"]) if msg["message_id"]
           when "authentication_required"
             @authentication_required = true
           when "token_saved"
@@ -311,13 +310,13 @@ module TUI
         end
       end
 
-      # Removes messages that left the LLM's context window. Event broadcasts
-      # include `evicted_event_ids` when old events are pushed out of the
+      # Removes messages that left the LLM's context window. Broadcasts
+      # include `evicted_message_ids` when old messages are pushed out of the
       # viewport by new ones.
       #
       # @param msg [Hash] incoming WebSocket message
       def handle_viewport_evictions(msg)
-        evicted_ids = msg["evicted_event_ids"]
+        evicted_ids = msg["evicted_message_ids"]
         return unless evicted_ids.is_a?(Array) && evicted_ids.any?
 
         @message_store.remove_by_ids(evicted_ids)
@@ -349,15 +348,15 @@ module TUI
         end
       end
 
-      # Handles a Bounce Back event: the server rolled back the user event
+      # Handles a Bounce Back: the server rolled back the user message
       # because LLM delivery failed. Removes the phantom message from the
       # chat, restores the text to the input field, and shows a flash.
       def handle_bounce_back(msg)
-        event_id = msg["event_id"]
+        message_id = msg["event_id"]
         content = msg["content"]
         error = msg["error"]
 
-        @message_store.remove_by_id(event_id) if event_id
+        @message_store.remove_by_id(message_id) if message_id
         @loading = false
 
         if content
@@ -373,7 +372,8 @@ module TUI
         @cable_client.update_session_id(new_id)
         @message_store.clear
         @view_mode = msg["view_mode"] if msg["view_mode"]
-        @session_info = {id: new_id, name: msg["name"], message_count: msg["message_count"] || 0,
+        @session_info = {id: new_id, name: msg["name"], agent_name: msg["agent_name"] || "Anima",
+                         message_count: msg["message_count"] || 0,
                          active_skills: msg["active_skills"] || [], active_workflow: msg["active_workflow"],
                          goals: msg["goals"] || [], children: msg["children"] || []}
         @parent_session_id = msg["parent_session_id"]
@@ -680,7 +680,7 @@ module TUI
           text = [data["content"], data["input"]].compact.map(&:to_s).reject(&:empty?).join("\n")
           lines = estimate_text_height(text, effective_width)
           lines += 1 # header/label line
-          lines += 1 unless entry[:event_type] == "tool_call" # separator
+          lines += 1 unless entry[:message_type] == "tool_call" # separator
           lines
         when :message
           lines = estimate_text_height(entry[:content].to_s, effective_width)
@@ -772,7 +772,7 @@ module TUI
 
         # Tool calls and their responses are visually one unit — no separator
         # between them. Separator appears after the response completes the pair.
-        lines << tui.line(spans: [tui.span(content: "")]) unless entry[:event_type] == "tool_call"
+        lines << tui.line(spans: [tui.span(content: "")]) unless entry[:message_type] == "tool_call"
         lines
       end
 
@@ -781,13 +781,25 @@ module TUI
       # been sent to the LLM yet.
       # @param tui [RatatuiRuby] TUI rendering API
       # @param data [Hash] structured data with "role", "content", and optional
+      # Display label for a conversation role. Uses the agent name from
+      # Settings (delivered via session_changed) for the assistant role.
+      #
+      # @param role [String] "user" or "assistant"
+      # @return [String] display label
+      def role_label(role)
+        return "You" if role == ROLE_USER
+        return @session_info[:agent_name] || "Anima" if role == ROLE_ASSISTANT
+
+        role
+      end
+
       #   "timestamp", "tokens", "estimated", "status"
       # @param role [String] "user" or "assistant"
       # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_conversation_entry(tui, data, role)
         pending = data["status"] == "pending"
         color = pending ? "dark_gray" : ROLE_COLORS.fetch(role, "white")
-        prefix = ROLE_LABELS.fetch(role, role)
+        prefix = role_label(role)
         prefix = "#{CLOCK_ICON} #{prefix}" if pending
         style = tui.style(fg: color)
 
@@ -838,7 +850,7 @@ module TUI
         role = msg[:role]
         role_style = (role == ROLE_USER) ? tui.style(fg: "green", modifiers: [:bold]) : tui.style(fg: "cyan", modifiers: [:bold])
 
-        label = ROLE_LABELS.fetch(role, role)
+        label = role_label(role)
         content_lines = msg[:content].to_s.split("\n", -1)
 
         lines = [tui.line(spans: [
@@ -1034,7 +1046,7 @@ module TUI
 
       # Recalls the last pending user message for editing. Removes it from
       # the message store, puts its content back in the input buffer, and
-      # tells the server to delete the event.
+      # tells the server to delete the message.
       #
       # @return [Boolean] true if a message was recalled
       def recall_pending_message

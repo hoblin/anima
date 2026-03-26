@@ -32,8 +32,8 @@ module Mneme
 
       # Exclude events from the current session's viewport — no point recalling
       # what the agent already sees.
-      viewport_ids = @session.viewport_event_ids.to_set
-      results.reject { |result| viewport_ids.include?(result.event_id) }
+      viewport_ids = @session.viewport_message_ids.to_set
+      results.reject { |result| viewport_ids.include?(result.message_id) }
     end
 
     private

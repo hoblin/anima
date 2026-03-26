@@ -58,17 +58,17 @@ RSpec.describe Session do
   describe "associations" do
     it "has many events ordered by id" do
       session = Session.create!
-      event_a = session.events.create!(event_type: "user_message", payload: {content: "first"}, timestamp: 1)
-      event_b = session.events.create!(event_type: "user_message", payload: {content: "second"}, timestamp: 2)
+      event_a = session.messages.create!(message_type: "user_message", payload: {content: "first"}, timestamp: 1)
+      event_b = session.messages.create!(message_type: "user_message", payload: {content: "second"}, timestamp: 2)
 
-      expect(session.events.reload).to eq([event_a, event_b])
+      expect(session.messages.reload).to eq([event_a, event_b])
     end
 
     it "destroys events when session is destroyed" do
       session = Session.create!
-      session.events.create!(event_type: "user_message", payload: {content: "hi"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {content: "hi"}, timestamp: 1)
 
-      expect { session.destroy }.to change(Event, :count).by(-1)
+      expect { session.destroy }.to change(Message, :count).by(-1)
     end
 
     it "belongs to parent_session (optional)" do
@@ -192,8 +192,8 @@ RSpec.describe Session do
   describe "#schedule_analytical_brain!" do
     it "enqueues AnalyticalBrainJob for unnamed root sessions with messages" do
       session = Session.create!
-      session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      session.events.create!(event_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      session.messages.create!(message_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
 
       expect { session.schedule_analytical_brain! }
         .to have_enqueued_job(AnalyticalBrainJob).with(session.id)
@@ -202,8 +202,8 @@ RSpec.describe Session do
     it "does not enqueue for sub-agent sessions" do
       parent = Session.create!
       child = Session.create!(parent_session: parent, prompt: "task")
-      child.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      child.events.create!(event_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
+      child.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      child.messages.create!(message_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
 
       expect { child.schedule_analytical_brain! }
         .not_to have_enqueued_job(AnalyticalBrainJob)
@@ -211,7 +211,7 @@ RSpec.describe Session do
 
     it "does not enqueue for sessions with fewer than 2 messages" do
       session = Session.create!
-      session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
 
       expect { session.schedule_analytical_brain! }
         .not_to have_enqueued_job(AnalyticalBrainJob)
@@ -221,7 +221,7 @@ RSpec.describe Session do
       session = Session.create!(name: "Old Name")
       Anima::Settings.name_generation_interval.times do |i|
         type = i.even? ? "user_message" : "agent_message"
-        session.events.create!(event_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
+        session.messages.create!(message_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
       end
 
       expect { session.schedule_analytical_brain! }
@@ -232,7 +232,7 @@ RSpec.describe Session do
       session = Session.create!(name: "Existing")
       3.times do |i|
         type = i.even? ? "user_message" : "agent_message"
-        session.events.create!(event_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
+        session.messages.create!(message_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
       end
 
       expect { session.schedule_analytical_brain! }
@@ -387,7 +387,8 @@ RSpec.describe Session do
       session = Session.create!
 
       prompt = session.system_prompt
-      expect(prompt).to start_with("# Soul")
+      expect(prompt).to start_with("You are running on Anima v")
+      expect(prompt).to include("# Soul")
       expect(prompt).not_to include("## Environment")
     end
   end
@@ -461,7 +462,7 @@ RSpec.describe Session do
     let(:session) { Session.create! }
 
     it "always starts with the soul" do
-      expect(session.assemble_system_prompt).to start_with("# Soul")
+      expect(session.assemble_system_prompt).to start_with("You are running on Anima v")
     end
 
     it "includes Your Expertise header when skills are active" do
@@ -610,7 +611,7 @@ RSpec.describe Session do
       Goal.create!(session: session, description: "Implement feature")
 
       prompt = session.assemble_system_prompt
-      expect(prompt).to start_with("# Soul")
+      expect(prompt).to start_with("You are running on Anima v")
       expect(prompt).to include("## Current Goals")
       expect(prompt).to include("### Implement feature")
       expect(prompt).not_to include("Your Expertise")
@@ -794,7 +795,7 @@ RSpec.describe Session do
     end
 
     it "returns only soul when neither skills nor workflow nor goals are present" do
-      expect(session.assemble_system_prompt).to start_with("# Soul")
+      expect(session.assemble_system_prompt).to start_with("You are running on Anima v")
     end
   end
 
@@ -802,19 +803,19 @@ RSpec.describe Session do
     let(:session) { Session.create! }
 
     it "returns user_message events with user role and timestamp prefix" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "hello"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hello"}, timestamp: 1)
 
       expect(session.messages_for_llm).to eq([{role: "user", content: timestamped("hello", 1)}])
     end
 
     it "returns agent_message events with assistant role" do
-      session.events.create!(event_type: "agent_message", payload: {"content" => "hi there"}, timestamp: 1)
+      session.messages.create!(message_type: "agent_message", payload: {"content" => "hi there"}, timestamp: 1)
 
       expect(session.messages_for_llm).to eq([{role: "assistant", content: "hi there"}])
     end
 
     it "includes system_message events as user role with [system] prefix" do
-      session.events.create!(event_type: "system_message", payload: {"content" => "MCP: server failed"}, timestamp: 1)
+      session.messages.create!(message_type: "system_message", payload: {"content" => "MCP: server failed"}, timestamp: 1)
 
       messages = session.messages_for_llm
       expect(messages.size).to eq(1)
@@ -824,15 +825,15 @@ RSpec.describe Session do
 
     context "with tool events" do
       it "assembles tool_call events as assistant messages with tool_use blocks" do
-        session.events.create!(
-          event_type: "tool_call",
+        session.messages.create!(
+          message_type: "tool_call",
           payload: {"content" => "Calling web_get", "tool_name" => "web_get",
                     "tool_input" => {"url" => "https://example.com"}, "tool_use_id" => "toolu_123"},
           tool_use_id: "toolu_123",
           timestamp: 1
         )
-        session.events.create!(
-          event_type: "tool_response",
+        session.messages.create!(
+          message_type: "tool_response",
           payload: {"content" => "<html>hello</html>", "tool_name" => "web_get",
                     "tool_use_id" => "toolu_123", "success" => true},
           tool_use_id: "toolu_123",
@@ -847,15 +848,15 @@ RSpec.describe Session do
       end
 
       it "assembles tool_response events as user messages with tool_result blocks" do
-        session.events.create!(
-          event_type: "tool_call",
+        session.messages.create!(
+          message_type: "tool_call",
           payload: {"content" => "Calling web_get", "tool_name" => "web_get",
                     "tool_input" => {"url" => "https://example.com"}, "tool_use_id" => "toolu_123"},
           tool_use_id: "toolu_123",
           timestamp: 1
         )
-        session.events.create!(
-          event_type: "tool_response",
+        session.messages.create!(
+          message_type: "tool_response",
           payload: {"content" => "<html>hello</html>", "tool_name" => "web_get",
                     "tool_use_id" => "toolu_123", "success" => true},
           tool_use_id: "toolu_123",
@@ -870,28 +871,28 @@ RSpec.describe Session do
       end
 
       it "groups consecutive tool_call events into one assistant message" do
-        session.events.create!(
-          event_type: "tool_call",
+        session.messages.create!(
+          message_type: "tool_call",
           payload: {"content" => "Calling web_get", "tool_name" => "web_get",
                     "tool_input" => {"url" => "https://a.com"}, "tool_use_id" => "toolu_1"},
           tool_use_id: "toolu_1",
           timestamp: 1
         )
-        session.events.create!(
-          event_type: "tool_call",
+        session.messages.create!(
+          message_type: "tool_call",
           payload: {"content" => "Calling web_get", "tool_name" => "web_get",
                     "tool_input" => {"url" => "https://b.com"}, "tool_use_id" => "toolu_2"},
           tool_use_id: "toolu_2",
           timestamp: 2
         )
-        session.events.create!(
-          event_type: "tool_response",
+        session.messages.create!(
+          message_type: "tool_response",
           payload: {"content" => "page A", "tool_name" => "web_get", "tool_use_id" => "toolu_1"},
           tool_use_id: "toolu_1",
           timestamp: 3
         )
-        session.events.create!(
-          event_type: "tool_response",
+        session.messages.create!(
+          message_type: "tool_response",
           payload: {"content" => "page B", "tool_name" => "web_get", "tool_use_id" => "toolu_2"},
           tool_use_id: "toolu_2",
           timestamp: 4
@@ -903,28 +904,28 @@ RSpec.describe Session do
       end
 
       it "groups consecutive tool_response events into one user message" do
-        session.events.create!(
-          event_type: "tool_call",
+        session.messages.create!(
+          message_type: "tool_call",
           payload: {"content" => "Calling web_get", "tool_name" => "web_get",
                     "tool_input" => {"url" => "https://a.com"}, "tool_use_id" => "toolu_1"},
           tool_use_id: "toolu_1",
           timestamp: 1
         )
-        session.events.create!(
-          event_type: "tool_call",
+        session.messages.create!(
+          message_type: "tool_call",
           payload: {"content" => "Calling web_get", "tool_name" => "web_get",
                     "tool_input" => {"url" => "https://b.com"}, "tool_use_id" => "toolu_2"},
           tool_use_id: "toolu_2",
           timestamp: 2
         )
-        session.events.create!(
-          event_type: "tool_response",
+        session.messages.create!(
+          message_type: "tool_response",
           payload: {"content" => "page A", "tool_name" => "web_get", "tool_use_id" => "toolu_1"},
           tool_use_id: "toolu_1",
           timestamp: 3
         )
-        session.events.create!(
-          event_type: "tool_response",
+        session.messages.create!(
+          message_type: "tool_response",
           payload: {"content" => "page B", "tool_name" => "web_get", "tool_use_id" => "toolu_2"},
           tool_use_id: "toolu_2",
           timestamp: 4
@@ -936,22 +937,22 @@ RSpec.describe Session do
       end
 
       it "assembles a full tool conversation correctly" do
-        session.events.create!(event_type: "user_message", payload: {"content" => "what is on example.com?"}, timestamp: 1)
-        session.events.create!(
-          event_type: "tool_call",
+        session.messages.create!(message_type: "user_message", payload: {"content" => "what is on example.com?"}, timestamp: 1)
+        session.messages.create!(
+          message_type: "tool_call",
           payload: {"content" => "Calling web_get", "tool_name" => "web_get",
                     "tool_input" => {"url" => "https://example.com"}, "tool_use_id" => "toolu_abc"},
           tool_use_id: "toolu_abc",
           timestamp: 2
         )
-        session.events.create!(
-          event_type: "tool_response",
+        session.messages.create!(
+          message_type: "tool_response",
           payload: {"content" => "<html>Example Domain</html>", "tool_name" => "web_get",
                     "tool_use_id" => "toolu_abc", "success" => true},
           tool_use_id: "toolu_abc",
           timestamp: 3
         )
-        session.events.create!(event_type: "agent_message", payload: {"content" => "The page says Example Domain."}, timestamp: 4)
+        session.messages.create!(message_type: "agent_message", payload: {"content" => "The page says Example Domain."}, timestamp: 4)
 
         result = session.messages_for_llm
         expect(result).to eq([
@@ -968,9 +969,9 @@ RSpec.describe Session do
     end
 
     it "preserves event order" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "first"}, timestamp: 1)
-      session.events.create!(event_type: "agent_message", payload: {"content" => "second"}, timestamp: 2)
-      session.events.create!(event_type: "user_message", payload: {"content" => "third"}, timestamp: 3)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "first"}, timestamp: 1)
+      session.messages.create!(message_type: "agent_message", payload: {"content" => "second"}, timestamp: 2)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "third"}, timestamp: 3)
 
       expect(session.messages_for_llm).to eq([
         {role: "user", content: timestamped("first", 1)},
@@ -988,8 +989,8 @@ RSpec.describe Session do
       end
 
       it "includes all events when within budget" do
-        session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
-        session.events.create!(event_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2, token_count: 10)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
+        session.messages.create!(message_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2, token_count: 10)
 
         expect(session.messages_for_llm(token_budget: 100)).to eq([
           {role: "user", content: timestamped("hi", 1)},
@@ -998,10 +999,10 @@ RSpec.describe Session do
       end
 
       it "drops oldest events when budget exceeded" do
-        session.events.create!(event_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 50)
-        session.events.create!(event_type: "agent_message", payload: {"content" => "old reply"}, timestamp: 2, token_count: 50)
-        session.events.create!(event_type: "user_message", payload: {"content" => "recent"}, timestamp: 3, token_count: 50)
-        session.events.create!(event_type: "agent_message", payload: {"content" => "recent reply"}, timestamp: 4, token_count: 50)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 50)
+        session.messages.create!(message_type: "agent_message", payload: {"content" => "old reply"}, timestamp: 2, token_count: 50)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 3, token_count: 50)
+        session.messages.create!(message_type: "agent_message", payload: {"content" => "recent reply"}, timestamp: 4, token_count: 50)
 
         result = session.messages_for_llm(token_budget: 100)
 
@@ -1012,7 +1013,7 @@ RSpec.describe Session do
       end
 
       it "always includes at least the newest event even if it exceeds budget" do
-        session.events.create!(event_type: "user_message", payload: {"content" => "big message"}, timestamp: 1, token_count: 500)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "big message"}, timestamp: 1, token_count: 500)
 
         result = session.messages_for_llm(token_budget: 100)
 
@@ -1020,8 +1021,8 @@ RSpec.describe Session do
       end
 
       it "uses heuristic estimate for events with zero token_count" do
-        session.events.create!(event_type: "user_message", payload: {"content" => "x" * 400}, timestamp: 1, token_count: 0)
-        session.events.create!(event_type: "user_message", payload: {"content" => "recent"}, timestamp: 2, token_count: 10)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "x" * 400}, timestamp: 1, token_count: 0)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 2, token_count: 10)
 
         # "x" * 400 => ~100 token estimate, plus 10 = 110, fits in 200
         result = session.messages_for_llm(token_budget: 200)
@@ -1029,9 +1030,9 @@ RSpec.describe Session do
       end
 
       it "returns events in chronological order" do
-        session.events.create!(event_type: "user_message", payload: {"content" => "first"}, timestamp: 1, token_count: 10)
-        session.events.create!(event_type: "agent_message", payload: {"content" => "second"}, timestamp: 2, token_count: 10)
-        session.events.create!(event_type: "user_message", payload: {"content" => "third"}, timestamp: 3, token_count: 10)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "first"}, timestamp: 1, token_count: 10)
+        session.messages.create!(message_type: "agent_message", payload: {"content" => "second"}, timestamp: 2, token_count: 10)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "third"}, timestamp: 3, token_count: 10)
 
         result = session.messages_for_llm(token_budget: 30)
 
@@ -1048,18 +1049,18 @@ RSpec.describe Session do
       end
 
       # Creates events and returns a snapshot whose source events are BEFORE
-      # the viewport (to_event_id < first viewport event).
+      # the viewport (to_message_id < first viewport event).
       def create_viewport_with_evicted_snapshot(session, budget:)
         # Old events that will be evicted by budget pressure
-        e1 = session.events.create!(event_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: budget)
-        e2 = session.events.create!(event_type: "agent_message", payload: {"content" => "old reply"}, timestamp: 2, token_count: budget)
+        e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: budget)
+        e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old reply"}, timestamp: 2, token_count: budget)
         # Recent event that fills the viewport
-        session.events.create!(event_type: "user_message", payload: {"content" => "recent"}, timestamp: 3, token_count: 10)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 3, token_count: 10)
 
         # Snapshot covers the old events (contiguous range)
         session.snapshots.create!(
           text: "Earlier discussion summary",
-          from_event_id: e1.id, to_event_id: e2.id,
+          from_message_id: e1.id, to_message_id: e2.id,
           level: 1, token_count: 20
         )
       end
@@ -1075,11 +1076,11 @@ RSpec.describe Session do
       end
 
       it "excludes snapshots whose source events are still in the viewport" do
-        e1 = session.events.create!(event_type: "user_message", payload: {"content" => "visible"}, timestamp: 1, token_count: 10)
-        e2 = session.events.create!(event_type: "agent_message", payload: {"content" => "reply"}, timestamp: 2, token_count: 10)
+        e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "visible"}, timestamp: 1, token_count: 10)
+        e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "reply"}, timestamp: 2, token_count: 10)
 
         # Snapshot covers events still in the viewport
-        session.snapshots.create!(text: "Should not appear", from_event_id: e1.id, to_event_id: e2.id, level: 1, token_count: 20)
+        session.snapshots.create!(text: "Should not appear", from_message_id: e1.id, to_message_id: e2.id, level: 1, token_count: 20)
 
         result = session.messages_for_llm(token_budget: 1000)
 
@@ -1089,15 +1090,15 @@ RSpec.describe Session do
 
       it "places L2 snapshots above L1 snapshots in message order" do
         # Create old events that will evict, then a recent one that stays
-        e1 = session.events.create!(event_type: "user_message", payload: {"content" => "old1"}, timestamp: 1, token_count: 500)
-        e2 = session.events.create!(event_type: "agent_message", payload: {"content" => "old2"}, timestamp: 2, token_count: 500)
-        e3 = session.events.create!(event_type: "user_message", payload: {"content" => "old3"}, timestamp: 3, token_count: 500)
-        e4 = session.events.create!(event_type: "agent_message", payload: {"content" => "old4"}, timestamp: 4, token_count: 500)
-        session.events.create!(event_type: "user_message", payload: {"content" => "recent"}, timestamp: 5, token_count: 10)
+        e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "old1"}, timestamp: 1, token_count: 500)
+        e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old2"}, timestamp: 2, token_count: 500)
+        e3 = session.messages.create!(message_type: "user_message", payload: {"content" => "old3"}, timestamp: 3, token_count: 500)
+        e4 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old4"}, timestamp: 4, token_count: 500)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 5, token_count: 10)
 
         # L2 covers first two events, L1 covers next two (not covered by L2)
-        session.snapshots.create!(text: "L2 meta-summary", from_event_id: e1.id, to_event_id: e2.id, level: 2, token_count: 20)
-        session.snapshots.create!(text: "L1 uncovered", from_event_id: e3.id, to_event_id: e4.id, level: 1, token_count: 20)
+        session.snapshots.create!(text: "L2 meta-summary", from_message_id: e1.id, to_message_id: e2.id, level: 2, token_count: 20)
+        session.snapshots.create!(text: "L1 uncovered", from_message_id: e3.id, to_message_id: e4.id, level: 1, token_count: 20)
 
         # Budget tight so old events evict, making snapshots visible
         result = session.messages_for_llm(token_budget: 100)
@@ -1109,16 +1110,16 @@ RSpec.describe Session do
 
       it "drops L1 snapshots covered by L2" do
         # Create old events, then a recent one
-        e1 = session.events.create!(event_type: "user_message", payload: {"content" => "old1"}, timestamp: 1, token_count: 500)
-        e2 = session.events.create!(event_type: "agent_message", payload: {"content" => "old2"}, timestamp: 2, token_count: 500)
-        e3 = session.events.create!(event_type: "user_message", payload: {"content" => "old3"}, timestamp: 3, token_count: 500)
-        e4 = session.events.create!(event_type: "agent_message", payload: {"content" => "old4"}, timestamp: 4, token_count: 500)
-        session.events.create!(event_type: "user_message", payload: {"content" => "recent"}, timestamp: 5, token_count: 10)
+        e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "old1"}, timestamp: 1, token_count: 500)
+        e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old2"}, timestamp: 2, token_count: 500)
+        e3 = session.messages.create!(message_type: "user_message", payload: {"content" => "old3"}, timestamp: 3, token_count: 500)
+        e4 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old4"}, timestamp: 4, token_count: 500)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 5, token_count: 10)
 
         # L1(e1..e2), L1(e3..e4) — both covered by L2(e1..e4)
-        session.snapshots.create!(text: "L1 covered a", from_event_id: e1.id, to_event_id: e2.id, level: 1, token_count: 20)
-        session.snapshots.create!(text: "L1 covered b", from_event_id: e3.id, to_event_id: e4.id, level: 1, token_count: 20)
-        session.snapshots.create!(text: "L2 covers both", from_event_id: e1.id, to_event_id: e4.id, level: 2, token_count: 30)
+        session.snapshots.create!(text: "L1 covered a", from_message_id: e1.id, to_message_id: e2.id, level: 1, token_count: 20)
+        session.snapshots.create!(text: "L1 covered b", from_message_id: e3.id, to_message_id: e4.id, level: 1, token_count: 20)
+        session.snapshots.create!(text: "L2 covers both", from_message_id: e1.id, to_message_id: e4.id, level: 2, token_count: 30)
 
         result = session.messages_for_llm(token_budget: 100)
 
@@ -1130,10 +1131,10 @@ RSpec.describe Session do
       it "skips snapshot injection for sub-agent sessions" do
         parent = Session.create!
         child = Session.create!(parent_session: parent, prompt: "sub-agent")
-        child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1, token_count: 10)
+        child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 1, token_count: 10)
 
         # Parent has a snapshot — child should not see it
-        parent.snapshots.create!(text: "Parent snapshot", from_event_id: 1, to_event_id: 5, level: 1, token_count: 20)
+        parent.snapshots.create!(text: "Parent snapshot", from_message_id: 1, to_message_id: 5, level: 1, token_count: 20)
 
         result = child.messages_for_llm(token_budget: 1000)
 
@@ -1144,9 +1145,9 @@ RSpec.describe Session do
       it "reduces sliding window budget by snapshot and pinned budget fractions" do
         # Budget 1000, l1_fraction=0.15, l2_fraction=0.05, pinned_fraction=0.05
         # Sliding budget = 1000 - 150 - 50 - 50 = 750
-        session.events.create!(event_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 500)
-        session.events.create!(event_type: "agent_message", payload: {"content" => "old reply"}, timestamp: 2, token_count: 500)
-        session.events.create!(event_type: "user_message", payload: {"content" => "recent"}, timestamp: 3, token_count: 500)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 500)
+        session.messages.create!(message_type: "agent_message", payload: {"content" => "old reply"}, timestamp: 2, token_count: 500)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 3, token_count: 500)
 
         result = session.messages_for_llm(token_budget: 1000)
 
@@ -1156,7 +1157,7 @@ RSpec.describe Session do
       end
     end
 
-    context "with pinned events" do
+    context "with pinned messages" do
       let(:session) { Session.create! }
 
       before do
@@ -1165,68 +1166,68 @@ RSpec.describe Session do
         allow(Anima::Settings).to receive(:mneme_pinned_budget_fraction).and_return(0.05)
       end
 
-      it "includes pinned events after snapshots and before sliding window" do
-        old_event = session.events.create!(event_type: "user_message", payload: {"content" => "critical instruction"}, timestamp: 1, token_count: 500)
-        session.events.create!(event_type: "user_message", payload: {"content" => "recent"}, timestamp: 2, token_count: 10)
+      it "includes pinned messages after snapshots and before sliding window" do
+        old_event = session.messages.create!(message_type: "user_message", payload: {"content" => "critical instruction"}, timestamp: 1, token_count: 500)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 2, token_count: 10)
 
         goal = session.goals.create!(description: "Active goal")
-        pin = PinnedEvent.create!(event: old_event, display_text: "critical instruction")
-        GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
+        pin = PinnedMessage.create!(message: old_event, display_text: "critical instruction")
+        GoalPinnedMessage.create!(goal: goal, pinned_message: pin)
 
         result = session.messages_for_llm(token_budget: 100)
 
-        pinned_msg = result.find { |m| m[:content].to_s.include?("[pinned events]") }
+        pinned_msg = result.find { |m| m[:content].to_s.include?("[pinned messages]") }
         expect(pinned_msg).to be_present
         expect(pinned_msg[:content]).to include("critical instruction")
         expect(pinned_msg[:content]).to include("Active goal")
       end
 
-      it "excludes pinned events whose source events are still in the viewport" do
-        event = session.events.create!(event_type: "user_message", payload: {"content" => "visible"}, timestamp: 1, token_count: 10)
+      it "excludes pinned messages whose source events are still in the viewport" do
+        event = session.messages.create!(message_type: "user_message", payload: {"content" => "visible"}, timestamp: 1, token_count: 10)
 
         goal = session.goals.create!(description: "Goal")
-        pin = PinnedEvent.create!(event: event, display_text: "visible")
-        GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
+        pin = PinnedMessage.create!(message: event, display_text: "visible")
+        GoalPinnedMessage.create!(goal: goal, pinned_message: pin)
 
         result = session.messages_for_llm(token_budget: 1000)
 
         contents = result.map { |m| m[:content] }
-        expect(contents.none? { |c| c.include?("[pinned events]") }).to be true
+        expect(contents.none? { |c| c.include?("[pinned messages]") }).to be true
       end
 
-      it "deduplicates pinned events across goals — first shows text, second shows bare ID" do
-        old_event = session.events.create!(event_type: "user_message", payload: {"content" => "shared"}, timestamp: 1, token_count: 500)
-        session.events.create!(event_type: "user_message", payload: {"content" => "recent"}, timestamp: 2, token_count: 10)
+      it "deduplicates pinned messages across goals — first shows text, second shows bare ID" do
+        old_event = session.messages.create!(message_type: "user_message", payload: {"content" => "shared"}, timestamp: 1, token_count: 500)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 2, token_count: 10)
 
         goal_a = session.goals.create!(description: "Goal A")
         goal_b = session.goals.create!(description: "Goal B")
-        pin = PinnedEvent.create!(event: old_event, display_text: "shared")
-        GoalPinnedEvent.create!(goal: goal_a, pinned_event: pin)
-        GoalPinnedEvent.create!(goal: goal_b, pinned_event: pin)
+        pin = PinnedMessage.create!(message: old_event, display_text: "shared")
+        GoalPinnedMessage.create!(goal: goal_a, pinned_message: pin)
+        GoalPinnedMessage.create!(goal: goal_b, pinned_message: pin)
 
         result = session.messages_for_llm(token_budget: 100)
 
-        pinned_content = result.find { |m| m[:content].to_s.include?("[pinned events]") }&.dig(:content)
+        pinned_content = result.find { |m| m[:content].to_s.include?("[pinned messages]") }&.dig(:content)
         expect(pinned_content).to be_present
         # First goal shows text, second shows bare ID
-        expect(pinned_content).to include("event #{old_event.id}: shared")
-        expect(pinned_content).to match(/event #{old_event.id}\n|event #{old_event.id}$/)
+        expect(pinned_content).to include("message #{old_event.id}: shared")
+        expect(pinned_content).to match(/message #{old_event.id}\n|message #{old_event.id}$/)
       end
 
-      it "skips pinned events for sub-agent sessions" do
+      it "skips pinned messages for sub-agent sessions" do
         parent = Session.create!
         child = Session.create!(parent_session: parent, prompt: "sub-agent")
-        old_event = parent.events.create!(event_type: "user_message", payload: {"content" => "pinned"}, timestamp: 1, token_count: 10)
-        child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 2, token_count: 10)
+        old_event = parent.messages.create!(message_type: "user_message", payload: {"content" => "pinned"}, timestamp: 1, token_count: 10)
+        child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 2, token_count: 10)
 
         goal = parent.goals.create!(description: "Goal")
-        pin = PinnedEvent.create!(event: old_event, display_text: "pinned")
-        GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
+        pin = PinnedMessage.create!(message: old_event, display_text: "pinned")
+        GoalPinnedMessage.create!(goal: goal, pinned_message: pin)
 
         result = child.messages_for_llm(token_budget: 1000)
 
         contents = result.map { |m| m[:content] }
-        expect(contents.none? { |c| c.include?("[pinned events]") }).to be true
+        expect(contents.none? { |c| c.include?("[pinned messages]") }).to be true
       end
     end
   end
@@ -1236,16 +1237,16 @@ RSpec.describe Session do
 
     it "creates synthetic responses for expired tool_calls without matching tool_response" do
       expired_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (200 * 1_000_000_000)
-      session.events.create!(
-        event_type: "tool_call",
+      session.messages.create!(
+        message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_orphan", "timeout" => 180},
         tool_use_id: "toolu_orphan",
         timestamp: expired_ts
       )
 
-      expect { session.heal_orphaned_tool_calls! }.to change { session.events.where(event_type: "tool_response").count }.by(1)
+      expect { session.heal_orphaned_tool_calls! }.to change { session.messages.where(message_type: "tool_response").count }.by(1)
 
-      response = session.events.find_by(event_type: "tool_response", tool_use_id: "toolu_orphan")
+      response = session.messages.find_by(message_type: "tool_response", tool_use_id: "toolu_orphan")
       expect(response.payload["success"]).to be false
       expect(response.payload["content"]).to include("timed out")
       expect(response.payload["tool_name"]).to eq("bash")
@@ -1253,48 +1254,48 @@ RSpec.describe Session do
 
     it "does not heal tool_calls still within their timeout window" do
       recent_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (10 * 1_000_000_000)
-      session.events.create!(
-        event_type: "tool_call",
+      session.messages.create!(
+        message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_fresh", "timeout" => 180},
         tool_use_id: "toolu_fresh",
         timestamp: recent_ts
       )
 
-      expect { session.heal_orphaned_tool_calls! }.not_to change { session.events.count }
+      expect { session.heal_orphaned_tool_calls! }.not_to change { session.messages.count }
     end
 
     it "respects per-call timeout override from the agent" do
       called_5_min_ago = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (300 * 1_000_000_000)
-      session.events.create!(
-        event_type: "tool_call",
+      session.messages.create!(
+        message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_long", "timeout" => 600},
         tool_use_id: "toolu_long",
         timestamp: called_5_min_ago
       )
 
-      expect { session.heal_orphaned_tool_calls! }.not_to change { session.events.count }
+      expect { session.heal_orphaned_tool_calls! }.not_to change { session.messages.count }
     end
 
     it "does not create responses for tool_calls that already have one" do
-      session.events.create!(
-        event_type: "tool_call",
+      session.messages.create!(
+        message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_ok"},
         tool_use_id: "toolu_ok",
         timestamp: 1
       )
-      session.events.create!(
-        event_type: "tool_response",
+      session.messages.create!(
+        message_type: "tool_response",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_ok", "content" => "output"},
         tool_use_id: "toolu_ok",
         timestamp: 2
       )
 
-      expect { session.heal_orphaned_tool_calls! }.not_to change { session.events.count }
+      expect { session.heal_orphaned_tool_calls! }.not_to change { session.messages.count }
     end
 
     it "rejects tool_calls with nil tool_use_id at validation" do
-      event = session.events.new(
-        event_type: "tool_call",
+      event = session.messages.new(
+        message_type: "tool_call",
         payload: {"tool_name" => "bash"},
         tool_use_id: nil,
         timestamp: 1
@@ -1306,14 +1307,14 @@ RSpec.describe Session do
 
     it "heals multiple orphaned tool_calls in a single pass" do
       expired_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (200 * 1_000_000_000)
-      session.events.create!(
-        event_type: "tool_call",
+      session.messages.create!(
+        message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_a", "timeout" => 180},
         tool_use_id: "toolu_a",
         timestamp: expired_ts
       )
-      session.events.create!(
-        event_type: "tool_call",
+      session.messages.create!(
+        message_type: "tool_call",
         payload: {"tool_name" => "web_get", "tool_use_id" => "toolu_b", "timeout" => 60},
         tool_use_id: "toolu_b",
         timestamp: expired_ts
@@ -1321,37 +1322,37 @@ RSpec.describe Session do
 
       expect(session.heal_orphaned_tool_calls!).to eq(2)
 
-      expect(session.events.where(event_type: "tool_response", tool_use_id: "toolu_a")).to exist
-      expect(session.events.where(event_type: "tool_response", tool_use_id: "toolu_b")).to exist
+      expect(session.messages.where(message_type: "tool_response", tool_use_id: "toolu_a")).to exist
+      expect(session.messages.where(message_type: "tool_response", tool_use_id: "toolu_b")).to exist
     end
 
     it "falls back to Settings.tool_timeout when payload has no timeout key" do
       allow(Anima::Settings).to receive(:tool_timeout).and_return(60)
       expired_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (90 * 1_000_000_000)
-      session.events.create!(
-        event_type: "tool_call",
+      session.messages.create!(
+        message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_no_timeout"},
         tool_use_id: "toolu_no_timeout",
         timestamp: expired_ts
       )
 
-      expect { session.heal_orphaned_tool_calls! }.to change { session.events.where(event_type: "tool_response").count }.by(1)
+      expect { session.heal_orphaned_tool_calls! }.to change { session.messages.where(message_type: "tool_response").count }.by(1)
 
-      response = session.events.find_by(event_type: "tool_response", tool_use_id: "toolu_no_timeout")
+      response = session.messages.find_by(message_type: "tool_response", tool_use_id: "toolu_no_timeout")
       expect(response.payload["content"]).to include("60 seconds")
     end
 
     it "is idempotent — second call creates no duplicates" do
       expired_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (200 * 1_000_000_000)
-      session.events.create!(
-        event_type: "tool_call",
+      session.messages.create!(
+        message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_orphan", "timeout" => 180},
         tool_use_id: "toolu_orphan",
         timestamp: expired_ts
       )
 
       session.heal_orphaned_tool_calls!
-      expect { session.heal_orphaned_tool_calls! }.not_to change { session.events.count }
+      expect { session.heal_orphaned_tool_calls! }.not_to change { session.messages.count }
     end
   end
 
@@ -1366,23 +1367,23 @@ RSpec.describe Session do
     end
 
     it "excludes tool_call events whose tool_response was cut off by token budget" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "go"}, timestamp: 1, token_count: 10)
-      session.events.create!(
-        event_type: "tool_call",
+      session.messages.create!(message_type: "user_message", payload: {"content" => "go"}, timestamp: 1, token_count: 10)
+      session.messages.create!(
+        message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_cut", "tool_input" => {}},
         tool_use_id: "toolu_cut",
         timestamp: 2,
         token_count: 10
       )
-      session.events.create!(
-        event_type: "tool_response",
+      session.messages.create!(
+        message_type: "tool_response",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_cut", "content" => "ok"},
         tool_use_id: "toolu_cut",
         timestamp: 3,
         token_count: 10
       )
-      session.events.create!(event_type: "agent_message", payload: {"content" => "done"}, timestamp: 4, token_count: 10)
-      session.events.create!(event_type: "user_message", payload: {"content" => "more"}, timestamp: 5, token_count: 10)
+      session.messages.create!(message_type: "agent_message", payload: {"content" => "done"}, timestamp: 4, token_count: 10)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "more"}, timestamp: 5, token_count: 10)
 
       # Budget fits newest 3 events but cuts the tool_call (event 2).
       # tool_response (event 3) would be orphaned without atomic pair enforcement.
@@ -1393,22 +1394,22 @@ RSpec.describe Session do
     end
 
     it "keeps complete tool pairs within the viewport" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "go"}, timestamp: 1, token_count: 10)
-      session.events.create!(
-        event_type: "tool_call",
+      session.messages.create!(message_type: "user_message", payload: {"content" => "go"}, timestamp: 1, token_count: 10)
+      session.messages.create!(
+        message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_1", "tool_input" => {}},
         tool_use_id: "toolu_1",
         timestamp: 2,
         token_count: 10
       )
-      session.events.create!(
-        event_type: "tool_response",
+      session.messages.create!(
+        message_type: "tool_response",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_1", "content" => "ok"},
         tool_use_id: "toolu_1",
         timestamp: 3,
         token_count: 10
       )
-      session.events.create!(event_type: "agent_message", payload: {"content" => "done"}, timestamp: 4, token_count: 10)
+      session.messages.create!(message_type: "agent_message", payload: {"content" => "done"}, timestamp: 4, token_count: 10)
 
       result = session.messages_for_llm(token_budget: 40)
 
@@ -1419,14 +1420,14 @@ RSpec.describe Session do
     it "heals expired orphaned tool_calls before assembling messages" do
       expired_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (200 * 1_000_000_000)
       now_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
-      session.events.create!(
-        event_type: "tool_call",
+      session.messages.create!(
+        message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_dead", "tool_input" => {}, "timeout" => 180},
         tool_use_id: "toolu_dead",
         timestamp: expired_ts,
         token_count: 10
       )
-      session.events.create!(event_type: "user_message", payload: {"content" => "what happened?"}, timestamp: now_ts, token_count: 10)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "what happened?"}, timestamp: now_ts, token_count: 10)
 
       result = session.messages_for_llm(token_budget: 1000)
 
@@ -1444,8 +1445,8 @@ RSpec.describe Session do
     let(:session) { Session.create! }
 
     it "promotes pending user messages to delivered (nil status)" do
-      event = session.events.create!(
-        event_type: "user_message",
+      event = session.messages.create!(
+        message_type: "user_message",
         payload: {"content" => "queued", "status" => "pending"},
         timestamp: 1,
         status: "pending"
@@ -1459,21 +1460,21 @@ RSpec.describe Session do
     end
 
     it "returns the count of promoted messages" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "q1", "status" => "pending"}, timestamp: 1, status: "pending")
-      session.events.create!(event_type: "user_message", payload: {"content" => "q2", "status" => "pending"}, timestamp: 2, status: "pending")
+      session.messages.create!(message_type: "user_message", payload: {"content" => "q1", "status" => "pending"}, timestamp: 1, status: "pending")
+      session.messages.create!(message_type: "user_message", payload: {"content" => "q2", "status" => "pending"}, timestamp: 2, status: "pending")
 
       expect(session.promote_pending_messages!).to eq(2)
     end
 
     it "returns zero when no pending messages exist" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "done"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "done"}, timestamp: 1)
 
       expect(session.promote_pending_messages!).to eq(0)
     end
 
     it "does not affect non-pending events" do
-      delivered = session.events.create!(event_type: "user_message", payload: {"content" => "done"}, timestamp: 1)
-      session.events.create!(event_type: "user_message", payload: {"content" => "q", "status" => "pending"}, timestamp: 2, status: "pending")
+      delivered = session.messages.create!(message_type: "user_message", payload: {"content" => "done"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "q", "status" => "pending"}, timestamp: 2, status: "pending")
 
       session.promote_pending_messages!
 
@@ -1485,30 +1486,30 @@ RSpec.describe Session do
     let(:session) { Session.create! }
 
     it "excludes pending messages from LLM context" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "delivered"}, timestamp: 1)
-      session.events.create!(event_type: "user_message", payload: {"content" => "queued", "status" => "pending"}, timestamp: 2, status: "pending")
+      session.messages.create!(message_type: "user_message", payload: {"content" => "delivered"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "queued", "status" => "pending"}, timestamp: 2, status: "pending")
 
       result = session.messages_for_llm
       expect(result).to eq([{role: "user", content: timestamped("delivered", 1)}])
     end
   end
 
-  describe "#viewport_events with pending messages" do
+  describe "#viewport_messages with pending messages" do
     let(:session) { Session.create! }
 
     it "includes pending messages by default (for display)" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "delivered"}, timestamp: 1, token_count: 10)
-      session.events.create!(event_type: "user_message", payload: {"content" => "queued"}, timestamp: 2, status: "pending", token_count: 10)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "delivered"}, timestamp: 1, token_count: 10)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "queued"}, timestamp: 2, status: "pending", token_count: 10)
 
-      events = session.viewport_events
+      events = session.viewport_messages
       expect(events.map { |e| e.payload["content"] }).to eq(%w[delivered queued])
     end
 
     it "excludes pending messages when include_pending is false" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "delivered"}, timestamp: 1, token_count: 10)
-      session.events.create!(event_type: "user_message", payload: {"content" => "queued"}, timestamp: 2, status: "pending", token_count: 10)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "delivered"}, timestamp: 1, token_count: 10)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "queued"}, timestamp: 2, status: "pending", token_count: 10)
 
-      events = session.viewport_events(include_pending: false)
+      events = session.viewport_messages(include_pending: false)
       expect(events.map { |e| e.payload["content"] }).to eq(%w[delivered])
     end
   end
@@ -1522,24 +1523,24 @@ RSpec.describe Session do
 
     before do
       # Parent conversation history (created before child session)
-      parent.events.create!(event_type: "user_message", payload: {"content" => "parent msg 1"}, timestamp: 1, token_count: 10)
-      parent.events.create!(event_type: "agent_message", payload: {"content" => "parent reply 1"}, timestamp: 2, token_count: 10)
+      parent.messages.create!(message_type: "user_message", payload: {"content" => "parent msg 1"}, timestamp: 1, token_count: 10)
+      parent.messages.create!(message_type: "agent_message", payload: {"content" => "parent reply 1"}, timestamp: 2, token_count: 10)
     end
 
     it "includes parent events before child events for sub-agent sessions" do
-      child.events.create!(event_type: "user_message", payload: {"content" => "child task"}, timestamp: 3, token_count: 10)
+      child.messages.create!(message_type: "user_message", payload: {"content" => "child task"}, timestamp: 3, token_count: 10)
 
-      events = child.viewport_events
+      events = child.viewport_messages
       contents = events.map { |e| e.payload["content"] }
 
       expect(contents).to eq(["parent msg 1", "parent reply 1", "child task"])
     end
 
     it "shows parent events first chronologically, then child events" do
-      child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 10)
-      child.events.create!(event_type: "agent_message", payload: {"content" => "working..."}, timestamp: 4, token_count: 10)
+      child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 10)
+      child.messages.create!(message_type: "agent_message", payload: {"content" => "working..."}, timestamp: 4, token_count: 10)
 
-      events = child.viewport_events
+      events = child.viewport_messages
       sessions = events.map(&:session_id)
 
       # Parent events come first, then child events
@@ -1549,10 +1550,10 @@ RSpec.describe Session do
     end
 
     it "respects token budget for combined viewport" do
-      child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 50)
+      child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 50)
 
       # Budget of 60: child event (50) + one parent event (10), but not both parent events (20)
-      events = child.viewport_events(token_budget: 60)
+      events = child.viewport_messages(token_budget: 60)
       contents = events.map { |e| e.payload["content"] }
 
       expect(contents).to include("task")
@@ -1560,10 +1561,10 @@ RSpec.describe Session do
     end
 
     it "prioritizes child events over parent events" do
-      child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 50)
+      child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 50)
 
       # Budget only fits the child event
-      events = child.viewport_events(token_budget: 50)
+      events = child.viewport_messages(token_budget: 50)
       contents = events.map { |e| e.payload["content"] }
 
       expect(contents).to eq(["task"])
@@ -1571,25 +1572,25 @@ RSpec.describe Session do
 
     it "does not inherit events from parent for main sessions" do
       main = Session.create!
-      main.events.create!(event_type: "user_message", payload: {"content" => "only mine"}, timestamp: 1, token_count: 10)
+      main.messages.create!(message_type: "user_message", payload: {"content" => "only mine"}, timestamp: 1, token_count: 10)
 
-      events = main.viewport_events
+      events = main.viewport_messages
       expect(events.length).to eq(1)
       expect(events.first.payload["content"]).to eq("only mine")
     end
 
     it "excludes parent events created after the child session" do
-      child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 10)
+      child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 10)
 
       # Parent event with created_at well after child — should not be inherited
-      parent.events.create!(
-        event_type: "agent_message",
+      parent.messages.create!(
+        message_type: "agent_message",
         payload: {"content" => "parent continues"},
         timestamp: 4, token_count: 10,
         created_at: child.created_at + 1.second
       )
 
-      events = child.viewport_events
+      events = child.viewport_messages
       contents = events.map { |e| e.payload["content"] }
 
       expect(contents).not_to include("parent continues")
@@ -1597,25 +1598,25 @@ RSpec.describe Session do
 
     it "excludes spawn tool events from parent context" do
       # Sibling spawn events should not appear in sub-agent's viewport
-      parent.events.create!(
-        event_type: "tool_call",
+      parent.messages.create!(
+        message_type: "tool_call",
         payload: {"content" => "Calling spawn_specialist", "tool_name" => "spawn_specialist",
                   "tool_input" => {"name" => "codebase-analyzer"}, "tool_use_id" => "toolu_sibling"},
         tool_use_id: "toolu_sibling",
         timestamp: 3, token_count: 10
       )
-      parent.events.create!(
-        event_type: "tool_response",
+      parent.messages.create!(
+        message_type: "tool_response",
         payload: {"content" => "Specialist @sibling spawned", "tool_name" => "spawn_specialist",
                   "tool_use_id" => "toolu_sibling"},
         tool_use_id: "toolu_sibling",
         timestamp: 4, token_count: 10
       )
 
-      child.events.create!(event_type: "user_message", payload: {"content" => "my task"}, timestamp: 5, token_count: 10)
+      child.messages.create!(message_type: "user_message", payload: {"content" => "my task"}, timestamp: 5, token_count: 10)
 
-      events = child.viewport_events
-      tool_names = events.select { |e| e.event_type.in?(%w[tool_call tool_response]) }
+      events = child.viewport_messages
+      tool_names = events.select { |e| e.message_type.in?(%w[tool_call tool_response]) }
         .map { |e| e.payload["tool_name"] }
 
       expect(tool_names).not_to include("spawn_specialist")
@@ -1624,68 +1625,68 @@ RSpec.describe Session do
 
     it "excludes own spawn events from parent context" do
       # The sub-agent's own spawn pair is also noise — the task is already its first user_message
-      parent.events.create!(
-        event_type: "tool_call",
+      parent.messages.create!(
+        message_type: "tool_call",
         payload: {"content" => "Calling spawn_subagent", "tool_name" => "spawn_subagent",
                   "tool_input" => {"task" => "research"}, "tool_use_id" => "toolu_self"},
         tool_use_id: "toolu_self",
         timestamp: 3, token_count: 10
       )
-      parent.events.create!(
-        event_type: "tool_response",
+      parent.messages.create!(
+        message_type: "tool_response",
         payload: {"content" => "Sub-agent spawned", "tool_name" => "spawn_subagent",
                   "tool_use_id" => "toolu_self"},
         tool_use_id: "toolu_self",
         timestamp: 4, token_count: 10
       )
 
-      child.events.create!(event_type: "user_message", payload: {"content" => "my task"}, timestamp: 5, token_count: 10)
+      child.messages.create!(message_type: "user_message", payload: {"content" => "my task"}, timestamp: 5, token_count: 10)
 
-      events = child.viewport_events
-      tool_names = events.select { |e| e.event_type.in?(%w[tool_call tool_response]) }
+      events = child.viewport_messages
+      tool_names = events.select { |e| e.message_type.in?(%w[tool_call tool_response]) }
         .map { |e| e.payload["tool_name"] }
 
       expect(tool_names).not_to include("spawn_subagent")
     end
 
     it "preserves non-spawn tool events in parent context" do
-      parent.events.create!(
-        event_type: "tool_call",
+      parent.messages.create!(
+        message_type: "tool_call",
         payload: {"content" => "Calling bash", "tool_name" => "bash",
                   "tool_input" => {"command" => "ls"}, "tool_use_id" => "toolu_bash"},
         tool_use_id: "toolu_bash",
         timestamp: 3, token_count: 10
       )
-      parent.events.create!(
-        event_type: "tool_response",
+      parent.messages.create!(
+        message_type: "tool_response",
         payload: {"content" => "file1.rb", "tool_name" => "bash",
                   "tool_use_id" => "toolu_bash"},
         tool_use_id: "toolu_bash",
         timestamp: 4, token_count: 10
       )
 
-      child.events.create!(event_type: "user_message", payload: {"content" => "my task"}, timestamp: 5, token_count: 10)
+      child.messages.create!(message_type: "user_message", payload: {"content" => "my task"}, timestamp: 5, token_count: 10)
 
-      events = child.viewport_events
-      tool_names = events.select { |e| e.event_type.in?(%w[tool_call tool_response]) }
+      events = child.viewport_messages
+      tool_names = events.select { |e| e.message_type.in?(%w[tool_call tool_response]) }
         .map { |e| e.payload["tool_name"] }
 
       expect(tool_names).to eq(%w[bash bash])
     end
 
     it "trims trailing tool_call events from parent viewport" do
-      parent.events.create!(
-        event_type: "tool_call",
+      parent.messages.create!(
+        message_type: "tool_call",
         payload: {"content" => "Calling spawn_subagent", "tool_name" => "spawn_subagent",
                   "tool_input" => {"task" => "research"}, "tool_use_id" => "toolu_orphan"},
         tool_use_id: "toolu_orphan",
         timestamp: 3, token_count: 10
       )
 
-      child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 4, token_count: 10)
+      child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 4, token_count: 10)
 
-      events = child.viewport_events
-      types = events.map(&:event_type)
+      events = child.viewport_messages
+      types = events.map(&:message_type)
 
       # The orphaned tool_call at the end of parent events should be trimmed
       expect(types).not_to include("tool_call")
@@ -1696,33 +1697,33 @@ RSpec.describe Session do
     let(:session) { Session.create! }
 
     it "returns empty array when viewport has not changed" do
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
       session.snapshot_viewport!([event.id])
 
       expect(session.recalculate_viewport!).to eq([])
     end
 
     it "returns evicted event IDs when viewport shrinks" do
-      old = session.events.create!(event_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 100_000)
-      new_event = session.events.create!(event_type: "agent_message", payload: {"content" => "new"}, timestamp: 2, token_count: 100_000)
-      session.update_column(:viewport_event_ids, [old.id, new_event.id])
+      old = session.messages.create!(message_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 100_000)
+      new_event = session.messages.create!(message_type: "agent_message", payload: {"content" => "new"}, timestamp: 2, token_count: 100_000)
+      session.update_column(:viewport_message_ids, [old.id, new_event.id])
 
       # Add a large event that pushes 'old' out of the viewport
-      session.events.create!(event_type: "user_message", payload: {"content" => "big"}, timestamp: 3, token_count: 100_000)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "big"}, timestamp: 3, token_count: 100_000)
 
       evicted = session.recalculate_viewport!
       expect(evicted).to include(old.id)
     end
 
     it "updates the stored viewport snapshot" do
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
       session.recalculate_viewport!
 
-      expect(session.reload.viewport_event_ids).to eq([event.id])
+      expect(session.reload.viewport_message_ids).to eq([event.id])
     end
 
     it "does not write to the database when viewport is unchanged" do
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
       session.snapshot_viewport!([event.id])
 
       expect(session).not_to receive(:update_column)
@@ -1735,22 +1736,22 @@ RSpec.describe Session do
 
     it "stores the given event IDs" do
       session.snapshot_viewport!([1, 2, 3])
-      expect(session.reload.viewport_event_ids).to eq([1, 2, 3])
+      expect(session.reload.viewport_message_ids).to eq([1, 2, 3])
     end
 
     it "overwrites previous snapshot" do
       session.snapshot_viewport!([1, 2])
       session.snapshot_viewport!([3, 4, 5])
-      expect(session.reload.viewport_event_ids).to eq([3, 4, 5])
+      expect(session.reload.viewport_message_ids).to eq([3, 4, 5])
     end
   end
 
   describe "#assemble_recall_messages" do
     let(:session) { Session.create! }
 
-    def create_event(sess, type:, content:)
-      sess.events.create!(
-        event_type: type,
+    def create_message(sess, type:, content:)
+      sess.messages.create!(
+        message_type: type,
         payload: {"content" => content},
         timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
       )
@@ -1762,8 +1763,8 @@ RSpec.describe Session do
 
     it "returns recall messages for stored event IDs" do
       other_session = Session.create!(name: "Past Work")
-      event = create_event(other_session, type: "user_message", content: "Important finding about auth")
-      session.update_column(:recalled_event_ids, [event.id])
+      event = create_message(other_session, type: "user_message", content: "Important finding about auth")
+      session.update_column(:recalled_message_ids, [event.id])
 
       messages = session.send(:assemble_recall_messages, budget: 1000)
 
@@ -1776,9 +1777,9 @@ RSpec.describe Session do
 
     it "respects budget and stops when exceeded" do
       other_session = Session.create!
-      e1 = create_event(other_session, type: "user_message", content: "A" * 500)
-      e2 = create_event(other_session, type: "user_message", content: "B" * 500)
-      session.update_column(:recalled_event_ids, [e1.id, e2.id])
+      e1 = create_message(other_session, type: "user_message", content: "A" * 500)
+      e2 = create_message(other_session, type: "user_message", content: "B" * 500)
+      session.update_column(:recalled_message_ids, [e1.id, e2.id])
 
       messages = session.send(:assemble_recall_messages, budget: 50)
 
@@ -1787,8 +1788,8 @@ RSpec.describe Session do
     end
 
     it "skips events that no longer exist" do
-      event = create_event(session, type: "user_message", content: "Still here")
-      session.update_column(:recalled_event_ids, [999999, event.id])
+      event = create_message(session, type: "user_message", content: "Still here")
+      session.update_column(:recalled_message_ids, [999999, event.id])
 
       messages = session.send(:assemble_recall_messages, budget: 1000)
 
@@ -1798,8 +1799,8 @@ RSpec.describe Session do
 
     it "falls back to session ID when name is nil" do
       unnamed_session = Session.create!(name: nil)
-      event = create_event(unnamed_session, type: "user_message", content: "test")
-      session.update_column(:recalled_event_ids, [event.id])
+      event = create_message(unnamed_session, type: "user_message", content: "test")
+      session.update_column(:recalled_message_ids, [event.id])
 
       messages = session.send(:assemble_recall_messages, budget: 1000)
 
@@ -1807,56 +1808,56 @@ RSpec.describe Session do
     end
   end
 
-  describe "#extract_event_content (private)" do
+  describe "#extract_message_content (private)" do
     let(:session) { Session.create! }
 
     it "extracts content from user messages" do
-      event = session.events.create!(
-        event_type: "user_message",
+      event = session.messages.create!(
+        message_type: "user_message",
         payload: {"content" => "Hello world"},
         timestamp: 1
       )
 
-      expect(session.send(:extract_event_content, event)).to eq("Hello world")
+      expect(session.send(:extract_message_content, event)).to eq("Hello world")
     end
 
     it "extracts thoughts from think tool calls" do
-      event = session.events.create!(
-        event_type: "tool_call",
+      event = session.messages.create!(
+        message_type: "tool_call",
         payload: {"tool_name" => "think", "tool_input" => {"thoughts" => "Deep thought"}, "tool_use_id" => "t1"},
         tool_use_id: "t1",
         timestamp: 1
       )
 
-      expect(session.send(:extract_event_content, event)).to eq("Deep thought")
+      expect(session.send(:extract_message_content, event)).to eq("Deep thought")
     end
 
     it "returns tool name summary for non-think tool calls" do
-      event = session.events.create!(
-        event_type: "tool_call",
+      event = session.messages.create!(
+        message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_input" => {"cmd" => "ls"}, "tool_use_id" => "t1"},
         tool_use_id: "t1",
         timestamp: 1
       )
 
-      expect(session.send(:extract_event_content, event)).to eq("bash(…)")
+      expect(session.send(:extract_message_content, event)).to eq("bash(…)")
     end
   end
 
   describe "#estimate_tokens (private)" do
     let(:session) { Session.create! }
 
-    it "delegates to Event#estimate_tokens" do
-      event = session.events.create!(
-        event_type: "user_message", payload: {"content" => "hello world"}, timestamp: 1
+    it "delegates to Message#estimate_tokens" do
+      event = session.messages.create!(
+        message_type: "user_message", payload: {"content" => "hello world"}, timestamp: 1
       )
 
       expect(session.send(:estimate_tokens, event)).to eq(event.estimate_tokens)
     end
 
-    it "uses heuristic for tool events via Event#estimate_tokens" do
-      event = session.events.create!(
-        event_type: "tool_call",
+    it "uses heuristic for tool events via Message#estimate_tokens" do
+      event = session.messages.create!(
+        message_type: "tool_call",
         payload: {"content" => "calling", "tool_name" => "bash", "tool_input" => {"command" => "ls"}},
         tool_use_id: "toolu_est1",
         timestamp: 1
@@ -1872,16 +1873,16 @@ RSpec.describe Session do
     context "when session is idle" do
       it "persists a deliverable event and enqueues AgentRequestJob" do
         expect { session.enqueue_user_message("hello") }
-          .to change { session.events.where(event_type: "user_message", status: nil).count }.by(1)
+          .to change { session.messages.where(message_type: "user_message", status: nil).count }.by(1)
 
         expect(AgentRequestJob).to have_been_enqueued.with(session.id)
       end
 
-      it "passes event_id to job when bounce_back is true" do
+      it "passes message_id to job when bounce_back is true" do
         session.enqueue_user_message("hello", bounce_back: true)
 
-        event = session.events.last
-        expect(AgentRequestJob).to have_been_enqueued.with(session.id, event_id: event.id)
+        event = session.messages.last
+        expect(AgentRequestJob).to have_been_enqueued.with(session.id, message_id: event.id)
       end
     end
 
@@ -1898,7 +1899,7 @@ RSpec.describe Session do
 
         user_event = emitted.find { |e| e.dig(:payload, :type) == "user_message" }
         expect(user_event).to be_present
-        expect(user_event.dig(:payload, :status)).to eq(Event::PENDING_STATUS)
+        expect(user_event.dig(:payload, :status)).to eq(Message::PENDING_STATUS)
         expect(user_event.dig(:payload, :session_id)).to eq(session.id)
         expect(user_event.dig(:payload, :content)).to eq("hello")
       ensure
@@ -1914,7 +1915,7 @@ RSpec.describe Session do
       it "does not persist a deliverable event" do
         session.enqueue_user_message("hello")
 
-        expect(session.events.where(event_type: "user_message", status: nil).count).to eq(0)
+        expect(session.messages.where(message_type: "user_message", status: nil).count).to eq(0)
       end
     end
   end

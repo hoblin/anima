@@ -15,7 +15,7 @@ RSpec.describe Mneme::Runner do
   end
 
   # Helper to create events with predetermined token counts.
-  def create_event(type:, content: "msg", token_count: 100, tool_name: nil, tool_input: nil)
+  def create_message(type:, content: "msg", token_count: 100, tool_name: nil, tool_input: nil)
     payload = case type
     when "tool_call"
       {"content" => "Calling #{tool_name}", "tool_name" => tool_name,
@@ -26,8 +26,8 @@ RSpec.describe Mneme::Runner do
       {"content" => content}
     end
 
-    session.events.create!(
-      event_type: type,
+    session.messages.create!(
+      message_type: type,
       payload: payload,
       tool_use_id: payload["tool_use_id"],
       timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
@@ -50,9 +50,9 @@ RSpec.describe Mneme::Runner do
 
     context "with conversation events" do
       before do
-        create_event(type: "user_message", content: "Tell me about Ruby")
-        create_event(type: "agent_message", content: "Ruby is great!")
-        create_event(type: "user_message", content: "More details please")
+        create_message(type: "user_message", content: "Tell me about Ruby")
+        create_message(type: "agent_message", content: "Ruby is great!")
+        create_message(type: "user_message", content: "More details please")
       end
 
       it "calls chat_with_tools with compressed viewport" do
@@ -128,19 +128,19 @@ RSpec.describe Mneme::Runner do
 
         runner.call
 
-        expect(session.reload.mneme_boundary_event_id).to be_present
+        expect(session.reload.mneme_boundary_message_id).to be_present
       end
 
       it "sets the boundary to a conversation-or-think event" do
-        create_event(type: "tool_call", tool_name: "bash", token_count: 50)
-        create_event(type: "tool_response", tool_name: "bash", content: "output", token_count: 50)
+        create_message(type: "tool_call", tool_name: "bash", token_count: 50)
+        create_message(type: "tool_response", tool_name: "bash", content: "output", token_count: 50)
 
         allow(client).to receive(:chat_with_tools) { "Done" }
 
         runner.call
 
-        boundary_id = session.reload.mneme_boundary_event_id
-        boundary_event = Event.find(boundary_id)
+        boundary_id = session.reload.mneme_boundary_message_id
+        boundary_event = Message.find(boundary_id)
         expect(boundary_event).to be_conversation_or_think
       end
 
@@ -150,15 +150,15 @@ RSpec.describe Mneme::Runner do
         runner.call
 
         session.reload
-        expect(session.mneme_snapshot_first_event_id).to be_present
-        expect(session.mneme_snapshot_last_event_id).to be_present
+        expect(session.mneme_snapshot_first_message_id).to be_present
+        expect(session.mneme_snapshot_last_message_id).to be_present
       end
     end
 
     context "with active goals" do
       before do
-        create_event(type: "user_message", content: "Implement feature")
-        create_event(type: "agent_message", content: "Working on it")
+        create_message(type: "user_message", content: "Implement feature")
+        create_message(type: "agent_message", content: "Working on it")
         session.goals.create!(description: "Build auth flow")
       end
 
@@ -179,10 +179,10 @@ RSpec.describe Mneme::Runner do
 
     context "when LLM calls everything_ok (no snapshot needed)" do
       before do
-        create_event(type: "user_message", content: "Start")
-        create_event(type: "tool_call", tool_name: "bash", token_count: 200)
-        create_event(type: "tool_response", tool_name: "bash", content: "ok", token_count: 200)
-        create_event(type: "agent_message", content: "Done")
+        create_message(type: "user_message", content: "Start")
+        create_message(type: "tool_call", tool_name: "bash", token_count: 200)
+        create_message(type: "tool_response", tool_name: "bash", content: "ok", token_count: 200)
+        create_message(type: "agent_message", content: "Done")
       end
 
       it "advances boundary without creating a snapshot" do
@@ -194,14 +194,14 @@ RSpec.describe Mneme::Runner do
         runner.call
 
         expect(Snapshot.count).to eq(0)
-        expect(session.reload.mneme_boundary_event_id).to be_present
+        expect(session.reload.mneme_boundary_message_id).to be_present
       end
     end
 
     context "when viewport contains only tool events" do
       before do
-        create_event(type: "tool_call", tool_name: "bash", token_count: 100)
-        create_event(type: "tool_response", tool_name: "bash", content: "ok", token_count: 100)
+        create_message(type: "tool_call", tool_name: "bash", token_count: 100)
+        create_message(type: "tool_response", tool_name: "bash", content: "ok", token_count: 100)
       end
 
       it "does not advance the boundary (no conversation events)" do
@@ -209,18 +209,18 @@ RSpec.describe Mneme::Runner do
 
         runner.call
 
-        expect(session.reload.mneme_boundary_event_id).to be_nil
+        expect(session.reload.mneme_boundary_message_id).to be_nil
       end
     end
 
     context "with think events as the last conversation event" do
       before do
-        create_event(type: "user_message", content: "Fix the bug")
-        create_event(type: "tool_call", tool_name: "think",
+        create_message(type: "user_message", content: "Fix the bug")
+        create_message(type: "tool_call", tool_name: "think",
           tool_input: {"thoughts" => "Let me analyze this"}, token_count: 50)
-        create_event(type: "tool_response", tool_name: "think", content: "", token_count: 10)
-        create_event(type: "tool_call", tool_name: "bash", token_count: 50)
-        create_event(type: "tool_response", tool_name: "bash", content: "ok", token_count: 50)
+        create_message(type: "tool_response", tool_name: "think", content: "", token_count: 10)
+        create_message(type: "tool_call", tool_name: "bash", token_count: 50)
+        create_message(type: "tool_response", tool_name: "bash", content: "ok", token_count: 50)
       end
 
       it "can set boundary to a think event" do
@@ -228,16 +228,16 @@ RSpec.describe Mneme::Runner do
 
         runner.call
 
-        boundary_event = Event.find(session.reload.mneme_boundary_event_id)
+        boundary_event = Message.find(session.reload.mneme_boundary_message_id)
         expect(boundary_event).to be_conversation_or_think
       end
     end
 
-    context "with from_event_id boundary" do
+    context "with from_message_id boundary" do
       it "starts viewport from the boundary event" do
-        old = create_event(type: "user_message", content: "old message")
-        create_event(type: "user_message", content: "new message")
-        session.update_column(:mneme_boundary_event_id, old.id)
+        old = create_message(type: "user_message", content: "old message")
+        create_message(type: "user_message", content: "new message")
+        session.update_column(:mneme_boundary_message_id, old.id)
 
         captured_messages = nil
         allow(client).to receive(:chat_with_tools) { |msgs, **_opts|
@@ -256,22 +256,22 @@ RSpec.describe Mneme::Runner do
 
   describe "integration with real LLM", vcr: {match_requests_on: [:method, :uri]} do
     it "calls save_snapshot with a meaningful summary" do
-      session.events.create!(
-        event_type: "user_message",
+      session.messages.create!(
+        message_type: "user_message",
         payload: {"content" => "Help me set up OAuth with PKCE for our mobile app"},
         timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
         token_count: 20
       )
-      session.events.create!(
-        event_type: "agent_message",
+      session.messages.create!(
+        message_type: "agent_message",
         payload: {"content" => "I'll implement OAuth 2.0 with PKCE. First, we need a code verifier and challenge. " \
           "The verifier is a random string, and the challenge is its SHA-256 hash. " \
           "Then we redirect to the authorization server with the challenge."},
         timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
         token_count: 60
       )
-      session.events.create!(
-        event_type: "user_message",
+      session.messages.create!(
+        message_type: "user_message",
         payload: {"content" => "Use the AppAuth library for iOS and handle token refresh"},
         timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
         token_count: 15
@@ -286,8 +286,8 @@ RSpec.describe Mneme::Runner do
       expect(snapshot.text).to include("PKCE")
       expect(snapshot.text).to include("AppAuth")
       expect(snapshot.token_count).to be > 0
-      expect(snapshot.from_event_id).to eq(session.events.first.id)
-      expect(snapshot.to_event_id).to eq(session.events.last.id)
+      expect(snapshot.from_message_id).to eq(session.messages.first.id)
+      expect(snapshot.to_message_id).to eq(session.messages.last.id)
     end
   end
 end

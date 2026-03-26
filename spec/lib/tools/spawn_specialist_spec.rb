@@ -148,7 +148,7 @@ RSpec.describe Tools::SpawnSpecialist do
       tool.execute(input)
 
       child = Session.last
-      user_event = child.events.find_by(event_type: "user_message")
+      user_event = child.messages.find_by(message_type: "user_message")
       expect(user_event).to be_present
       expect(user_event.payload["content"]).to eq("Read lib/agent_loop.rb and summarize the tool execution flow")
       expect(user_event.status).to be_nil

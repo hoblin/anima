@@ -65,7 +65,7 @@ RSpec.describe Anima::ConfigMigrator do
           ["analytical_brain", "max_tokens"],
           ["analytical_brain", "blocking_on_user_message"],
           ["analytical_brain", "blocking_on_agent_message"],
-          ["analytical_brain", "event_window"],
+          ["analytical_brain", "message_window"],
           ["mneme", "max_tokens"],
           ["mneme", "viewport_fraction"],
           ["mneme", "l1_budget_fraction"],
@@ -82,7 +82,7 @@ RSpec.describe Anima::ConfigMigrator do
         expect(updated).to include("[analytical_brain]")
         expect(updated).to include("# ─── Analytical Brain")
         expect(updated).to include("max_tokens = 4096")
-        expect(updated).to include("event_window = 20")
+        expect(updated).to include("message_window = 20")
         expect(updated).to include("[mneme]")
       end
     end

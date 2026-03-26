@@ -118,7 +118,7 @@ module AnalyticalBrain
     end
 
     # Runs the analytical brain loop. Builds context from the session's
-    # recent events, calls the LLM with the session-appropriate tool set,
+    # recent messages, calls the LLM with the session-appropriate tool set,
     # and executes any tool calls against the session.
     #
     # Events emitted during tool execution are not persisted — the phantom
@@ -130,12 +130,12 @@ module AnalyticalBrain
       messages = build_messages
       sid = @session.id
       if messages.empty?
-        log.debug("session=#{sid} — no events, skipping")
+        log.debug("session=#{sid} — no messages, skipping")
         return
       end
 
       system = build_system_prompt
-      log.info("session=#{sid} — running (#{recent_events.size} events)")
+      log.info("session=#{sid} — running (#{recent_messages.size} messages)")
       log.debug("system prompt:\n#{system}")
       log.debug("user message:\n#{messages.first[:content]}")
 
@@ -162,18 +162,18 @@ module AnalyticalBrain
       active_responsibility_keys.map { |key| RESPONSIBILITIES.fetch(key) }
     end
 
-    # Builds a condensed transcript of recent events as a single user message.
+    # Builds a condensed transcript of recent messages as a single user message.
     # The framing differs by session type:
     #
     # * **Parent:** "The main session is working on this: [transcript]"
     # * **Child:** "A sub-agent has been spawned with this task: [transcript]"
     #
-    # @return [Array<Hash>] single-element messages array, or empty if no events
+    # @return [Array<Hash>] single-element messages array, or empty if no messages
     def build_messages
-      events = recent_events
-      return [] if events.empty?
+      messages = recent_messages
+      return [] if messages.empty?
 
-      transcript = events.filter_map { |event| EventDecorator.for(event)&.render("brain") }.join("\n")
+      transcript = messages.filter_map { |msg| MessageDecorator.for(msg)&.render("brain") }.join("\n")
 
       if @session.sub_agent?
         build_child_message(transcript)
@@ -206,12 +206,12 @@ module AnalyticalBrain
       [{role: "user", content: content}]
     end
 
-    # @return [Array<Event>] most recent events in chronological order
-    def recent_events
-      @session.events
-        .context_events
+    # @return [Array<Message>] most recent messages in chronological order
+    def recent_messages
+      @session.messages
+        .context_messages
         .reorder(id: :desc)
-        .limit(Anima::Settings.analytical_brain_event_window)
+        .limit(Anima::Settings.analytical_brain_message_window)
         .to_a
         .reverse
     end

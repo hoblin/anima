@@ -7,16 +7,16 @@ module Mneme
   # aggregate counters like `[4 tools called]`.
   #
   # The viewport is split into three zones separated by delimiters:
-  # - **Eviction zone** — events about to leave the viewport (upper third)
-  # - **Middle zone** — events in the middle of the viewport
-  # - **Recent zone** — the most recent events (lower third)
+  # - **Eviction zone** — messages about to leave the viewport (upper third)
+  # - **Middle zone** — messages in the middle of the viewport
+  # - **Recent zone** — the most recent messages (lower third)
   #
   # Zone boundaries are calculated WITH tool call tokens (they affect
   # position), then tool calls are removed and replaced with counters.
   #
   # @example
   #   viewport = Mneme::CompressedViewport.new(session, token_budget: 60_000)
-  #   viewport.render  #=> "── EVICTION ZONE ──\nevent 42 User: ..."
+  #   viewport.render  #=> "── EVICTION ZONE ──\nmessage 42 User: ..."
   class CompressedViewport
     ZONE_DELIMITERS = {
       eviction: "── EVICTION ZONE (upper third) ──",
@@ -26,74 +26,74 @@ module Mneme
 
     # @param session [Session] the session to build viewport for
     # @param token_budget [Integer] total tokens available for Mneme's viewport
-    # @param from_event_id [Integer, nil] start from this event ID (inclusive);
+    # @param from_message_id [Integer, nil] start from this message ID (inclusive);
     #   when nil, uses the session's full viewport
-    def initialize(session, token_budget:, from_event_id: nil)
+    def initialize(session, token_budget:, from_message_id: nil)
       @session = session
       @token_budget = token_budget
-      @from_event_id = from_event_id
+      @from_message_id = from_message_id
     end
 
     # Renders the compressed viewport as a string ready for Mneme's LLM context.
     #
     # @return [String] compressed viewport with zone delimiters
     def render
-      return "" if events.empty?
+      return "" if messages.empty?
 
-      zones = split_into_zones(events)
+      zones = split_into_zones(messages)
       render_zones(zones)
     end
 
-    # @return [Array<Event>] the raw events selected for this viewport
-    def events
-      @events ||= fetch_events
+    # @return [Array<Message>] the raw messages selected for this viewport
+    def messages
+      @messages ||= fetch_messages
     end
 
     private
 
-    # Fetches events within token budget, starting from from_event_id.
+    # Fetches messages within token budget, starting from from_message_id.
     # Selects newest-first until budget exhausted, returns chronological.
-    # Caches per-event token costs in @event_costs for reuse by split_into_zones.
+    # Caches per-message token costs in @message_costs for reuse by split_into_zones.
     #
-    # @return [Array<Event>]
-    def fetch_events
-      scope = @session.events.context_events.deliverable
+    # @return [Array<Message>]
+    def fetch_messages
+      scope = @session.messages.context_messages.deliverable
 
-      if @from_event_id
-        scope = scope.where("id >= ?", @from_event_id)
+      if @from_message_id
+        scope = scope.where("id >= ?", @from_message_id)
       end
 
       selected = []
-      @event_costs = {}
+      @message_costs = {}
       remaining = @token_budget
 
-      scope.reorder(id: :desc).each do |event|
-        cost = event_token_cost(event)
+      scope.reorder(id: :desc).each do |message|
+        cost = message_token_cost(message)
         break if cost > remaining && selected.any?
 
-        selected << event
-        @event_costs[event.id] = cost
+        selected << message
+        @message_costs[message.id] = cost
         remaining -= cost
       end
 
       selected.reverse
     end
 
-    # Splits events into three zones by token count.
-    # Zone boundaries are calculated including ALL events (tool calls count
+    # Splits messages into three zones by token count.
+    # Zone boundaries are calculated including ALL messages (tool calls count
     # toward position), but zone assignment uses cumulative tokens.
     #
-    # @return [Hash{Symbol => Array<Event>}] :eviction, :middle, :recent
-    def split_into_zones(events)
-      costs = events.map { |event| [event, @event_costs[event.id] || event_token_cost(event)] }
+    # @return [Hash{Symbol => Array<Message>}] :eviction, :middle, :recent
+    def split_into_zones(messages)
+      costs = messages.map { |message| [message, @message_costs[message.id] || message_token_cost(message)] }
       zone_size = costs.sum(&:last) / 3.0
 
       result = {eviction: [], middle: [], recent: []}
       cumulative = 0
 
-      costs.each do |event, cost|
+      costs.each do |message, cost|
         cumulative += cost
-        result[zone_for_cumulative(cumulative, zone_size)] << event
+        result[zone_for_cumulative(cumulative, zone_size)] << message
       end
 
       result
@@ -101,7 +101,7 @@ module Mneme
 
     # Renders zones with delimiters, compressing tool calls into counters.
     #
-    # @param zones [Hash{Symbol => Array<Event>}]
+    # @param zones [Hash{Symbol => Array<Message>}]
     # @return [String]
     def render_zones(zones)
       %i[eviction middle recent].flat_map { |name|
@@ -124,23 +124,23 @@ module Mneme
       end
     end
 
-    # Renders a single zone: conversation events as full text, consecutive
+    # Renders a single zone: conversation messages as full text, consecutive
     # tool calls/responses compressed into `[N tools called]` counters.
-    # tool_response events are intentionally silent — they affect zone boundaries
-    # via token cost but are not rendered; only tool_call events increment the counter.
+    # tool_response messages are intentionally silent — they affect zone boundaries
+    # via token cost but are not rendered; only tool_call messages increment the counter.
     #
-    # @param zone_events [Array<Event>]
+    # @param zone_messages [Array<Message>]
     # @return [String]
-    def render_zone(zone_events)
+    def render_zone(zone_messages)
       lines = []
       tool_count = 0
 
-      zone_events.each do |event|
-        if conversation_event?(event) || think_event?(event)
+      zone_messages.each do |message|
+        if conversation_message?(message) || think_message?(message)
           lines << flush_tool_count(tool_count)
           tool_count = 0
-          lines << render_event_line(event)
-        elsif event.event_type == "tool_call"
+          lines << render_message_line(message)
+        elsif message.message_type == "tool_call"
           tool_count += 1
         end
       end
@@ -149,17 +149,17 @@ module Mneme
       lines.compact.join("\n")
     end
 
-    # @return [Boolean] true if event is a user/agent/system message
-    def conversation_event?(event)
-      event.event_type.in?(Event::CONVERSATION_TYPES)
+    # @return [Boolean] true if message is a user/agent/system message
+    def conversation_message?(message)
+      message.message_type.in?(Message::CONVERSATION_TYPES)
     end
 
-    # Think events are tool_call events with tool_name == "think".
+    # Think messages are tool_call messages with tool_name == "think".
     # They carry the agent's reasoning and are treated as conversation.
     #
     # @return [Boolean]
-    def think_event?(event)
-      event.event_type == "tool_call" && event.payload["tool_name"] == Event::THINK_TOOL
+    def think_message?(message)
+      message.message_type == "tool_call" && message.payload["tool_name"] == Message::THINK_TOOL
     end
 
     ROLE_LABELS = {
@@ -168,17 +168,17 @@ module Mneme
       "system_message" => "System"
     }.freeze
 
-    # Renders a single event as a transcript line.
+    # Renders a single message as a transcript line.
     #
-    # @param event [Event]
+    # @param message [Message]
     # @return [String]
-    def render_event_line(event)
-      prefix = "event #{event.id}"
-      data = event.payload
-      if think_event?(event)
+    def render_message_line(message)
+      prefix = "message #{message.id}"
+      data = message.payload
+      if think_message?(message)
         "#{prefix} Think: #{data.dig("tool_input", "thoughts")}"
       else
-        "#{prefix} #{ROLE_LABELS.fetch(event.event_type)}: #{data["content"]}"
+        "#{prefix} #{ROLE_LABELS.fetch(message.message_type)}: #{data["content"]}"
       end
     end
 
@@ -192,9 +192,9 @@ module Mneme
     end
 
     # @return [Integer] token cost using cached count or heuristic
-    def event_token_cost(event)
-      cached = event.token_count
-      (cached > 0) ? cached : event.estimate_tokens
+    def message_token_cost(message)
+      cached = message.token_count
+      (cached > 0) ? cached : message.estimate_tokens
     end
   end
 end

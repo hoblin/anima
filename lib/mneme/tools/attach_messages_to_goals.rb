@@ -2,15 +2,15 @@
 
 module Mneme
   module Tools
-    # Pins critical events to active Goals so they survive viewport eviction.
-    # Mneme calls this when it sees important events (user instructions, key
+    # Pins critical messages to active Goals so they survive viewport eviction.
+    # Mneme calls this when it sees important messages (user instructions, key
     # decisions, critical corrections) approaching the eviction zone.
     #
-    # Events are pinned via a many-to-many join: one event can be attached
+    # Messages are pinned via a many-to-many join: one message can be attached
     # to multiple Goals. When all referencing Goals complete, the pin is
     # automatically released (reference-counted cleanup in {Goal#release_orphaned_pins!}).
-    class AttachEventsToGoals < ::Tools::Base
-      def self.tool_name = "attach_events_to_goals"
+    class AttachMessagesToGoals < ::Tools::Base
+      def self.tool_name = "attach_messages_to_goals"
 
       def self.description = "Pin critical messages to goals so they survive viewport eviction."
 
@@ -18,7 +18,7 @@ module Mneme
         {
           type: "object",
           properties: {
-            event_ids: {
+            message_ids: {
               type: "array",
               items: {type: "integer"}
             },
@@ -27,7 +27,7 @@ module Mneme
               items: {type: "integer"}
             }
           },
-          required: %w[event_ids goal_ids]
+          required: %w[message_ids goal_ids]
         }
       end
 
@@ -36,24 +36,24 @@ module Mneme
         @session = main_session
       end
 
-      # @param input [Hash<String, Object>] with "event_ids" and "goal_ids"
+      # @param input [Hash<String, Object>] with "message_ids" and "goal_ids"
       # @return [String] confirmation with link count, or error description
       def execute(input)
-        event_ids = Array(input["event_ids"]).map(&:to_i).uniq
+        message_ids = Array(input["message_ids"]).map(&:to_i).uniq
         goal_ids = Array(input["goal_ids"]).map(&:to_i).uniq
 
-        return "Error: event_ids cannot be empty" if event_ids.empty?
+        return "Error: message_ids cannot be empty" if message_ids.empty?
         return "Error: goal_ids cannot be empty" if goal_ids.empty?
 
-        events = @session.events.where(id: event_ids)
+        messages = @session.messages.where(id: message_ids)
         all_goals = @session.goals
         goals = all_goals.active.where(id: goal_ids)
 
-        missing_events = event_ids - events.pluck(:id)
+        missing_messages = message_ids - messages.pluck(:id)
         inactive_goal_ids = goal_ids - goals.pluck(:id)
 
         errors = []
-        errors << "Events not found: #{missing_events.join(", ")}" if missing_events.any?
+        errors << "Messages not found: #{missing_messages.join(", ")}" if missing_messages.any?
 
         if inactive_goal_ids.any?
           completed_ids = all_goals.completed.where(id: inactive_goal_ids).pluck(:id)
@@ -64,36 +64,36 @@ module Mneme
 
         return "Error: #{errors.join("; ")}" if errors.any?
 
-        attached = attach(events, goals)
-        "Pinned #{attached} event-goal links"
+        attached = attach(messages, goals)
+        "Pinned #{attached} message-goal links"
       end
 
       private
 
-      def attach(events, goals)
-        events.sum do |event|
-          pinned = find_or_create_pinned_event(event)
+      def attach(messages, goals)
+        messages.sum do |message|
+          pinned = find_or_create_pinned_message(message)
           link_to_goals(pinned, goals)
         end
       end
 
       def link_to_goals(pinned, goals)
-        goals.each { |goal| GoalPinnedEvent.find_or_create_by!(goal: goal, pinned_event: pinned) }
+        goals.each { |goal| GoalPinnedMessage.find_or_create_by!(goal: goal, pinned_message: pinned) }
         goals.size
       end
 
-      def find_or_create_pinned_event(event)
-        PinnedEvent.find_or_create_by!(event: event) do |pe|
-          pe.display_text = truncate_event_content(event)
+      def find_or_create_pinned_message(message)
+        PinnedMessage.find_or_create_by!(message: message) do |pm|
+          pm.display_text = truncate_message_content(message)
         end
       end
 
-      def truncate_event_content(event)
-        content = event.payload&.dig("content").to_s.strip
-        content = "event #{event.id}" if content.empty?
+      def truncate_message_content(message)
+        content = message.payload&.dig("content").to_s.strip
+        content = "message #{message.id}" if content.empty?
 
-        if content.length > PinnedEvent::MAX_DISPLAY_TEXT_LENGTH
-          content[0, PinnedEvent::MAX_DISPLAY_TEXT_LENGTH - 1] + "…"
+        if content.length > PinnedMessage::MAX_DISPLAY_TEXT_LENGTH
+          content[0, PinnedMessage::MAX_DISPLAY_TEXT_LENGTH - 1] + "…"
         else
           content
         end

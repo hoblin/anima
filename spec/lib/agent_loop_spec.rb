@@ -142,7 +142,7 @@ RSpec.describe AgentLoop do
 
   describe "#run" do
     before do
-      session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       allow(client).to receive(:chat_with_tools).and_return("Hello back!")
     end
 
@@ -186,7 +186,7 @@ RSpec.describe AgentLoop do
 
     context "when interrupted by user" do
       before do
-        session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
         allow(client).to receive(:chat_with_tools).and_return(nil)
       end
 
@@ -279,7 +279,7 @@ RSpec.describe AgentLoop do
 
   describe "tool registry switching" do
     it "registers spawn_subagent, spawn_specialist, and request_feature for main sessions" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
         expect(registry.registered?("spawn_subagent")).to be true
         expect(registry.registered?("spawn_specialist")).to be true
@@ -293,7 +293,7 @@ RSpec.describe AgentLoop do
     it "registers only standard tools for sub-agent sessions (no spawning or feature requests)" do
       parent = Session.create!
       child = Session.create!(parent_session: parent, prompt: "sub-agent prompt")
-      child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
+      child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
 
       sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
       allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
@@ -311,7 +311,7 @@ RSpec.describe AgentLoop do
       it "registers only granted tools plus always-granted tools for restricted sub-agents" do
         parent = Session.create!
         child = Session.create!(parent_session: parent, prompt: "reader agent", granted_tools: ["read", "web_get"])
-        child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
+        child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
 
         sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
         allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
@@ -331,7 +331,7 @@ RSpec.describe AgentLoop do
       it "registers only always-granted tools for empty tools array (pure reasoning)" do
         parent = Session.create!
         child = Session.create!(parent_session: parent, prompt: "thinker agent", granted_tools: [])
-        child.events.create!(event_type: "user_message", payload: {"content" => "think"}, timestamp: 1)
+        child.messages.create!(message_type: "user_message", payload: {"content" => "think"}, timestamp: 1)
 
         sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
         allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
@@ -353,7 +353,7 @@ RSpec.describe AgentLoop do
       it "registers all standard tools when granted_tools is nil" do
         parent = Session.create!
         child = Session.create!(parent_session: parent, prompt: "full agent")
-        child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
+        child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
 
         sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
         allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
@@ -373,7 +373,7 @@ RSpec.describe AgentLoop do
     it "passes system_prompt to the LLM client for sub-agent sessions" do
       parent = Session.create!
       child = Session.create!(parent_session: parent, prompt: "You are a research agent.")
-      child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
+      child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
 
       sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
       allow(client).to receive(:chat_with_tools) do |_msgs, system:, **_|
@@ -386,7 +386,7 @@ RSpec.describe AgentLoop do
     end
 
     it "passes soul as system prompt for main sessions" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       allow(client).to receive(:chat_with_tools) do |_msgs, system:, **_|
         expect(system).to include("# Soul")
         "ok"
@@ -401,7 +401,7 @@ RSpec.describe AgentLoop do
       registry = Tools::Registry.new(context: {shell_session: shell_session})
       registry.register(Tools::WebGet)
 
-      session.events.create!(event_type: "user_message", payload: {"content" => "test"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "test"}, timestamp: 1)
       loop = described_class.new(session: session, shell_session: shell_session, client: client, registry: registry)
       allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
         expect(registry.registered?("web_get")).to be true
@@ -416,7 +416,7 @@ RSpec.describe AgentLoop do
 
   describe "MCP tool registration" do
     it "calls Mcp::ClientManager to register MCP tools" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       allow(client).to receive(:chat_with_tools).and_return("ok")
 
       agent_loop.run
@@ -425,7 +425,7 @@ RSpec.describe AgentLoop do
     end
 
     it "emits system messages for MCP servers that failed to load" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       allow(client).to receive(:chat_with_tools).and_return("ok")
       allow(mcp_manager).to receive(:register_tools)
         .and_return(["MCP: failed to load tools from broken: Connection refused"])
@@ -447,7 +447,7 @@ RSpec.describe AgentLoop do
     it "registers MCP tools for sub-agent sessions" do
       parent = Session.create!
       child = Session.create!(parent_session: parent, prompt: "sub-agent")
-      child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
+      child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
 
       sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
       allow(client).to receive(:chat_with_tools).and_return("done")

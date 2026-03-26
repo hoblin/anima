@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-# Decorates agent_message events for display in the TUI.
+# Decorates agent_message records for display in the TUI.
 # Basic mode returns role and content. Verbose mode adds a timestamp.
 # Debug mode adds token count (exact when counted, estimated when not).
-class AgentMessageDecorator < EventDecorator
+class AgentMessageDecorator < MessageDecorator
   # @return [Hash] structured agent message data
   #   `{role: :assistant, content: String}`
   def render_basic

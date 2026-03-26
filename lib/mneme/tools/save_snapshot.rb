@@ -20,7 +20,7 @@ module Mneme
           properties: {
             text: {
               type: "string",
-              maxLength: Anima::Settings.mneme_max_tokens * Event::BYTES_PER_TOKEN
+              maxLength: Anima::Settings.mneme_max_tokens * Message::BYTES_PER_TOKEN
             }
           },
           required: %w[text]
@@ -28,13 +28,13 @@ module Mneme
       end
 
       # @param main_session [Session] the session being observed
-      # @param from_event_id [Integer] first event ID covered by this snapshot
-      # @param to_event_id [Integer] last event ID covered by this snapshot
-      # @param level [Integer] compression level (1 = from events, 2 = from L1 snapshots)
-      def initialize(main_session:, from_event_id:, to_event_id:, level: 1, **)
+      # @param from_message_id [Integer] first message ID covered by this snapshot
+      # @param to_message_id [Integer] last message ID covered by this snapshot
+      # @param level [Integer] compression level (1 = from messages, 2 = from L1 snapshots)
+      def initialize(main_session:, from_message_id:, to_message_id:, level: 1, **)
         @main_session = main_session
-        @from_event_id = from_event_id
-        @to_event_id = to_event_id
+        @from_message_id = from_message_id
+        @to_message_id = to_message_id
         @level = level
       end
 
@@ -44,20 +44,20 @@ module Mneme
 
         snapshot = @main_session.snapshots.create!(
           text: text,
-          from_event_id: @from_event_id,
-          to_event_id: @to_event_id,
+          from_message_id: @from_message_id,
+          to_message_id: @to_message_id,
           level: @level,
           token_count: estimate_tokens(text)
         )
 
-        "Snapshot saved (id: #{snapshot.id}, events #{@from_event_id}..#{@to_event_id})"
+        "Snapshot saved (id: #{snapshot.id}, messages #{@from_message_id}..#{@to_message_id})"
       end
 
       private
 
       # @return [Integer] estimated token count for the summary text
       def estimate_tokens(text)
-        [(text.bytesize / Event::BYTES_PER_TOKEN.to_f).ceil, 1].max
+        [(text.bytesize / Message::BYTES_PER_TOKEN.to_f).ceil, 1].max
       end
     end
   end

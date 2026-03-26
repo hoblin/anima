@@ -39,7 +39,7 @@ RSpec.describe SessionChannel, type: :channel do
 
       it "transmits session_changed with the resolved session info" do
         existing = Session.create!
-        existing.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+        existing.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
 
         subscribe(session_id: nil)
 
@@ -63,7 +63,7 @@ RSpec.describe SessionChannel, type: :channel do
 
     it "transmits session_changed on subscription" do
       session = Session.create!(id: session_id)
-      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
 
       subscribe(session_id: session_id)
 
@@ -181,21 +181,21 @@ RSpec.describe SessionChannel, type: :channel do
       expect(changed).not_to have_key("children")
     end
 
-    it "snapshots viewport event IDs on subscription" do
+    it "snapshots viewport message IDs on subscription" do
       session = Session.create!(id: session_id)
-      e1 = session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
-      e2 = session.events.create!(event_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi"}, timestamp: 2)
+      e1 = session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
+      e2 = session.messages.create!(message_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi"}, timestamp: 2)
 
       subscribe(session_id: session_id)
 
-      expect(session.reload.viewport_event_ids).to eq([e1.id, e2.id])
+      expect(session.reload.viewport_message_ids).to eq([e1.id, e2.id])
     end
 
     it "transmits chat history including tool events for existing session" do
       session = Session.create!(id: session_id)
-      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
-      session.events.create!(event_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi there"}, timestamp: 2)
-      session.events.create!(event_type: "tool_call", payload: {"type" => "tool_call", "content" => "calling bash"}, tool_use_id: "toolu_test1", timestamp: 3)
+      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
+      session.messages.create!(message_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi there"}, timestamp: 2)
+      session.messages.create!(message_type: "tool_call", payload: {"type" => "tool_call", "content" => "calling bash"}, tool_use_id: "toolu_test1", timestamp: 3)
 
       subscribe(session_id: session_id)
 
@@ -208,9 +208,9 @@ RSpec.describe SessionChannel, type: :channel do
 
     it "includes structured rendered output in history transmissions" do
       session = Session.create!(id: session_id)
-      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
-      session.events.create!(event_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi"}, timestamp: 2)
-      session.events.create!(event_type: "tool_call", payload: {"type" => "tool_call", "content" => "calling bash"}, tool_use_id: "toolu_test2", timestamp: 3)
+      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
+      session.messages.create!(message_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi"}, timestamp: 2)
+      session.messages.create!(message_type: "tool_call", payload: {"type" => "tool_call", "content" => "calling bash"}, tool_use_id: "toolu_test2", timestamp: 3)
 
       subscribe(session_id: session_id)
 
@@ -236,7 +236,7 @@ RSpec.describe SessionChannel, type: :channel do
 
     it "decorates history in the session's view_mode" do
       session = Session.create!(id: session_id, view_mode: "verbose")
-      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
 
       subscribe(session_id: session_id)
 
@@ -246,8 +246,8 @@ RSpec.describe SessionChannel, type: :channel do
 
     it "includes system_message events in history" do
       session = Session.create!(id: session_id)
-      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
-      session.events.create!(event_type: "system_message", payload: {"type" => "system_message", "content" => "MCP: server failed"}, timestamp: 2)
+      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
+      session.messages.create!(message_type: "system_message", payload: {"type" => "system_message", "content" => "MCP: server failed"}, timestamp: 2)
 
       subscribe(session_id: session_id)
 
@@ -282,37 +282,37 @@ RSpec.describe SessionChannel, type: :channel do
 
     before { subscribe(session_id: session_id) }
 
-    it "persists the user event immediately" do
+    it "persists the user message immediately" do
       expect {
         perform(:speak, {"content" => "hello brain"})
-      }.to change { session.events.where(event_type: "user_message").count }.by(1)
+      }.to change { session.messages.where(message_type: "user_message").count }.by(1)
 
-      event = session.events.last
+      event = session.messages.last
       expect(event.payload["content"]).to eq("hello brain")
     end
 
-    it "enqueues AgentRequestJob with event_id" do
+    it "enqueues AgentRequestJob with message_id" do
       expect { perform(:speak, {"content" => "process this"}) }
         .to have_enqueued_job(AgentRequestJob)
 
-      event = session.events.last
-      expect(AgentRequestJob).to have_been_enqueued.with(session_id, event_id: event.id)
+      event = session.messages.last
+      expect(AgentRequestJob).to have_been_enqueued.with(session_id, message_id: event.id)
     end
 
     it "ignores empty content" do
       expect { perform(:speak, {"content" => "  "}) }
-        .not_to change(Event, :count)
+        .not_to change(Message, :count)
     end
 
     it "ignores nil content" do
       expect { perform(:speak, {"content" => nil}) }
-        .not_to change(Event, :count)
+        .not_to change(Message, :count)
     end
 
     it "strips whitespace from content" do
       perform(:speak, {"content" => "  hello  "})
 
-      event = session.events.last
+      event = session.messages.last
       expect(event.payload["content"]).to eq("hello")
     end
 
@@ -346,51 +346,51 @@ RSpec.describe SessionChannel, type: :channel do
 
     before { subscribe(session_id: session_id) }
 
-    it "deletes the pending event and broadcasts recall" do
-      event = session.events.create!(
-        event_type: "user_message",
+    it "deletes the pending message and broadcasts recall" do
+      event = session.messages.create!(
+        message_type: "user_message",
         payload: {"type" => "user_message", "content" => "pending", "status" => "pending"},
         timestamp: 1,
         status: "pending"
       )
 
       expect {
-        perform(:recall_pending, {"event_id" => event.id})
-      }.to change(Event, :count).by(-1)
+        perform(:recall_pending, {"message_id" => event.id})
+      }.to change(Message, :count).by(-1)
         .and have_broadcasted_to(stream_name)
-        .with(a_hash_including("action" => "user_message_recalled", "event_id" => event.id))
+        .with(a_hash_including("action" => "user_message_recalled", "message_id" => event.id))
     end
 
-    it "ignores non-pending events" do
-      event = session.events.create!(
-        event_type: "user_message",
+    it "ignores non-pending messages" do
+      event = session.messages.create!(
+        message_type: "user_message",
         payload: {"type" => "user_message", "content" => "delivered"},
         timestamp: 1
       )
 
       expect {
-        perform(:recall_pending, {"event_id" => event.id})
-      }.not_to change(Event, :count)
+        perform(:recall_pending, {"message_id" => event.id})
+      }.not_to change(Message, :count)
     end
 
-    it "ignores events from other sessions" do
+    it "ignores messages from other sessions" do
       other_session = Session.create!
-      event = other_session.events.create!(
-        event_type: "user_message",
+      event = other_session.messages.create!(
+        message_type: "user_message",
         payload: {"type" => "user_message", "content" => "pending", "status" => "pending"},
         timestamp: 1,
         status: "pending"
       )
 
       expect {
-        perform(:recall_pending, {"event_id" => event.id})
-      }.not_to change(Event, :count)
+        perform(:recall_pending, {"message_id" => event.id})
+      }.not_to change(Message, :count)
     end
 
-    it "ignores invalid event_id" do
+    it "ignores invalid message_id" do
       expect {
-        perform(:recall_pending, {"event_id" => 0})
-      }.not_to change(Event, :count)
+        perform(:recall_pending, {"message_id" => 0})
+      }.not_to change(Message, :count)
     end
   end
 
@@ -433,8 +433,8 @@ RSpec.describe SessionChannel, type: :channel do
 
     it "returns recent root sessions with metadata" do
       s1 = Session.create!
-      s1.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
-      s1.events.create!(event_type: "agent_message", payload: {"type" => "agent_message", "content" => "hello"}, timestamp: 2)
+      s1.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+      s1.messages.create!(message_type: "agent_message", payload: {"type" => "agent_message", "content" => "hello"}, timestamp: 2)
       s2 = Session.create!
 
       perform(:list_sessions, {"limit" => 10})
@@ -525,8 +525,8 @@ RSpec.describe SessionChannel, type: :channel do
     it "includes message counts for child sessions" do
       parent = Session.create!
       child = Session.create!(parent_session: parent, prompt: "task")
-      child.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
-      child.events.create!(event_type: "agent_message", payload: {"type" => "agent_message", "content" => "ok"}, timestamp: 2)
+      child.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+      child.messages.create!(message_type: "agent_message", payload: {"type" => "agent_message", "content" => "ok"}, timestamp: 2)
 
       perform(:list_sessions, {"limit" => 10})
 
@@ -614,8 +614,8 @@ RSpec.describe SessionChannel, type: :channel do
     let!(:target_session) { Session.create! }
 
     before do
-      target_session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "old msg"}, timestamp: 1)
-      target_session.events.create!(event_type: "agent_message", payload: {"type" => "agent_message", "content" => "old reply"}, timestamp: 2)
+      target_session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "old msg"}, timestamp: 1)
+      target_session.messages.create!(message_type: "agent_message", payload: {"type" => "agent_message", "content" => "old reply"}, timestamp: 2)
       subscribe(session_id: session_id)
     end
 
@@ -671,8 +671,8 @@ RSpec.describe SessionChannel, type: :channel do
     let!(:session) { Session.create!(id: session_id) }
 
     before do
-      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
-      session.events.create!(event_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi"}, timestamp: 2)
+      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
+      session.messages.create!(message_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi"}, timestamp: 2)
       subscribe(session_id: session_id)
     end
 
@@ -699,8 +699,8 @@ RSpec.describe SessionChannel, type: :channel do
     it "snapshots viewport on view mode change" do
       perform(:change_view_mode, {"view_mode" => "verbose"})
 
-      event_ids = session.events.pluck(:id)
-      expect(session.reload.viewport_event_ids).to eq(event_ids)
+      event_ids = session.messages.pluck(:id)
+      expect(session.reload.viewport_message_ids).to eq(event_ids)
     end
 
     it "transmits error for invalid view mode" do
@@ -843,7 +843,7 @@ RSpec.describe SessionChannel, type: :channel do
 
     it "prepends system prompt in debug mode history when prompt exists" do
       allow_any_instance_of(Session).to receive(:system_prompt).and_return("You are Anima.")
-      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
 
       subscribe(session_id: session_id)
 
@@ -858,7 +858,7 @@ RSpec.describe SessionChannel, type: :channel do
     end
 
     it "always prepends system prompt (soul is always present)" do
-      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
 
       subscribe(session_id: session_id)
 
@@ -871,7 +871,7 @@ RSpec.describe SessionChannel, type: :channel do
     it "does not prepend system prompt in basic mode" do
       session.update!(view_mode: "basic")
       allow_any_instance_of(Session).to receive(:system_prompt).and_return("You are Anima.")
-      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
 
       subscribe(session_id: session_id)
 
@@ -883,7 +883,7 @@ RSpec.describe SessionChannel, type: :channel do
     it "broadcasts system prompt on view mode change to debug" do
       session.update!(view_mode: "basic")
       allow_any_instance_of(Session).to receive(:system_prompt).and_return("You are Anima.")
-      session.events.create!(event_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
 
       subscribe(session_id: session_id)
 
@@ -904,8 +904,8 @@ RSpec.describe SessionChannel, type: :channel do
     let!(:session) { Session.create!(id: session_id, view_mode: "debug") }
 
     it "includes token info in debug-decorated user messages" do
-      session.events.create!(
-        event_type: "user_message",
+      session.messages.create!(
+        message_type: "user_message",
         payload: {"type" => "user_message", "content" => "hello"},
         timestamp: 1,
         token_count: 5
@@ -922,8 +922,8 @@ RSpec.describe SessionChannel, type: :channel do
     end
 
     it "includes tool_use_id in debug-decorated tool calls" do
-      session.events.create!(
-        event_type: "tool_call",
+      session.messages.create!(
+        message_type: "tool_call",
         payload: {
           "type" => "tool_call", "content" => "calling bash",
           "tool_name" => "bash", "tool_input" => {"command" => "ls"},

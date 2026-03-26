@@ -44,7 +44,7 @@ RSpec.describe TUI::MessageStore do
                              "rendered" => {"basic" => {"role" => "user", "content" => "hello"}}})
 
         expect(store.messages).to contain_exactly(
-          a_hash_including(type: :rendered, data: {"role" => "user", "content" => "hello"}, event_type: "user_message")
+          a_hash_including(type: :rendered, data: {"role" => "user", "content" => "hello"}, message_type: "user_message")
         )
       end
 
@@ -53,7 +53,7 @@ RSpec.describe TUI::MessageStore do
                              "rendered" => {"verbose" => {"role" => "assistant", "content" => "hi", "timestamp" => 123}}})
 
         expect(store.messages).to contain_exactly(
-          a_hash_including(type: :rendered, data: {"role" => "assistant", "content" => "hi", "timestamp" => 123}, event_type: "agent_message")
+          a_hash_including(type: :rendered, data: {"role" => "assistant", "content" => "hi", "timestamp" => 123}, message_type: "agent_message")
         )
       end
 
@@ -69,7 +69,7 @@ RSpec.describe TUI::MessageStore do
                              "rendered" => {"verbose" => {"role" => "tool_call", "tool" => "bash", "input" => "$ ls -la"}}})
 
         expect(store.messages).to contain_exactly(
-          a_hash_including(type: :rendered, data: {"role" => "tool_call", "tool" => "bash", "input" => "$ ls -la"}, event_type: "tool_call")
+          a_hash_including(type: :rendered, data: {"role" => "tool_call", "tool" => "bash", "input" => "$ ls -la"}, message_type: "tool_call")
         )
       end
 
@@ -319,7 +319,7 @@ RSpec.describe TUI::MessageStore do
                              "rendered" => {"debug" => {"role" => "system_prompt", "content" => "v2"}}})
 
         entries = store.messages
-        system_prompts = entries.select { |e| e[:event_type] == "system_prompt" }
+        system_prompts = entries.select { |e| e[:message_type] == "system_prompt" }
         expect(system_prompts.size).to eq(2)
         expect(entries.first[:data]["content"]).to eq("v2")
         expect(entries[1][:data]["content"]).to eq("v1")

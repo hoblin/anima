@@ -5,19 +5,19 @@ module Mneme
   # that observes a main session's compressed viewport and creates summaries of
   # conversation context before it evicts from the viewport.
   #
-  # Mneme is triggered when the terminal event (`mneme_boundary_event_id`) leaves
+  # Mneme is triggered when the terminal message (`mneme_boundary_message_id`) leaves
   # the viewport. It receives a compressed viewport (no raw tool calls, zone
   # delimiters present) and uses the `save_snapshot` tool to persist a summary.
   #
-  # After completing, Mneme advances the terminal event to the boundary of what
-  # it just summarized, so the cycle repeats as more events accumulate.
+  # After completing, Mneme advances the terminal message to the boundary of what
+  # it just summarized, so the cycle repeats as more messages accumulate.
   #
   # @example
   #   Mneme::Runner.new(session).call
   class Runner
     TOOLS = [
       Tools::SaveSnapshot,
-      Tools::AttachEventsToGoals,
+      Tools::AttachMessagesToGoals,
       Tools::EverythingOk
     ].freeze
 
@@ -35,7 +35,7 @@ module Mneme
       - MIDDLE ZONE: Aging but visible. Note context that connects to evicting events.
       - RECENT ZONE: Fresh. Use for continuity with your summary.
 
-      Events are prefixed with `event N` (database ID, used for pinning).
+      Messages are prefixed with `message N` (database ID, used for pinning).
       Tool calls are compressed to `[N tools called]` — focus on conversation, not mechanical work.
 
       ──────────────────────────────
@@ -45,13 +45,13 @@ module Mneme
       why decisions were made, active goal progress, and context the agent will need later.
       Paraphrase — don't quote verbatim. Omit tool call details and mechanical steps.
 
-      Pin critical events to goals with attach_events_to_goals when exact wording matters
-      (user instructions, key corrections, key decisions). Pinned events survive eviction
-      intact — use this sparingly for events where paraphrasing would lose meaning.
+      Pin critical messages to goals with attach_messages_to_goals when exact wording matters
+      (user instructions, key corrections, key decisions). Pinned messages survive eviction
+      intact — use this sparingly for messages where paraphrasing would lose meaning.
 
       If the eviction zone contains only mechanical activity, call everything_ok.
 
-      You may combine save_snapshot and attach_events_to_goals in one turn.
+      You may combine save_snapshot and attach_messages_to_goals in one turn.
     PROMPT
 
     # @param session [Session] the main session to observe
@@ -66,7 +66,7 @@ module Mneme
     end
 
     # Runs the Mneme loop: builds compressed viewport, calls LLM, executes
-    # snapshot tool, then advances the terminal event pointer.
+    # snapshot tool, then advances the terminal message pointer.
     #
     # @return [String, nil] the LLM's final text response (discarded),
     #   or nil if no context is available
@@ -76,18 +76,18 @@ module Mneme
       sid = @session.id
 
       if compressed_text.empty?
-        log.debug("session=#{sid} — no events for Mneme, skipping")
+        log.debug("session=#{sid} — no messages for Mneme, skipping")
         return
       end
 
-      messages = build_messages(compressed_text)
+      llm_messages = build_messages(compressed_text)
       system = SYSTEM_PROMPT
 
-      log.info("session=#{sid} — running Mneme (#{viewport.events.size} events)")
+      log.info("session=#{sid} — running Mneme (#{viewport.messages.size} messages)")
       log.debug("compressed viewport:\n#{compressed_text}")
 
       result = @client.chat_with_tools(
-        messages,
+        llm_messages,
         registry: build_registry(viewport),
         session_id: nil,
         system: system
@@ -100,7 +100,7 @@ module Mneme
 
     private
 
-    # Builds the compressed viewport starting from the session's boundary event.
+    # Builds the compressed viewport starting from the session's boundary message.
     #
     # @return [Mneme::CompressedViewport]
     def build_compressed_viewport
@@ -109,7 +109,7 @@ module Mneme
       CompressedViewport.new(
         @session,
         token_budget: token_budget,
-        from_event_id: @session.mneme_boundary_event_id
+        from_message_id: @session.mneme_boundary_message_id
       )
     end
 
@@ -132,59 +132,59 @@ module Mneme
     end
 
     # Builds the tool registry with session context for SaveSnapshot.
-    # Passes the event range from the viewport so the snapshot records
-    # which events it covers.
+    # Passes the message range from the viewport so the snapshot records
+    # which messages it covers.
     #
     # @param viewport [Mneme::CompressedViewport]
     # @return [Tools::Registry]
     def build_registry(viewport)
-      viewport_events = viewport.events
+      viewport_messages = viewport.messages
       registry = ::Tools::Registry.new(context: {
         main_session: @session,
-        from_event_id: viewport_events.first&.id,
-        to_event_id: viewport_events.last&.id
+        from_message_id: viewport_messages.first&.id,
+        to_message_id: viewport_messages.last&.id
       })
       TOOLS.each { |tool| registry.register(tool) }
       registry
     end
 
-    # Advances the terminal event pointer after Mneme completes.
+    # Advances the terminal message pointer after Mneme completes.
     # Runs unconditionally — even when the LLM called `everything_ok` (no snapshot
     # needed), the zone was reviewed and should be advanced past. Without this,
     # Mneme would re-examine the same mechanical-only content on every trigger.
     #
-    # Sets it to the last conversation event in the viewport, ensuring
-    # the boundary is always a message/think event, never a tool_call/tool_response.
+    # Sets it to the last conversation message in the viewport, ensuring
+    # the boundary is always a message/think message, never a tool_call/tool_response.
     # Also updates the snapshot range pointers.
     #
     # @param viewport [Mneme::CompressedViewport]
     def advance_boundary(viewport)
-      viewport_events = viewport.events
-      return if viewport_events.empty?
+      viewport_messages = viewport.messages
+      return if viewport_messages.empty?
 
-      new_boundary = viewport_events.reverse_each.find { |event| conversation_or_think?(event) }
+      new_boundary = viewport_messages.reverse_each.find { |message| conversation_or_think?(message) }
       return unless new_boundary
 
       boundary_id = new_boundary.id
-      updates = {mneme_boundary_event_id: boundary_id}
+      updates = {mneme_boundary_message_id: boundary_id}
 
-      updates[:mneme_snapshot_first_event_id] = viewport_events.first.id unless @session.mneme_snapshot_first_event_id
-      updates[:mneme_snapshot_last_event_id] = viewport_events.last.id
+      updates[:mneme_snapshot_first_message_id] = viewport_messages.first.id unless @session.mneme_snapshot_first_message_id
+      updates[:mneme_snapshot_last_message_id] = viewport_messages.last.id
 
       @session.update_columns(updates)
-      log.debug("session=#{@session.id} — boundary advanced to event #{boundary_id}")
+      log.debug("session=#{@session.id} — boundary advanced to message #{boundary_id}")
     end
 
-    # Delegates to {Event#conversation_or_think?} — single source of truth
-    # for which events Mneme treats as conversation boundaries.
+    # Delegates to {Message#conversation_or_think?} — single source of truth
+    # for which messages Mneme treats as conversation boundaries.
     #
     # @return [Boolean]
-    def conversation_or_think?(event)
-      event.conversation_or_think?
+    def conversation_or_think?(message)
+      message.conversation_or_think?
     end
 
     # Builds the active goals section for Mneme's context so it knows
-    # what Goals exist, which events are already pinned, and can reference
+    # what Goals exist, which messages are already pinned, and can reference
     # them when deciding what to pin or summarize.
     #
     # @return [String] formatted goals section, or empty string
@@ -213,21 +213,21 @@ module Mneme
       parts.join("\n")
     end
 
-    # Lists already-pinned event IDs so Mneme avoids redundant pinning.
+    # Lists already-pinned message IDs so Mneme avoids redundant pinning.
     #
     # @return [String, nil] formatted pin list, or nil when nothing is pinned
     def format_existing_pins
-      pins = @session.pinned_events.includes(:goals).order(:event_id)
+      pins = @session.pinned_messages.includes(:goals).order(:message_id)
       return nil if pins.empty?
 
       pins.map { |pin| format_pin_for_mneme(pin) }.join("\n")
     end
 
-    # @param pin [PinnedEvent] pin with preloaded goals
+    # @param pin [PinnedMessage] pin with preloaded goals
     # @return [String] formatted pin line
     def format_pin_for_mneme(pin)
       goal_ids = pin.goals.map(&:id).join(", ")
-      "  event #{pin.event_id} → goals [#{goal_ids}]"
+      "  message #{pin.message_id} → goals [#{goal_ids}]"
     end
 
     # @return [Logger]

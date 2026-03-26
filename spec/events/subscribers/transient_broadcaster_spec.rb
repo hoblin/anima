@@ -12,7 +12,7 @@ RSpec.describe Events::Subscribers::TransientBroadcaster do
       event = {
         payload: {
           type: "bounce_back", content: "hello",
-          error: "Auth failed", session_id: session.id, event_id: 42
+          error: "Auth failed", session_id: session.id, message_id: 42
         }
       }
 

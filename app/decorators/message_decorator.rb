@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-# Base decorator for {Event} records, providing multi-resolution rendering
-# for the TUI and analytical brain. Each event type has a dedicated subclass
+# Base decorator for {Message} records, providing multi-resolution rendering
+# for the TUI and analytical brain. Each message type has a dedicated subclass
 # that implements rendering methods for each view mode:
 #
 # - **basic** / **verbose** / **debug** — TUI display modes returning structured hashes
@@ -13,23 +13,23 @@
 # and formats it for display.
 #
 # Brain mode returns condensed single-line strings for the analytical brain's
-# event transcript. Returns nil to exclude an event from the brain's view.
+# message transcript. Returns nil to exclude a message from the brain's view.
 #
 # Subclasses must override {#render_basic}. Verbose, debug, and brain modes
 # delegate to basic until subclasses provide their own implementations.
 #
-# @example Decorate an Event AR model
-#   decorator = EventDecorator.for(event)
+# @example Decorate a Message AR model
+#   decorator = MessageDecorator.for(message)
 #   decorator.render_basic  #=> {role: :user, content: "hello"} or nil
 #
 # @example Render for a specific view mode
-#   decorator = EventDecorator.for(event)
+#   decorator = MessageDecorator.for(message)
 #   decorator.render("verbose")  #=> {role: :user, content: "hello", timestamp: 1709312325000000000}
 #
 # @example Decorate a raw payload hash (from EventBus)
-#   decorator = EventDecorator.for(type: "user_message", content: "hello")
+#   decorator = MessageDecorator.for(type: "user_message", content: "hello")
 #   decorator.render_basic  #=> {role: :user, content: "hello"}
-class EventDecorator < ApplicationDecorator
+class MessageDecorator < ApplicationDecorator
   delegate_all
 
   TOOL_ICON = "\u{1F527}"
@@ -46,36 +46,36 @@ class EventDecorator < ApplicationDecorator
   }.freeze
   private_constant :DECORATOR_MAP
 
-  # Normalizes hash payloads into an Event-like interface so decorators
-  # can use {#payload}, {#event_type}, etc. uniformly on both AR models
+  # Normalizes hash payloads into a Message-like interface so decorators
+  # can use {#payload}, {#message_type}, etc. uniformly on both AR models
   # and raw EventBus hashes.
   #
-  # @!attribute event_type [r] the event's type (e.g. "user_message")
-  # @!attribute payload [r] string-keyed hash of event data
+  # @!attribute message_type [r] the message's type (e.g. "user_message")
+  # @!attribute payload [r] string-keyed hash of message data
   # @!attribute timestamp [r] nanosecond-precision timestamp
   # @!attribute token_count [r] cumulative token count
-  EventPayload = Struct.new(:event_type, :payload, :timestamp, :token_count, keyword_init: true) do
-    # Heuristic token estimate matching {Event#estimate_tokens} so decorators
+  MessagePayload = Struct.new(:message_type, :payload, :timestamp, :token_count, keyword_init: true) do
+    # Heuristic token estimate matching {Message#estimate_tokens} so decorators
     # can call it uniformly on both AR models and hash payloads.
     # @return [Integer] at least 1
     def estimate_tokens
-      text = if event_type.to_s.in?(%w[tool_call tool_response])
+      text = if message_type.to_s.in?(%w[tool_call tool_response])
         payload.to_json
       else
         payload&.dig("content").to_s
       end
-      [(text.bytesize / Event::BYTES_PER_TOKEN.to_f).ceil, 1].max
+      [(text.bytesize / Message::BYTES_PER_TOKEN.to_f).ceil, 1].max
     end
   end
 
-  # Factory returning the appropriate subclass decorator for the given event.
-  # Hashes are normalized via {EventPayload} to provide a uniform interface.
+  # Factory returning the appropriate subclass decorator for the given message.
+  # Hashes are normalized via {MessagePayload} to provide a uniform interface.
   #
-  # @param event [Event, Hash] an Event AR model or a raw payload hash
-  # @return [EventDecorator, nil] decorated event, or nil for unknown types
-  def self.for(event)
-    source = wrap_source(event)
-    klass_name = DECORATOR_MAP[source.event_type]
+  # @param message [Message, Hash] a Message AR model or a raw payload hash
+  # @return [MessageDecorator, nil] decorated message, or nil for unknown types
+  def self.for(message)
+    source = wrap_source(message)
+    klass_name = DECORATOR_MAP[source.message_type]
     return nil unless klass_name
 
     klass_name.constantize.new(source)
@@ -92,8 +92,8 @@ class EventDecorator < ApplicationDecorator
   # Dispatches to the render method for the given view mode.
   #
   # @param mode [String] one of "basic", "verbose", "debug", "brain"
-  # @return [Hash, String, nil] structured event data (basic/verbose/debug),
-  #   plain string (brain), or nil to hide the event
+  # @return [Hash, String, nil] structured message data (basic/verbose/debug),
+  #   plain string (brain), or nil to hide the message
   # @raise [ArgumentError] if the mode is not a valid view mode
   def render(mode)
     method = RENDER_DISPATCH[mode]
@@ -102,29 +102,29 @@ class EventDecorator < ApplicationDecorator
     public_send(method)
   end
 
-  # @abstract Subclasses must implement to render the event for basic view mode.
-  # @return [Hash, nil] structured event data, or nil to hide the event
+  # @abstract Subclasses must implement to render the message for basic view mode.
+  # @return [Hash, nil] structured message data, or nil to hide the message
   def render_basic
     raise NotImplementedError, "#{self.class} must implement #render_basic"
   end
 
   # Verbose view mode with timestamps and tool details.
   # Delegates to {#render_basic} until subclasses provide their own implementations.
-  # @return [Hash, nil] structured event data, or nil to hide the event
+  # @return [Hash, nil] structured message data, or nil to hide the message
   def render_verbose
     render_basic
   end
 
   # Debug view mode with token counts and system prompts.
   # Delegates to {#render_basic} until subclasses provide their own implementations.
-  # @return [Hash, nil] structured event data, or nil to hide the event
+  # @return [Hash, nil] structured message data, or nil to hide the message
   def render_debug
     render_basic
   end
 
   # Analytical brain view — condensed single-line string for the brain's
-  # event transcript. Returns nil to exclude from the brain's context.
-  # Subclasses override to provide event-type-specific formatting.
+  # message transcript. Returns nil to exclude from the brain's context.
+  # Subclasses override to provide message-type-specific formatting.
   # @return [String, nil] formatted transcript line, or nil to skip
   def render_brain
     nil
@@ -132,7 +132,7 @@ class EventDecorator < ApplicationDecorator
 
   private
 
-  # Token count for display: exact count from {CountEventTokensJob} when
+  # Token count for display: exact count from {CountMessageTokensJob} when
   # available, heuristic estimate otherwise. Estimated counts are flagged
   # so the TUI can prefix them with a tilde.
   #
@@ -147,14 +147,14 @@ class EventDecorator < ApplicationDecorator
   end
 
   # Delegates to the underlying object's heuristic token estimator.
-  # Both {Event} AR models and {EventPayload} structs implement this.
+  # Both {Message} AR models and {MessagePayload} structs implement this.
   #
   # @return [Integer] at least 1
   def estimate_token_count
     object.estimate_tokens
   end
 
-  # Extracts display content from the event payload.
+  # Extracts display content from the message payload.
   # @return [String, nil]
   def content
     payload["content"]
@@ -190,14 +190,14 @@ class EventDecorator < ApplicationDecorator
   end
 
   # Normalizes input to something Draper can wrap.
-  # Event AR models pass through; hashes become EventPayload structs
+  # Message AR models pass through; hashes become MessagePayload structs
   # with string-normalized keys.
-  def self.wrap_source(event)
-    return event unless event.is_a?(Hash)
+  def self.wrap_source(message)
+    return message unless message.is_a?(Hash)
 
-    normalized = event.transform_keys(&:to_s)
-    EventPayload.new(
-      event_type: normalized["type"].to_s,
+    normalized = message.transform_keys(&:to_s)
+    MessagePayload.new(
+      message_type: normalized["type"].to_s,
       payload: normalized,
       timestamp: normalized["timestamp"],
       token_count: normalized["token_count"]&.to_i || 0

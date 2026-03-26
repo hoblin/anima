@@ -1,16 +1,16 @@
 # frozen_string_literal: true
 
-# Broadcasts Event records to connected WebSocket clients via ActionCable.
-# Follows the Turbo Streams pattern: events are broadcast on both create
+# Broadcasts Message records to connected WebSocket clients via ActionCable.
+# Follows the Turbo Streams pattern: messages are broadcast on both create
 # and update, with an action type so clients can distinguish append from
 # replace operations.
 #
-# Each broadcast includes the Event's database ID, enabling clients to
+# Each broadcast includes the Message's database ID, enabling clients to
 # maintain an ID-indexed store for efficient in-place updates (e.g. when
-# token counts arrive asynchronously from {CountEventTokensJob}).
+# token counts arrive asynchronously from {CountMessageTokensJob}).
 #
-# When a new event pushes old events out of the LLM's context window,
-# the broadcast includes `evicted_event_ids` so clients can remove
+# When a new message pushes old messages out of the LLM's context window,
+# the broadcast includes `evicted_message_ids` so clients can remove
 # phantom messages that the agent no longer knows about.
 #
 # @example Create broadcast payload
@@ -24,7 +24,7 @@
 #   {
 #     "type" => "agent_message", "content" => "...", ...,
 #     "id" => 99, "action" => "create",
-#     "evicted_event_ids" => [101, 102, 103]
+#     "evicted_message_ids" => [101, 102, 103]
 #   }
 #
 # @example Update broadcast payload (e.g. token count arrives)
@@ -33,7 +33,7 @@
 #     "id" => 42, "action" => "update",
 #     "rendered" => { "debug" => { "role" => "user", "content" => "hello", "tokens" => 15 } }
 #   }
-module Event::Broadcasting
+module Message::Broadcasting
   extend ActiveSupport::Concern
 
   ACTION_CREATE = "create"
@@ -47,26 +47,26 @@ module Event::Broadcasting
   private
 
   def broadcast_create
-    broadcast_event(action: ACTION_CREATE)
+    broadcast_message(action: ACTION_CREATE)
   end
 
   def broadcast_update
-    broadcast_event(action: ACTION_UPDATE)
+    broadcast_message(action: ACTION_UPDATE)
   end
 
-  # Decorates the event for the session's current view mode and broadcasts
+  # Decorates the message for the session's current view mode and broadcasts
   # the payload to the session's ActionCable stream. Includes viewport
   # eviction metadata so clients can remove messages the LLM has forgotten.
   #
-  # @param action [String] ACTION_CREATE or ACTION_UPDATE — tells clients how to handle the event
-  def broadcast_event(action:)
+  # @param action [String] ACTION_CREATE or ACTION_UPDATE — tells clients how to handle the message
+  def broadcast_message(action:)
     return unless session_id
 
     session = Session.find_by(id: session_id)
     return unless session
 
     mode = session.view_mode
-    decorator = EventDecorator.for(self)
+    decorator = MessageDecorator.for(self)
     broadcast_payload = payload.merge("id" => id, "action" => action)
 
     if decorator
@@ -74,11 +74,11 @@ module Event::Broadcasting
     end
 
     evicted_ids = session.recalculate_viewport!
-    broadcast_payload["evicted_event_ids"] = evicted_ids if evicted_ids.any?
+    broadcast_payload["evicted_message_ids"] = evicted_ids if evicted_ids.any?
 
     # The nil? branch fires on every broadcast until boundary initializes, but
     # schedule_mneme! returns early after setting the boundary — cost is one DB read + write.
-    session.schedule_mneme! if evicted_ids.any? || session.mneme_boundary_event_id.nil?
+    session.schedule_mneme! if evicted_ids.any? || session.mneme_boundary_message_id.nil?
 
     ActionCable.server.broadcast("session_#{session_id}", broadcast_payload)
   end

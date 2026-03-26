@@ -15,9 +15,9 @@ RSpec.describe Mneme::L2Runner do
     allow(Anima::Settings).to receive(:mneme_l2_snapshot_threshold).and_return(3)
   end
 
-  def create_l1_snapshot(from:, to:, text: "Summary of events #{from}..#{to}")
+  def create_l1_snapshot(from:, to:, text: "Summary of messages #{from}..#{to}")
     session.snapshots.create!(
-      text: text, from_event_id: from, to_event_id: to, level: 1, token_count: 50
+      text: text, from_message_id: from, to_message_id: to, level: 1, token_count: 50
     )
   end
 
@@ -84,8 +84,8 @@ RSpec.describe Mneme::L2Runner do
 
         snapshot = Snapshot.for_level(2).last
         expect(snapshot.level).to eq(2)
-        expect(snapshot.from_event_id).to eq(1)
-        expect(snapshot.to_event_id).to eq(30)
+        expect(snapshot.from_message_id).to eq(1)
+        expect(snapshot.to_message_id).to eq(30)
       end
 
       it "passes nil session_id to prevent event persistence" do
@@ -119,7 +119,7 @@ RSpec.describe Mneme::L2Runner do
         create_l1_snapshot(from: 1, to: 10)
         create_l1_snapshot(from: 11, to: 20)
         # L2 covers both L1 snapshots
-        session.snapshots.create!(text: "L2 summary", from_event_id: 1, to_event_id: 20, level: 2, token_count: 80)
+        session.snapshots.create!(text: "L2 summary", from_message_id: 1, to_message_id: 20, level: 2, token_count: 80)
         # Only 1 uncovered L1 — below threshold of 3
         create_l1_snapshot(from: 21, to: 30)
       end
@@ -133,7 +133,7 @@ RSpec.describe Mneme::L2Runner do
       before do
         create_l1_snapshot(from: 1, to: 10)
         create_l1_snapshot(from: 11, to: 20)
-        session.snapshots.create!(text: "L2 summary", from_event_id: 1, to_event_id: 20, level: 2, token_count: 80)
+        session.snapshots.create!(text: "L2 summary", from_message_id: 1, to_message_id: 20, level: 2, token_count: 80)
         create_l1_snapshot(from: 21, to: 30)
         create_l1_snapshot(from: 31, to: 40)
         create_l1_snapshot(from: 41, to: 50)
@@ -150,8 +150,8 @@ RSpec.describe Mneme::L2Runner do
 
         content = captured_messages.first[:content]
         expect(content).to include("3 Level 1 snapshots")
-        expect(content).to include("events 21..30")
-        expect(content).not_to include("events 1..10")
+        expect(content).to include("messages 21..30")
+        expect(content).not_to include("messages 1..10")
       end
     end
   end
@@ -165,17 +165,17 @@ RSpec.describe Mneme::L2Runner do
       session.snapshots.create!(
         text: "User asked for help setting up OAuth with PKCE for a mobile app. " \
           "Agent proposed using code verifier/challenge pattern with SHA-256.",
-        from_event_id: 1, to_event_id: 10, level: 1, token_count: 40
+        from_message_id: 1, to_message_id: 10, level: 1, token_count: 40
       )
       session.snapshots.create!(
         text: "Implemented token refresh flow using AppAuth library for iOS. " \
           "Added secure token storage in Keychain with biometric protection.",
-        from_event_id: 11, to_event_id: 20, level: 1, token_count: 40
+        from_message_id: 11, to_message_id: 20, level: 1, token_count: 40
       )
       session.snapshots.create!(
         text: "Added error handling for expired refresh tokens — redirect to login. " \
           "Discussed rate limiting and token revocation on the backend.",
-        from_event_id: 21, to_event_id: 30, level: 1, token_count: 40
+        from_message_id: 21, to_message_id: 30, level: 1, token_count: 40
       )
 
       real_runner = described_class.new(session)
@@ -186,8 +186,8 @@ RSpec.describe Mneme::L2Runner do
       expect(l2.text).to include("OAuth")
       expect(l2.text).to include("PKCE")
       expect(l2.text).to include("token")
-      expect(l2.from_event_id).to eq(1)
-      expect(l2.to_event_id).to eq(30)
+      expect(l2.from_message_id).to eq(1)
+      expect(l2.to_message_id).to eq(30)
       expect(l2.token_count).to be > 0
     end
   end

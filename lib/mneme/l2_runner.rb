@@ -110,22 +110,22 @@ module Mneme
     # @return [Array<Hash>] single-element messages array
     def build_messages(snapshots)
       content = snapshots.map.with_index(1) { |snap, idx|
-        "--- Snapshot #{idx} (events #{snap.from_event_id}..#{snap.to_event_id}) ---\n#{snap.text}"
+        "--- Snapshot #{idx} (messages #{snap.from_message_id}..#{snap.to_message_id}) ---\n#{snap.text}"
       }.join("\n\n")
 
       [{role: "user", content: "Compress these #{snapshots.size} Level 1 snapshots into a single Level 2 summary:\n\n#{content}"}]
     end
 
     # Builds the tool registry with L2 context for SaveSnapshot.
-    # The event range spans from the first L1's start to the last L1's end.
+    # The message range spans from the first L1's start to the last L1's end.
     #
     # @param snapshots [Array<Snapshot>]
     # @return [Tools::Registry]
     def build_registry(snapshots)
       registry = ::Tools::Registry.new(context: {
         main_session: @session,
-        from_event_id: snapshots.first.from_event_id,
-        to_event_id: snapshots.last.to_event_id,
+        from_message_id: snapshots.first.from_message_id,
+        to_message_id: snapshots.last.to_message_id,
         level: 2
       })
       TOOLS.each { |tool| registry.register(tool) }

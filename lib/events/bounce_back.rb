@@ -6,7 +6,7 @@ module Events
   # this event notifies clients to remove the phantom message and
   # restore the text to the input field.
   #
-  # Not persisted — not included in {Event::TYPES}.
+  # Not persisted — not included in {Message::TYPES}.
   class BounceBack < Base
     TYPE = "bounce_back"
 

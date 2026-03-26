@@ -12,16 +12,16 @@ RSpec.describe Events::Subscribers::Persister, "bounce back" do
       payload: {type: "user_message", content: "hello", session_id: session.id, timestamp: 1}
     }
 
-    expect { persister.emit(event) }.not_to change(Event, :count)
+    expect { persister.emit(event) }.not_to change(Message, :count)
   end
 
   it "still persists pending user messages" do
     event = {
-      payload: {type: "user_message", content: "hello", session_id: session.id, status: Event::PENDING_STATUS, timestamp: 1}
+      payload: {type: "user_message", content: "hello", session_id: session.id, status: Message::PENDING_STATUS, timestamp: 1}
     }
 
-    expect { persister.emit(event) }.to change(Event, :count).by(1)
-    expect(Event.last.status).to eq(Event::PENDING_STATUS)
+    expect { persister.emit(event) }.to change(Message, :count).by(1)
+    expect(Message.last.status).to eq(Message::PENDING_STATUS)
   end
 
   it "still persists agent messages normally" do
@@ -29,7 +29,7 @@ RSpec.describe Events::Subscribers::Persister, "bounce back" do
       payload: {type: "agent_message", content: "hi there", session_id: session.id, timestamp: 1}
     }
 
-    expect { persister.emit(event) }.to change(Event, :count).by(1)
+    expect { persister.emit(event) }.to change(Message, :count).by(1)
   end
 
   it "skips transient event types like bounce_back" do
@@ -37,6 +37,6 @@ RSpec.describe Events::Subscribers::Persister, "bounce back" do
       payload: {type: "bounce_back", content: "hello", error: "err", session_id: session.id}
     }
 
-    expect { persister.emit(event) }.not_to change(Event, :count)
+    expect { persister.emit(event) }.not_to change(Message, :count)
   end
 end

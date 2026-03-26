@@ -7,27 +7,27 @@ RSpec.describe UserMessageDecorator, type: :decorator do
 
   describe "#render_basic" do
     it "returns structured hash with user role and content" do
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "hello world"}, timestamp: 1)
-      decorator = EventDecorator.for(event)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hello world"}, timestamp: 1)
+      decorator = MessageDecorator.for(event)
 
       expect(decorator.render_basic).to eq({role: :user, content: "hello world"})
     end
 
     it "handles multiline content" do
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "line 1\nline 2"}, timestamp: 1)
-      decorator = EventDecorator.for(event)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "line 1\nline 2"}, timestamp: 1)
+      decorator = MessageDecorator.for(event)
 
       expect(decorator.render_basic).to eq({role: :user, content: "line 1\nline 2"})
     end
 
     it "works with hash payloads (symbol keys)" do
-      decorator = EventDecorator.for(type: "user_message", content: "from hash")
+      decorator = MessageDecorator.for(type: "user_message", content: "from hash")
 
       expect(decorator.render_basic).to eq({role: :user, content: "from hash"})
     end
 
     it "works with hash payloads (string keys)" do
-      decorator = EventDecorator.for("type" => "user_message", "content" => "from string hash")
+      decorator = MessageDecorator.for("type" => "user_message", "content" => "from string hash")
 
       expect(decorator.render_basic).to eq({role: :user, content: "from string hash"})
     end
@@ -35,24 +35,24 @@ RSpec.describe UserMessageDecorator, type: :decorator do
 
   describe "#render_basic with pending status" do
     it "includes status when event is pending" do
-      event = session.events.create!(
-        event_type: "user_message",
+      event = session.messages.create!(
+        message_type: "user_message",
         payload: {"content" => "queued", "status" => "pending"},
         timestamp: 1,
         status: "pending"
       )
-      decorator = EventDecorator.for(event)
+      decorator = MessageDecorator.for(event)
 
       expect(decorator.render_basic).to eq({role: :user, content: "queued", status: "pending"})
     end
 
     it "excludes status for delivered messages" do
-      event = session.events.create!(
-        event_type: "user_message",
+      event = session.messages.create!(
+        message_type: "user_message",
         payload: {"content" => "delivered"},
         timestamp: 1
       )
-      decorator = EventDecorator.for(event)
+      decorator = MessageDecorator.for(event)
 
       expect(decorator.render_basic).to eq({role: :user, content: "delivered"})
     end
@@ -61,22 +61,22 @@ RSpec.describe UserMessageDecorator, type: :decorator do
   describe "#render_verbose" do
     it "includes nanosecond timestamp" do
       ts = 1_709_312_325_000_000_000
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "hello"}, timestamp: ts)
-      decorator = EventDecorator.for(event)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hello"}, timestamp: ts)
+      decorator = MessageDecorator.for(event)
 
       expect(decorator.render_verbose).to eq({role: :user, content: "hello", timestamp: ts})
     end
 
     it "handles multiline content" do
       ts = 1_709_312_325_000_000_000
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "line 1\nline 2"}, timestamp: ts)
-      decorator = EventDecorator.for(event)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "line 1\nline 2"}, timestamp: ts)
+      decorator = MessageDecorator.for(event)
 
       expect(decorator.render_verbose).to eq({role: :user, content: "line 1\nline 2", timestamp: ts})
     end
 
     it "includes nil timestamp when missing" do
-      decorator = EventDecorator.for(type: "user_message", content: "no timestamp")
+      decorator = MessageDecorator.for(type: "user_message", content: "no timestamp")
 
       expect(decorator.render_verbose).to eq({role: :user, content: "no timestamp", timestamp: nil})
     end
@@ -85,10 +85,10 @@ RSpec.describe UserMessageDecorator, type: :decorator do
   describe "#render_debug" do
     it "includes exact token count when available" do
       ts = 1_709_312_325_000_000_000
-      event = session.events.create!(
-        event_type: "user_message", payload: {"content" => "hello"}, timestamp: ts, token_count: 42
+      event = session.messages.create!(
+        message_type: "user_message", payload: {"content" => "hello"}, timestamp: ts, token_count: 42
       )
-      decorator = EventDecorator.for(event)
+      decorator = MessageDecorator.for(event)
 
       expect(decorator.render_debug).to eq({
         role: :user, content: "hello", timestamp: ts, tokens: 42, estimated: false
@@ -97,10 +97,10 @@ RSpec.describe UserMessageDecorator, type: :decorator do
 
     it "includes estimated token count when not yet counted" do
       ts = 1_709_312_325_000_000_000
-      event = session.events.create!(
-        event_type: "user_message", payload: {"content" => "hello"}, timestamp: ts
+      event = session.messages.create!(
+        message_type: "user_message", payload: {"content" => "hello"}, timestamp: ts
       )
-      decorator = EventDecorator.for(event)
+      decorator = MessageDecorator.for(event)
       result = decorator.render_debug
 
       expect(result[:role]).to eq(:user)
@@ -111,7 +111,7 @@ RSpec.describe UserMessageDecorator, type: :decorator do
     end
 
     it "works with hash payloads" do
-      decorator = EventDecorator.for(type: "user_message", content: "from hash")
+      decorator = MessageDecorator.for(type: "user_message", content: "from hash")
       result = decorator.render_debug
 
       expect(result[:role]).to eq(:user)
