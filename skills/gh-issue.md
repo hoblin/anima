@@ -1,6 +1,6 @@
 ---
 name: gh-issue
-description: "GitHub issue writing with WHAT/WHY/HOW framework. Activate when user creates issues, writes tickets, drafts GitHub issues, or edits issue descriptions."
+description: "Issue writing with WHAT/WHY/HOW framework. Activate when creating issues, writing tickets, drafting issue descriptions, or when issues lack clear rationale."
 ---
 
 # GitHub Issue Writing

@@ -1,6 +1,6 @@
 ---
 name: mcp-server
-description: "MCP server development in Ruby — tools, prompts, resources, transport. Activate when building Model Context Protocol servers, defining tools/prompts/resources, working with the mcp gem, or discussing LLM tool integrations."
+description: "Ruby server development — tools, prompts, resources, transport. Activate when building Model Context Protocol servers, defining MCP tools/prompts/resources, working with the mcp gem, or discussing LLM tool integrations."
 ---
 
 # MCP Ruby SDK - Server Development Guide

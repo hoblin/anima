@@ -1,6 +1,6 @@
 ---
 name: activerecord
-description: "ActiveRecord patterns — associations, validations, queries, migrations, eager loading. Activate when working with models, migrations, database schema, N+1 queries, scopes, includes/preload/eager_load, callbacks, or editing files in app/models/ or db/migrate/."
+description: "Associations, validations, queries, migrations, eager loading. Activate when working with models, database schema, N+1 queries, scopes, includes/preload/eager_load, callbacks, or editing app/models/ or db/migrate/."
 ---
 
 # ActiveRecord
