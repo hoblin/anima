@@ -1,6 +1,6 @@
 ---
 name: thoughts_init
-description: "Initialize the thoughts system for the current repository."
+description: "Bootstrap ./thoughts for a new project that doesn't have one yet."
 ---
 
 # Initialize Thoughts System

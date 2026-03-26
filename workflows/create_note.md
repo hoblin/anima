@@ -1,6 +1,6 @@
 ---
 name: create_note
-description: "Capture findings or context as a persistent note in the thoughts system."
+description: "Persist findings, insights, or decisions as a note in the thoughts system for future sessions."
 ---
 
 # Create Note

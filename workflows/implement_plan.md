@@ -1,6 +1,6 @@
 ---
 name: implement_plan
-description: "Implement an approved technical plan phase by phase with verification."
+description: "Execute an approved implementation plan — work through each phase, verify success criteria before moving on."
 ---
 
 # Implement Plan
