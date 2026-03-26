@@ -78,22 +78,25 @@ http_interactions:
         failing tests, working with describe/it/expect blocks, editing *_spec.rb files,
         planning test strategy, or discussing unit/integration tests.\\n\\n──────────────────────────────\\nAVAILABLE
         WORKFLOWS\\n──────────────────────────────\\n- commit — Create focused git
-        commits with user approval.\\n- create_handoff — Create handoff document for
-        transferring work context to another session.\\n- create_note — Capture findings
-        or context as a persistent note in the thoughts system.\\n- create_plan —
-        Create detailed implementation plans through interactive research and iteration.\\n-
-        decompose_ticket — Decompose a feature ticket into vertical slices — testable,
-        deliverable units ordered by dependency.\\n- feature — Implement a GitHub
-        issue end-to-end: branch, research, code, test, commit, PR, self-review.\\n-
-        implement_plan — Implement an approved technical plan phase by phase with
-        verification.\\n- iterate_plan — Iterate on existing implementation plans
-        with research and targeted updates.\\n- research_codebase — Comprehensive
-        codebase research by spawning parallel specialists and synthesizing findings.\\n-
-        resume_handoff — Resume work from a handoff document with context analysis
-        and validation.\\n- review_pr — Multi-agent PR review with three modes: review,
-        re-review, self-review.\\n- thoughts_init — Initialize the thoughts system
-        for the current repository.\\n- validate_plan — Validate implementation against
-        plan, verify success criteria, and identify issues.\\n\"}]}"
+        commits with user approval.\\n- create_handoff — Preserve current session's
+        context, decisions, and next steps so another session can continue the work.\\n-
+        create_note — Persist findings, insights, or decisions as a note in the thoughts
+        system for future sessions.\\n- create_plan — For epics and multi-ticket efforts
+        — research the problem space and design a phased implementation strategy before
+        writing code.\\n- decompose_ticket — Decompose a feature ticket into vertical
+        slices — testable, deliverable units ordered by dependency.\\n- feature —
+        Implement a GitHub issue end-to-end: branch, research, code, test, commit,
+        PR, self-review.\\n- implement_plan — Execute an approved implementation plan
+        — work through each phase, verify success criteria before moving on.\\n- iterate_plan
+        — Revise an existing implementation plan based on feedback, new findings,
+        or changed requirements.\\n- research_codebase — Deep-dive into a large or
+        unfamiliar codebase — delegate research to parallel specialists and synthesize
+        findings.\\n- resume_handoff — Continue work left by a previous session —
+        read its handoff, verify assumptions, and pick up where it stopped.\\n- review_pr
+        — All PR review operations — review, re-review, self-review, or address reviewer
+        feedback.\\n- thoughts_init — Bootstrap ./thoughts for a new project that
+        doesn't have one yet.\\n- validate_plan — Check whether the implementation
+        satisfies the plan — compare success criteria against what was actually built.\\n\"}]}"
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -115,7 +118,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 26 Mar 2026 16:20:39 GMT
+      - Thu, 26 Mar 2026 17:15:47 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -129,13 +132,13 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1774555200'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.09'
+      - '0.18'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1774591200'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.7'
+      - '0.71'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
@@ -155,11 +158,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2226'
+      - '2225'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=2229
+      - x-originResponse;dur=2228
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
       X-Robots-Tag:
@@ -174,27 +177,28 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMURjeW9WNjh3SDVLdWI3bWpQOXlTa3UiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMTZtNkpiTE5aNHZ4QWdXazF6MVlZS0QiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
-        InRleHQiOiJJIG5lZWQgbW9yZSBjb250ZXh0IHRvIGRldGVybWluZSB3aGF0
-        IGZpeCBpcyBiZWluZyBjb250aW51ZWQuIFRoZSBjb252ZXJzYXRpb24gc25p
-        cHBldCBkb2Vzbid0IHNwZWNpZnk6XG5cbjEuIFdoYXQgdGhlIGZpeCBpcyBh
-        Ym91dCAoYnVnLCBmZWF0dXJlLCByZWZhY3RvcmluZywgZXRjLilcbjIuIFdo
-        YXQgZG9tYWluIGl0J3MgaW4gKFJhaWxzLCBnYW1lIGRldiwgVFVJLCB0ZXN0
-        aW5nLCBldGMuKVxuMy4gV2hldGhlciBhIHdvcmtmbG93IHNob3VsZCBiZSBh
-        Y3RpdmVcbjQuIFdoYXQgdGhlIHNlc3Npb24gc2hvdWxkIGJlIG5hbWVkXG5c
-        bkNvdWxkIHlvdSBwcm92aWRlOlxuLSBUaGUgYWN0dWFsIGlzc3VlIG9yIHRp
-        Y2tldCBkZXNjcmlwdGlvbj9cbi0gV2hhdCBjb2RlL3N5c3RlbSBpcyBiZWlu
-        ZyBmaXhlZD9cbi0gQW55IGFjdGl2ZSBnb2FscyBvciB3b3JrZmxvdyBjb250
-        ZXh0IGZyb20gYmVmb3JlIHRoaXMgbWVzc2FnZT9cblxuVGhpcyB3aWxsIGhl
-        bHAgbWUgYWN0aXZhdGUgdGhlIHJpZ2h0IHNraWxscywgbmFtZSB0aGUgc2Vz
-        c2lvbiBhcHByb3ByaWF0ZWx5LCBhbmQgc2V0IHVwIGdvYWwgdHJhY2tpbmcg
-        Y29ycmVjdGx5LiJ9XSwic3RvcF9yZWFzb24iOiJlbmRfdHVybiIsInN0b3Bf
-        c2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MjU0OSwi
-        Y2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lu
-        cHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVt
-        X2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6
-        MH0sIm91dHB1dF90b2tlbnMiOjE0MCwic2VydmljZV90aWVyIjoic3RhbmRh
-        cmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Thu, 26 Mar 2026 16:20:39 GMT
+        InRleHQiOiJJIG5lZWQgbW9yZSBjb250ZXh0IHRvIHVuZGVyc3RhbmQgd2hh
+        dCBmaXggaXMgYmVpbmcgY29udGludWVkLiBUaGUgY29udmVyc2F0aW9uIHNu
+        aXBwZXQgZG9lc24ndCBpbmRpY2F0ZTpcblxuLSBXaGF0IHRoZSBjdXJyZW50
+        IGdvYWwgb3IgdGFzayBpc1xuLSBXaGljaCBjb2RlYmFzZSBvciBkb21haW4g
+        aXMgaW52b2x2ZWRcbi0gV2hhdCBwcm9ibGVtIHdhcyBiZWluZyBzb2x2ZWRc
+        blxuQ291bGQgeW91IHByb3ZpZGU6XG4xLiAqKldoYXQgZml4IGlzIGJlaW5n
+        IHdvcmtlZCBvbj8qKiAoZS5nLiwgYSBidWcgZGVzY3JpcHRpb24sIHRpY2tl
+        dCBudW1iZXIsIG9yIGZlYXR1cmUgbmFtZSlcbjIuICoqV2hhdCBkb21haW4v
+        dGVjaG5vbG9neT8qKiAoZS5nLiwgUmFpbHMsIGdhbWUgZGV2LCB0ZXN0aW5n
+        LCBUVUksIGV0Yy4pXG4zLiAqKldoYXQncyB0aGUgY3VycmVudCBzdGF0ZT8q
+        KiAoZS5nLiwgd2hpY2ggZmlsZSB3YXMgYmVpbmcgZWRpdGVkLCB3aGF0IHdh
+        cyB0aGUgbGFzdCBibG9ja2VyKVxuXG5PbmNlIEkgdW5kZXJzdGFuZCB0aGUg
+        Y29udGV4dCwgSSBjYW4gYWN0aXZhdGUgdGhlIHJpZ2h0IHNraWxscywgc2V0
+        IHVwIGdvYWxzLCBhbmQgcHJlcGFyZSB0aGUgc2Vzc2lvbiBwcm9wZXJseS4i
+        fV0sInN0b3BfcmVhc29uIjoiZW5kX3R1cm4iLCJzdG9wX3NlcXVlbmNlIjpu
+        dWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjI2MTUsImNhY2hlX2NyZWF0
+        aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMi
+        OjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tl
+        bnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRf
+        dG9rZW5zIjoxNjEsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJl
+        bmNlX2dlbyI6Im5vdF9hdmFpbGFibGUifX0=
+  recorded_at: Thu, 26 Mar 2026 17:15:47 GMT
 recorded_with: VCR 6.4.0
