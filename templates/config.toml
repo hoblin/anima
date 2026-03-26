@@ -66,6 +66,9 @@ max_read_bytes = 50_000
 # Maximum bytes from web GET responses.
 max_web_response_bytes = 100_000
 
+# Minimum characters of extracted content before flagging as possibly incomplete.
+min_web_content_chars = 100
+
 # ─── Environment ──────────────────────────────────────────────
 
 [environment]
