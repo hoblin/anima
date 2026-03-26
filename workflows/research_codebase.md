@@ -1,6 +1,6 @@
 ---
 name: research_codebase
-description: "Answer a question about the codebase by delegating research to parallel specialists and synthesizing findings."
+description: "Deep-dive into a large or unfamiliar codebase — delegate research to parallel specialists and synthesize findings."
 ---
 
 # Research Codebase

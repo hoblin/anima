@@ -1,6 +1,6 @@
 ---
 name: create_plan
-description: "Research the codebase and design a phased implementation plan before writing code."
+description: "For epics and multi-ticket efforts — research the problem space and design a phased implementation strategy before writing code."
 ---
 
 # Implementation Plan

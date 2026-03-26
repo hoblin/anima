@@ -1,6 +1,6 @@
 ---
 name: thoughts_init
-description: "Set up the thoughts directory structure so other workflows can persist notes, plans, and handoffs."
+description: "Bootstrap ./thoughts for a new project that doesn't have one yet."
 ---
 
 # Initialize Thoughts System

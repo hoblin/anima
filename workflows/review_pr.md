@@ -1,6 +1,6 @@
 ---
 name: review_pr
-description: "Orchestrate parallel specialist review of a PR — review, re-review, self-review, or address-feedback."
+description: "All PR review operations — review, re-review, self-review, or address reviewer feedback."
 ---
 
 ## Modes
