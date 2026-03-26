@@ -28,7 +28,7 @@ RSpec.describe AnalyticalBrain::Tools::ActivateSkill do
       result = tool.execute({"skill_name" => "gh-issue"})
 
       expect(result).to include("Activated skill: gh-issue")
-      expect(result).to include("GitHub issue writing")
+      expect(result).to include("Issue writing with WHAT/WHY/HOW framework")
       expect(session.reload.active_skills).to include("gh-issue")
     end
 

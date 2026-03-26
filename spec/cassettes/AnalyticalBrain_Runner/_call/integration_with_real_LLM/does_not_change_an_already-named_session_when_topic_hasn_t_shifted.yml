@@ -57,24 +57,23 @@ http_interactions:
         changing, call it immediately as your only tool call.\\n\\n──────────────────────────────\\nCURRENT
         STATE\\n──────────────────────────────\\nSession name: \U0001F527 Existing
         Name\\nActive skills: None\\nActive workflow: None\\n\\n──────────────────────────────\\nAVAILABLE
-        SKILLS\\n──────────────────────────────\\n- activerecord — ActiveRecord patterns
-        — associations, validations, queries, migrations, eager loading. Activate
-        when working with models, migrations, database schema, N+1 queries, scopes,
-        includes/preload/eager_load, callbacks, or editing files in app/models/ or
-        db/migrate/.\\n- dragonruby — DragonRuby 2D game development — game loops,
-        sprites, input, collisions, scenes. Activate when building games with DragonRuby/DRGTK,
+        SKILLS\\n──────────────────────────────\\n- activerecord — Associations, validations,
+        queries, migrations, eager loading. Activate when working with models, database
+        schema, N+1 queries, scopes, includes/preload/eager_load, callbacks, or editing
+        app/models/ or db/migrate/.\\n- dragonruby — 2D game development — game loops,
+        sprites, input, collisions, scenes. Activate when building games with DRGTK,
         working with args.outputs/state/inputs, or editing game files.\\n- draper-decorators
-        — Draper decorator patterns for Rails views. Activate when creating or testing
-        decorators, moving formatting logic out of models/views, editing *_decorator.rb
-        files, or working in app/decorators/.\\n- gh-issue — GitHub issue writing
-        with WHAT/WHY/HOW framework. Activate when user creates issues, writes tickets,
-        drafts GitHub issues, or edits issue descriptions.\\n- mcp-server — MCP server
-        development in Ruby — tools, prompts, resources, transport. Activate when
-        building Model Context Protocol servers, defining tools/prompts/resources,
-        working with the mcp gem, or discussing LLM tool integrations.\\n- ratatui-ruby
-        — RatatuiRuby terminal UI development — widgets, layouts, events, Tea MVU.
-        Activate when building TUI apps, working with RatatuiRuby, terminal rendering,
-        or editing TUI application files.\\n- rspec — RSpec testing with FactoryBot
+        — Decorator patterns for Rails views — presentation logic separated from models.
+        Activate when creating or testing decorators, moving formatting logic out
+        of models/views, editing *_decorator.rb files, or working in app/decorators/.\\n-
+        gh-issue — Issue writing with WHAT/WHY/HOW framework. Activate when creating
+        issues, writing tickets, drafting issue descriptions, or when issues lack
+        clear rationale.\\n- mcp-server — Ruby server development — tools, prompts,
+        resources, transport. Activate when building Model Context Protocol servers,
+        defining MCP tools/prompts/resources, working with the mcp gem, or discussing
+        LLM tool integrations.\\n- ratatui-ruby — Terminal UI development — widgets,
+        layouts, events, Tea MVU. Activate when building TUI apps, working with terminal
+        rendering, or editing TUI application files.\\n- rspec — Testing with FactoryBot
         — matchers, test doubles, shared examples. Activate when writing specs, fixing
         failing tests, working with describe/it/expect blocks, editing *_spec.rb files,
         planning test strategy, or discussing unit/integration tests.\\n\\n──────────────────────────────\\nAVAILABLE
@@ -116,7 +115,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 26 Mar 2026 07:40:22 GMT
+      - Thu, 26 Mar 2026 16:20:39 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -128,21 +127,21 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1774515600'
+      - '1774555200'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.13'
+      - '0.09'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1774591200'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.68'
+      - '0.7'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1774515600'
+      - '1774555200'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -156,11 +155,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2776'
+      - '2226'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=2778
+      - x-originResponse;dur=2229
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
       X-Robots-Tag:
@@ -175,33 +174,27 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMUE1YzVYRjR0S3lja0ZRd2JBeXF0S3EiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMURjeW9WNjh3SDVLdWI3bWpQOXlTa3UiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
-        InRleHQiOiJJIGNhbiBzZWUgdGhlIHNlc3Npb24gaXMgaW4gcHJvZ3Jlc3Mg
-        d2l0aCBhIGNvbnRpbnVhdGlvbiBvZiB3b3JrIG9uIGEgXCJmaXgsXCIgYnV0
-        IHRoZSBjb250ZXh0IGlzIG1pbmltYWwuIFdpdGhvdXQgbW9yZSBkZXRhaWxz
-        IGFib3V0IHdoYXQgc3BlY2lmaWMgZml4IGlzIGJlaW5nIHdvcmtlZCBvbiwg
-        SSBjYW5ub3QgZGV0ZXJtaW5lOlxuXG4xLiBXaGF0IHNraWxscyBzaG91bGQg
-        YmUgYWN0aXZlXG4yLiBXaGV0aGVyIGEgd29ya2Zsb3cgc2hvdWxkIGJlIGlu
-        aXRpYXRlZFxuMy4gV2hhdCBnb2FscyBzaG91bGQgYmUgdHJhY2tlZFxuNC4g
-        V2hhdCB0aGUgc2Vzc2lvbiBzaG91bGQgYmUgcmVuYW1lZCB0b1xuXG5UaGUg
-        Y3VycmVudCBzZXNzaW9uIG5hbWUgXCLwn5SnIEV4aXN0aW5nIE5hbWVcIiBp
-        cyBnZW5lcmljIGFuZCBkb2Vzbid0IHJlZmxlY3QgdGhlIGFjdHVhbCB3b3Jr
-        LlxuXG4qKlRvIGhlbHAgZWZmZWN0aXZlbHksIEkgbmVlZCBtb3JlIGluZm9y
-        bWF0aW9uOioqXG4tIFdoYXQgaXMgdGhlIG5hdHVyZSBvZiB0aGUgZml4IGJl
-        aW5nIGNvbnRpbnVlZD8gKGUuZy4sIGJ1ZyBmaXgsIGNvZGUgcmVmYWN0b3Is
-        IHRlc3QgZmFpbHVyZSwgZXRjLilcbi0gV2hhdCB0ZWNobm9sb2d5L2RvbWFp
-        biBpcyBpbnZvbHZlZD8gKGUuZy4sIFJhaWxzLCBnYW1lIGRldmVsb3BtZW50
-        LCBUVUksIGV0Yy4pXG4tIElzIHRoaXMgcGFydCBvZiBhIHN0cnVjdHVyZWQg
-        d29ya2Zsb3csIG9yIGFkLWhvYyB3b3JrP1xuLSBXaGF0IHdhcyB0aGUgcHJl
-        dmlvdXMgY29udGV4dCBvciBnb2FsP1xuXG5Db3VsZCB5b3UgcHJvdmlkZSBt
-        b3JlIGRldGFpbHMgYWJvdXQgd2hhdCBcInRoZSBmaXhcIiByZWZlcnMgdG8/
-        In1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6
-        bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyNTgxLCJjYWNoZV9jcmVh
-        dGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5z
-        IjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9r
-        ZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0
-        X3Rva2VucyI6MjA4LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVy
-        ZW5jZV9nZW8iOiJub3RfYXZhaWxhYmxlIn19
-  recorded_at: Thu, 26 Mar 2026 07:40:22 GMT
+        InRleHQiOiJJIG5lZWQgbW9yZSBjb250ZXh0IHRvIGRldGVybWluZSB3aGF0
+        IGZpeCBpcyBiZWluZyBjb250aW51ZWQuIFRoZSBjb252ZXJzYXRpb24gc25p
+        cHBldCBkb2Vzbid0IHNwZWNpZnk6XG5cbjEuIFdoYXQgdGhlIGZpeCBpcyBh
+        Ym91dCAoYnVnLCBmZWF0dXJlLCByZWZhY3RvcmluZywgZXRjLilcbjIuIFdo
+        YXQgZG9tYWluIGl0J3MgaW4gKFJhaWxzLCBnYW1lIGRldiwgVFVJLCB0ZXN0
+        aW5nLCBldGMuKVxuMy4gV2hldGhlciBhIHdvcmtmbG93IHNob3VsZCBiZSBh
+        Y3RpdmVcbjQuIFdoYXQgdGhlIHNlc3Npb24gc2hvdWxkIGJlIG5hbWVkXG5c
+        bkNvdWxkIHlvdSBwcm92aWRlOlxuLSBUaGUgYWN0dWFsIGlzc3VlIG9yIHRp
+        Y2tldCBkZXNjcmlwdGlvbj9cbi0gV2hhdCBjb2RlL3N5c3RlbSBpcyBiZWlu
+        ZyBmaXhlZD9cbi0gQW55IGFjdGl2ZSBnb2FscyBvciB3b3JrZmxvdyBjb250
+        ZXh0IGZyb20gYmVmb3JlIHRoaXMgbWVzc2FnZT9cblxuVGhpcyB3aWxsIGhl
+        bHAgbWUgYWN0aXZhdGUgdGhlIHJpZ2h0IHNraWxscywgbmFtZSB0aGUgc2Vz
+        c2lvbiBhcHByb3ByaWF0ZWx5LCBhbmQgc2V0IHVwIGdvYWwgdHJhY2tpbmcg
+        Y29ycmVjdGx5LiJ9XSwic3RvcF9yZWFzb24iOiJlbmRfdHVybiIsInN0b3Bf
+        c2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MjU0OSwi
+        Y2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lu
+        cHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVt
+        X2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6
+        MH0sIm91dHB1dF90b2tlbnMiOjE0MCwic2VydmljZV90aWVyIjoic3RhbmRh
+        cmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
+  recorded_at: Thu, 26 Mar 2026 16:20:39 GMT
 recorded_with: VCR 6.4.0

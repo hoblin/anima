@@ -1,6 +1,6 @@
 ---
 name: draper-decorators
-description: "Draper decorator patterns for Rails views. Activate when creating or testing decorators, moving formatting logic out of models/views, editing *_decorator.rb files, or working in app/decorators/."
+description: "Decorator patterns for Rails views — presentation logic separated from models. Activate when creating or testing decorators, moving formatting logic out of models/views, editing *_decorator.rb files, or working in app/decorators/."
 ---
 
 # Draper Decorators for Rails
