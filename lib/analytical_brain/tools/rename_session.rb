@@ -18,7 +18,7 @@ module AnalyticalBrain
           type: "object",
           properties: {
             emoji: {type: "string"},
-            name: {type: "string"}
+            name: {type: "string", description: "1-3 words."}
           },
           required: %w[emoji name]
         }
