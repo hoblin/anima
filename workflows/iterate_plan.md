@@ -1,6 +1,6 @@
 ---
 name: iterate_plan
-description: "Iterate on existing implementation plans with research and targeted updates."
+description: "Revise an existing plan based on feedback, new findings, or changed requirements."
 ---
 
 # Iterate Implementation Plan

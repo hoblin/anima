@@ -1,6 +1,6 @@
 ---
 name: thoughts_init
-description: "Initialize the thoughts system for the current repository."
+description: "Set up the thoughts directory structure so other workflows can persist notes, plans, and handoffs."
 ---
 
 # Initialize Thoughts System

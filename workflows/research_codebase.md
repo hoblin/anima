@@ -1,6 +1,6 @@
 ---
 name: research_codebase
-description: "Comprehensive codebase research by spawning parallel specialists and synthesizing findings."
+description: "Answer a question about the codebase by delegating research to parallel specialists and synthesizing findings."
 ---
 
 # Research Codebase

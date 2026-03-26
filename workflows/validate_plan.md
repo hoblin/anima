@@ -1,6 +1,6 @@
 ---
 name: validate_plan
-description: "Validate implementation against plan, verify success criteria, and identify issues."
+description: "Check whether the code matches the plan — compare success criteria against actual implementation."
 ---
 
 # Validate Plan

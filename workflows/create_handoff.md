@@ -1,6 +1,6 @@
 ---
 name: create_handoff
-description: "Create handoff document for transferring work context to another session."
+description: "Preserve current session's context, decisions, and next steps so another session can continue the work."
 ---
 
 # Create Handoff

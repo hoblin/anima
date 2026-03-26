@@ -1,6 +1,6 @@
 ---
 name: create_plan
-description: "Create detailed implementation plans through interactive research and iteration."
+description: "Research the codebase and design a phased implementation plan before writing code."
 ---
 
 # Implementation Plan

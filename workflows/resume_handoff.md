@@ -1,6 +1,6 @@
 ---
 name: resume_handoff
-description: "Resume work from a handoff document with context analysis and validation."
+description: "Continue work left by a previous session — read its handoff, verify assumptions, and pick up where it stopped."
 ---
 
 # Resume work from a handoff document
