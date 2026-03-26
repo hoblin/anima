@@ -11,21 +11,14 @@ module AnalyticalBrain
     class RenameSession < ::Tools::Base
       def self.tool_name = "rename_session"
 
-      def self.description = "Rename the conversation session. " \
-        "Use one emoji followed by 1-3 descriptive words."
+      def self.description = "Rename the session."
 
       def self.input_schema
         {
           type: "object",
           properties: {
-            emoji: {
-              type: "string",
-              description: "A single emoji representing the conversation topic"
-            },
-            name: {
-              type: "string",
-              description: "1-3 word descriptive name for the session"
-            }
+            emoji: {type: "string"},
+            name: {type: "string", description: "1-3 words."}
           },
           required: %w[emoji name]
         }

@@ -15,8 +15,8 @@ RSpec.describe AnalyticalBrain::Tools::DeactivateSkill do
 
       expect(schema[:name]).to eq("deactivate_skill")
       expect(schema[:description]).to be_present
-      expect(schema[:input_schema][:required]).to eq(%w[name])
-      expect(schema[:input_schema][:properties]).to have_key(:name)
+      expect(schema[:input_schema][:required]).to eq(%w[skill_name])
+      expect(schema[:input_schema][:properties]).to have_key(:skill_name)
     end
   end
 
@@ -29,27 +29,27 @@ RSpec.describe AnalyticalBrain::Tools::DeactivateSkill do
     end
 
     it "deactivates a skill and returns confirmation" do
-      result = tool.execute({"name" => "gh-issue"})
+      result = tool.execute({"skill_name" => "gh-issue"})
 
       expect(result).to eq("Deactivated skill: gh-issue")
       expect(session.reload.active_skills).not_to include("gh-issue")
     end
 
     it "is safe to call for a skill that is not active" do
-      result = tool.execute({"name" => "not-active"})
+      result = tool.execute({"skill_name" => "not-active"})
 
       expect(result).to eq("Deactivated skill: not-active")
     end
 
     it "returns error when name is blank" do
-      result = tool.execute({"name" => ""})
+      result = tool.execute({"skill_name" => ""})
 
       expect(result).to eq({error: "Skill name cannot be blank"})
     end
 
     it "accepts context kwargs without error" do
       tool = described_class.new(main_session: session, extra_stuff: "ignored")
-      result = tool.execute({"name" => "gh-issue"})
+      result = tool.execute({"skill_name" => "gh-issue"})
 
       expect(result).to include("Deactivated skill: gh-issue")
     end

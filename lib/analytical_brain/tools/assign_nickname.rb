@@ -17,8 +17,7 @@ module AnalyticalBrain
 
       def self.tool_name = "assign_nickname"
 
-      def self.description = "Assign a short, memorable nickname to this sub-agent. " \
-        "The nickname is permanent — it will not change."
+      def self.description = "Assign a permanent nickname to this sub-agent."
 
       def self.input_schema
         {
@@ -26,8 +25,7 @@ module AnalyticalBrain
           properties: {
             nickname: {
               type: "string",
-              description: "1-3 lowercase words joined by hyphens (e.g. 'loop-sleuth', 'api-scout'). " \
-                "Evocative of the task, fun, easy to type after @."
+              description: "Lowercase, hyphenated (e.g. 'loop-sleuth')."
             }
           },
           required: %w[nickname]

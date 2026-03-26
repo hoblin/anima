@@ -7,19 +7,15 @@ module AnalyticalBrain
     class DeactivateSkill < ::Tools::Base
       def self.tool_name = "deactivate_skill"
 
-      def self.description = "Deactivate a skill that is no longer relevant. " \
-        "The skill's content will be removed from the agent's system prompt."
+      def self.description = "Remove domain knowledge that is no longer relevant."
 
       def self.input_schema
         {
           type: "object",
           properties: {
-            name: {
-              type: "string",
-              description: "Name of the skill to deactivate (from the currently active skills list)"
-            }
+            skill_name: {type: "string"}
           },
-          required: %w[name]
+          required: %w[skill_name]
         }
       end
 
@@ -28,11 +24,11 @@ module AnalyticalBrain
         @main_session = main_session
       end
 
-      # @param input [Hash<String, Object>] with "name" key
+      # @param input [Hash<String, Object>] with "skill_name" key
       # @return [String] confirmation message
       # @return [Hash] with :error key on validation failure
       def execute(input)
-        skill_name = input["name"].to_s.strip
+        skill_name = input["skill_name"].to_s.strip
         return {error: "Skill name cannot be blank"} if skill_name.empty?
 
         @main_session.deactivate_skill(skill_name)
