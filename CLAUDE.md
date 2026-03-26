@@ -97,6 +97,16 @@ Temporarily break `OAUTH_PASSPHRASE` in `lib/providers/anthropic.rb` — revert 
 
 Use VCR cassettes for all HTTP tests — never `stub_request`. Add `:vcr` metadata (bare symbol, no cassette path) and VCR auto-names cassettes from the spec description. Use a real token via `CredentialStore` for happy-path tests.
 
+Record mode is `:new_episodes` — VCR appends new entries when the request body doesn't match any existing episode. Prompt changes alter the request body, so the old episode becomes dead text that will never replay.
+
+When prompt text changes, re-record affected cassettes:
+
+1. Run full specs (`bundle exec rspec`) — surfaces affected cassettes as modified in `git status`.
+2. Delete modified cassettes with `rm -f`.
+3. Run full specs again — records fresh single-episode cassettes.
+
+Never delete cassettes before the first full run — you won't know which ones are affected.
+
 ## GitHub sub-issues
 
 Use the REST API to manage sub-issues on epics:
