@@ -47,10 +47,11 @@ module Tools
       end
 
       response = HTTParty.get(url, timeout: timeout, follow_redirects: false, ssl_ca_file: Certifi.where)
-      body = truncate_body(response.body.to_s)
       content_type = response.content_type || "text/plain"
+      body = response.body.to_s
+      body = strip_html_noise(body) if content_type.include?("text/html")
 
-      {body: body, content_type: content_type}
+      {body: truncate_body(body), content_type: content_type}
     rescue URI::InvalidURIError => error
       {error: "Invalid URL: #{error.message}"}
     rescue Net::OpenTimeout, Net::ReadTimeout
@@ -67,6 +68,23 @@ module Tools
 
       body.byteslice(0, max_bytes).scrub +
         "\n\n[Truncated: response exceeded #{max_bytes} bytes]"
+    end
+
+    # Lightweight regex passes that strip tags which never carry readable
+    # content. Each pattern targets one tag type for easy maintenance.
+    # Nokogiri is intentionally avoided to skip a full DOM parse.
+    HTML_NOISE_PATTERNS = [
+      %r{<head\b[^>]*>.*?</head>}mi,       # metadata, link/meta tags
+      %r{<script\b[^>]*>.*?</script>}mi,   # JavaScript
+      %r{<style\b[^>]*>.*?</style>}mi,      # CSS
+      %r{<svg\b[^>]*>.*?</svg>}mi,          # inline graphics
+      %r{<template\b[^>]*>.*?</template>}mi, # deferred markup
+      %r{<noscript\b[^>]*>.*?</noscript>}mi  # JS-disabled fallbacks
+    ].freeze
+    private_constant :HTML_NOISE_PATTERNS
+
+    def strip_html_noise(html)
+      HTML_NOISE_PATTERNS.reduce(html) { |text, pattern| text.gsub(pattern, "") }
     end
   end
 end
