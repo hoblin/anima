@@ -2,7 +2,7 @@
 
 require "toon"
 
-# Decorates tool_call events for display in the TUI.
+# Decorates tool_call records for display in the TUI.
 # Hidden in basic mode — tool activity is represented by the
 # aggregated tool counter instead. Verbose mode returns tool name
 # and a formatted preview of the input arguments. Debug mode shows
@@ -12,7 +12,7 @@ require "toon"
 # Think tool calls are special: "aloud" thoughts are shown in all
 # view modes (with a thought bubble), while "inner" thoughts are
 # visible only in verbose and debug modes.
-class ToolCallDecorator < EventDecorator
+class ToolCallDecorator < MessageDecorator
   THINK_TOOL = "think"
 
   # In basic mode, only "aloud" think calls are visible.

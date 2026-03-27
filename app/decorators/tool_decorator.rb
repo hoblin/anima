@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
 # Base class for server-side tool response decoration. Transforms raw tool
-# results into LLM-optimized formats before they enter the event stream.
+# results into LLM-optimized formats before they enter the message stream.
 #
-# This is a separate decorator type from {EventDecorator}: EventDecorator
-# formats events for clients (TUI/web), while ToolDecorator formats tool
+# This is a separate decorator type from {MessageDecorator}: MessageDecorator
+# formats messages for clients (TUI/web), while ToolDecorator formats tool
 # responses for the LLM. They sit at different points in the pipeline:
 #
-#   Tool executes → ToolDecorator transforms → event stream → EventDecorator renders
+#   Tool executes → ToolDecorator transforms → message stream → MessageDecorator renders
 #
 # Subclasses implement {#call} to transform a tool's raw result into an
 # LLM-friendly string. Each tool can have its own ToolDecorator subclass

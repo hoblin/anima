@@ -96,7 +96,7 @@ module Tools
         prompt: build_prompt(definition),
         granted_tools: definition.tools
       )
-      child.create_user_event(task)
+      child.create_user_message(task)
       assign_nickname_via_brain(child)
       child.broadcast_children_update_to_parent
       AgentRequestJob.perform_later(child.id)

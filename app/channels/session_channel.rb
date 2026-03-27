@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-# Streams events for a specific session to connected clients.
-# Part of the Brain/TUI separation: the Brain broadcasts events through
+# Streams messages for a specific session to connected clients.
+# Part of the Brain/TUI separation: the Brain broadcasts messages through
 # this channel, and any number of clients (TUI, web, API) can subscribe.
 #
 # On subscription, sends the session's chat history so the client can
@@ -42,10 +42,10 @@ class SessionChannel < ApplicationCable::Channel
     ActionCable.server.broadcast(stream_name, data)
   end
 
-  # Processes user input. For idle sessions, persists the event immediately
-  # so the message appears in the TUI without waiting for the background
-  # job, then schedules {AgentRequestJob} for LLM delivery. If delivery
-  # fails, the job deletes the event and emits a {Events::BounceBack}.
+  # Processes user input. For idle sessions, persists the message immediately
+  # so it appears in the TUI without waiting for the background job, then
+  # schedules {AgentRequestJob} for LLM delivery. If delivery fails, the
+  # job deletes the message and emits a {Events::BounceBack}.
   #
   # For busy sessions, emits a pending {Events::UserMessage} that queues
   # until the current agent loop completes.
@@ -63,23 +63,23 @@ class SessionChannel < ApplicationCable::Channel
   end
 
   # Recalls the most recent pending message for editing. Deletes the
-  # pending event and broadcasts the recall so all clients remove it.
+  # pending message and broadcasts the recall so all clients remove it.
   #
-  # @param data [Hash] must include "event_id" (positive integer)
+  # @param data [Hash] must include "message_id" (positive integer)
   def recall_pending(data)
-    event_id = data["event_id"].to_i
-    return if event_id <= 0
+    message_id = data["message_id"].to_i
+    return if message_id <= 0
 
-    event = Event.find_by(
-      id: event_id,
+    message = Message.find_by(
+      id: message_id,
       session_id: @current_session_id,
-      event_type: "user_message",
-      status: Event::PENDING_STATUS
+      message_type: "user_message",
+      status: Message::PENDING_STATUS
     )
-    return unless event
+    return unless message
 
-    event.destroy!
-    ActionCable.server.broadcast(stream_name, {"action" => "user_message_recalled", "event_id" => event_id})
+    message.destroy!
+    ActionCable.server.broadcast(stream_name, {"action" => "user_message_recalled", "message_id" => message_id})
   end
 
   # Requests interruption of the current tool execution. Sets a flag on the
@@ -106,7 +106,7 @@ class SessionChannel < ApplicationCable::Channel
     limit = (data["limit"] || DEFAULT_LIST_LIMIT).to_i.clamp(1, MAX_LIST_LIMIT)
     sessions = Session.root_sessions.recent(limit).includes(:child_sessions)
     all_ids = sessions.flat_map { |session| [session.id] + session.child_sessions.map(&:id) }
-    counts = Event.where(session_id: all_ids).llm_messages.group(:session_id).count
+    counts = Message.where(session_id: all_ids).llm_messages.group(:session_id).count
 
     result = sessions.map { |session| serialize_session_with_children(session, counts) }
     transmit({"action" => "sessions_list", "sessions" => result})
@@ -196,7 +196,7 @@ class SessionChannel < ApplicationCable::Channel
   # Used on initial subscription and after session switches so the
   # client can handle both paths with a single code path.
   #
-  # Payload: session_id, name, parent_session_id, message_count,
+  # Payload: session_id, name, agent_name, parent_session_id, message_count,
   # view_mode, active_skills, goals, children (when present).
   #
   # @param session [Session] the session to announce
@@ -206,8 +206,9 @@ class SessionChannel < ApplicationCable::Channel
       "action" => "session_changed",
       "session_id" => session.id,
       "name" => session.name,
+      "agent_name" => Anima::Settings.agent_name,
       "parent_session_id" => session.parent_session_id,
-      "message_count" => session.events.llm_messages.count,
+      "message_count" => session.messages.llm_messages.count,
       "view_mode" => session.view_mode,
       "active_skills" => session.active_skills,
       "active_workflow" => session.active_workflow,
@@ -244,22 +245,22 @@ class SessionChannel < ApplicationCable::Channel
     transmit({"action" => "view_mode", "view_mode" => session.view_mode})
   end
 
-  # Sends decorated context events (messages + tool interactions) from
-  # the LLM's viewport to the subscribing client. Each event is wrapped
-  # in an {EventDecorator} and the pre-rendered output is included in
-  # the transmitted payload. Tool events are included so the TUI can
+  # Sends decorated context messages (conversation + tool interactions) from
+  # the LLM's viewport to the subscribing client. Each message is wrapped
+  # in a {MessageDecorator} and the pre-rendered output is included in
+  # the transmitted payload. Tool messages are included so the TUI can
   # reconstruct tool call counters on reconnect.
   # In debug mode, prepends the assembled system prompt as a special block.
   #
-  # Snapshots the viewport so subsequent event broadcasts can compute
+  # Snapshots the viewport so subsequent message broadcasts can compute
   # eviction diffs accurately.
   #
   # @param session [Session] the session whose history to transmit
   def transmit_history(session)
     transmit_system_prompt(session) if session.view_mode == "debug"
 
-    each_viewport_event(session) do |event, payload|
-      transmit(payload)
+    each_viewport_message(session) do |_msg, msg_payload|
+      transmit(msg_payload)
     end
   end
 
@@ -267,7 +268,7 @@ class SessionChannel < ApplicationCable::Channel
   # Used after a view mode change to refresh all connected clients.
   # In debug mode, prepends the assembled system prompt as a special block.
   #
-  # Snapshots the viewport so subsequent event broadcasts can compute
+  # Snapshots the viewport so subsequent message broadcasts can compute
   # eviction diffs accurately.
   #
   # @param session [Session] the session whose viewport to broadcast
@@ -275,40 +276,40 @@ class SessionChannel < ApplicationCable::Channel
   def broadcast_viewport(session)
     broadcast_system_prompt(session) if session.view_mode == "debug"
 
-    each_viewport_event(session) do |event, payload|
-      ActionCable.server.broadcast(stream_name, payload)
+    each_viewport_message(session) do |_msg, msg_payload|
+      ActionCable.server.broadcast(stream_name, msg_payload)
     end
   end
 
   # Loads the viewport, snapshots it for eviction tracking, and yields
-  # each event with its decorated payload. Snapshot uses snapshot_viewport!
+  # each message with its decorated payload. Snapshot uses snapshot_viewport!
   # (not recalculate_viewport!) because full viewport refreshes don't need
   # eviction diffs — clients clear their store before rendering.
   #
   # @param session [Session] the session whose viewport to iterate
-  # @yieldparam event [Event] the persisted event record
+  # @yieldparam message [Message] the persisted message record
   # @yieldparam payload [Hash] decorated payload ready for transmission
   # @return [void]
-  def each_viewport_event(session)
-    viewport = session.viewport_events
+  def each_viewport_message(session)
+    viewport = session.viewport_messages
     session.snapshot_viewport!(viewport.map(&:id))
 
-    viewport.each do |event|
-      yield event, decorate_event_payload(event, session.view_mode)
+    viewport.each do |msg|
+      yield msg, decorate_message_payload(msg, session.view_mode)
     end
   end
 
-  # Decorates an event for transmission to clients. Merges the event's
+  # Decorates a message for transmission to clients. Merges the message's
   # database ID and structured decorator output into the payload.
   # Used by {#transmit_history} and {#broadcast_viewport} for historical
-  # and viewport re-broadcast — live broadcasts use {Event::Broadcasting}.
+  # and viewport re-broadcast — live broadcasts use {Message::Broadcasting}.
   #
-  # @param event [Event] persisted event record
+  # @param message [Message] persisted message record
   # @param mode [String] view mode for decoration (default: "basic")
   # @return [Hash] payload with "id" and optional "rendered" key
-  def decorate_event_payload(event, mode = "basic")
-    payload = event.payload.merge("id" => event.id)
-    decorator = EventDecorator.for(event)
+  def decorate_message_payload(message, mode = "basic")
+    payload = message.payload.merge("id" => message.id)
+    decorator = MessageDecorator.for(message)
     return payload unless decorator
 
     payload.merge("rendered" => {mode => decorator.render(mode)})
@@ -343,7 +344,7 @@ class SessionChannel < ApplicationCable::Channel
     prompt = session.system_prompt
     return unless prompt
 
-    tokens = [(prompt.bytesize / Event::BYTES_PER_TOKEN.to_f).ceil, 1].max
+    tokens = [(prompt.bytesize / Message::BYTES_PER_TOKEN.to_f).ceil, 1].max
     {
       "type" => "system_prompt",
       "rendered" => {

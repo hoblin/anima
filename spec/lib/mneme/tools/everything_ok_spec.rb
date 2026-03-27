@@ -29,7 +29,7 @@ RSpec.describe Mneme::Tools::EverythingOk do
     end
 
     it "accepts context kwargs without error" do
-      tool = described_class.new(main_session: double, from_event_id: 1, to_event_id: 10)
+      tool = described_class.new(main_session: double, from_message_id: 1, to_message_id: 10)
       expect(tool.execute({})).to be_a(String)
     end
   end

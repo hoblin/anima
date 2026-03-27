@@ -5,25 +5,25 @@ module TUI
   # Replaces {Events::Subscribers::MessageCollector} in the WebSocket-based
   # TUI, with no dependency on Rails or the Events module.
   #
-  # Accepts Action Cable event payloads and stores typed entries:
-  # - `{type: :rendered, data:, event_type:, id:}` for events with structured decorator output
+  # Accepts Action Cable message payloads and stores typed entries:
+  # - `{type: :rendered, data:, message_type:, id:}` for messages with structured decorator output
   # - `{type: :message, role:, content:, id:}` for user/agent messages (fallback)
   # - `{type: :tool_counter, calls:, responses:}` for tool activity
   #
-  # Structured data takes priority when available. Events with nil
-  # rendered content fall back to existing behavior: tool events aggregate
-  # into counters, messages store role and content.
+  # Structured data takes priority when available. Messages with nil
+  # rendered content fall back to existing behavior: tool messages aggregate
+  # into counters, conversation messages store role and content.
   #
-  # Entries with event IDs are maintained in ID order (ascending)
+  # Entries with message IDs are maintained in ID order (ascending)
   # regardless of arrival order, preventing misordering from race
   # conditions between live broadcasts and viewport replays.
   # Duplicate IDs are deduplicated by updating the existing entry.
   #
   # Tool counters aggregate per agent turn: a new counter starts when a
-  # tool_call arrives after a message entry. Consecutive tool events
-  # increment the same counter until the next message breaks the chain.
+  # tool_call arrives after a conversation entry. Consecutive tool messages
+  # increment the same counter until the next conversation message breaks the chain.
   #
-  # When an event arrives with `"action" => "update"` and a known `"id"`,
+  # When a message arrives with `"action" => "update"` and a known `"id"`,
   # the existing entry is replaced in-place, preserving display order.
   class MessageStore
     MESSAGE_TYPES = %w[user_message agent_message].freeze
@@ -69,16 +69,16 @@ module TUI
     #   and optionally "rendered" (hash of mode => lines), "id", "action"
     # @return [Boolean] true if the event type was recognized and handled
     def process_event(event_data)
-      event_id = event_data["id"]
+      message_id = event_data["id"]
 
-      if event_data["action"] == "update" && event_id
-        return update_existing(event_data, event_id)
+      if event_data["action"] == "update" && message_id
+        return update_existing(event_data, message_id)
       end
 
       rendered = extract_rendered(event_data)
 
       if rendered
-        record_rendered(rendered, event_type: event_data["type"], id: event_id)
+        record_rendered(rendered, message_type: event_data["type"], id: message_id)
       else
         case event_data["type"]
         when "tool_call" then record_tool_call
@@ -90,7 +90,7 @@ module TUI
     end
 
     # Removes all entries. Called on view mode change and session switch
-    # to prepare for re-decorated viewport events from the server.
+    # to prepare for re-decorated viewport messages from the server.
     # @return [void]
     def clear
       @mutex.synchronize do
@@ -107,7 +107,7 @@ module TUI
     def last_pending_user_message
       @mutex.synchronize do
         @entries.reverse_each do |entry|
-          next unless entry[:event_type] == "user_message"
+          next unless entry[:message_type] == "user_message"
 
           if entry[:type] == :rendered && entry.dig(:data, "status") == "pending"
             return {id: entry[:id], content: entry.dig(:data, "content")}
@@ -120,14 +120,14 @@ module TUI
       end
     end
 
-    # Removes an entry by its event ID. Used when a pending message is
+    # Removes an entry by its message ID. Used when a pending message is
     # recalled for editing or deleted by another client.
     #
-    # @param event_id [Integer] database ID of the event to remove
+    # @param message_id [Integer] database ID of the message to remove
     # @return [Boolean] true if the entry was found and removed
-    def remove_by_id(event_id)
+    def remove_by_id(message_id)
       @mutex.synchronize do
-        entry = @entries_by_id.delete(event_id)
+        entry = @entries_by_id.delete(message_id)
         return false unless entry
 
         @entries.delete(entry)
@@ -136,17 +136,17 @@ module TUI
       end
     end
 
-    # Removes entries by their event IDs. Used when the brain reports
-    # that events have left the LLM's viewport (context window eviction).
+    # Removes entries by their message IDs. Used when the brain reports
+    # that messages have left the LLM's viewport (context window eviction).
     # Acquires the mutex once for the entire batch.
     #
-    # @param event_ids [Array<Integer>] database IDs of events to remove
+    # @param message_ids [Array<Integer>] database IDs of messages to remove
     # @return [Integer] count of entries actually removed
-    def remove_by_ids(event_ids)
+    def remove_by_ids(message_ids)
       @mutex.synchronize do
         removed = 0
-        event_ids.each do |event_id|
-          entry = @entries_by_id.delete(event_id)
+        message_ids.each do |message_id|
+          entry = @entries_by_id.delete(message_id)
           next unless entry
 
           @entries.delete(entry)
@@ -159,17 +159,17 @@ module TUI
 
     private
 
-    # Replaces data on an existing entry matched by event ID.
+    # Replaces data on an existing entry matched by message ID.
     # Only updates rendered entries — tool counters and plain messages
     # are not individually addressable by ID.
     #
     # @return [Boolean] true if the entry was found and updated
-    def update_existing(event_data, event_id)
+    def update_existing(event_data, message_id)
       rendered = extract_rendered(event_data)
       return false unless rendered
 
       @mutex.synchronize do
-        entry = @entries_by_id[event_id]
+        entry = @entries_by_id[message_id]
         return false unless entry
 
         entry[:data] = rendered
@@ -190,16 +190,16 @@ module TUI
 
     # Inserts a rendered entry at the correct chronological position.
     # System prompt entries (no ID) are always placed at position 0.
-    def record_rendered(data, event_type: nil, id: nil)
+    def record_rendered(data, message_type: nil, id: nil)
       @mutex.synchronize do
-        entry = {type: :rendered, data: data, event_type: event_type, id: id}
+        entry = {type: :rendered, data: data, message_type: message_type, id: id}
         insert_ordered(entry)
         @version += 1
       end
       true
     end
 
-    # Inserts an entry in event-ID order. Entries without an ID are
+    # Inserts an entry in message-ID order. Entries without an ID are
     # appended. If an entry with the same ID already exists, updates
     # it in-place (deduplication for live/viewport replay races).
     # System prompt entries are always placed at position 0.
@@ -207,7 +207,7 @@ module TUI
     # @param entry [Hash] the entry to insert
     # @return [void]
     def insert_ordered(entry)
-      if entry[:event_type] == "system_prompt"
+      if entry[:message_type] == "system_prompt"
         @entries.unshift(entry)
         return
       end
@@ -222,7 +222,7 @@ module TUI
       if existing
         existing[:data] = entry[:data] if entry.key?(:data)
         existing[:content] = entry[:content] if entry.key?(:content)
-        existing[:event_type] = entry[:event_type] if entry.key?(:event_type)
+        existing[:message_type] = entry[:message_type] if entry.key?(:message_type)
         return
       end
 
@@ -230,8 +230,8 @@ module TUI
       @entries_by_id[id] = entry
     end
 
-    # Inserts an entry in sorted order by event ID. Optimized for the
-    # common case where events arrive in order (appends without scanning).
+    # Inserts an entry in sorted order by message ID. Optimized for the
+    # common case where messages arrive in order (appends without scanning).
     # Entries without IDs (tool counters, etc.) are skipped during the
     # sort scan and don't affect insertion position.
     #
@@ -252,10 +252,10 @@ module TUI
       @entries.insert(insert_pos, entry)
     end
 
-    # Returns the highest event ID in the entries array, scanning from the
+    # Returns the highest message ID in the entries array, scanning from the
     # end for efficiency (entries with IDs are typically at the tail).
     #
-    # @return [Integer, nil] the highest event ID, or nil if no entries have IDs
+    # @return [Integer, nil] the highest message ID, or nil if no entries have IDs
     def last_entry_id
       @entries.reverse_each { |e| return e[:id] if e[:id] }
       nil

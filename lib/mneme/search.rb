@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Mneme
-  # Full-text search over event history using SQLite FTS5.
-  # Covers user messages, agent messages, and think events across all sessions.
+  # Full-text search over message history using SQLite FTS5.
+  # Covers user messages, agent messages, and think messages across all sessions.
   #
   # The interface is intentionally abstract — callers receive {Result} structs
   # and never touch FTS5 directly. A future semantic search backend (embeddings,
@@ -10,21 +10,21 @@ module Mneme
   #
   # @example Search across all sessions
   #   results = Mneme::Search.query("authentication flow")
-  #   results.each { |r| puts "event #{r.event_id}: #{r.snippet}" }
+  #   results.each { |r| puts "message #{r.message_id}: #{r.snippet}" }
   #
   # @example Search within a single session
   #   results = Mneme::Search.query("OAuth config", session_id: 42)
   class Search
     # A single search result with enough context for display and drill-down.
     #
-    # @!attribute event_id [Integer] the event's database ID
-    # @!attribute session_id [Integer] the session owning this event
+    # @!attribute message_id [Integer] the message's database ID
+    # @!attribute session_id [Integer] the session owning this message
     # @!attribute snippet [String] highlighted excerpt from the matching content
     # @!attribute rank [Float] FTS5 relevance score (lower = more relevant)
-    # @!attribute event_type [String] friendly label: human, anima, system, or thought
-    Result = Struct.new(:event_id, :session_id, :snippet, :rank, :event_type, keyword_init: true)
+    # @!attribute message_type [String] friendly label: human, anima, system, or thought
+    Result = Struct.new(:message_id, :session_id, :snippet, :rank, :message_type, keyword_init: true)
 
-    # Searches event history for the given terms.
+    # Searches message history for the given terms.
     #
     # @param terms [String] search query (FTS5 syntax: words, phrases, OR/AND/NOT)
     # @param session_id [Integer, nil] scope to a specific session (nil = all sessions)
@@ -52,7 +52,7 @@ module Mneme
     private
 
     # Executes the FTS5 MATCH query with optional session scoping.
-    # Joins back to events table for session_id and event_type.
+    # Joins back to messages table for session_id and message_type.
     #
     # @return [Array<Hash>] raw database rows
     def execute_fts_query
@@ -66,29 +66,29 @@ module Mneme
     end
 
     # FTS5 query across all sessions.
-    # Contentless FTS5 can't use snippet() — extract content from events directly.
+    # Contentless FTS5 can't use snippet() — extract content from messages directly.
     #
     # Ranking blends BM25 relevance with recency: rank is negative (more
-    # negative = better match), so dividing by a factor > 1 for older events
+    # negative = better match), so dividing by a factor > 1 for older messages
     # moves them closer to zero (less relevant). At decay 0.3, a one-year-old
     # result needs ~30% better keyword relevance to beat an identical match
     # from today.
     def global_sql
       <<~SQL
         SELECT
-          e.id AS event_id,
-          e.session_id,
-          e.event_type,
+          m.id AS message_id,
+          m.session_id,
+          m.message_type,
           CASE
-            WHEN e.event_type IN ('user_message', 'agent_message', 'system_message')
-              THEN substr(json_extract(e.payload, '$.content'), 1, 300)
-            WHEN e.event_type = 'tool_call'
-              THEN substr(json_extract(e.payload, '$.tool_input.thoughts'), 1, 300)
+            WHEN m.message_type IN ('user_message', 'agent_message', 'system_message')
+              THEN substr(json_extract(m.payload, '$.content'), 1, 300)
+            WHEN m.message_type = 'tool_call'
+              THEN substr(json_extract(m.payload, '$.tool_input.thoughts'), 1, 300)
           END AS snippet,
-          rank / (1.0 + ? * (julianday('now') - julianday(e.created_at)) / 365.0) AS rank
-        FROM events_fts
-        JOIN events e ON e.id = events_fts.rowid
-        WHERE events_fts MATCH ?
+          rank / (1.0 + ? * (julianday('now') - julianday(m.created_at)) / 365.0) AS rank
+        FROM messages_fts
+        JOIN messages m ON m.id = messages_fts.rowid
+        WHERE messages_fts MATCH ?
         ORDER BY rank
         LIMIT ?
       SQL
@@ -98,26 +98,26 @@ module Mneme
     def scoped_sql
       <<~SQL
         SELECT
-          e.id AS event_id,
-          e.session_id,
-          e.event_type,
+          m.id AS message_id,
+          m.session_id,
+          m.message_type,
           CASE
-            WHEN e.event_type IN ('user_message', 'agent_message', 'system_message')
-              THEN substr(json_extract(e.payload, '$.content'), 1, 300)
-            WHEN e.event_type = 'tool_call'
-              THEN substr(json_extract(e.payload, '$.tool_input.thoughts'), 1, 300)
+            WHEN m.message_type IN ('user_message', 'agent_message', 'system_message')
+              THEN substr(json_extract(m.payload, '$.content'), 1, 300)
+            WHEN m.message_type = 'tool_call'
+              THEN substr(json_extract(m.payload, '$.tool_input.thoughts'), 1, 300)
           END AS snippet,
-          rank / (1.0 + ? * (julianday('now') - julianday(e.created_at)) / 365.0) AS rank
-        FROM events_fts
-        JOIN events e ON e.id = events_fts.rowid
-        WHERE events_fts MATCH ?
-          AND e.session_id = ?
+          rank / (1.0 + ? * (julianday('now') - julianday(m.created_at)) / 365.0) AS rank
+        FROM messages_fts
+        JOIN messages m ON m.id = messages_fts.rowid
+        WHERE messages_fts MATCH ?
+          AND m.session_id = ?
         ORDER BY rank
         LIMIT ?
       SQL
     end
 
-    FRIENDLY_EVENT_TYPES = {
+    FRIENDLY_MESSAGE_TYPES = {
       "user_message" => "human",
       "agent_message" => "anima",
       "system_message" => "system",
@@ -129,13 +129,13 @@ module Mneme
     # @param row [Hash]
     # @return [Result]
     def build_result(row)
-      raw_type = row["event_type"]
+      raw_type = row["message_type"]
       Result.new(
-        event_id: row["event_id"],
+        message_id: row["message_id"],
         session_id: row["session_id"],
         snippet: row["snippet"],
         rank: row["rank"],
-        event_type: FRIENDLY_EVENT_TYPES.fetch(raw_type, raw_type)
+        message_type: FRIENDLY_MESSAGE_TYPES.fetch(raw_type, raw_type)
       )
     end
 

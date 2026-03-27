@@ -42,7 +42,7 @@ class AgentLoop
 
   # Runs the agent loop for a single user input.
   #
-  # Persists the user event directly (the global Persister skips
+  # Persists the user message directly (the global Persister skips
   # non-pending user messages because {AgentRequestJob} owns their
   # lifecycle). Then emits a bus notification and delegates to {#run}.
   # On error emits {Events::AgentMessage} with the error text.
@@ -53,7 +53,7 @@ class AgentLoop
     text = input.to_s.strip
     return if text.empty?
 
-    persist_user_event(text)
+    persist_user_message(text)
     Events::Bus.emit(Events::UserMessage.new(content: text, session_id: @session.id))
     run
   rescue => error
@@ -140,9 +140,9 @@ class AgentLoop
 
   private
 
-  # @see Session#create_user_event
-  def persist_user_event(content)
-    @session.create_user_event(content)
+  # @see Session#create_user_message
+  def persist_user_message(content)
+    @session.create_user_message(content)
   end
 
   # Assembles LLM options (system prompt, environment context).

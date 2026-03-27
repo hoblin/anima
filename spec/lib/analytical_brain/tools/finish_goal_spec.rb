@@ -116,43 +116,43 @@ RSpec.describe AnalyticalBrain::Tools::FinishGoal do
       end
     end
 
-    context "pinned event cleanup" do
-      let(:event) { session.events.create!(event_type: "user_message", payload: {content: "critical"}, timestamp: 1) }
+    context "pinned message cleanup" do
+      let(:msg) { session.messages.create!(message_type: "user_message", payload: {content: "critical"}, timestamp: 1) }
 
       it "releases orphaned pins when completing a goal" do
         goal = session.goals.create!(description: "Only goal")
-        pin = PinnedEvent.create!(event: event, display_text: "critical")
-        GoalPinnedEvent.create!(goal: goal, pinned_event: pin)
+        pin = PinnedMessage.create!(message: msg, display_text: "critical")
+        GoalPinnedMessage.create!(goal: goal, pinned_message: pin)
 
         result = tool.execute({"goal_id" => goal.id})
 
         expect(result).to include("released 1 orphaned pins")
-        expect(PinnedEvent.find_by(id: pin.id)).to be_nil
+        expect(PinnedMessage.find_by(id: pin.id)).to be_nil
       end
 
       it "keeps pins alive when another active goal references them" do
         goal_a = session.goals.create!(description: "First goal")
         goal_b = session.goals.create!(description: "Second goal")
-        pin = PinnedEvent.create!(event: event, display_text: "critical")
-        GoalPinnedEvent.create!(goal: goal_a, pinned_event: pin)
-        GoalPinnedEvent.create!(goal: goal_b, pinned_event: pin)
+        pin = PinnedMessage.create!(message: msg, display_text: "critical")
+        GoalPinnedMessage.create!(goal: goal_a, pinned_message: pin)
+        GoalPinnedMessage.create!(goal: goal_b, pinned_message: pin)
 
         result = tool.execute({"goal_id" => goal_a.id})
 
         expect(result).not_to include("released")
-        expect(PinnedEvent.find_by(id: pin.id)).to be_present
+        expect(PinnedMessage.find_by(id: pin.id)).to be_present
       end
 
       it "releases pins from cascaded sub-goals too" do
         root = session.goals.create!(description: "Root")
         sub = session.goals.create!(description: "Sub", parent_goal: root)
-        pin = PinnedEvent.create!(event: event, display_text: "critical")
-        GoalPinnedEvent.create!(goal: sub, pinned_event: pin)
+        pin = PinnedMessage.create!(message: msg, display_text: "critical")
+        GoalPinnedMessage.create!(goal: sub, pinned_message: pin)
 
         result = tool.execute({"goal_id" => root.id})
 
         expect(result).to include("released 1 orphaned pins")
-        expect(PinnedEvent.find_by(id: pin.id)).to be_nil
+        expect(PinnedMessage.find_by(id: pin.id)).to be_nil
       end
     end
   end

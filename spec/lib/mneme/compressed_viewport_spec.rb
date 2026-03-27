@@ -6,7 +6,7 @@ RSpec.describe Mneme::CompressedViewport do
   let(:session) { Session.create! }
 
   # Helper to create events with predetermined token counts for deterministic tests.
-  def create_event(type:, content: "msg", token_count: 100, tool_name: nil, tool_input: nil, timestamp: nil)
+  def create_message(type:, content: "msg", token_count: 100, tool_name: nil, tool_input: nil, timestamp: nil)
     payload = case type
     when "tool_call"
       {"content" => "Calling #{tool_name}", "tool_name" => tool_name,
@@ -17,8 +17,8 @@ RSpec.describe Mneme::CompressedViewport do
       {"content" => content}
     end
 
-    session.events.create!(
-      event_type: type,
+    session.messages.create!(
+      message_type: type,
       payload: payload,
       tool_use_id: payload["tool_use_id"],
       timestamp: timestamp || Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
@@ -33,9 +33,9 @@ RSpec.describe Mneme::CompressedViewport do
     end
 
     it "includes zone delimiters" do
-      create_event(type: "user_message", content: "Hello", token_count: 100)
-      create_event(type: "agent_message", content: "Hi there", token_count: 100)
-      create_event(type: "user_message", content: "How are you?", token_count: 100)
+      create_message(type: "user_message", content: "Hello", token_count: 100)
+      create_message(type: "agent_message", content: "Hi there", token_count: 100)
+      create_message(type: "user_message", content: "How are you?", token_count: 100)
 
       viewport = described_class.new(session, token_budget: 10_000)
       result = viewport.render
@@ -46,39 +46,39 @@ RSpec.describe Mneme::CompressedViewport do
     end
 
     it "renders conversation events with event ID prefix" do
-      event = create_event(type: "user_message", content: "Hello world")
+      event = create_message(type: "user_message", content: "Hello world")
 
       viewport = described_class.new(session, token_budget: 10_000)
       result = viewport.render
 
-      expect(result).to include("event #{event.id} User: Hello world")
+      expect(result).to include("message #{event.id} User: Hello world")
     end
 
     it "renders agent messages with Assistant role" do
-      event = create_event(type: "agent_message", content: "I can help")
+      event = create_message(type: "agent_message", content: "I can help")
 
       viewport = described_class.new(session, token_budget: 10_000)
       result = viewport.render
 
-      expect(result).to include("event #{event.id} Assistant: I can help")
+      expect(result).to include("message #{event.id} Assistant: I can help")
     end
 
     it "renders system messages with System role" do
-      event = create_event(type: "system_message", content: "Session started")
+      event = create_message(type: "system_message", content: "Session started")
 
       viewport = described_class.new(session, token_budget: 10_000)
       result = viewport.render
 
-      expect(result).to include("event #{event.id} System: Session started")
+      expect(result).to include("message #{event.id} System: Session started")
     end
 
     it "compresses tool calls to aggregate counters" do
-      create_event(type: "user_message", content: "Run some commands", token_count: 100)
-      create_event(type: "tool_call", tool_name: "bash", token_count: 50)
-      create_event(type: "tool_response", tool_name: "bash", token_count: 50)
-      create_event(type: "tool_call", tool_name: "read", token_count: 50)
-      create_event(type: "tool_response", tool_name: "read", token_count: 50)
-      create_event(type: "agent_message", content: "Done", token_count: 100)
+      create_message(type: "user_message", content: "Run some commands", token_count: 100)
+      create_message(type: "tool_call", tool_name: "bash", token_count: 50)
+      create_message(type: "tool_response", tool_name: "bash", token_count: 50)
+      create_message(type: "tool_call", tool_name: "read", token_count: 50)
+      create_message(type: "tool_response", tool_name: "read", token_count: 50)
+      create_message(type: "agent_message", content: "Done", token_count: 100)
 
       viewport = described_class.new(session, token_budget: 10_000)
       result = viewport.render
@@ -89,10 +89,10 @@ RSpec.describe Mneme::CompressedViewport do
     end
 
     it "uses singular 'tool' for single tool call" do
-      create_event(type: "user_message", content: "Run a command", token_count: 100)
-      create_event(type: "tool_call", tool_name: "bash", token_count: 50)
-      create_event(type: "tool_response", tool_name: "bash", token_count: 50)
-      create_event(type: "agent_message", content: "Done", token_count: 100)
+      create_message(type: "user_message", content: "Run a command", token_count: 100)
+      create_message(type: "tool_call", tool_name: "bash", token_count: 50)
+      create_message(type: "tool_response", tool_name: "bash", token_count: 50)
+      create_message(type: "agent_message", content: "Done", token_count: 100)
 
       viewport = described_class.new(session, token_budget: 10_000)
       result = viewport.render
@@ -101,20 +101,20 @@ RSpec.describe Mneme::CompressedViewport do
     end
 
     it "renders think events as full text (not compressed)" do
-      create_event(type: "user_message", content: "Fix the bug", token_count: 100)
-      think = create_event(
+      create_message(type: "user_message", content: "Fix the bug", token_count: 100)
+      think = create_message(
         type: "tool_call",
         tool_name: "think",
         tool_input: {"thoughts" => "The root cause is a nil check", "visibility" => "inner"},
         token_count: 50
       )
-      create_event(type: "tool_response", tool_name: "think", token_count: 10)
-      create_event(type: "agent_message", content: "Fixed it", token_count: 100)
+      create_message(type: "tool_response", tool_name: "think", token_count: 10)
+      create_message(type: "agent_message", content: "Fixed it", token_count: 100)
 
       viewport = described_class.new(session, token_budget: 10_000)
       result = viewport.render
 
-      expect(result).to include("event #{think.id} Think: The root cause is a nil check")
+      expect(result).to include("message #{think.id} Think: The root cause is a nil check")
       expect(result).not_to include("[1 tool called]")
     end
 
@@ -122,7 +122,7 @@ RSpec.describe Mneme::CompressedViewport do
       # Create 9 events, each 100 tokens = 900 total. Zones are ~300 each.
       9.times.map do |i|
         type = i.even? ? "user_message" : "agent_message"
-        create_event(type: type, content: "message #{i}", token_count: 100)
+        create_message(type: type, content: "message #{i}", token_count: 100)
       end
 
       viewport = described_class.new(session, token_budget: 10_000)
@@ -140,12 +140,12 @@ RSpec.describe Mneme::CompressedViewport do
     end
   end
 
-  describe "from_event_id filtering" do
+  describe "from_message_id filtering" do
     it "starts from the specified event ID" do
-      create_event(type: "user_message", content: "old message", token_count: 100)
-      new_event = create_event(type: "user_message", content: "new message", token_count: 100)
+      create_message(type: "user_message", content: "old message", token_count: 100)
+      new_event = create_message(type: "user_message", content: "new message", token_count: 100)
 
-      viewport = described_class.new(session, token_budget: 10_000, from_event_id: new_event.id)
+      viewport = described_class.new(session, token_budget: 10_000, from_message_id: new_event.id)
       result = viewport.render
 
       expect(result).not_to include("old message")
@@ -156,7 +156,7 @@ RSpec.describe Mneme::CompressedViewport do
   describe "token budget" do
     it "respects the token budget when selecting events" do
       10.times do |i|
-        create_event(type: "user_message", content: "message #{i}", token_count: 1000)
+        create_message(type: "user_message", content: "message #{i}", token_count: 1000)
       end
 
       # Budget for 3 events (3000 tokens)
@@ -173,17 +173,17 @@ RSpec.describe Mneme::CompressedViewport do
 
   describe "#events" do
     it "returns the raw events selected for the viewport" do
-      create_event(type: "user_message", content: "Hello", token_count: 100)
-      create_event(type: "agent_message", content: "Hi", token_count: 100)
+      create_message(type: "user_message", content: "Hello", token_count: 100)
+      create_message(type: "agent_message", content: "Hi", token_count: 100)
 
       viewport = described_class.new(session, token_budget: 10_000)
-      expect(viewport.events.size).to eq(2)
+      expect(viewport.messages.size).to eq(2)
     end
 
     it "excludes pending events" do
-      create_event(type: "user_message", content: "delivered", token_count: 100)
-      session.events.create!(
-        event_type: "user_message",
+      create_message(type: "user_message", content: "delivered", token_count: 100)
+      session.messages.create!(
+        message_type: "user_message",
         payload: {"content" => "pending"},
         timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
         token_count: 100,
@@ -191,7 +191,7 @@ RSpec.describe Mneme::CompressedViewport do
       )
 
       viewport = described_class.new(session, token_budget: 10_000)
-      expect(viewport.events.size).to eq(1)
+      expect(viewport.messages.size).to eq(1)
     end
   end
 end

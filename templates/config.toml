@@ -3,6 +3,14 @@
 # Edit settings below to customize Anima's behavior.
 # Changes take effect immediately — no restart needed.
 
+# ─── Agent Identity ──────────────────────────────────────────────
+
+[agent]
+
+# The agent's display name. Shown in the TUI, chat client, and soul template.
+# Change this to personalize the agent — when Bonk migrates, the chat says "Bonk".
+name = "Anima"
+
 # ─── LLM ───────────────────────────────────────────────────────
 
 [llm]
@@ -122,8 +130,8 @@ blocking_on_user_message = true
 # Run the analytical brain asynchronously after the main agent completes.
 blocking_on_agent_message = false
 
-# Number of recent events to include in the analytical brain's context window.
-event_window = 20
+# Number of recent messages to include in the analytical brain's context window.
+message_window = 20
 
 # ─── Mneme (Memory Department) ──────────────────────────────────
 
@@ -147,8 +155,8 @@ l2_budget_fraction = 0.05
 # Number of uncovered Level 1 snapshots that triggers Level 2 compression.
 l2_snapshot_threshold = 5
 
-# Fraction of the main viewport token budget reserved for pinned events.
-# Pinned events appear between snapshots and the sliding window in the Goals section.
+# Fraction of the main viewport token budget reserved for pinned messages.
+# Pinned messages appear between snapshots and the sliding window in the Goals section.
 pinned_budget_fraction = 0.05
 
 # ─── Recall (Associative Memory) ─────────────────────────────────
@@ -165,7 +173,7 @@ budget_fraction = 0.05
 # Maximum tokens per individual recall snippet.
 max_snippet_tokens = 512
 
-# Recency decay factor for search ranking. Blends FTS5 relevance with event
+# Recency decay factor for search ranking. Blends FTS5 relevance with message
 # age so recent memories win ties. 0.0 = pure relevance, higher = stronger
 # recency bias. At 0.3 a one-year-old result needs ~30% better keyword
 # relevance to beat an identical match from today.

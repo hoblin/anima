@@ -35,7 +35,7 @@ RSpec.describe AgentRequestJob do
 
   describe "#perform" do
     it "runs the agent loop for the given session" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       described_class.perform_now(session.id)
 
@@ -43,7 +43,7 @@ RSpec.describe AgentRequestJob do
     end
 
     it "sets processing flag during execution" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       processing_during_run = nil
       allow(agent_loop).to receive(:run) do
@@ -58,7 +58,7 @@ RSpec.describe AgentRequestJob do
 
     it "skips execution when session is already processing" do
       session.update!(processing: true)
-      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       described_class.perform_now(session.id)
 
@@ -71,7 +71,7 @@ RSpec.describe AgentRequestJob do
       let(:child) { Session.create!(parent_session: parent, prompt: "task") }
 
       it "broadcasts children_updated when claiming processing" do
-        child.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+        child.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
         expect(ActionCable.server).to receive(:broadcast).with(
           "session_#{parent.id}",
@@ -82,7 +82,7 @@ RSpec.describe AgentRequestJob do
       end
 
       it "broadcasts children_updated when releasing processing" do
-        child.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+        child.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
         broadcasts = []
         allow(ActionCable.server).to receive(:broadcast) { |stream, data| broadcasts << data }
@@ -94,7 +94,7 @@ RSpec.describe AgentRequestJob do
       end
 
       it "does not broadcast for root sessions" do
-        session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
         expect(ActionCable.server).not_to receive(:broadcast)
 
@@ -106,7 +106,7 @@ RSpec.describe AgentRequestJob do
       before { allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(true) }
 
       it "runs analytical brain synchronously before the agent loop when enabled" do
-        session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
         analytical_brain_ran = false
         allow(AnalyticalBrain::Runner).to receive(:new).and_wrap_original do |method, *args|
@@ -123,8 +123,8 @@ RSpec.describe AgentRequestJob do
       it "skips blocking analytical brain for sub-agent sessions" do
         parent = Session.create!
         child = Session.create!(parent_session: parent, prompt: "sub-agent")
-        child.events.create!(event_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
-        child.events.create!(event_type: "agent_message", payload: {"content" => "done"}, timestamp: 2)
+        child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
+        child.messages.create!(message_type: "agent_message", payload: {"content" => "done"}, timestamp: 2)
 
         expect(AnalyticalBrain::Runner).not_to receive(:new)
 
@@ -132,8 +132,8 @@ RSpec.describe AgentRequestJob do
       end
 
       it "continues with agent loop even if analytical brain fails" do
-        session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
-        session.events.create!(event_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+        session.messages.create!(message_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
 
         allow(AnalyticalBrain::Runner).to receive(:new).and_raise(RuntimeError, "brain exploded")
 
@@ -143,15 +143,15 @@ RSpec.describe AgentRequestJob do
     end
 
     it "schedules analytical brain after the agent loop completes" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
-      session.events.create!(event_type: "agent_message", payload: {"content" => "Hi!"}, timestamp: 2)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+      session.messages.create!(message_type: "agent_message", payload: {"content" => "Hi!"}, timestamp: 2)
 
       expect { described_class.perform_now(session.id) }
         .to have_enqueued_job(AnalyticalBrainJob).with(session.id)
     end
 
     it "finalizes the agent loop after completion" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       described_class.perform_now(session.id)
 
@@ -159,7 +159,7 @@ RSpec.describe AgentRequestJob do
     end
 
     it "finalizes the agent loop even on error" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       allow(agent_loop).to receive(:run).and_raise(Providers::Anthropic::AuthenticationError, "bad token")
 
@@ -170,7 +170,7 @@ RSpec.describe AgentRequestJob do
 
     it "clears interrupt_requested flag after completion" do
       session.update_column(:interrupt_requested, true)
-      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       described_class.perform_now(session.id)
 
@@ -179,7 +179,7 @@ RSpec.describe AgentRequestJob do
 
     it "clears interrupt_requested flag even on error" do
       session.update_column(:interrupt_requested, true)
-      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       allow(agent_loop).to receive(:run).and_raise(Providers::Anthropic::AuthenticationError, "bad token")
 
@@ -189,7 +189,7 @@ RSpec.describe AgentRequestJob do
     end
 
     it "clears processing flag even on error" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       allow(agent_loop).to receive(:run).and_raise(Providers::Anthropic::AuthenticationError, "bad token")
 
@@ -201,7 +201,7 @@ RSpec.describe AgentRequestJob do
 
   describe "non-transient error handling" do
     before do
-      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
     end
 
     context "authentication failure (HTTP 401)" do

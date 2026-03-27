@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-# Decorates system_message events for display in the TUI.
+# Decorates system_message records for display in the TUI.
 # Hidden in basic mode. Verbose and debug modes return timestamped system info.
-class SystemMessageDecorator < EventDecorator
+class SystemMessageDecorator < MessageDecorator
   # @return [nil] system messages are hidden in basic mode
   def render_basic
     nil

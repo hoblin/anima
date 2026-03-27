@@ -60,6 +60,13 @@ module Anima
         self.config_path = nil
       end
 
+      # ─── Agent Identity ─────────────────────────────────────────────
+
+      # The agent's display name. Separates engine identity ("Anima") from
+      # agent identity — any agent running on Anima can name itself.
+      # @return [String]
+      def agent_name = get("agent", "name")
+
       # ─── LLM ───────────────────────────────────────────────────────
 
       # Primary model for conversations.
@@ -195,9 +202,9 @@ module Anima
       # @return [Boolean]
       def analytical_brain_blocking_on_agent_message = get("analytical_brain", "blocking_on_agent_message")
 
-      # Number of recent events to include in the analytical brain's context window.
+      # Number of recent messages to include in the analytical brain's context window.
       # @return [Integer]
-      def analytical_brain_event_window = get("analytical_brain", "event_window")
+      def analytical_brain_message_window = get("analytical_brain", "message_window")
 
       # ─── Mneme (Memory Department) ────────────────────────────────
 
@@ -221,8 +228,8 @@ module Anima
       # @return [Integer]
       def mneme_l2_snapshot_threshold = get("mneme", "l2_snapshot_threshold")
 
-      # Fraction of the main viewport token budget reserved for pinned events.
-      # Pinned events appear between snapshots and the sliding window.
+      # Fraction of the main viewport token budget reserved for pinned messages.
+      # Pinned messages appear between snapshots and the sliding window.
       # @return [Float]
       def mneme_pinned_budget_fraction = get("mneme", "pinned_budget_fraction")
 

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Decorates tool_response events for display in the TUI.
+# Decorates tool_response records for display in the TUI.
 # Hidden in basic mode — tool activity is represented by the
 # aggregated tool counter instead. Verbose mode returns truncated
 # output with a success/failure indicator and tool name for per-tool
@@ -9,7 +9,7 @@
 #
 # Think tool responses ("OK") are hidden in basic and verbose modes
 # because the value is in the tool_call (the thoughts), not the response.
-class ToolResponseDecorator < EventDecorator
+class ToolResponseDecorator < MessageDecorator
   THINK_TOOL = "think"
 
   # @return [nil] tool responses are hidden in basic mode

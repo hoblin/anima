@@ -17,7 +17,8 @@ RSpec.describe Anima::Settings do
       "tools" => {"max_file_size" => 10_485_760, "max_read_lines" => 2_000, "max_read_bytes" => 50_000, "max_web_response_bytes" => 100_000},
       "paths" => {"soul" => "/home/test/.anima/soul.md"},
       "session" => {"default_view_mode" => "basic", "name_generation_interval" => 30},
-      "analytical_brain" => {"max_tokens" => 128, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "event_window" => 20},
+      "agent" => {"name" => "Anima"},
+      "analytical_brain" => {"max_tokens" => 128, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "message_window" => 20},
       "environment" => {"project_files" => ["CLAUDE.md", "AGENTS.md", "README.md", "CONTRIBUTING.md"], "project_files_max_depth" => 3},
       "github" => {"repo" => "hoblin/anima", "label" => "anima-wants"}
     }
@@ -59,12 +60,16 @@ RSpec.describe Anima::Settings do
       expect(described_class.analytical_brain_max_tokens).to eq(128)
       expect(described_class.analytical_brain_blocking_on_user_message).to be true
       expect(described_class.analytical_brain_blocking_on_agent_message).to be false
-      expect(described_class.analytical_brain_event_window).to eq(20)
+      expect(described_class.analytical_brain_message_window).to eq(20)
     end
 
     it "reads environment settings" do
       expect(described_class.project_files_whitelist).to eq(["CLAUDE.md", "AGENTS.md", "README.md", "CONTRIBUTING.md"])
       expect(described_class.project_files_max_depth).to eq(3)
+    end
+
+    it "reads agent settings" do
+      expect(described_class.agent_name).to eq("Anima")
     end
 
     it "reads GitHub settings" do
@@ -179,7 +184,7 @@ RSpec.describe Anima::Settings do
         max_tokens = 128
         blocking_on_user_message = true
         blocking_on_agent_message = false
-        event_window = 20
+        message_window = 20
         [environment]
         project_files = ["CLAUDE.md", "README.md"]
         project_files_max_depth = 3
@@ -231,7 +236,7 @@ RSpec.describe Anima::Settings do
         max_tokens = 128
         blocking_on_user_message = true
         blocking_on_agent_message = false
-        event_window = 20
+        message_window = 20
       TOML
       config_file.flush
       FileUtils.touch(config_file.path, mtime: Time.now + 1)

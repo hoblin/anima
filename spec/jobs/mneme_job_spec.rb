@@ -43,8 +43,8 @@ RSpec.describe MnemeJob do
     it "triggers L2 compression when enough uncovered L1 snapshots accumulate" do
       3.times do |i|
         session.snapshots.create!(
-          text: "Summary #{i}", from_event_id: i * 10 + 1,
-          to_event_id: (i + 1) * 10, level: 1, token_count: 50
+          text: "Summary #{i}", from_message_id: i * 10 + 1,
+          to_message_id: (i + 1) * 10, level: 1, token_count: 50
         )
       end
 
@@ -55,7 +55,7 @@ RSpec.describe MnemeJob do
 
     it "does not trigger L2 compression when below threshold" do
       session.snapshots.create!(
-        text: "Summary", from_event_id: 1, to_event_id: 10, level: 1, token_count: 50
+        text: "Summary", from_message_id: 1, to_message_id: 10, level: 1, token_count: 50
       )
 
       described_class.perform_now(session.id)
@@ -66,13 +66,13 @@ RSpec.describe MnemeJob do
     it "excludes L1 snapshots covered by L2 from the count" do
       3.times do |i|
         session.snapshots.create!(
-          text: "Summary #{i}", from_event_id: i * 10 + 1,
-          to_event_id: (i + 1) * 10, level: 1, token_count: 50
+          text: "Summary #{i}", from_message_id: i * 10 + 1,
+          to_message_id: (i + 1) * 10, level: 1, token_count: 50
         )
       end
       # L2 covers all three
       session.snapshots.create!(
-        text: "L2", from_event_id: 1, to_event_id: 30, level: 2, token_count: 80
+        text: "L2", from_message_id: 1, to_message_id: 30, level: 2, token_count: 80
       )
 
       described_class.perform_now(session.id)

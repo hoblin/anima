@@ -14,7 +14,7 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
         event = Events::AgentMessage.new(content: "Here's my analysis.", session_id: child.id)
         router.emit(name: event.event_name, payload: event.to_h)
 
-        parent_msg = parent.events.find_by(event_type: "user_message")
+        parent_msg = parent.messages.find_by(message_type: "user_message")
         expect(parent_msg).to be_present
         expect(parent_msg.payload["content"]).to include("loop-sleuth")
         expect(parent_msg.payload["content"]).to include("Here's my analysis.")
@@ -24,7 +24,7 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
         event = Events::AgentMessage.new(content: "Done!", session_id: child.id)
         router.emit(name: event.event_name, payload: event.to_h)
 
-        parent_msg = parent.events.find_by(event_type: "user_message")
+        parent_msg = parent.messages.find_by(message_type: "user_message")
         expect(parent_msg.payload["content"]).to eq("[sub-agent @loop-sleuth]: Done!")
       end
 
@@ -41,7 +41,7 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
         event = Events::AgentMessage.new(content: "Result", session_id: unnamed.id)
         router.emit(name: event.event_name, payload: event.to_h)
 
-        parent_msg = parent.events.find_by(event_type: "user_message")
+        parent_msg = parent.messages.find_by(message_type: "user_message")
         expect(parent_msg.payload["content"]).to start_with("[sub-agent @agent-#{unnamed.id}]:")
       end
     end
@@ -60,7 +60,7 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
 
         user_event = emitted.find { |e| e.dig(:payload, :type) == "user_message" }
         expect(user_event).to be_present
-        expect(user_event.dig(:payload, :status)).to eq(Event::PENDING_STATUS)
+        expect(user_event.dig(:payload, :status)).to eq(Message::PENDING_STATUS)
         expect(user_event.dig(:payload, :session_id)).to eq(parent.id)
         expect(user_event.dig(:payload, :content)).to include("[sub-agent @loop-sleuth]:")
         expect(user_event.dig(:payload, :content)).to include("Here's my analysis.")
@@ -79,7 +79,7 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
         event = Events::AgentMessage.new(content: "Result ready.", session_id: child.id)
         router.emit(name: event.event_name, payload: event.to_h)
 
-        expect(parent.events.where(event_type: "user_message", status: nil).count).to eq(0)
+        expect(parent.messages.where(message_type: "user_message", status: nil).count).to eq(0)
       end
     end
 
@@ -87,14 +87,14 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
       event = Events::UserMessage.new(content: "hi", session_id: child.id)
       router.emit(name: event.event_name, payload: event.to_h)
 
-      expect(parent.events.where(event_type: "user_message").count).to eq(0)
+      expect(parent.messages.where(message_type: "user_message").count).to eq(0)
     end
 
     it "ignores events with empty content" do
       event = Events::AgentMessage.new(content: "", session_id: child.id)
       router.emit(name: event.event_name, payload: event.to_h)
 
-      expect(parent.events.where(event_type: "user_message").count).to eq(0)
+      expect(parent.messages.where(message_type: "user_message").count).to eq(0)
     end
 
     it "ignores events with missing session" do
@@ -115,7 +115,7 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
       )
       router.emit(name: event.event_name, payload: event.to_h)
 
-      child_msg = child_a.events.find_by(event_type: "user_message")
+      child_msg = child_a.messages.find_by(message_type: "user_message")
       expect(child_msg).to be_present
       expect(child_msg.payload["content"]).to include("Check the edit tool next.")
     end
@@ -127,8 +127,8 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
       )
       router.emit(name: event.event_name, payload: event.to_h)
 
-      expect(child_a.events.where(event_type: "user_message").count).to eq(1)
-      expect(child_b.events.where(event_type: "user_message").count).to eq(1)
+      expect(child_a.messages.where(message_type: "user_message").count).to eq(1)
+      expect(child_b.messages.where(message_type: "user_message").count).to eq(1)
     end
 
     it "enqueues AgentRequestJob for each mentioned child" do
@@ -149,8 +149,8 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
       )
       router.emit(name: event.event_name, payload: event.to_h)
 
-      expect(child_a.events.where(event_type: "user_message").count).to eq(0)
-      expect(child_b.events.where(event_type: "user_message").count).to eq(0)
+      expect(child_a.messages.where(message_type: "user_message").count).to eq(0)
+      expect(child_b.messages.where(message_type: "user_message").count).to eq(0)
     end
 
     it "does not route when message has no @mentions" do
@@ -160,7 +160,7 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
       )
       router.emit(name: event.event_name, payload: event.to_h)
 
-      expect(child_a.events.where(event_type: "user_message").count).to eq(0)
+      expect(child_a.messages.where(message_type: "user_message").count).to eq(0)
     end
 
     it "does not route to children without names" do
@@ -172,7 +172,7 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
       )
       router.emit(name: event.event_name, payload: event.to_h)
 
-      expect(unnamed.events.where(event_type: "user_message").count).to eq(0)
+      expect(unnamed.messages.where(message_type: "user_message").count).to eq(0)
     end
 
     context "when child is processing" do
@@ -192,7 +192,7 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
 
         user_event = emitted.find { |e| e.dig(:payload, :type) == "user_message" }
         expect(user_event).to be_present
-        expect(user_event.dig(:payload, :status)).to eq(Event::PENDING_STATUS)
+        expect(user_event.dig(:payload, :status)).to eq(Message::PENDING_STATUS)
         expect(user_event.dig(:payload, :session_id)).to eq(child_a.id)
         expect(user_event.dig(:payload, :content)).to include("Check the edit tool next.")
       ensure
@@ -216,7 +216,7 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
         )
         router.emit(name: event.event_name, payload: event.to_h)
 
-        expect(child_a.events.where(event_type: "user_message", status: nil).count).to eq(0)
+        expect(child_a.messages.where(message_type: "user_message", status: nil).count).to eq(0)
       end
     end
   end

@@ -2,37 +2,37 @@
 
 require "rails_helper"
 
-RSpec.describe EventDecorator, type: :decorator do
+RSpec.describe MessageDecorator, type: :decorator do
   let(:session) { Session.create! }
 
   describe ".for" do
-    context "with Event AR models" do
+    context "with Message AR models" do
       it "returns UserMessageDecorator for user_message events" do
-        event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+        event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
 
         expect(described_class.for(event)).to be_a(UserMessageDecorator)
       end
 
       it "returns AgentMessageDecorator for agent_message events" do
-        event = session.events.create!(event_type: "agent_message", payload: {"content" => "hello"}, timestamp: 1)
+        event = session.messages.create!(message_type: "agent_message", payload: {"content" => "hello"}, timestamp: 1)
 
         expect(described_class.for(event)).to be_a(AgentMessageDecorator)
       end
 
       it "returns ToolCallDecorator for tool_call events" do
-        event = session.events.create!(event_type: "tool_call", payload: {"content" => "calling bash"}, tool_use_id: "toolu_test1", timestamp: 1)
+        event = session.messages.create!(message_type: "tool_call", payload: {"content" => "calling bash"}, tool_use_id: "toolu_test1", timestamp: 1)
 
         expect(described_class.for(event)).to be_a(ToolCallDecorator)
       end
 
       it "returns ToolResponseDecorator for tool_response events" do
-        event = session.events.create!(event_type: "tool_response", payload: {"content" => "output"}, tool_use_id: "toolu_test2", timestamp: 1)
+        event = session.messages.create!(message_type: "tool_response", payload: {"content" => "output"}, tool_use_id: "toolu_test2", timestamp: 1)
 
         expect(described_class.for(event)).to be_a(ToolResponseDecorator)
       end
 
       it "returns SystemMessageDecorator for system_message events" do
-        event = session.events.create!(event_type: "system_message", payload: {"content" => "boot"}, timestamp: 1)
+        event = session.messages.create!(message_type: "system_message", payload: {"content" => "boot"}, timestamp: 1)
 
         expect(described_class.for(event)).to be_a(SystemMessageDecorator)
       end
@@ -71,7 +71,7 @@ RSpec.describe EventDecorator, type: :decorator do
 
   describe "#render" do
     it "dispatches to render_basic for basic mode" do
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       decorator = described_class.for(event)
 
       expect(decorator.render("basic")).to eq({role: :user, content: "hi"})
@@ -79,14 +79,14 @@ RSpec.describe EventDecorator, type: :decorator do
 
     it "dispatches to render_verbose for verbose mode" do
       ts = 1_709_312_325_000_000_000
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: ts)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: ts)
       decorator = described_class.for(event)
 
       expect(decorator.render("verbose")).to eq({role: :user, content: "hi", timestamp: ts})
     end
 
     it "dispatches to render_debug for debug mode" do
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       decorator = described_class.for(event)
 
       result = decorator.render("debug")
@@ -97,14 +97,14 @@ RSpec.describe EventDecorator, type: :decorator do
     end
 
     it "raises ArgumentError for invalid mode" do
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       decorator = described_class.for(event)
 
       expect { decorator.render("hacker_mode") }.to raise_error(ArgumentError, /Invalid view mode/)
     end
 
     it "raises ArgumentError for nil mode" do
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       decorator = described_class.for(event)
 
       expect { decorator.render(nil) }.to raise_error(ArgumentError, /Invalid view mode/)
@@ -142,8 +142,8 @@ RSpec.describe EventDecorator, type: :decorator do
 
   describe "#token_info (private)" do
     it "returns exact count when token_count is positive" do
-      event = session.events.create!(
-        event_type: "user_message", payload: {"content" => "hello"}, timestamp: 1, token_count: 42
+      event = session.messages.create!(
+        message_type: "user_message", payload: {"content" => "hello"}, timestamp: 1, token_count: 42
       )
       decorator = described_class.for(event)
 
@@ -151,8 +151,8 @@ RSpec.describe EventDecorator, type: :decorator do
     end
 
     it "returns estimated count when token_count is zero" do
-      event = session.events.create!(
-        event_type: "user_message", payload: {"content" => "hello"}, timestamp: 1
+      event = session.messages.create!(
+        message_type: "user_message", payload: {"content" => "hello"}, timestamp: 1
       )
       decorator = described_class.for(event)
       result = decorator.send(:token_info)
@@ -172,7 +172,7 @@ RSpec.describe EventDecorator, type: :decorator do
 
   describe "#truncate_lines (private)" do
     let(:decorator) do
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       described_class.for(event)
     end
 
@@ -207,7 +207,7 @@ RSpec.describe EventDecorator, type: :decorator do
     end
 
     it "dispatches via render for brain mode" do
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "hello"}, timestamp: 1)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hello"}, timestamp: 1)
       decorator = described_class.for(event)
 
       expect(decorator.render("brain")).to eq("User: hello")
@@ -216,7 +216,7 @@ RSpec.describe EventDecorator, type: :decorator do
 
   describe "#truncate_middle (private)" do
     let(:decorator) do
-      event = session.events.create!(event_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       described_class.for(event)
     end
 

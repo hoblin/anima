@@ -3,8 +3,8 @@
 module Events
   module Subscribers
     # Bridges transient (non-persisted) events to ActionCable so clients
-    # receive them over WebSocket. Persisted events reach clients via
-    # {Event::Broadcasting} callbacks; this subscriber handles events
+    # receive them over WebSocket. Persisted messages reach clients via
+    # {Message::Broadcasting} callbacks; this subscriber handles events
     # that never touch the database.
     #
     # @example Registering at boot

@@ -22,8 +22,8 @@ RSpec.describe AnalyticalBrain::Runner do
 
     context "with conversation events" do
       before do
-        session.events.create!(event_type: "user_message", payload: {"content" => "Tell me about Ruby"}, timestamp: 1)
-        session.events.create!(event_type: "agent_message", payload: {"content" => "Ruby is great!"}, timestamp: 2)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "Tell me about Ruby"}, timestamp: 1)
+        session.messages.create!(message_type: "agent_message", payload: {"content" => "Ruby is great!"}, timestamp: 2)
       end
 
       it "calls chat_with_tools with a transcript of recent events" do
@@ -232,21 +232,21 @@ RSpec.describe AnalyticalBrain::Runner do
 
     context "with tool events in context" do
       before do
-        session.events.create!(event_type: "user_message", payload: {"content" => "Run ls"}, timestamp: 1)
-        session.events.create!(
-          event_type: "tool_call",
+        session.messages.create!(message_type: "user_message", payload: {"content" => "Run ls"}, timestamp: 1)
+        session.messages.create!(
+          message_type: "tool_call",
           payload: {"content" => "Calling bash", "tool_name" => "bash",
                     "tool_input" => {"command" => "ls"}, "tool_use_id" => "t1"},
           tool_use_id: "t1",
           timestamp: 2
         )
-        session.events.create!(
-          event_type: "tool_response",
+        session.messages.create!(
+          message_type: "tool_response",
           payload: {"content" => "file1.rb\nfile2.rb", "tool_name" => "bash", "tool_use_id" => "t1"},
           tool_use_id: "t1",
           timestamp: 3
         )
-        session.events.create!(event_type: "agent_message", payload: {"content" => "Here are the files."}, timestamp: 4)
+        session.messages.create!(message_type: "agent_message", payload: {"content" => "Here are the files."}, timestamp: 4)
       end
 
       it "includes tool call with name and params in transcript" do
@@ -279,9 +279,9 @@ RSpec.describe AnalyticalBrain::Runner do
 
     context "with think tool events" do
       before do
-        session.events.create!(event_type: "user_message", payload: {"content" => "Fix the auth bug"}, timestamp: 1)
-        session.events.create!(
-          event_type: "tool_call",
+        session.messages.create!(message_type: "user_message", payload: {"content" => "Fix the auth bug"}, timestamp: 1)
+        session.messages.create!(
+          message_type: "tool_call",
           payload: {"content" => "thinking", "tool_name" => "think",
                     "tool_input" => {"thoughts" => "Three auth failures all in OAuth — config issue, not individual tests.",
                                      "visibility" => "inner"},
@@ -289,8 +289,8 @@ RSpec.describe AnalyticalBrain::Runner do
           tool_use_id: "t_think",
           timestamp: 2
         )
-        session.events.create!(
-          event_type: "tool_response",
+        session.messages.create!(
+          message_type: "tool_response",
           payload: {"content" => "OK", "tool_name" => "think", "tool_use_id" => "t_think"},
           tool_use_id: "t_think",
           timestamp: 3
@@ -330,7 +330,7 @@ RSpec.describe AnalyticalBrain::Runner do
       it "limits to the configured event window" do
         25.times do |i|
           type = i.even? ? "user_message" : "agent_message"
-          session.events.create!(event_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
+          session.messages.create!(message_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
         end
 
         captured_messages = nil
@@ -350,7 +350,7 @@ RSpec.describe AnalyticalBrain::Runner do
       it "preserves chronological order in transcript" do
         5.times do |i|
           type = i.even? ? "user_message" : "agent_message"
-          session.events.create!(event_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
+          session.messages.create!(message_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
         end
 
         captured_messages = nil
@@ -367,21 +367,21 @@ RSpec.describe AnalyticalBrain::Runner do
       end
     end
 
-    context "event non-persistence", :vcr do
-      it "does not create Event records during execution" do
-        session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
-        session.events.create!(event_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
+    context "message non-persistence", :vcr do
+      it "does not create Message records during execution" do
+        session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+        session.messages.create!(message_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
 
         real_runner = described_class.new(session)
 
-        expect { real_runner.call }.not_to change(Event, :count)
+        expect { real_runner.call }.not_to change(Message, :count)
       end
     end
 
     context "integration with real LLM", :vcr do
       it "renames an unnamed session based on conversation topic" do
-        session.events.create!(event_type: "user_message", payload: {"content" => "Help me set up PostgreSQL replication for our Rails app"}, timestamp: 1)
-        session.events.create!(event_type: "agent_message", payload: {"content" => "I'll help you configure PostgreSQL streaming replication with your Rails app."}, timestamp: 2)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "Help me set up PostgreSQL replication for our Rails app"}, timestamp: 1)
+        session.messages.create!(message_type: "agent_message", payload: {"content" => "I'll help you configure PostgreSQL streaming replication with your Rails app."}, timestamp: 2)
 
         described_class.new(session).call
 
@@ -390,8 +390,8 @@ RSpec.describe AnalyticalBrain::Runner do
 
       it "does not change an already-named session when topic hasn't shifted" do
         session.update!(name: "🔧 Existing Name")
-        session.events.create!(event_type: "user_message", payload: {"content" => "Continue with the fix"}, timestamp: 1)
-        session.events.create!(event_type: "agent_message", payload: {"content" => "Sure, continuing."}, timestamp: 2)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "Continue with the fix"}, timestamp: 1)
+        session.messages.create!(message_type: "agent_message", payload: {"content" => "Sure, continuing."}, timestamp: 2)
 
         described_class.new(session).call
 
@@ -403,8 +403,8 @@ RSpec.describe AnalyticalBrain::Runner do
   describe "modular responsibility composition" do
     context "parent session" do
       before do
-        session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
-        session.events.create!(event_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+        session.messages.create!(message_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
       end
 
       it "registers rename_session tool" do
@@ -501,8 +501,8 @@ RSpec.describe AnalyticalBrain::Runner do
       let(:child_runner) { described_class.new(child_session, client: client) }
 
       before do
-        child_session.events.create!(
-          event_type: "user_message",
+        child_session.messages.create!(
+          message_type: "user_message",
           payload: {"content" => "Read lib/agent_loop.rb and summarize tool flow"},
           timestamp: 1
         )
@@ -633,8 +633,8 @@ RSpec.describe AnalyticalBrain::Runner do
 
   describe "default client configuration", :vcr do
     it "uses the fast model" do
-      session.events.create!(event_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
-      session.events.create!(event_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
+      session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+      session.messages.create!(message_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
 
       described_class.new(session).call
       # Verified by cassette containing model: claude-haiku-4-5 in request body

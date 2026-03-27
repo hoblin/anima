@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # A conversation session — the fundamental unit of agent interaction.
-# Owns an ordered stream of {Event} records representing everything
+# Owns an ordered stream of {Message} records representing everything
 # that happened: user messages, agent responses, tool calls, etc.
 #
 # Sessions form a hierarchy: a main session can spawn child sessions
@@ -15,10 +15,10 @@ class Session < ApplicationRecord
 
   serialize :granted_tools, coder: JSON
 
-  has_many :events, -> { order(:id) }, dependent: :destroy
+  has_many :messages, -> { order(:id) }, dependent: :destroy
   has_many :goals, dependent: :destroy
   has_many :snapshots, dependent: :destroy
-  has_many :pinned_events, through: :events
+  has_many :pinned_messages, through: :messages
 
   belongs_to :parent_session, class_name: "Session", optional: true
   has_many :child_sessions, class_name: "Session", foreign_key: :parent_session_id, dependent: :destroy
@@ -46,34 +46,34 @@ class Session < ApplicationRecord
     parent_session_id.present?
   end
 
-  # Checks whether the Mneme terminal event has left the viewport and
-  # enqueues {MnemeJob} when it has. On the first event of a new session,
+  # Checks whether the Mneme terminal message has left the viewport and
+  # enqueues {MnemeJob} when it has. On the first message of a new session,
   # initializes the boundary pointer.
   #
-  # The terminal event is always a conversation event (user/agent message
+  # The terminal message is always a conversation message (user/agent message
   # or think tool_call), never a bare tool_call/tool_response.
   #
   # @return [void]
   def schedule_mneme!
     return if sub_agent?
 
-    # Initialize boundary on first conversation event
-    if mneme_boundary_event_id.nil?
-      first_conversation = events.deliverable
-        .where(event_type: Event::CONVERSATION_TYPES)
+    # Initialize boundary on first conversation message
+    if mneme_boundary_message_id.nil?
+      first_conversation = messages.deliverable
+        .where(message_type: Message::CONVERSATION_TYPES)
         .order(:id).first
-      first_conversation ||= events.deliverable
-        .where(event_type: "tool_call")
-        .detect { |e| e.payload["tool_name"] == Event::THINK_TOOL }
+      first_conversation ||= messages.deliverable
+        .where(message_type: "tool_call")
+        .detect { |msg| msg.payload["tool_name"] == Message::THINK_TOOL }
 
       if first_conversation
-        update_column(:mneme_boundary_event_id, first_conversation.id)
+        update_column(:mneme_boundary_message_id, first_conversation.id)
       end
       return
     end
 
-    # Check if boundary event has left the viewport
-    return if viewport_event_ids.include?(mneme_boundary_event_id)
+    # Check if boundary message has left the viewport
+    return if viewport_message_ids.include?(mneme_boundary_message_id)
 
     MnemeJob.perform_later(id)
   end
@@ -89,7 +89,7 @@ class Session < ApplicationRecord
   def schedule_analytical_brain!
     return if sub_agent?
 
-    count = events.llm_messages.count
+    count = messages.llm_messages.count
     return if count < 2
     # Already named — only regenerate at interval boundaries (30, 60, 90, …)
     return if name.present? && (count % Anima::Settings.name_generation_interval != 0)
@@ -97,43 +97,43 @@ class Session < ApplicationRecord
     AnalyticalBrainJob.perform_later(id)
   end
 
-  # Returns the events currently visible in the LLM context window.
-  # Walks events newest-first and includes them until the token budget
-  # is exhausted. Events are full-size or excluded entirely.
+  # Returns the messages currently visible in the LLM context window.
+  # Walks messages newest-first and includes them until the token budget
+  # is exhausted. Messages are full-size or excluded entirely.
   #
   # Sub-agent sessions inherit parent context via virtual viewport:
-  # child events are prioritized and fill the budget first (newest-first),
-  # then parent events from before the fork point fill the remaining budget.
-  # The final array is chronological: parent events first, then child events.
+  # child messages are prioritized and fill the budget first (newest-first),
+  # then parent messages from before the fork point fill the remaining budget.
+  # The final array is chronological: parent messages first, then child messages.
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @param include_pending [Boolean] whether to include pending messages (true for
   #   display, false for LLM context assembly)
-  # @return [Array<Event>] chronologically ordered
-  def viewport_events(token_budget: Anima::Settings.token_budget, include_pending: true)
-    own_events = select_events(own_event_scope(include_pending), budget: token_budget)
-    remaining = token_budget - own_events.sum { |e| event_token_cost(e) }
+  # @return [Array<Message>] chronologically ordered
+  def viewport_messages(token_budget: Anima::Settings.token_budget, include_pending: true)
+    own = select_messages(own_message_scope(include_pending), budget: token_budget)
+    remaining = token_budget - own.sum { |msg| message_token_cost(msg) }
 
     if sub_agent? && remaining > 0
-      parent_events = select_events(parent_event_scope(include_pending), budget: remaining)
-      trim_trailing_tool_calls(parent_events) + own_events
+      parent = select_messages(parent_message_scope(include_pending), budget: remaining)
+      trim_trailing_tool_calls(parent) + own
     else
-      own_events
+      own
     end
   end
 
-  # Recalculates the viewport and returns IDs of events evicted since the
-  # last snapshot. Updates the stored viewport_event_ids atomically.
-  # Piggybacks on event broadcasts to notify clients which messages left
+  # Recalculates the viewport and returns IDs of messages evicted since the
+  # last snapshot. Updates the stored viewport_message_ids atomically.
+  # Piggybacks on message broadcasts to notify clients which messages left
   # the LLM's context window.
   #
-  # @return [Array<Integer>] IDs of events no longer in the viewport
+  # @return [Array<Integer>] IDs of messages no longer in the viewport
   def recalculate_viewport!
-    new_ids = viewport_events.map(&:id)
-    old_ids = viewport_event_ids
+    new_ids = viewport_messages.map(&:id)
+    old_ids = viewport_message_ids
 
     evicted = old_ids - new_ids
-    update_column(:viewport_event_ids, new_ids) if old_ids != new_ids
+    update_column(:viewport_message_ids, new_ids) if old_ids != new_ids
     evicted
   end
 
@@ -142,10 +142,10 @@ class Session < ApplicationRecord
   # where eviction notifications are unnecessary (clients clear their
   # store first).
   #
-  # @param ids [Array<Integer>] event IDs now in the viewport
+  # @param ids [Array<Integer>] message IDs now in the viewport
   # @return [void]
   def snapshot_viewport!(ids)
-    update_column(:viewport_event_ids, ids)
+    update_column(:viewport_message_ids, ids)
   end
 
   # Returns the system prompt for this session.
@@ -217,14 +217,14 @@ class Session < ApplicationRecord
     save!
   end
 
-  # Assembles the system prompt: soul first, then environment context,
-  # then skills/workflow, then goals.
+  # Assembles the system prompt: version preamble, soul, environment context,
+  # skills/workflow, then goals.
   # The soul is always present — "who am I" before "what can I do."
   #
   # @param environment_context [String, nil] pre-assembled environment block
   # @return [String] composed system prompt
   def assemble_system_prompt(environment_context: nil)
-    [assemble_soul_section, environment_context, assemble_expertise_section, assemble_goals_section].compact.join("\n\n")
+    [assemble_version_preamble, assemble_soul_section, environment_context, assemble_expertise_section, assemble_goals_section].compact.join("\n\n")
   end
 
   # Serializes active goals as a lightweight summary for ActionCable
@@ -238,17 +238,17 @@ class Session < ApplicationRecord
 
   # Builds the message array expected by the Anthropic Messages API.
   # Viewport layout (top to bottom):
-  #   [L2 snapshots] [L1 snapshots] [pinned events] [recalled memories] [sliding window events]
+  #   [L2 snapshots] [L1 snapshots] [pinned messages] [recalled memories] [sliding window messages]
   #
-  # Snapshots appear ONLY after their source events have evicted from
+  # Snapshots appear ONLY after their source messages have evicted from
   # the sliding window. L1 snapshots drop once covered by an L2 snapshot.
-  # Pinned events are critical context attached to active Goals — they
+  # Pinned messages are critical context attached to active Goals — they
   # survive eviction intact until their Goals complete.
-  # Recalled memories surface relevant older events (passive recall via goals).
+  # Recalled memories surface relevant older messages (passive recall via goals).
   # Each layer has a fixed token budget fraction — snapshots, pins, and recall
   # consume viewport space, reducing the sliding window size.
   #
-  # Sub-agent sessions skip snapshot/pin/recall injection (they inherit parent events directly).
+  # Sub-agent sessions skip snapshot/pin/recall injection (they inherit parent messages directly).
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @return [Array<Hash>] Anthropic Messages API format
@@ -268,25 +268,25 @@ class Session < ApplicationRecord
       sliding_budget = token_budget - l2_budget - l1_budget - pinned_budget - recall_budget
     end
 
-    events = viewport_events(token_budget: sliding_budget, include_pending: false)
+    window = viewport_messages(token_budget: sliding_budget, include_pending: false)
 
     unless sub_agent?
-      first_event_id = events.first&.id
-      snapshot_messages = assemble_snapshot_messages(first_event_id, l2_budget: l2_budget, l1_budget: l1_budget)
-      pinned_messages = assemble_pinned_event_messages(first_event_id, budget: pinned_budget)
+      first_message_id = window.first&.id
+      snapshot_messages = assemble_snapshot_messages(first_message_id, l2_budget: l2_budget, l1_budget: l1_budget)
+      pinned_messages = assemble_pinned_section_messages(first_message_id, budget: pinned_budget)
       recall_messages = assemble_recall_messages(budget: recall_budget)
     end
 
-    snapshot_messages + pinned_messages + recall_messages + assemble_messages(ensure_atomic_tool_pairs(events))
+    snapshot_messages + pinned_messages + recall_messages + assemble_messages(ensure_atomic_tool_pairs(window))
   end
 
-  # Detects orphaned tool_call events (those without a matching tool_response
+  # Detects orphaned tool_call messages (those without a matching tool_response
   # and whose timeout has expired) and creates synthetic error responses.
   # An orphaned tool_call permanently breaks the session because the
   # Anthropic API rejects conversations where a tool_use block has no
   # matching tool_result.
   #
-  # Respects the per-call timeout stored in the tool_call event payload —
+  # Respects the per-call timeout stored in the tool_call message payload —
   # a tool_call is only healed after its deadline has passed. This avoids
   # prematurely healing long-running tools that the agent intentionally
   # gave an extended timeout.
@@ -294,8 +294,8 @@ class Session < ApplicationRecord
   # @return [Integer] number of synthetic responses created
   def heal_orphaned_tool_calls!
     now_ns = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
-    responded_ids = events.where(event_type: "tool_response").select(:tool_use_id)
-    unresponded = events.where(event_type: "tool_call")
+    responded_ids = messages.where(message_type: "tool_response").select(:tool_use_id)
+    unresponded = messages.where(message_type: "tool_call")
       .where.not(tool_use_id: responded_ids)
 
     healed = 0
@@ -304,8 +304,8 @@ class Session < ApplicationRecord
       deadline_ns = orphan.timestamp + (timeout * 1_000_000_000)
       next if now_ns < deadline_ns
 
-      events.create!(
-        event_type: "tool_response",
+      messages.create!(
+        message_type: "tool_response",
         payload: {
           "type" => "tool_response",
           "content" => "Tool execution timed out after #{timeout} seconds — no result was returned.",
@@ -323,14 +323,14 @@ class Session < ApplicationRecord
 
   # Delivers a user message respecting the session's processing state.
   #
-  # When idle, persists the event directly and enqueues {AgentRequestJob}
+  # When idle, persists the message directly and enqueues {AgentRequestJob}
   # to process it. When mid-turn ({#processing?}), emits a pending
   # {Events::UserMessage} via {Events::Bus} so it queues until the
   # current agent loop completes — preventing interleaving between
   # tool_use/tool_result pairs.
   #
   # @param content [String] user message text
-  # @param bounce_back [Boolean] when true, passes +event_id+ to the job
+  # @param bounce_back [Boolean] when true, passes +message_id+ to the job
   #   so failed LLM delivery triggers a {Events::BounceBack} (used by
   #   {SessionChannel#speak} for immediate-display messages)
   # @return [void]
@@ -338,16 +338,16 @@ class Session < ApplicationRecord
     if processing?
       Events::Bus.emit(Events::UserMessage.new(
         content: content, session_id: id,
-        status: Event::PENDING_STATUS
+        status: Message::PENDING_STATUS
       ))
     else
-      event = create_user_event(content)
-      job_args = bounce_back ? {event_id: event.id} : {}
+      msg = create_user_message(content)
+      job_args = bounce_back ? {message_id: msg.id} : {}
       AgentRequestJob.perform_later(id, **job_args)
     end
   end
 
-  # Persists a user message event directly, bypassing the pending queue.
+  # Persists a user message directly, bypassing the pending queue.
   #
   # Used by {#enqueue_user_message} (idle path), {AgentLoop#process},
   # and sub-agent spawn tools ({Tools::SpawnSubagent}, {Tools::SpawnSpecialist})
@@ -355,11 +355,11 @@ class Session < ApplicationRecord
   # messages — these callers own the persistence lifecycle.
   #
   # @param content [String] user message text
-  # @return [Event] the persisted event record
-  def create_user_event(content)
+  # @return [Message] the persisted message record
+  def create_user_message(content)
     now = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
-    events.create!(
-      event_type: "user_message",
+    messages.create!(
+      message_type: "user_message",
       payload: {type: "user_message", content: content, session_id: id, timestamp: now},
       timestamp: now
     )
@@ -367,13 +367,13 @@ class Session < ApplicationRecord
 
   # Promotes all pending user messages to delivered status so they
   # appear in the next LLM context. Triggers broadcast_update for
-  # each event so connected clients refresh the pending indicator.
+  # each message so connected clients refresh the pending indicator.
   #
   # @return [Integer] number of promoted messages
   def promote_pending_messages!
     promoted = 0
-    events.where(event_type: "user_message", status: Event::PENDING_STATUS).find_each do |event|
-      event.update!(status: nil, payload: event.payload.except("status"))
+    messages.where(message_type: "user_message", status: Message::PENDING_STATUS).find_each do |msg|
+      msg.update!(status: nil, payload: msg.payload.except("status"))
       promoted += 1
     end
     promoted
@@ -401,6 +401,14 @@ class Session < ApplicationRecord
   end
 
   private
+
+  # One-line version preamble so the agent knows its own version.
+  # Useful for commits, handoffs, and debugging.
+  #
+  # @return [String] e.g. "You are running on Anima v1.1.3"
+  def assemble_version_preamble
+    "You are running on Anima v#{Anima::VERSION}"
+  end
 
   # Reads the soul file — the agent's self-authored identity.
   # Loaded as the first section of every system prompt, before skills,
@@ -520,40 +528,40 @@ class Session < ApplicationRecord
     })
   end
 
-  # Scopes own events for viewport assembly.
+  # Scopes own messages for viewport assembly.
   # @return [ActiveRecord::Relation]
-  def own_event_scope(include_pending)
-    scope = events.context_events
+  def own_message_scope(include_pending)
+    scope = messages.context_messages
     include_pending ? scope : scope.deliverable
   end
 
-  # Scopes parent events created before this session's fork point.
-  # Excludes spawn tool events — sub-agents don't need to see sibling
+  # Scopes parent messages created before this session's fork point.
+  # Excludes spawn tool messages — sub-agents don't need to see sibling
   # spawn pairs, which cause role confusion (the sub-agent mistakes
   # itself for the parent when it sees "Specialist @sibling spawned...").
   # @return [ActiveRecord::Relation]
-  def parent_event_scope(include_pending)
-    scope = parent_session.events.context_events
-      .excluding_spawn_events
+  def parent_message_scope(include_pending)
+    scope = parent_session.messages.context_messages
+      .excluding_spawn_messages
       .where(created_at: ...created_at)
     include_pending ? scope : scope.deliverable
   end
 
-  # Walks events newest-first, selecting until the token budget is exhausted.
-  # Always includes at least the newest event even if it exceeds budget.
+  # Walks messages newest-first, selecting until the token budget is exhausted.
+  # Always includes at least the newest message even if it exceeds budget.
   #
-  # @param scope [ActiveRecord::Relation] event scope to select from
+  # @param scope [ActiveRecord::Relation] message scope to select from
   # @param budget [Integer] maximum tokens to include
-  # @return [Array<Event>] chronologically ordered
-  def select_events(scope, budget:)
+  # @return [Array<Message>] chronologically ordered
+  def select_messages(scope, budget:)
     selected = []
     remaining = budget
 
-    scope.reorder(id: :desc).each do |event|
-      cost = event_token_cost(event)
+    scope.reorder(id: :desc).each do |msg|
+      cost = message_token_cost(msg)
       break if cost > remaining && selected.any?
 
-      selected << event
+      selected << msg
       remaining -= cost
     end
 
@@ -561,59 +569,59 @@ class Session < ApplicationRecord
   end
 
   # @return [Integer] token cost, using cached count or heuristic estimate
-  def event_token_cost(event)
-    (event.token_count > 0) ? event.token_count : estimate_tokens(event)
+  def message_token_cost(msg)
+    (msg.token_count > 0) ? msg.token_count : estimate_tokens(msg)
   end
 
-  # Removes trailing tool_call events that lack matching tool_response.
+  # Removes trailing tool_call messages that lack matching tool_response.
   # Prevents orphaned tool_use blocks at the parent/child viewport boundary
   # (the spawn_subagent/spawn_specialist tool_call is emitted before the child exists,
   # but its tool_response comes after — so the cutoff can split them).
-  def trim_trailing_tool_calls(event_list)
-    event_list.pop while event_list.last&.event_type == "tool_call"
-    event_list
+  def trim_trailing_tool_calls(message_list)
+    message_list.pop while message_list.last&.message_type == "tool_call"
+    message_list
   end
 
-  # Ensures every tool_call in the event list has a matching tool_response
-  # (and vice versa) by removing unpaired events. The Anthropic API requires
+  # Ensures every tool_call in the message list has a matching tool_response
+  # (and vice versa) by removing unpaired messages. The Anthropic API requires
   # every tool_use block to have a tool_result — a missing partner causes
   # a permanent API error. Token budget cutoffs can split pairs when the
   # boundary falls between a tool_call and its tool_response.
   #
-  # @param event_list [Array<Event>] chronologically ordered events
-  # @return [Array<Event>] events with unpaired tool events removed
-  def ensure_atomic_tool_pairs(event_list)
-    tool_events = event_list.select { |e| e.tool_use_id.present? }
-    return event_list if tool_events.empty?
+  # @param message_list [Array<Message>] chronologically ordered messages
+  # @return [Array<Message>] messages with unpaired tool messages removed
+  def ensure_atomic_tool_pairs(message_list)
+    tool_msgs = message_list.select { |m| m.tool_use_id.present? }
+    return message_list if tool_msgs.empty?
 
-    paired = tool_events.group_by(&:tool_use_id)
-    complete_ids = paired.each_with_object(Set.new) do |(id, evts), set|
-      has_call = evts.any? { |e| e.event_type == "tool_call" }
-      has_response = evts.any? { |e| e.event_type == "tool_response" }
-      set << id if has_call && has_response
+    paired = tool_msgs.group_by(&:tool_use_id)
+    complete_ids = paired.each_with_object(Set.new) do |(uid, msgs), set|
+      has_call = msgs.any? { |m| m.message_type == "tool_call" }
+      has_response = msgs.any? { |m| m.message_type == "tool_response" }
+      set << uid if has_call && has_response
     end
 
-    event_list.reject { |e| e.tool_use_id.present? && !complete_ids.include?(e.tool_use_id) }
+    message_list.reject { |m| m.tool_use_id.present? && !complete_ids.include?(m.tool_use_id) }
   end
 
   # Selects visible snapshots and formats them as Anthropic messages.
-  # Snapshots are visible when their source events have fully evicted.
+  # Snapshots are visible when their source messages have fully evicted.
   # L1 snapshots are excluded when covered by an L2 snapshot.
   #
-  # @param first_event_id [Integer, nil] first event ID in the sliding window
+  # @param first_message_id [Integer, nil] first message ID in the sliding window
   # @param l2_budget [Integer] token budget for L2 snapshots
   # @param l1_budget [Integer] token budget for L1 snapshots
   # @return [Array<Hash>] Anthropic Messages API format
-  def assemble_snapshot_messages(first_event_id, l2_budget:, l1_budget:)
-    return [] unless first_event_id
+  def assemble_snapshot_messages(first_message_id, l2_budget:, l1_budget:)
+    return [] unless first_message_id
 
     l2_messages = select_snapshots_within_budget(
-      snapshots.for_level(2).source_events_evicted(first_event_id).chronological,
+      snapshots.for_level(2).source_messages_evicted(first_message_id).chronological,
       budget: l2_budget
     ).map { |snapshot| format_snapshot_message(snapshot, label: "long-term memory") }
 
     l1_messages = select_snapshots_within_budget(
-      snapshots.for_level(1).not_covered_by_l2.source_events_evicted(first_event_id).chronological,
+      snapshots.for_level(1).not_covered_by_l2.source_messages_evicted(first_message_id).chronological,
       budget: l1_budget
     ).map { |snapshot| format_snapshot_message(snapshot, label: "recent memory") }
 
@@ -651,39 +659,39 @@ class Session < ApplicationRecord
     {role: "user", content: "[#{label}]\n#{snapshot.text}"}
   end
 
-  # Assembles pinned events as a Goals section message for the viewport.
-  # Only includes pinned events whose source event has evicted from the
-  # sliding window (same rule as snapshots — no duplication with live events).
+  # Assembles pinned messages as a Goals section message for the viewport.
+  # Only includes pinned messages whose source message has evicted from the
+  # sliding window (same rule as snapshots — no duplication with live messages).
   #
-  # Deduplication: the first Goal referencing an event shows its truncated
-  # display_text; subsequent Goals show a bare `event N` ID to save tokens.
+  # Deduplication: the first Goal referencing a message shows its truncated
+  # display_text; subsequent Goals show a bare `message N` ID to save tokens.
   #
-  # @param first_event_id [Integer, nil] first event ID in the sliding window
-  # @param budget [Integer] token budget for pinned events
+  # @param first_message_id [Integer, nil] first message ID in the sliding window
+  # @param budget [Integer] token budget for pinned messages
   # @return [Array<Hash>] Anthropic Messages API format (0 or 1 messages)
-  def assemble_pinned_event_messages(first_event_id, budget:)
-    return [] unless first_event_id
+  def assemble_pinned_section_messages(first_message_id, budget:)
+    return [] unless first_message_id
 
-    pins = pinned_events
-      .includes(:event, :goals)
-      .where("pinned_events.event_id < ?", first_event_id)
-      .order("pinned_events.event_id")
+    pins = pinned_messages
+      .includes(:message, :goals)
+      .where("pinned_messages.message_id < ?", first_message_id)
+      .order("pinned_messages.message_id")
 
     return [] if pins.empty?
 
     selected = select_pins_within_budget(pins, budget)
     return [] if selected.empty?
 
-    text = render_pinned_events_section(selected)
-    [{role: "user", content: "[pinned events]\n#{text}"}]
+    text = render_pinned_messages_section(selected)
+    [{role: "user", content: "[pinned messages]\n#{text}"}]
   end
 
-  # Walks pinned events chronologically, selecting until the token budget
+  # Walks pinned messages chronologically, selecting until the token budget
   # is exhausted. Always includes at least one pin.
   #
-  # @param pins [Array<PinnedEvent>]
+  # @param pins [Array<PinnedMessage>]
   # @param budget [Integer]
-  # @return [Array<PinnedEvent>]
+  # @return [Array<PinnedMessage>]
   def select_pins_within_budget(pins, budget)
     selected = []
     remaining = budget
@@ -699,26 +707,26 @@ class Session < ApplicationRecord
     selected
   end
 
-  # Renders the pinned events section grouped by Goal.
+  # Renders the pinned messages section grouped by Goal.
   # First Goal referencing a pin shows truncated text; subsequent Goals
-  # show bare `event N` ID to avoid token-expensive repetition.
+  # show bare `message N` ID to avoid token-expensive repetition.
   #
-  # @param pins [Array<PinnedEvent>] selected pins with preloaded goals
+  # @param pins [Array<PinnedMessage>] selected pins with preloaded goals
   # @return [String] formatted section text
-  def render_pinned_events_section(pins)
+  def render_pinned_messages_section(pins)
     goal_pins = group_pins_by_active_goal(pins)
 
-    shown_events = Set.new
+    shown_messages = Set.new
     goal_pins.map { |goal, pin_list|
-      render_goal_pins(goal, pin_list, shown_events)
+      render_goal_pins(goal, pin_list, shown_messages)
     }.join("\n\n")
   end
 
   # Groups pins by their active Goals so the viewport renders
   # one headed section per Goal.
   #
-  # @param pins [Array<PinnedEvent>] pins with preloaded goals
-  # @return [Hash{Goal => Array<PinnedEvent>}]
+  # @param pins [Array<PinnedMessage>] pins with preloaded goals
+  # @return [Hash{Goal => Array<PinnedMessage>}]
   def group_pins_by_active_goal(pins)
     pairs = pins.flat_map { |pin| active_goal_pin_pairs(pin) }
     pairs.group_by(&:first).transform_values { |group| group.map(&:last) }
@@ -727,61 +735,61 @@ class Session < ApplicationRecord
   # Expands a single pin into [goal, pin] pairs for each active Goal
   # referencing it. Uses in-memory filter on preloaded goals.
   #
-  # @param pin [PinnedEvent]
-  # @return [Array<Array(Goal, PinnedEvent)>]
+  # @param pin [PinnedMessage]
+  # @return [Array<Array(Goal, PinnedMessage)>]
   def active_goal_pin_pairs(pin)
     pin.goals.select(&:active?).map { |goal| [goal, pin] }
   end
 
-  # Renders one Goal's pinned events as a headed list.
+  # Renders one Goal's pinned messages as a headed list.
   #
   # @param goal [Goal]
-  # @param pin_list [Array<PinnedEvent>]
-  # @param shown_events [Set<Integer>] tracks already-rendered event IDs for dedup
+  # @param pin_list [Array<PinnedMessage>]
+  # @param shown_messages [Set<Integer>] tracks already-rendered message IDs for dedup
   # @return [String]
-  def render_goal_pins(goal, pin_list, shown_events)
+  def render_goal_pins(goal, pin_list, shown_messages)
     lines = ["📌 #{goal.description} (id: #{goal.id})"]
-    pin_list.each { |pin| lines << format_pin_line(pin, shown_events) }
+    pin_list.each { |pin| lines << format_pin_line(pin, shown_messages) }
     lines.join("\n")
   end
 
   # Formats a single pin line with deduplication: first occurrence shows
-  # truncated text, subsequent occurrences show bare event ID only.
+  # truncated text, subsequent occurrences show bare message ID only.
   #
-  # @param pin [PinnedEvent]
-  # @param shown_events [Set<Integer>]
+  # @param pin [PinnedMessage]
+  # @param shown_messages [Set<Integer>]
   # @return [String]
-  def format_pin_line(pin, shown_events)
-    event_id = pin.event_id
-    if shown_events.add?(event_id)
-      "  event #{event_id}: #{pin.display_text}"
+  def format_pin_line(pin, shown_messages)
+    mid = pin.message_id
+    if shown_messages.add?(mid)
+      "  message #{mid}: #{pin.display_text}"
     else
-      "  event #{event_id}"
+      "  message #{mid}"
     end
   end
 
   # Assembles recalled memory messages from passive recall results.
-  # Recalled events are fetched by ID and formatted as compact snippets
-  # with session and event context for drill-down via the remember tool.
+  # Recalled messages are fetched by ID and formatted as compact snippets
+  # with session and message context for drill-down via the remember tool.
   #
   # @param budget [Integer] token budget for recall messages
   # @return [Array<Hash>] Anthropic Messages API format
   def assemble_recall_messages(budget:)
-    return [] if recalled_event_ids.blank?
+    return [] if recalled_message_ids.blank?
 
-    recalled_events = Event.where(id: recalled_event_ids)
+    recalled = Message.where(id: recalled_message_ids)
       .includes(:session)
       .index_by(&:id)
 
     snippets = []
     remaining = budget
 
-    recalled_event_ids.each do |eid|
-      event = recalled_events[eid]
-      next unless event
+    recalled_message_ids.each do |mid|
+      msg = recalled[mid]
+      next unless msg
 
-      text = format_recall_snippet(event)
-      cost = [(text.bytesize / Event::BYTES_PER_TOKEN.to_f).ceil, 1].max
+      text = format_recall_snippet(msg)
+      cost = [(text.bytesize / Message::BYTES_PER_TOKEN.to_f).ceil, 1].max
       break if cost > remaining && snippets.any?
 
       snippets << text
@@ -793,28 +801,28 @@ class Session < ApplicationRecord
     [{role: "user", content: "[associative recall]\n#{snippets.join("\n\n")}"}]
   end
 
-  # Formats a recalled event as a compact snippet with enough context
+  # Formats a recalled message as a compact snippet with enough context
   # for the agent to decide whether to drill down with the remember tool.
   #
-  # @param event [Event] the recalled event
+  # @param msg [Message] the recalled message
   # @return [String] formatted snippet
-  def format_recall_snippet(event)
-    session_label = event.session.name || "session ##{event.session_id}"
-    content = extract_event_content(event).to_s.truncate(Anima::Settings.recall_max_snippet_tokens * Event::BYTES_PER_TOKEN)
-    "event #{event.id} (#{session_label}): #{content}"
+  def format_recall_snippet(msg)
+    session_label = msg.session.name || "session ##{msg.session_id}"
+    content = extract_message_content(msg).to_s.truncate(Anima::Settings.recall_max_snippet_tokens * Message::BYTES_PER_TOKEN)
+    "message #{msg.id} (#{session_label}): #{content}"
   end
 
-  # Extracts readable content from an event's payload.
+  # Extracts readable content from a message's payload.
   #
-  # @param event [Event]
+  # @param msg [Message]
   # @return [String]
-  def extract_event_content(event)
-    data = event.payload
-    case event.event_type
+  def extract_message_content(msg)
+    data = msg.payload
+    case msg.message_type
     when "user_message", "agent_message", "system_message"
       data["content"]
     when "tool_call"
-      if data["tool_name"] == Event::THINK_TOOL
+      if data["tool_name"] == Message::THINK_TOOL
         data.dig("tool_input", "thoughts")
       else
         "#{data["tool_name"]}(…)"
@@ -824,39 +832,39 @@ class Session < ApplicationRecord
     end
   end
 
-  # Converts a chronological list of events into Anthropic wire-format messages.
+  # Converts a chronological list of messages into Anthropic wire-format messages.
   # Prepends a compact timestamp to each user message for LLM time awareness.
-  # Groups consecutive tool_call events into one assistant message and
-  # consecutive tool_response events into one user message.
+  # Groups consecutive tool_call messages into one assistant message and
+  # consecutive tool_response messages into one user message.
   #
-  # @param events [Array<Event>]
+  # @param msgs [Array<Message>]
   # @return [Array<Hash>]
-  def assemble_messages(events)
-    events.each_with_object([]) do |event, messages|
-      case event.event_type
+  def assemble_messages(msgs)
+    msgs.each_with_object([]) do |msg, api_messages|
+      case msg.message_type
       when "user_message"
-        content = "#{format_event_time(event.timestamp)}\n#{event.payload["content"]}"
-        messages << {role: "user", content: content}
+        content = "#{format_message_time(msg.timestamp)}\n#{msg.payload["content"]}"
+        api_messages << {role: "user", content: content}
       when "agent_message"
-        messages << {role: "assistant", content: event.payload["content"].to_s}
+        api_messages << {role: "assistant", content: msg.payload["content"].to_s}
       when "tool_call"
-        append_grouped_block(messages, "assistant", tool_use_block(event.payload))
+        append_grouped_block(api_messages, "assistant", tool_use_block(msg.payload))
       when "tool_response"
-        append_grouped_block(messages, "user", tool_result_block(event.payload))
+        append_grouped_block(api_messages, "user", tool_result_block(msg.payload))
       when "system_message"
         # Wrapped as user role with prefix — Claude API has no system role in conversation history
-        messages << {role: "user", content: "[system] #{event.payload["content"]}"}
+        api_messages << {role: "user", content: "[system] #{msg.payload["content"]}"}
       end
     end
   end
 
   # Groups consecutive tool blocks into a single message of the given role.
-  def append_grouped_block(messages, role, block)
-    prev = messages.last
+  def append_grouped_block(api_messages, role, block)
+    prev = api_messages.last
     if prev&.dig(:role) == role && prev[:content].is_a?(Array)
       prev[:content] << block
     else
-      messages << {role: role, content: [block]}
+      api_messages << {role: role, content: [block]}
     end
   end
 
@@ -877,23 +885,23 @@ class Session < ApplicationRecord
     }
   end
 
-  # Formats an event's nanosecond timestamp as a compact time prefix for LLM context.
+  # Formats a message's nanosecond timestamp as a compact time prefix for LLM context.
   # Gives the agent awareness of time of day, day of week, and pauses between messages.
   #
   # @param timestamp_ns [Integer] nanoseconds since epoch
   # @return [String] e.g. "Sat Mar 14 09:51"
   # @example
-  #   format_event_time(1_710_406_260_000_000_000) #=> "Thu Mar 14 09:51"
-  def format_event_time(timestamp_ns)
+  #   format_message_time(1_710_406_260_000_000_000) #=> "Thu Mar 14 09:51"
+  def format_message_time(timestamp_ns)
     Time.at(timestamp_ns / 1_000_000_000.0).strftime("%a %b %-d %H:%M")
   end
 
-  # Delegates to {Event#estimate_tokens} for events not yet counted
+  # Delegates to {Message#estimate_tokens} for messages not yet counted
   # by the background job.
   #
-  # @param event [Event]
+  # @param msg [Message]
   # @return [Integer] at least 1
-  def estimate_tokens(event)
-    event.estimate_tokens
+  def estimate_tokens(msg)
+    msg.estimate_tokens
   end
 end
