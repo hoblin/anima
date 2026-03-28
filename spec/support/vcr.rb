@@ -41,7 +41,7 @@ VCR.configure do |config|
   end
 
   config.default_cassette_options = {
-    record: ENV["CI"] ? :none : :new_episodes,
+    record: ENV["CI"] ? :none : :once,
     match_requests_on: [:method, :uri, :body]
   }
 end

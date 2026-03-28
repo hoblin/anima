@@ -341,6 +341,57 @@ RSpec.describe Session do
         .to eq("You are a research assistant.")
     end
 
+    it "includes task section when sub-agent has an active goal" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "You are a research assistant.")
+      Goal.create!(session: child, description: "Analyze the authentication module")
+
+      prompt = child.system_prompt
+      expect(prompt).to include("Your Task\n=========")
+      expect(prompt).to include("Analyze the authentication module")
+      expect(prompt).to include("mark_goal_completed")
+    end
+
+    it "excludes task section when sub-agent goal is completed" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "You are a research assistant.")
+      Goal.create!(session: child, description: "Done task", status: "completed", completed_at: 1.hour.ago)
+
+      expect(child.system_prompt).to eq("You are a research assistant.")
+    end
+
+    it "places stored prompt before task section for sub-agents" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "You are a focused sub-agent.")
+      Goal.create!(session: child, description: "Find the bug")
+
+      prompt = child.system_prompt
+      prompt_pos = prompt.index("You are a focused sub-agent.")
+      task_pos = prompt.index("Your Task\n=========")
+      expect(prompt_pos).to be < task_pos
+    end
+
+    it "includes activated skills in sub-agent system prompt" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "You are a focused sub-agent.")
+      child.activate_skill("gh-issue")
+
+      prompt = child.system_prompt
+      expect(prompt).to include("Your Expertise")
+    end
+
+    it "places skills before task section for sub-agents" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "You are a focused sub-agent.")
+      child.activate_skill("gh-issue")
+      Goal.create!(session: child, description: "File a bug report")
+
+      prompt = child.system_prompt
+      expertise_pos = prompt.index("Your Expertise")
+      task_pos = prompt.index("Your Task")
+      expect(expertise_pos).to be < task_pos
+    end
+
     it "includes soul content for main sessions" do
       session = Session.create!
 
@@ -378,7 +429,7 @@ RSpec.describe Session do
       prompt = session.system_prompt(environment_context: env)
       soul_pos = prompt.index("# Soul")
       env_pos = prompt.index("## Environment")
-      goals_pos = prompt.index("## Current Goals")
+      goals_pos = prompt.index("Current Goals\n=============")
       expect(soul_pos).to be < env_pos
       expect(env_pos).to be < goals_pos
     end
@@ -602,6 +653,42 @@ RSpec.describe Session do
     end
   end
 
+  describe "#assemble_task_section" do
+    it "returns task section with active goal description" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "You are a sub-agent.")
+      Goal.create!(session: child, description: "Analyze the authentication module")
+
+      section = child.send(:assemble_task_section)
+      expect(section).to include("Your Task\n=========")
+      expect(section).to include("Analyze the authentication module")
+      expect(section).to include("call mark_goal_completed when done")
+    end
+
+    it "returns nil when no active goals exist" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "You are a sub-agent.")
+
+      expect(child.send(:assemble_task_section)).to be_nil
+    end
+
+    it "returns nil when goal is completed" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "You are a sub-agent.")
+      Goal.create!(session: child, description: "Done", status: "completed", completed_at: 1.hour.ago)
+
+      expect(child.send(:assemble_task_section)).to be_nil
+    end
+
+    it "works for main sessions too" do
+      session = Session.create!
+      Goal.create!(session: session, description: "Build feature X")
+
+      section = session.send(:assemble_task_section)
+      expect(section).to include("Build feature X")
+    end
+  end
+
   describe "#assemble_system_prompt with goals" do
     before { Skills::Registry.reload! }
 
@@ -612,7 +699,7 @@ RSpec.describe Session do
 
       prompt = session.assemble_system_prompt
       expect(prompt).to start_with("You are running on Anima v")
-      expect(prompt).to include("## Current Goals")
+      expect(prompt).to include("Current Goals\n=============")
       expect(prompt).to include("### Implement feature")
       expect(prompt).not_to include("Your Expertise")
     end
@@ -623,7 +710,7 @@ RSpec.describe Session do
 
       prompt = session.assemble_system_prompt
       expect(prompt).to include("## Your Expertise")
-      expect(prompt).to include("## Current Goals")
+      expect(prompt).to include("Current Goals\n=============")
     end
 
     it "renders sub-goals as checkbox items" do

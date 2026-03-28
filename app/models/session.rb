@@ -150,14 +150,19 @@ class Session < ApplicationRecord
   end
 
   # Returns the system prompt for this session.
-  # Sub-agent sessions use their stored prompt. Main sessions assemble
-  # a system prompt from active skills and current goals.
+  # Sub-agent sessions use their stored prompt plus active skills and
+  # the pinned task. Main sessions assemble a full system prompt from
+  # soul, environment, skills/workflow, and goals.
   #
   # @param environment_context [String, nil] pre-assembled environment block
   #   from {EnvironmentProbe}; injected between soul and expertise sections
   # @return [String, nil] the system prompt text, or nil when nothing to inject
   def system_prompt(environment_context: nil)
-    sub_agent? ? prompt : assemble_system_prompt(environment_context: environment_context)
+    if sub_agent?
+      [prompt, assemble_expertise_section, assemble_task_section].compact.join("\n\n")
+    else
+      assemble_system_prompt(environment_context: environment_context)
+    end
   end
 
   # Activates a skill on this session. Validates the skill exists in the
@@ -294,7 +299,7 @@ class Session < ApplicationRecord
   #
   # @return [Integer] number of synthetic responses created
   def heal_orphaned_tool_calls!
-    now_ns = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+    current_ns = now_ns
     responded_ids = messages.where(message_type: "tool_response").select(:tool_use_id)
     unresponded = messages.where(message_type: "tool_call")
       .where.not(tool_use_id: responded_ids)
@@ -303,7 +308,7 @@ class Session < ApplicationRecord
     unresponded.find_each do |orphan|
       timeout = orphan.payload["timeout"] || Anima::Settings.tool_timeout
       deadline_ns = orphan.timestamp + (timeout * 1_000_000_000)
-      next if now_ns < deadline_ns
+      next if current_ns < deadline_ns
 
       messages.create!(
         message_type: "tool_response",
@@ -315,7 +320,7 @@ class Session < ApplicationRecord
           "success" => false
         },
         tool_use_id: orphan.tool_use_id,
-        timestamp: now_ns
+        timestamp: current_ns
       )
       healed += 1
     end
@@ -358,7 +363,7 @@ class Session < ApplicationRecord
   # @param content [String] user message text
   # @return [Message] the persisted message record
   def create_user_message(content)
-    now = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+    now = now_ns
     messages.create!(
       message_type: "user_message",
       payload: {type: "user_message", content: content, session_id: id, timestamp: now},
@@ -537,7 +542,27 @@ class Session < ApplicationRecord
     return if root_goals.empty?
 
     entries = root_goals.map { |goal| render_goal_markdown(goal) }
-    "## Current Goals\n\n#{entries.join("\n\n")}"
+    "Current Goals\n=============\n\n#{entries.join("\n\n")}"
+  end
+
+  # Assembles the task section for sub-agent system prompts.
+  # Sub-agents have a single pinned goal — their entire raison d'etre.
+  # Rendered as a persistent task block so the LLM always knows what it
+  # was spawned to do, regardless of conversation length.
+  #
+  # @return [String, nil] task section, or nil when no active goal exists
+  def assemble_task_section
+    goal = goals.active.root.first
+    return unless goal
+
+    <<~SECTION.strip
+      Your Task
+      =========
+
+      #{goal.description}
+
+      Complete this task and call mark_goal_completed when done.
+    SECTION
   end
 
   # Renders a single root goal with its sub-goals as Markdown.
@@ -975,6 +1000,14 @@ class Session < ApplicationRecord
   #   format_message_time(1_710_406_260_000_000_000) #=> "Thu Mar 14 09:51"
   def format_message_time(timestamp_ns)
     Time.at(timestamp_ns / 1_000_000_000.0).strftime("%a %b %-d %H:%M")
+  end
+
+  # Current time as nanoseconds since epoch. Uses Time.current so
+  # ActiveSupport's freeze_time works in tests.
+  #
+  # @return [Integer] nanoseconds since epoch
+  def now_ns
+    (Time.current.to_r * 1_000_000_000).to_i
   end
 
   # Delegates to {Message#estimate_tokens} for messages not yet counted
