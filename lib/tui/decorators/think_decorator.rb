@@ -3,8 +3,8 @@
 module TUI
   module Decorators
     # Renders think tool events — the agent's inner reasoning.
-    # "aloud" thoughts use yellow (narration for the user), "inner"
-    # thoughts use dark_gray (dimmed to signal internality).
+    # Both "aloud" and "inner" thoughts use grey (dark_gray) to visually
+    # de-emphasize reasoning content vs. actual conversation output.
     class ThinkDecorator < BaseDecorator
       THOUGHT_BUBBLE = "\u{1F4AD}" # thought balloon
 
@@ -17,9 +17,7 @@ module TUI
       # @param tui [RatatuiRuby] TUI rendering API
       # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_think(tui)
-        aloud = data["visibility"] == "aloud"
-        fg = aloud ? "yellow" : "dark_gray"
-        style = tui.style(fg: fg)
+        style = tui.style(fg: "dark_gray")
         ts = data["timestamp"]
 
         meta = []

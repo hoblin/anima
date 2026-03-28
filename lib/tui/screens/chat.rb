@@ -36,7 +36,13 @@ module TUI
       VIEWPORT_OVERFLOW_MULTIPLIER = 2 # build this many viewports worth of lines
       VIEWPORT_BOTTOM_THRESHOLD = 10   # entries from end before we include all trailing
 
-      ROLE_COLORS = {"user" => "green", "assistant" => "cyan"}.freeze
+      # Background-highlighted styles for conversation roles.
+      # Dark tinted backgrounds make user/assistant messages easy to scan.
+      # 22 = dark green (#005f00), 17 = dark navy (#00005f) in 256-color.
+      ROLE_STYLES = {
+        "user" => {fg: "white", bg: 22, modifiers: [:bold]},
+        "assistant" => {fg: "white", bg: 17, modifiers: [:bold]}
+      }.freeze
 
       # Intentionally duplicated from Session::VIEW_MODES to keep the TUI
       # independent of Rails. Must stay in sync when adding new modes.
@@ -798,18 +804,37 @@ module TUI
       # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_conversation_entry(tui, data, role)
         pending = data["status"] == "pending"
-        color = pending ? "dark_gray" : ROLE_COLORS.fetch(role, "white")
-        prefix = role_label(role)
-        prefix = "#{CLOCK_ICON} #{prefix}" if pending
-        style = tui.style(fg: color)
+        label = role_label(role)
 
-        meta = []
-        meta << "[#{format_ns_timestamp(data["timestamp"])}]" if data["timestamp"]
-        meta << format_token_label(data["tokens"], data["estimated"]) if data["tokens"]
-        header = meta.empty? ? "#{prefix}:" : "#{meta.join(" ")} #{prefix}:"
+        if pending
+          style = tui.style(fg: "dark_gray")
+          label = "#{CLOCK_ICON} #{label}"
+        else
+          role_cfg = ROLE_STYLES.fetch(role, {fg: "white"})
+          style = tui.style(**role_cfg)
+        end
 
+        tokens = data["tokens"]
         content_lines = data["content"].to_s.split("\n", -1)
-        lines = [tui.line(spans: [tui.span(content: "#{header} #{content_lines.first}", style: style)])]
+        first_content = content_lines.first
+        ts = data["timestamp"]
+        ts_prefix = ts ? "[#{format_ns_timestamp(ts)}] " : ""
+
+        first_spans = if tokens && !pending
+          tok_style = {fg: token_count_color(tokens)}
+          role_bg = ROLE_STYLES.dig(role, :bg)
+          tok_style[:bg] = role_bg if role_bg
+          [
+            tui.span(content: ts_prefix, style: style),
+            tui.span(content: "#{format_token_label(tokens, data["estimated"])} ", style: tui.style(**tok_style)),
+            tui.span(content: "#{label}: #{first_content}", style: style)
+          ]
+        else
+          header = ts_prefix.empty? ? "#{label}:" : "#{ts_prefix}#{label}:"
+          [tui.span(content: "#{header} #{first_content}", style: style)]
+        end
+
+        lines = [tui.line(spans: first_spans)]
         content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: line, style: style)]) }
         lines
       end
@@ -834,12 +859,17 @@ module TUI
       # @param data [Hash] structured data with "content", "tokens", "estimated"
       # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_system_prompt_entry(tui, data)
-        token_label = format_token_label(data["tokens"], data["estimated"])
-        header = "[SYSTEM] (#{token_label})"
-        style = tui.style(fg: "magenta")
+        tokens = data["tokens"]
         bold_style = tui.style(fg: "magenta", modifiers: [:bold])
+        style = tui.style(fg: "magenta")
 
-        lines = [tui.line(spans: [tui.span(content: header, style: bold_style)])]
+        header_spans = [tui.span(content: "[SYSTEM] ", style: bold_style)]
+        if tokens
+          tok_label = format_token_label(tokens, data["estimated"])
+          header_spans << tui.span(content: "(#{tok_label})", style: tui.style(fg: token_count_color(tokens)))
+        end
+
+        lines = [tui.line(spans: header_spans)]
         data["content"].to_s.split("\n").each do |line|
           lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)])
         end
@@ -848,7 +878,8 @@ module TUI
 
       def build_chat_message_lines(tui, msg)
         role = msg[:role]
-        role_style = (role == ROLE_USER) ? tui.style(fg: "green", modifiers: [:bold]) : tui.style(fg: "cyan", modifiers: [:bold])
+        role_cfg = ROLE_STYLES.fetch(role, {fg: "white"})
+        role_style = tui.style(**role_cfg)
 
         label = role_label(role)
         content_lines = msg[:content].to_s.split("\n", -1)

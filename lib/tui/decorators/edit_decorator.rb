@@ -3,7 +3,8 @@
 module TUI
   module Decorators
     # Renders edit tool calls and responses.
-    # Calls show the file path with a pencil icon.
+    # Calls show the file path with a pencil icon in the unified tool color.
+    # Responses use the CRUD Update color (light_yellow) to flag modifications.
     class EditDecorator < BaseDecorator
       ICON = "\u270F\uFE0F" # pencil
 
@@ -11,8 +12,8 @@ module TUI
         ICON
       end
 
-      def color
-        "yellow"
+      def response_color
+        "light_yellow"
       end
     end
   end
