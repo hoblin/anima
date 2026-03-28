@@ -20,6 +20,13 @@ module TUI
     # Visually flags expensive messages so runaway tool calls or bloated
     # responses jump out immediately in debug mode.
     #
+    # Thresholds (empirically tuned from real agent sessions):
+    #   < 1k  → dark_gray  (routine, ignorable)
+    #   < 3k  → white      (normal)
+    #   < 10k → yellow     (notable)
+    #   < 20k → 208/orange (expensive)
+    #   ≥ 20k → red        (alarm — likely runaway)
+    #
     # @param tokens [Integer] token count
     # @return [String, Integer] named color or 256-color index
     def token_count_color(tokens)

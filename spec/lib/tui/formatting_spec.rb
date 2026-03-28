@@ -31,16 +31,32 @@ RSpec.describe TUI::Formatting do
       expect(formatter.token_count_color(0)).to eq("dark_gray")
     end
 
+    it "returns dark_gray at 999 tokens (just below 1k boundary)" do
+      expect(formatter.token_count_color(999)).to eq("dark_gray")
+    end
+
     it "returns white at exactly 1000 tokens" do
       expect(formatter.token_count_color(1_000)).to eq("white")
+    end
+
+    it "returns white at 2999 tokens (just below 3k boundary)" do
+      expect(formatter.token_count_color(2_999)).to eq("white")
     end
 
     it "returns yellow at exactly 3000 tokens" do
       expect(formatter.token_count_color(3_000)).to eq("yellow")
     end
 
+    it "returns yellow at 9999 tokens (just below 10k boundary)" do
+      expect(formatter.token_count_color(9_999)).to eq("yellow")
+    end
+
     it "returns orange at exactly 10000 tokens" do
       expect(formatter.token_count_color(10_000)).to eq(208)
+    end
+
+    it "returns orange at 19999 tokens (just below 20k boundary)" do
+      expect(formatter.token_count_color(19_999)).to eq(208)
     end
 
     it "returns red at exactly 20000 tokens" do
