@@ -273,7 +273,7 @@ The analytical brain observes the main conversation between turns and handles ev
 
 - **Skill activation** — activates/deactivates domain knowledge based on conversation context
 - **Workflow management** — recognizes tasks, activates matching workflows, tracks lifecycle
-- **Goal tracking** — creates root goals and sub-goals as work progresses, marks them complete
+- **Goal tracking** — creates root goals and sub-goals as work progresses, marks them complete, evicts finished goals from context after a configurable message threshold
 - **Session naming** — generates emoji + short name when the topic becomes clear
 
 Each of these would be a context switch for the main agent — a chore that competes with the primary task. For the analytical brain, they ARE the primary task. Two agents, each in their own flow state.
@@ -300,6 +300,7 @@ command = 30
 max_tokens = 4096
 blocking_on_user_message = true
 event_window = 20
+goal_eviction_threshold = 5
 
 [session]
 default_view_mode = "basic"

@@ -24,7 +24,15 @@ class Goal < ApplicationRecord
   scope :active, -> { where(status: "active") }
   scope :completed, -> { where(status: "completed") }
   scope :root, -> { where(parent_goal_id: nil) }
+
+  # @!method self.not_evicted
+  #   Goals still visible in context (not yet evicted by the analytical brain).
+  #   @return [ActiveRecord::Relation]
   scope :not_evicted, -> { where(evicted_at: nil) }
+
+  # @!method self.evictable
+  #   Completed goals pending eviction — visible to the brain for age-based review.
+  #   @return [ActiveRecord::Relation]
   scope :evictable, -> { completed.where(evicted_at: nil) }
 
   after_commit :broadcast_goals_update
