@@ -168,6 +168,10 @@ The agent has access to these built-in tools:
 | `web_get` | Fetch content from HTTP/HTTPS URLs (HTML → Markdown, JSON → TOON) |
 | `spawn_specialist` | Spawn a named specialist sub-agent from the registry |
 | `spawn_subagent` | Spawn a generic child session with custom tool grants |
+| `think` | Think out loud or silently — reasoning step between tool calls |
+| `recall` | Search past conversations by keywords (FTS5). Returns ranked snippets with message IDs for drill-down |
+| `remember` | Recall full conversation context around a past message at fractal resolution |
+| `open_issue` | File a self-improvement issue when something is broken, missing, or could be better |
 | `mark_goal_completed` | Sub-agent only: signal task completion and deliver results to parent |
 
 Plus dynamic tools from configured MCP servers, namespaced as `server_name__tool_name`.
@@ -590,7 +594,7 @@ This single example demonstrates every core principle:
 - Dynamic viewport context assembly (endless sessions, no compaction)
 - Analytical brain (skills, workflows, goals, session naming)
 - Mneme memory department (eviction-triggered summarization, persistent snapshots, goal-scoped event pinning, associative recall)
-- 9 built-in tools + MCP integration (HTTP + stdio transports)
+- 12 built-in tools + MCP integration (HTTP + stdio transports)
 - 7 built-in skills + 13 built-in workflows (user-extensible)
 - Sub-agents with lossless context inheritance (5 specialists + generic)
 - Client-server architecture with WebSocket transport + graceful reconnection
