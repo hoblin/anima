@@ -244,7 +244,7 @@ RSpec.describe LLM::Client do
         expect(result).to be_nil
       end
 
-      it "creates synthetic 'Stopped by user' tool_results" do
+      it "creates synthetic 'Your human wants your attention' tool_results" do
         session.update_column(:interrupt_requested, true)
 
         events = []

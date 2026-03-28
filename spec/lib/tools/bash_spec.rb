@@ -228,7 +228,7 @@ RSpec.describe Tools::Bash do
         session.update_column(:interrupt_requested, true)
         session.update_column(:processing, true)
         result = tool.execute("command" => "sleep 30")
-        expect(result).to include("Interrupted by user")
+        expect(result).to include("Your human wants your attention")
       end
 
       it "includes partial stdout in interrupted result" do
@@ -236,7 +236,7 @@ RSpec.describe Tools::Bash do
           {interrupted: true, stdout: "partial output", stderr: ""}
         )
         result = tool.execute("command" => "long-command")
-        expect(result).to include("Interrupted by user")
+        expect(result).to include("Your human wants your attention")
         expect(result).to include("Partial stdout:\npartial output")
       end
 
@@ -251,7 +251,7 @@ RSpec.describe Tools::Bash do
         result = tool.execute("commands" => ["echo first", "sleep 999", "echo third"])
         expect(result).to include("[1/3] $ echo first")
         expect(result).to include("[2/3] $ sleep 999")
-        expect(result).to include("Interrupted by user")
+        expect(result).to include("Your human wants your attention")
         expect(result).to include("[3/3] $ echo third\n(skipped — interrupted by user)")
       end
     end

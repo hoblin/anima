@@ -15,8 +15,8 @@ module LLM
   #   registry.register(Tools::WebGet)
   #   client.chat_with_tools(messages, registry: registry, session_id: session.id)
   class Client
-    # Synthetic tool_result message when a tool is skipped due to user interrupt.
-    INTERRUPT_MESSAGE = "Stopped by user"
+    # Synthetic tool_result when a tool is skipped because the human pressed Escape.
+    INTERRUPT_MESSAGE = "Your human wants your attention"
 
     # @return [Providers::Anthropic] the underlying API provider
     attr_reader :provider
@@ -65,7 +65,7 @@ module LLM
     # tool interaction so they're persisted and visible in the event stream.
     #
     # When the user interrupts via Escape, remaining tools receive synthetic
-    # "Stopped by user" results and the loop exits without another LLM call.
+    # "Your human wants your attention" results and the loop exits without another LLM call.
     #
     # @param messages [Array<Hash>] conversation messages in Anthropic format
     # @param registry [Tools::Registry] registered tools to make available
@@ -167,7 +167,7 @@ module LLM
       results
     end
 
-    # Creates synthetic "Stopped by user" results for all tools in the list.
+    # Creates synthetic "Your human wants your attention" results for all tools in the list.
     #
     # @param tool_uses [Array<Hash>] remaining tool_use content blocks
     # @param session_id [Integer, String] session ID for events
@@ -228,7 +228,7 @@ module LLM
       {type: "tool_result", tool_use_id: id, content: error_content}
     end
 
-    # Creates a synthetic "Stopped by user" result for a tool that was not
+    # Creates a synthetic "Your human wants your attention" result for a tool that was not
     # executed due to user interrupt. Emits both ToolCall and ToolResponse
     # events so the TUI shows the interrupted tool in the event stream.
     #
@@ -241,7 +241,7 @@ module LLM
       input = tool_use["input"] || {}
 
       Events::Bus.emit(Events::ToolCall.new(
-        content: "Skipped #{name} (interrupted)", tool_name: name,
+        content: "Skipped #{name} — your human wants your attention", tool_name: name,
         tool_input: input, tool_use_id: id, session_id: session_id
       ))
 

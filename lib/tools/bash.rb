@@ -149,7 +149,7 @@ module Tools
     def format_interrupted(result)
       stdout = result[:stdout].to_s
       stderr = result[:stderr].to_s
-      parts = ["Interrupted by user."]
+      parts = ["Your human wants your attention."]
       parts << "Partial stdout:\n#{stdout}" unless stdout.empty?
       parts << "stderr:\n#{stderr}" unless stderr.empty?
       parts.join("\n\n")

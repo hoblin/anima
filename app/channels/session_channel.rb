@@ -84,7 +84,7 @@ class SessionChannel < ApplicationCable::Channel
 
   # Requests interruption of the current tool execution. Sets a flag on the
   # session that the LLM client checks between tool calls. Remaining tools
-  # receive synthetic "Stopped by user" results to satisfy the API's
+  # receive synthetic "Your human wants your attention" results to satisfy the API's
   # tool_use/tool_result pairing requirement.
   #
   # Cascades to running sub-agent sessions to avoid burning tokens in
