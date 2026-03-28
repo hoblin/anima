@@ -38,8 +38,7 @@ module Anima
           .to_h { |name| [name, SecureRandom.base64(32)] }
 
         FileUtils.mkdir_p(File.dirname(key_file))
-        File.write(key_file, YAML.dump(keys))
-        File.chmod(0o600, key_file)
+        File.open(key_file, "w", 0o600) { |f| f.write(YAML.dump(keys)) }
 
         symbolize(keys)
       end

@@ -132,7 +132,7 @@ State directory (`~/.anima/`):
 ├── config.toml      # Main settings (hot-reloadable)
 ├── mcp.toml         # MCP server configuration
 ├── config/
-│   └── credentials/ # Rails encrypted credentials per environment
+│   └── encryption.key # Active Record Encryption keys (generated during install)
 ├── agents/          # User-defined specialist agents (override built-ins)
 ├── skills/          # User-defined skills (override built-ins)
 ├── workflows/       # User-defined workflows (override built-ins)
@@ -149,7 +149,7 @@ Anima uses your Claude Pro/Max subscription for API access. You need a setup-tok
 
 1. Run `claude setup-token` in a terminal to get your token
 2. In the TUI, press `Ctrl+a → a` to open the token setup popup
-3. Paste the token and press Enter — Anima validates it against the Anthropic API and saves it to encrypted credentials
+3. Paste the token and press Enter — Anima validates it against the Anthropic API and saves it to the encrypted secrets database
 
 The popup also activates automatically when Anima detects a missing or invalid token. If the token expires, repeat the process with a new one.
 
@@ -255,12 +255,12 @@ anima mcp add fs -- mcp-server-filesystem --root / # Add stdio server
 anima mcp add -s api_key=sk-xxx linear https://...  # Add with secret
 anima mcp remove sentry                     # Remove server
 
-anima mcp secrets set linear_api_key=sk-xxx # Store secret in encrypted credentials
+anima mcp secrets set linear_api_key=sk-xxx # Store secret in encrypted database
 anima mcp secrets list                      # List secret names (not values)
 anima mcp secrets remove linear_api_key     # Remove secret
 ```
 
-Secrets are stored in Rails encrypted credentials and interpolated via `${credential:key_name}` syntax in any TOML string value.
+Secrets are stored in an encrypted database table (Active Record Encryption) and interpolated via `${credential:key_name}` syntax in any TOML string value.
 
 ### Analytical Brain
 

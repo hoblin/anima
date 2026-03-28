@@ -35,15 +35,18 @@ class Secret < ApplicationRecord
   end
 
   # Writes one or more key-value pairs under a namespace.
-  # Uses upsert to insert or update atomically.
+  # Each pair is upserted (insert or update). The entire batch is wrapped
+  # in a transaction so partial writes cannot occur.
   #
   # @param namespace [String] top-level grouping key
   # @param pairs [Hash<String, String>] key-value pairs to store
   # @return [void]
   def self.write(namespace, pairs)
-    pairs.each do |secret_key, secret_value|
-      record = find_or_initialize_by(namespace: namespace, key: secret_key)
-      record.update!(value: secret_value)
+    transaction do
+      pairs.each do |secret_key, secret_value|
+        record = find_or_initialize_by(namespace: namespace, key: secret_key)
+        record.update!(value: secret_value)
+      end
     end
   end
 
