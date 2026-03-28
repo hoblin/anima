@@ -672,6 +672,28 @@ RSpec.describe Session do
       expect(prompt).to include("### Active task")
       expect(prompt).to include("- [ ] Step 1")
     end
+
+    it "excludes evicted goals from the prompt" do
+      Goal.create!(
+        session: session, description: "Evicted task",
+        status: "completed", completed_at: 2.hours.ago, evicted_at: 1.hour.ago
+      )
+      Goal.create!(session: session, description: "Visible task")
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).not_to include("Evicted task")
+      expect(prompt).to include("### Visible task")
+    end
+
+    it "returns nil goals section when all goals are evicted" do
+      Goal.create!(
+        session: session, description: "Gone",
+        status: "completed", completed_at: 2.hours.ago, evicted_at: 1.hour.ago
+      )
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).not_to include("Current Goals")
+    end
   end
 
   describe "#activate_workflow" do

@@ -19,7 +19,7 @@ RSpec.describe Anima::Settings do
       "paths" => {"soul" => "/home/test/.anima/soul.md"},
       "session" => {"default_view_mode" => "basic", "name_generation_interval" => 30},
       "agent" => {"name" => "Anima"},
-      "analytical_brain" => {"max_tokens" => 128, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "message_window" => 20},
+      "analytical_brain" => {"max_tokens" => 128, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "message_window" => 20, "goal_eviction_threshold" => 5},
       "environment" => {"project_files" => ["CLAUDE.md", "AGENTS.md", "README.md", "CONTRIBUTING.md"], "project_files_max_depth" => 3},
       "github" => {"repo" => "hoblin/anima", "label" => "anima-wants"}
     }
@@ -63,6 +63,7 @@ RSpec.describe Anima::Settings do
       expect(described_class.analytical_brain_blocking_on_user_message).to be true
       expect(described_class.analytical_brain_blocking_on_agent_message).to be false
       expect(described_class.analytical_brain_message_window).to eq(20)
+      expect(described_class.goal_eviction_threshold).to eq(5)
     end
 
     it "reads environment settings" do

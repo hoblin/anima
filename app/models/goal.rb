@@ -24,6 +24,8 @@ class Goal < ApplicationRecord
   scope :active, -> { where(status: "active") }
   scope :completed, -> { where(status: "completed") }
   scope :root, -> { where(parent_goal_id: nil) }
+  scope :not_evicted, -> { where(evicted_at: nil) }
+  scope :evictable, -> { completed.where(evicted_at: nil) }
 
   after_commit :broadcast_goals_update
   after_commit :schedule_passive_recall, on: [:create, :update]
@@ -36,6 +38,9 @@ class Goal < ApplicationRecord
 
   # @return [Boolean] true if this is a root goal (no parent)
   def root? = !parent_goal_id
+
+  # @return [Boolean] true if this goal has been evicted from display
+  def evicted? = evicted_at.present?
 
   # Cascades completion to all active sub-goals. Called when a root goal
   # is finished — remaining sub-items are implicitly resolved because

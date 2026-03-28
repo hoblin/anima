@@ -200,8 +200,87 @@ RSpec.describe AnalyticalBrain::Runner do
 
         runner.call
 
-        expect(captured_opts[:system]).to include("Active goal")
-        expect(captured_opts[:system]).not_to include("Done goal")
+        system = captured_opts[:system]
+        expect(system).to include("ACTIVE GOALS")
+        expect(system).to include("- Active goal (id:")
+        expect(system).to include("~~Done goal~~")
+        expect(system).not_to match(/ACTIVE GOALS.*?- Done goal \(id:/m)
+      end
+
+      it "shows completed-but-not-evicted goals with age in system prompt" do
+        session.goals.create!(description: "Done goal", status: "completed", completed_at: 1.hour.ago)
+        session.messages.create!(message_type: "user_message", payload: {content: "hi"}, timestamp: 1)
+        session.messages.create!(message_type: "agent_message", payload: {content: "hello"}, timestamp: 2)
+
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        system = captured_opts[:system]
+        expect(system).to include("COMPLETED GOALS (evict when")
+        expect(system).to include("~~Done goal~~")
+        expect(system).to match(/\d+ messages since completion/)
+      end
+
+      it "shows eviction threshold in completed goals section header" do
+        session.goals.create!(description: "Done goal", status: "completed", completed_at: 1.hour.ago)
+
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).to include("evict when ≥ 5 messages since completion")
+      end
+
+      it "excludes evicted goals from completed goals section" do
+        session.goals.create!(
+          description: "Evicted goal", status: "completed",
+          completed_at: 2.hours.ago, evicted_at: 1.hour.ago
+        )
+
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).not_to include("evict when")
+        expect(captured_opts[:system]).not_to include("Evicted goal")
+      end
+
+      it "omits completed goals section when no goals pending eviction" do
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).not_to include("evict when")
+      end
+
+      it "includes eviction instructions in goal tracking prompt" do
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).to include("EVICTION")
+        expect(captured_opts[:system]).to include("evict_goal")
       end
 
       it "includes action instruction in the user message" do
@@ -441,7 +520,7 @@ RSpec.describe AnalyticalBrain::Runner do
         runner.call
 
         %w[activate_skill deactivate_skill read_workflow deactivate_workflow
-          set_goal update_goal finish_goal everything_is_ready].each do |name|
+          set_goal update_goal finish_goal evict_goal everything_is_ready].each do |name|
           expect(captured_registry.registered?(name)).to be(true), "expected #{name} to be registered"
         end
       end

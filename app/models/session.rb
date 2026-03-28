@@ -511,10 +511,11 @@ class Session < ApplicationRecord
   # Assembles the goals section of the system prompt.
   # Active root goals render as `###` headings with sub-goal checkboxes.
   # Completed root goals collapse to a single strikethrough line.
+  # Evicted goals are excluded entirely to free context budget.
   #
   # @return [String, nil] goals section, or nil when no goals exist
   def assemble_goals_section
-    root_goals = goals.root.includes(:sub_goals).order(:created_at)
+    root_goals = goals.root.not_evicted.includes(:sub_goals).order(:created_at)
     return if root_goals.empty?
 
     entries = root_goals.map { |goal| render_goal_markdown(goal) }

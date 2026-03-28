@@ -211,6 +211,11 @@ module Anima
       # @return [Integer]
       def analytical_brain_message_window = get("analytical_brain", "message_window")
 
+      # Number of meaningful messages after completion before the brain should
+      # evict a completed goal from the agent's context.
+      # @return [Integer]
+      def goal_eviction_threshold = get("analytical_brain", "goal_eviction_threshold")
+
       # ─── Mneme (Memory Department) ────────────────────────────────
 
       # Maximum tokens per Mneme LLM response.

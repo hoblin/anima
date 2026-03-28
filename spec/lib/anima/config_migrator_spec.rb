@@ -66,6 +66,7 @@ RSpec.describe Anima::ConfigMigrator do
           ["analytical_brain", "blocking_on_user_message"],
           ["analytical_brain", "blocking_on_agent_message"],
           ["analytical_brain", "message_window"],
+          ["analytical_brain", "goal_eviction_threshold"],
           ["mneme", "max_tokens"],
           ["mneme", "viewport_fraction"],
           ["mneme", "l1_budget_fraction"],

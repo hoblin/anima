@@ -85,8 +85,14 @@ module AnalyticalBrain
           Mark goals complete when the agent finishes the work they describe.
           Completing a root goal cascades — all sub-goals are finished too.
           Never duplicate an existing goal — check the active goals list first.
+
+          EVICTION: completed goals stay visible briefly, then must be evicted
+          to free context budget. Check completed goals below — each shows
+          how many meaningful messages have passed since completion.
+          Evict when count ≥ threshold using the evict_goal tool.
+          Use judgment: keep a goal longer if the conversation still references it.
         PROMPT
-        tools: [Tools::SetGoal, Tools::UpdateGoal, Tools::FinishGoal]
+        tools: [Tools::SetGoal, Tools::UpdateGoal, Tools::FinishGoal, Tools::EvictGoal]
       )
     }.freeze
 
@@ -230,7 +236,8 @@ module AnalyticalBrain
         active_siblings_section,
         skills_catalog_section,
         workflows_catalog_section,
-        active_goals_section
+        active_goals_section,
+        completed_goals_section
       ]
       sections.compact.join("\n")
     end
@@ -316,6 +323,40 @@ module AnalyticalBrain
         ──────────────────────────────
         #{lines.join("\n")}
       SECTION
+    end
+
+    # Shows completed-but-not-evicted goals with their age in meaningful
+    # messages so the brain can decide whether to evict them.
+    #
+    # @return [String, nil] completed goals section, or nil when none pending eviction
+    def completed_goals_section
+      evictable = @session.goals.root.evictable.order(:completed_at)
+      return if evictable.empty?
+
+      threshold = Anima::Settings.goal_eviction_threshold
+      current_count = @session.messages.llm_messages.count
+
+      lines = evictable.map do |goal|
+        messages_since = messages_since_completion(goal, current_count)
+        "- ~~#{goal.description}~~ (id: #{goal.id}, #{messages_since} messages since completion)"
+      end
+
+      <<~SECTION
+        ──────────────────────────────
+        COMPLETED GOALS (evict when ≥ #{threshold} messages since completion)
+        ──────────────────────────────
+        #{lines.join("\n")}
+      SECTION
+    end
+
+    # Counts meaningful messages created after the goal was completed.
+    #
+    # @param goal [Goal] a completed goal
+    # @param current_count [Integer] total LLM message count (precomputed to avoid N+1)
+    # @return [Integer] messages since completion
+    def messages_since_completion(goal, current_count)
+      count_at_completion = @session.messages.llm_messages.where("created_at <= ?", goal.completed_at).count
+      current_count - count_at_completion
     end
 
     # Formats a root goal and its sub-goals as a markdown checklist

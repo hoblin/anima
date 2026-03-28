@@ -137,6 +137,10 @@ blocking_on_agent_message = false
 # Number of recent messages to include in the analytical brain's context window.
 message_window = 20
 
+# Number of meaningful messages after completion before the brain should
+# evict a completed goal from the agent's context.
+goal_eviction_threshold = 5
+
 # ─── Mneme (Memory Department) ──────────────────────────────────
 
 [mneme]
