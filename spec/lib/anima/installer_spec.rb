@@ -111,6 +111,25 @@ RSpec.describe Anima::Installer do
       expect(mcp_path.read).to include("[servers.example]")
     end
 
+    it "generates encryption keys" do
+      installer.run
+
+      key_file = tmp_home.join("config", "encryption.key")
+      expect(key_file).to exist
+      expect(key_file.stat.mode & 0o777).to eq(0o600)
+
+      keys = YAML.safe_load_file(key_file)
+      expect(keys).to include("primary_key", "deterministic_key", "key_derivation_salt")
+    end
+
+    it "does not overwrite existing encryption keys on re-run" do
+      installer.run
+      original = tmp_home.join("config", "encryption.key").read
+
+      installer.run
+      expect(tmp_home.join("config", "encryption.key").read).to eq(original)
+    end
+
     it "is idempotent" do
       installer.run
       expect { installer.run }.not_to raise_error

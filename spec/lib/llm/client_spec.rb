@@ -25,9 +25,7 @@ RSpec.describe LLM::Client do
     end
 
     it "creates a default provider when none given" do
-      allow(Rails.application.credentials).to receive(:dig)
-        .with(:anthropic, :subscription_token)
-        .and_return(fake_token)
+      Secret.write("anthropic", "subscription_token" => fake_token)
 
       client = described_class.new
       expect(client.provider).to be_a(Providers::Anthropic)

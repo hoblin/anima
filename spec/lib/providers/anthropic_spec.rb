@@ -63,11 +63,9 @@ RSpec.describe Providers::Anthropic do
   end
 
   describe ".fetch_token" do
-    context "when token is configured in credentials" do
+    context "when token is configured in secrets" do
       before do
-        allow(Rails.application.credentials).to receive(:dig)
-          .with(:anthropic, :subscription_token)
-          .and_return(fake_token)
+        Secret.write("anthropic", "subscription_token" => fake_token)
       end
 
       it "returns the token" do
@@ -82,10 +80,8 @@ RSpec.describe Providers::Anthropic do
       expect(provider.token).to eq(fake_token)
     end
 
-    it "fetches token from credentials when no argument given" do
-      allow(Rails.application.credentials).to receive(:dig)
-        .with(:anthropic, :subscription_token)
-        .and_return(fake_token)
+    it "fetches token from secrets when no argument given" do
+      Secret.write("anthropic", "subscription_token" => fake_token)
 
       provider = described_class.new
       expect(provider.token).to eq(fake_token)

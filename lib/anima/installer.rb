@@ -33,6 +33,7 @@ module Anima
       create_settings_config
       create_mcp_config
       generate_credentials
+      generate_encryption_keys
       create_systemd_service
       say "Installation complete. Brain is running. Connect with 'anima tui'."
     end
@@ -121,6 +122,24 @@ module Anima
         File.chmod(0o600, content_str)
         say "  created credentials for #{env}"
       end
+    end
+
+    # Generates Active Record Encryption keys for the Secret model.
+    # Delegates to {Anima::EncryptionKeys} which handles idempotent
+    # generation and 0600 file permissions.
+    def generate_encryption_keys
+      require_relative "encryption_keys"
+
+      key_file = anima_home.join("config", "encryption.key").to_s
+      if File.exist?(key_file)
+        say "  encryption keys already exist"
+      else
+        Anima::EncryptionKeys.key_file = key_file
+        Anima::EncryptionKeys.generate_and_save
+        say "  created #{key_file}"
+      end
+    ensure
+      Anima::EncryptionKeys.key_file = nil
     end
 
     def create_systemd_service
