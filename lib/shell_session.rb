@@ -47,13 +47,17 @@ class ShellSession
   # @param command [String] bash command to execute
   # @param timeout [Integer, nil] per-call timeout in seconds; overrides
   #   Settings.command_timeout when provided
+  # @param interrupt_check [Proc, nil] callable returning truthy when the
+  #   user has requested an interrupt. Polled every
+  #   {Anima::Settings.interrupt_check_interval} seconds during command execution.
   # @return [Hash] with :stdout, :stderr, :exit_code keys on success
+  # @return [Hash] with :interrupted, :stdout, :stderr keys on user interrupt
   # @return [Hash] with :error key on failure
-  def run(command, timeout: nil)
+  def run(command, timeout: nil, interrupt_check: nil)
     @mutex.synchronize do
       return {error: "Shell session is not running"} if @finalized
       restart unless @alive
-      execute_in_pty(command, timeout: timeout)
+      execute_in_pty(command, timeout: timeout, interrupt_check: interrupt_check)
     end
   rescue => error # rubocop:disable Lint/RescueException -- LLM must always get a result hash, never a stack trace
     {error: "#{error.class}: #{error.message}"}
@@ -229,7 +233,7 @@ class ShellSession
     end
   end
 
-  def execute_in_pty(command, timeout: nil)
+  def execute_in_pty(command, timeout: nil, interrupt_check: nil)
     clear_stderr
     marker = "__ANIMA_#{SecureRandom.hex(8)}__"
     timeout ||= Anima::Settings.command_timeout
@@ -237,10 +241,21 @@ class ShellSession
 
     @pty_stdin.puts "#{command}; __anima_ec=$?; echo; echo '#{marker}' $__anima_ec"
 
-    stdout, exit_code = read_until_marker(marker, deadline: deadline)
+    stdout, exit_code = read_until_marker(marker, deadline: deadline, interrupt_check: interrupt_check)
+
+    if exit_code == :interrupted
+      recover_shell
+      update_pwd
+      stderr = drain_stderr
+      return {
+        interrupted: true,
+        stdout: truncate(stdout),
+        stderr: truncate(stderr)
+      }
+    end
 
     if exit_code.nil?
-      recover_from_timeout
+      recover_shell
       stderr = drain_stderr
       parts = ["Command timed out after #{timeout} seconds."]
       parts << "Partial stdout:\n#{truncate(stdout)}" unless stdout.empty?
@@ -267,14 +282,23 @@ class ShellSession
   #
   # @param marker [String] unique marker to detect command completion
   # @param deadline [Float] monotonic clock deadline
+  # @param interrupt_check [Proc, nil] callable returning truthy on user interrupt
   # @return [Array(String, Integer)] stdout and exit code on success
+  # @return [Array(String, Symbol)] partial stdout and +:interrupted+ on user interrupt
   # @return [Array(String, nil)] partial stdout and nil exit code on timeout
-  def read_until_marker(marker, deadline:)
+  def read_until_marker(marker, deadline:, interrupt_check: nil)
     lines = []
     exit_code = nil
+    check_interval = interrupt_check ? [Anima::Settings.interrupt_check_interval, 0.5].max : nil
 
     loop do
-      line = gets_with_deadline(deadline)
+      line = gets_with_deadline(deadline, interrupt_check: interrupt_check, check_interval: check_interval)
+
+      if line == :interrupted
+        exit_code = :interrupted
+        break
+      end
+
       break if line.nil?
 
       line = line.chomp.delete("\r")
@@ -315,12 +339,21 @@ class ShellSession
   # Timeout.timeout (which uses Thread.raise that can corrupt mutex state
   # and leave resources inconsistent).
   #
+  # When +interrupt_check+ is provided, IO.select uses a shorter timeout
+  # (capped at {Anima::Settings.interrupt_check_interval}) and polls the
+  # callback between iterations. Returns +:interrupted+ when the callback
+  # fires, allowing the caller to send Ctrl+C and return partial output.
+  #
   # @param deadline [Float] monotonic clock deadline
+  # @param interrupt_check [Proc, nil] callable returning truthy on user interrupt
+  # @param check_interval [Float, nil] resolved interrupt check interval (seconds);
+  #   pre-computed by the caller to avoid re-reading Settings on every line
   # @return [String] line including trailing newline
+  # @return [:interrupted] when user interrupt detected
   # @return [nil] if deadline expired
   # @raise [Errno::EIO] when the PTY child process exits (Linux)
   # @raise [IOError] when the PTY file descriptor is closed
-  def gets_with_deadline(deadline)
+  def gets_with_deadline(deadline, interrupt_check: nil, check_interval: nil)
     loop do
       if (idx = @read_buffer.index("\n"))
         return @read_buffer.slice!(0..idx)
@@ -329,24 +362,29 @@ class ShellSession
       remaining = deadline - monotonic_now
       return nil if remaining <= 0
 
-      ready = IO.select([@pty_stdout], nil, nil, remaining)
-      return nil unless ready
+      select_timeout = check_interval ? [remaining, check_interval].min : remaining
 
-      begin
-        @read_buffer << @pty_stdout.read_nonblock(4096)
-      rescue IO::WaitReadable
-        # Spurious wakeup from IO.select — retry
+      ready = IO.select([@pty_stdout], nil, nil, select_timeout)
+
+      if ready
+        begin
+          @read_buffer << @pty_stdout.read_nonblock(4096)
+        rescue IO::WaitReadable
+          # Spurious wakeup from IO.select — retry
+        end
       end
+
+      return :interrupted if interrupt_check&.call
     end
   end
 
-  # Sends Ctrl+C to interrupt the running command and drains leftover output.
+  # Sends Ctrl+C and drains leftover output after a timeout or user interrupt.
   # If recovery fails, marks the session as dead (will be respawned on next run).
   #
   # @return [void]
   # @raise [Errno::EIO] when the PTY child process has exited
   # @raise [IOError] when the PTY file descriptor is closed
-  def recover_from_timeout
+  def recover_shell
     @pty_stdin.write("\x03")
     sleep 0.1
     marker = "__ANIMA_RECOVER_#{SecureRandom.hex(8)}__"

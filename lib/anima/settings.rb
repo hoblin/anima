@@ -119,6 +119,13 @@ module Anima
       # @return [Integer] seconds
       def tool_timeout = get("timeouts", "tool")
 
+      # Polling interval for user interrupt checks during long-running commands.
+      # Enforces a 0.5s floor to prevent busy-polling from misconfiguration.
+      # @return [Numeric] seconds (minimum 0.5)
+      def interrupt_check_interval
+        [get("timeouts", "interrupt_check"), 0.5].max
+      end
+
       # ─── Shell ──────────────────────────────────────────────────────
 
       # Maximum bytes of command output before truncation.

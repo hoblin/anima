@@ -55,6 +55,10 @@ web_request = 10
 # Also used as the default deadline for orphan detection in heal_orphaned_tool_calls!.
 tool = 180
 
+# How often (seconds) to poll for user interrupt during long-running commands.
+# Lower = faster Escape response, higher = less DB overhead.
+interrupt_check = 2
+
 # ─── Shell ──────────────────────────────────────────────────────
 
 [shell]

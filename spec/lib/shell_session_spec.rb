@@ -105,6 +105,55 @@ RSpec.describe ShellSession do
       end
     end
 
+    context "interrupt_check" do
+      it "returns interrupted result when callback fires" do
+        # Fires on the second poll, giving the command one cycle to start
+        check_count = 0
+        checker = -> { (check_count += 1) > 1 }
+
+        allow(Anima::Settings).to receive(:interrupt_check_interval).and_return(0.5)
+        result = shell.run("sleep 30", interrupt_check: checker)
+        expect(result[:interrupted]).to be true
+      end
+
+      it "includes partial stdout captured before interrupt" do
+        check_count = 0
+        checker = -> { (check_count += 1) > 2 }
+
+        allow(Anima::Settings).to receive(:interrupt_check_interval).and_return(0.3)
+        result = shell.run("echo before_interrupt && sleep 30", interrupt_check: checker)
+        expect(result[:interrupted]).to be true
+        expect(result[:stdout]).to include("before_interrupt")
+      end
+
+      it "recovers the shell after interrupt" do
+        checker = -> { true }
+
+        allow(Anima::Settings).to receive(:interrupt_check_interval).and_return(0.5)
+        shell.run("sleep 30", interrupt_check: checker)
+
+        result = shell.run("echo recovered")
+        expect(result[:stdout]).to eq("recovered")
+      end
+
+      it "preserves working directory after interrupt" do
+        shell.run("cd /tmp")
+        expect(shell.pwd).to eq("/tmp")
+
+        checker = -> { true }
+        allow(Anima::Settings).to receive(:interrupt_check_interval).and_return(0.5)
+        shell.run("sleep 30", interrupt_check: checker)
+
+        expect(shell.pwd).to eq("/tmp")
+      end
+
+      it "does not check interrupt when no callback provided" do
+        result = shell.run("echo fast")
+        expect(result[:stdout]).to eq("fast")
+        expect(result[:interrupted]).to be_nil
+      end
+    end
+
     context "auto-respawn" do
       it "respawns after the shell process exits" do
         result = shell.run("exit 1")

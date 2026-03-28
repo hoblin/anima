@@ -163,9 +163,11 @@ class AgentRequestJob < ApplicationJob
   end
 
   # Clears the processing flag so the session can accept new jobs.
-  # Broadcasts the state change to the parent session's HUD.
+  # Broadcasts +processing_stopped+ to the session stream (clears TUI loading state)
+  # and +children_updated+ to the parent session's HUD.
   def release_processing(session_id)
     Session.where(id: session_id).update_all(processing: false)
+    ActionCable.server.broadcast("session_#{session_id}", {"action" => "processing_stopped"})
     Session.find_by(id: session_id)&.broadcast_children_update_to_parent
   end
 

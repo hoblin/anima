@@ -244,7 +244,7 @@ RSpec.describe LLM::Client do
         expect(result).to be_nil
       end
 
-      it "creates synthetic 'Stopped by user' tool_results" do
+      it "creates synthetic 'Your human wants your attention' tool_results" do
         session.update_column(:interrupt_requested, true)
 
         events = []
@@ -296,6 +296,22 @@ RSpec.describe LLM::Client do
         expect(tool_responses[1][:payload][:success]).to be false
       ensure
         Events::Bus.unsubscribe(subscriber)
+      end
+    end
+
+    context "when the user interrupts during text generation", :vcr do
+      it "discards the text response and returns nil" do
+        messages = [{role: "user", content: "Reply with the single word OK"}]
+        session.update_column(:interrupt_requested, true)
+
+        result = client.chat_with_tools(
+          messages,
+          registry: Tools::Registry.new,
+          session_id: session.id
+        )
+
+        expect(result).to be_nil
+        expect(session.reload.interrupt_requested?).to be false
       end
     end
 

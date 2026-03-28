@@ -407,6 +407,28 @@ RSpec.describe SessionChannel, type: :channel do
 
         expect(session.reload.interrupt_requested?).to be true
       end
+
+      it "broadcasts interrupt_acknowledged" do
+        expect { perform(:interrupt_execution, {}) }
+          .to have_broadcasted_to("session_#{session_id}")
+          .with(hash_including("action" => "interrupt_acknowledged"))
+      end
+
+      it "cascades interrupt to processing child sessions" do
+        child = Session.create!(parent_session_id: session.id, processing: true)
+
+        perform(:interrupt_execution, {})
+
+        expect(child.reload.interrupt_requested?).to be true
+      end
+
+      it "does not cascade to idle child sessions" do
+        child = Session.create!(parent_session_id: session.id, processing: false)
+
+        perform(:interrupt_execution, {})
+
+        expect(child.reload.interrupt_requested?).to be false
+      end
     end
 
     context "when session is not processing" do
@@ -414,6 +436,11 @@ RSpec.describe SessionChannel, type: :channel do
         perform(:interrupt_execution, {})
 
         expect(session.reload.interrupt_requested?).to be false
+      end
+
+      it "does not broadcast interrupt_acknowledged" do
+        expect { perform(:interrupt_execution, {}) }
+          .not_to have_broadcasted_to("session_#{session_id}")
       end
     end
 

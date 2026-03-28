@@ -15,8 +15,8 @@ module LLM
   #   registry.register(Tools::WebGet)
   #   client.chat_with_tools(messages, registry: registry, session_id: session.id)
   class Client
-    # Synthetic tool_result message when a tool is skipped due to user interrupt.
-    INTERRUPT_MESSAGE = "Stopped by user"
+    # Synthetic tool_result when a tool is skipped because the human pressed Escape.
+    INTERRUPT_MESSAGE = "Your human wants your attention"
 
     # @return [Providers::Anthropic] the underlying API provider
     attr_reader :provider
@@ -65,7 +65,7 @@ module LLM
     # tool interaction so they're persisted and visible in the event stream.
     #
     # When the user interrupts via Escape, remaining tools receive synthetic
-    # "Stopped by user" results and the loop exits without another LLM call.
+    # "Your human wants your attention" results and the loop exits without another LLM call.
     #
     # @param messages [Array<Hash>] conversation messages in Anthropic format
     # @param registry [Tools::Registry] registered tools to make available
@@ -109,11 +109,14 @@ module LLM
             {role: "user", content: tool_results}
           ]
 
-          if interrupted?(session_id)
-            clear_interrupt!(session_id)
-            return nil
-          end
+          return nil if handle_interrupt!(session_id)
         else
+          # Discard the text response if the user pressed Escape while
+          # the API was generating it. Without this check the interrupt
+          # flag set during the blocking API call would be silently
+          # cleared by the ensure block in AgentRequestJob.
+          return nil if handle_interrupt!(session_id)
+
           return extract_text(response)
         end
       end
@@ -151,9 +154,12 @@ module LLM
     def execute_tools(response, registry, session_id)
       tool_uses = extract_tool_uses(response)
       results = []
+      interrupted = false
 
       tool_uses.each_with_index do |tool_use, index|
-        if interrupted?(session_id)
+        # Check-only here; clearing happens in handle_interrupt! after the loop
+        interrupted ||= interrupt_requested?(session_id)
+        if interrupted
           remaining = tool_uses[index..]
           results.concat(interrupt_remaining_tools(remaining, session_id)) if remaining&.any?
           break
@@ -164,7 +170,7 @@ module LLM
       results
     end
 
-    # Creates synthetic "Stopped by user" results for all tools in the list.
+    # Creates synthetic "Your human wants your attention" results for all tools in the list.
     #
     # @param tool_uses [Array<Hash>] remaining tool_use content blocks
     # @param session_id [Integer, String] session ID for events
@@ -226,7 +232,7 @@ module LLM
       {type: "tool_result", tool_use_id: id, content: error_content}
     end
 
-    # Creates a synthetic "Stopped by user" result for a tool that was not
+    # Creates a synthetic "Your human wants your attention" result for a tool that was not
     # executed due to user interrupt. Emits both ToolCall and ToolResponse
     # events so the TUI shows the interrupted tool in the event stream.
     #
@@ -239,7 +245,7 @@ module LLM
       input = tool_use["input"] || {}
 
       Events::Bus.emit(Events::ToolCall.new(
-        content: "Skipped #{name} (interrupted)", tool_name: name,
+        content: "Skipped #{name} — your human wants your attention", tool_name: name,
         tool_input: input, tool_use_id: id, session_id: session_id
       ))
 
@@ -251,22 +257,23 @@ module LLM
       {type: "tool_result", tool_use_id: id, content: INTERRUPT_MESSAGE}
     end
 
-    # Checks the database for a pending interrupt flag on the session.
+    # Checks whether the session has a pending interrupt flag.
     #
     # @param session_id [Integer, String] session to check
-    # @return [Boolean] whether the session has a pending interrupt request
-    def interrupted?(session_id)
+    # @return [Boolean] true when interrupt is pending
+    def interrupt_requested?(session_id)
       Session.where(id: session_id, interrupt_requested: true).exists?
     end
 
-    # Clears the interrupt flag so the agent loop can continue with pending
-    # messages. Also cleared by {AgentRequestJob#clear_interrupt} as a safety
-    # net for unexpected exits.
+    # Atomically checks for a pending interrupt and clears it in one query.
+    # Used at loop boundaries (after tools, before LLM text return) to
+    # short-circuit the agent loop when the user presses Escape.
     #
-    # @param session_id [Integer, String] session to clear
-    # @return [void]
-    def clear_interrupt!(session_id)
-      Session.where(id: session_id).update_all(interrupt_requested: false)
+    # @param session_id [Integer, String] session to check
+    # @return [Boolean] true when interrupt was detected and cleared
+    def handle_interrupt!(session_id)
+      Session.where(id: session_id, interrupt_requested: true)
+        .update_all(interrupt_requested: false) > 0
     end
 
     def log(level, message)

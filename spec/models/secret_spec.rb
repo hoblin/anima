@@ -31,11 +31,10 @@ RSpec.describe Secret do
     end
 
     it "allows the same key in different namespaces" do
-      mcp = described_class.create!(namespace: "mcp", key: "token", value: "mcp-value")
-      anthropic = described_class.create!(namespace: "anthropic", key: "token", value: "anthropic-value")
+      described_class.create!(namespace: "mcp", key: "token", value: "mcp-value")
+      described_class.create!(namespace: "anthropic", key: "token", value: "anthropic-value")
 
-      expect(mcp).to be_persisted
-      expect(anthropic).to be_persisted
+      expect(described_class.where(key: "token").count).to eq(2)
     end
   end
 
