@@ -13,6 +13,10 @@ module Tools
   # - **inner** (default) — silent reasoning, visible only in verbose/debug
   # - **aloud** — narration shown in all view modes with a thought bubble
   #
+  # The +maxLength+ on thoughts is controlled by +thinking_budget+ in settings.
+  # Sub-agents receive half the main agent's budget — their tasks are scoped
+  # and less complex, so runaway reasoning is a stronger signal of confusion.
+  #
   # @example Silent planning between tool calls
   #   think(thoughts: "Three auth failures — likely a config issue, not individual tests.")
   #
@@ -23,6 +27,8 @@ module Tools
 
     def self.description = "Think out loud or silently."
 
+    # Schema is static — maxLength is injected at runtime by the registry
+    # via {#schema_with_budget} when session context is available.
     def self.input_schema
       {
         type: "object",
@@ -36,6 +42,23 @@ module Tools
         },
         required: ["thoughts"]
       }
+    end
+
+    # @param session [Session, nil] current session for budget calculation
+    def initialize(session: nil, **)
+      @session = session
+    end
+
+    # Returns the tool schema with a thinking budget applied as maxLength
+    # on the thoughts property. Sub-agents get half the budget.
+    #
+    # @return [Hash] Anthropic tool schema with maxLength constraint
+    def schema_with_budget
+      schema = self.class.schema.deep_dup
+      budget = Anima::Settings.thinking_budget
+      budget /= 2 if @session&.sub_agent?
+      schema[:input_schema][:properties][:thoughts][:maxLength] = budget
+      schema
     end
 
     # @param input [Hash] with "thoughts" and optional "visibility"

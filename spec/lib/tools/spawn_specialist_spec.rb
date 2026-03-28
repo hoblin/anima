@@ -109,7 +109,7 @@ RSpec.describe Tools::SpawnSpecialist do
       tool.execute(input)
 
       child = Session.last
-      expect(child.prompt).to include("automatically forwarded to the parent agent")
+      expect(child.prompt).to include("sub-agent collaborating with a parent")
     end
 
     it "does not append an expected deliverable to the prompt" do
@@ -144,14 +144,33 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(child.parent_session).to eq(parent_session)
     end
 
-    it "persists a user_message event in the child session" do
+    it "creates a Goal on the child session with the task as description" do
+      tool.execute(input)
+
+      child = Session.last
+      goal = child.goals.first
+      expect(goal).to be_present
+      expect(goal.description).to eq("Read lib/agent_loop.rb and summarize the tool execution flow")
+      expect(goal).to be_active
+      expect(goal).to be_root
+    end
+
+    it "persists the fork framing message as the child's first user message" do
       tool.execute(input)
 
       child = Session.last
       user_event = child.messages.find_by(message_type: "user_message")
       expect(user_event).to be_present
-      expect(user_event.payload["content"]).to eq("Read lib/agent_loop.rb and summarize the tool execution flow")
-      expect(user_event.status).to be_nil
+      expect(user_event.payload["content"]).to include("parent agent's context")
+      expect(user_event.payload["content"]).to include("Your sole task")
+    end
+
+    it "does not persist the task text as a user message" do
+      tool.execute(input)
+
+      child = Session.last
+      contents = child.messages.where(message_type: "user_message").pluck(:payload).map { |p| p["content"] }
+      expect(contents).not_to include("Read lib/agent_loop.rb and summarize the tool execution flow")
     end
 
     it "enqueues AgentRequestJob for the child session" do

@@ -290,13 +290,14 @@ RSpec.describe AgentLoop do
       agent_loop.run
     end
 
-    it "registers only standard tools for sub-agent sessions (no spawning or feature requests)" do
+    it "registers mark_goal_completed and no spawning/feature tools for sub-agent sessions" do
       parent = Session.create!
       child = Session.create!(parent_session: parent, prompt: "sub-agent prompt")
       child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
 
       sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
       allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
+        expect(registry.registered?("mark_goal_completed")).to be true
         expect(registry.registered?("spawn_subagent")).to be false
         expect(registry.registered?("spawn_specialist")).to be false
         expect(registry.registered?("open_issue")).to be false

@@ -172,7 +172,9 @@ class AgentLoop
 
     granted_standard_tools.each { |tool| registry.register(tool) }
 
-    unless @session.sub_agent?
+    if @session.sub_agent?
+      registry.register(Tools::MarkGoalCompleted)
+    else
       registry.register(Tools::SpawnSubagent)
       registry.register(Tools::SpawnSpecialist)
       registry.register(Tools::OpenIssue)

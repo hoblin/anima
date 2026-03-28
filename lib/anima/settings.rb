@@ -91,6 +91,11 @@ module Anima
       # @return [Integer]
       def token_budget = get("llm", "token_budget")
 
+      # Maximum character length for the Think tool's thoughts parameter.
+      # Sub-agents receive half this budget (their tasks are less complex).
+      # @return [Integer]
+      def thinking_budget = get("llm", "thinking_budget")
+
       # ─── Timeouts (seconds) ────────────────────────────────────────
 
       # LLM API request timeout.

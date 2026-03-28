@@ -80,4 +80,43 @@ RSpec.describe Tools::Think do
       expect(result).to eq("OK")
     end
   end
+
+  describe "#schema_with_budget" do
+    before { allow(Anima::Settings).to receive(:thinking_budget).and_return(10_000) }
+
+    context "for main sessions" do
+      let(:session) { Session.create! }
+      let(:tool_with_session) { described_class.new(session: session) }
+
+      it "includes maxLength set to the full thinking budget" do
+        schema = tool_with_session.schema_with_budget
+        expect(schema[:input_schema][:properties][:thoughts][:maxLength]).to eq(10_000)
+      end
+    end
+
+    context "for sub-agent sessions" do
+      let(:parent) { Session.create! }
+      let(:child) { Session.create!(parent_session: parent, prompt: "sub-agent") }
+      let(:tool_with_child) { described_class.new(session: child) }
+
+      it "includes maxLength set to half the thinking budget" do
+        schema = tool_with_child.schema_with_budget
+        expect(schema[:input_schema][:properties][:thoughts][:maxLength]).to eq(5_000)
+      end
+    end
+
+    context "without session" do
+      it "uses the full budget" do
+        schema = tool.schema_with_budget
+        expect(schema[:input_schema][:properties][:thoughts][:maxLength]).to eq(10_000)
+      end
+    end
+
+    it "includes all standard schema fields" do
+      schema = tool.schema_with_budget
+      expect(schema[:name]).to eq("think")
+      expect(schema[:description]).to be_present
+      expect(schema[:input_schema][:properties][:visibility]).to be_present
+    end
+  end
 end

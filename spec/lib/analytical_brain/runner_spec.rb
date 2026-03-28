@@ -532,7 +532,7 @@ RSpec.describe AnalyticalBrain::Runner do
         expect(captured_registry.registered?("rename_session")).to be false
       end
 
-      it "registers shared tools for skill/workflow/goal management" do
+      it "registers skill tools but NOT goal or workflow tools" do
         captured_registry = nil
         allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
           captured_registry = opts[:registry]
@@ -541,9 +541,37 @@ RSpec.describe AnalyticalBrain::Runner do
 
         child_runner.call
 
-        %w[activate_skill deactivate_skill set_goal everything_is_ready].each do |name|
+        %w[activate_skill deactivate_skill everything_is_ready].each do |name|
           expect(captured_registry.registered?(name)).to be(true), "expected #{name} to be registered"
         end
+
+        %w[set_goal update_goal finish_goal read_workflow deactivate_workflow].each do |name|
+          expect(captured_registry.registered?(name)).to be(false), "expected #{name} NOT to be registered"
+        end
+      end
+
+      it "does not include GOAL TRACKING in system prompt" do
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        child_runner.call
+
+        expect(captured_opts[:system]).not_to include("GOAL TRACKING")
+      end
+
+      it "does not mention goals in child message" do
+        captured_messages = nil
+        allow(client).to receive(:chat_with_tools) { |msgs, **_opts|
+          captured_messages = msgs
+          "Done"
+        }
+
+        child_runner.call
+
+        expect(captured_messages.first[:content]).not_to include("goal")
       end
 
       it "includes SUB-AGENT NAMING in system prompt" do

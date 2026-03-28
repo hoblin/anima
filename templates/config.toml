@@ -31,6 +31,10 @@ max_tool_rounds = 500
 # Set this based on your model's context window minus system prompt.
 token_budget = 190_000
 
+# Maximum character length for the Think tool's thoughts parameter.
+# Sub-agents receive half this budget (their tasks are less complex).
+thinking_budget = 10_000
+
 # ─── Timeouts (seconds) ─────────────────────────────────────────
 
 [timeouts]

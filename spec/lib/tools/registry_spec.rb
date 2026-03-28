@@ -50,6 +50,33 @@ RSpec.describe Tools::Registry do
 
       expect(tool_class.input_schema[:properties]).not_to have_key("timeout")
     end
+
+    context "with budget-aware tools" do
+      before { allow(Anima::Settings).to receive(:thinking_budget).and_return(8_000) }
+
+      it "uses schema_with_budget for the Think tool" do
+        session = Session.create!
+        registry_with_ctx = described_class.new(context: {session: session})
+        registry_with_ctx.register(Tools::Think)
+
+        schemas = registry_with_ctx.schemas
+        think_schema = schemas.find { |s| s[:name] == "think" }
+
+        expect(think_schema[:input_schema][:properties][:thoughts][:maxLength]).to eq(8_000)
+      end
+
+      it "uses half budget for sub-agent sessions" do
+        parent = Session.create!
+        child = Session.create!(parent_session: parent, prompt: "sub-agent")
+        registry_with_ctx = described_class.new(context: {session: child})
+        registry_with_ctx.register(Tools::Think)
+
+        schemas = registry_with_ctx.schemas
+        think_schema = schemas.find { |s| s[:name] == "think" }
+
+        expect(think_schema[:input_schema][:properties][:thoughts][:maxLength]).to eq(4_000)
+      end
+    end
   end
 
   describe "#execute" do

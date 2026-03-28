@@ -33,10 +33,12 @@ module Tools
     # @return [Array<Hash>] schema array for the Anthropic tools API parameter.
     #   Each schema includes an optional `timeout` parameter (seconds) injected
     #   by the registry. The agent can override the default per call for
-    #   long-running operations.
+    #   long-running operations. Tools with session-dependent schemas (e.g.
+    #   {Think} with budget-based maxLength) are instantiated with context
+    #   to generate their schema.
     def schemas
       default = Anima::Settings.tool_timeout
-      @tools.values.map { |tool| inject_timeout(tool.schema, default) }
+      @tools.values.map { |tool| inject_timeout(resolve_schema(tool), default) }
     end
 
     # Execute a tool by name. Classes are instantiated with the registry's
@@ -66,16 +68,28 @@ module Tools
 
     private
 
+    # Returns a tool's schema, preferring the instance-level budget-aware
+    # variant when available. Only instantiates the tool when needed.
+    def resolve_schema(tool)
+      return tool.schema unless budget_aware?(tool)
+
+      tool.new(**@context).schema_with_budget
+    end
+
+    def budget_aware?(tool)
+      tool.is_a?(Class) && tool.method_defined?(:schema_with_budget)
+    end
+
     # Injects an optional `timeout` parameter into the tool's input schema.
     def inject_timeout(schema, default)
-      s = schema.deep_dup
-      s[:input_schema] ||= {type: "object", properties: {}}
-      s[:input_schema][:properties] ||= {}
-      s[:input_schema][:properties]["timeout"] = {
+      result = schema.deep_dup
+      input = result[:input_schema] ||= {type: "object", properties: {}}
+      props = input[:properties] ||= {}
+      props["timeout"] = {
         type: "integer",
         description: "Seconds (default: #{default})."
       }
-      s
+      result
     end
   end
 end

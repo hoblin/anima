@@ -166,6 +166,25 @@ RSpec.describe Providers::Anthropic do
       }.to raise_error(Providers::Anthropic::RateLimitError, /Rate limit/)
     end
 
+    it "raises ServerError on 529 overload", :vcr do
+      session = Session.create!(name: "vcr-529")
+      shell = ShellSession.new(session_id: session.id)
+      registry = Tools::Registry.new(context: {shell_session: shell, session: session})
+      AgentLoop::STANDARD_TOOLS.each { |t| registry.register(t) }
+
+      expect {
+        real_provider.create_message(
+          model: "claude-opus-4-6",
+          messages: [{role: "user", content: "Hey, how are you doing today?"}],
+          max_tokens: 8192,
+          tools: registry.schemas,
+          system: session.system_prompt
+        )
+      }.to raise_error(Providers::Anthropic::ServerError, /server error \(529\)/)
+    ensure
+      shell&.finalize
+    end
+
     it "raises ServerError on 500 server error", :vcr do
       expect {
         provider.create_message(
@@ -223,11 +242,6 @@ RSpec.describe Providers::Anthropic do
     end
 
     it "raises ServerError on 500", vcr: "anthropic/models_500" do
-      expect { provider.validate_credentials! }
-        .to raise_error(Providers::Anthropic::ServerError)
-    end
-
-    it "raises ServerError on 529", vcr: "anthropic/models_529" do
       expect { provider.validate_credentials! }
         .to raise_error(Providers::Anthropic::ServerError)
     end
