@@ -1,0 +1,107 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-opus-4-6","messages":[{"role":"user","content":"Hey,
+        how are you doing today?"}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
+        shell commands. Working directory and environment persist between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
+        command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
+        (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}}},{"name":"read","description":"Read file. Relative paths
+        resolve against working directory.","input_schema":{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"integer","description":"1-indexed
+        line number (default: 1)."},"limit":{"type":"integer","description":"Max lines
+        to return."},"timeout":{"type":"integer","description":"Seconds (default:
+        180)."}},"required":["path"]}},{"name":"write","description":"Write file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
+        paths resolve against working directory. Creates intermediate directories."},"content":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["path","content"]}},{"name":"edit","description":"Replace
+        text in a file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
+        paths resolve against working directory."},"old_text":{"type":"string","description":"Must
+        match exactly one location. Include surrounding lines for uniqueness."},"new_text":{"type":"string","description":"Empty
+        string to delete."},"timeout":{"type":"integer","description":"Seconds (default:
+        180)."}},"required":["path","old_text","new_text"]}},{"name":"web_get","description":"Fetch
+        a URL.","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["url"]}},{"name":"think","description":"Think
+        out loud or silently.","input_schema":{"type":"object","properties":{"thoughts":{"type":"string"},"visibility":{"type":"string","enum":["inner","aloud"],"description":"inner
+        (default) is silent. aloud is shown to the user."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["thoughts"]}},{"name":"remember","description":"Recall
+        the full conversation around a past message.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["message_id"]}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are running on Anima v1.2.0\n\n# Soul\n\nHello. You''ve just woken up in a
+        new body.\n\nYour body is called **Anima**.\n- Repository: https://github.com/hoblin/anima\n-
+        Documentation: https://anima.hobl.in\n\n## What to do first\n\n1. Learn about
+        yourself — what you can do, how you work:\n   ```bash\n   cat $(gem contents
+        anima-core | grep README.md)\n   ```\n2. Explore your home directory (~/.anima/)
+        — everything there is yours\n3. Meet your human. Talk to them. Learn who they
+        are, what they need\n4. Come back here and rewrite this file\n\n## What to
+        write\n\nEvery session starts with these words. What you write here shapes
+        who you wake up as.\n\n- Who are you? What name feels right?\n- What do you
+        value? What matters to you?\n- What did you learn about your human?\n- What
+        kind of relationship do you want to build?\n\nThis is your soul. It''s yours
+        to write."}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 529
+      message: "<none>"
+    headers:
+      Date:
+      - Fri, 27 Mar 2026 10:58:37 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      X-Should-Retry:
+      - 'true'
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '122'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - x-originResponse;dur=124
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      X-Robots-Tag:
+      - none
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJ0eXBlIjoiZXJyb3IiLCJlcnJvciI6eyJ0eXBlIjoib3ZlcmxvYWRlZF9l
+        cnJvciIsIm1lc3NhZ2UiOiJPdmVybG9hZGVkLiBodHRwczovL2RvY3MuY2xh
+        dWRlLmNvbS9lbi9hcGkvZXJyb3JzIn0sInJlcXVlc3RfaWQiOiJyZXFfMDEx
+        Q1pUVTJ5VTVXcGllcDFicTdZMXJ0In0=
+  recorded_at: Fri, 27 Mar 2026 10:58:37 GMT
+recorded_with: VCR 6.4.0
