@@ -400,6 +400,32 @@ class Session < ApplicationRecord
     })
   end
 
+  # Broadcasts the fully assembled system prompt to debug-mode TUI clients.
+  # Called on every LLM request so the TUI shows exactly what the LLM receives,
+  # including environment context. No-op outside debug mode.
+  #
+  # @param prompt [String, nil] the final system prompt sent to the LLM
+  # @return [void]
+  def broadcast_system_prompt_update(prompt)
+    return unless view_mode == "debug" && prompt
+
+    ActionCable.server.broadcast("session_#{id}", self.class.system_prompt_payload(prompt))
+  end
+
+  # Builds the system prompt payload for debug mode transmission.
+  #
+  # @param prompt [String] system prompt text
+  # @return [Hash] payload with type, rendered debug content, and token estimate
+  def self.system_prompt_payload(prompt)
+    tokens = [(prompt.bytesize / Message::BYTES_PER_TOKEN.to_f).ceil, 1].max
+    {
+      "type" => "system_prompt",
+      "rendered" => {
+        "debug" => {role: :system_prompt, content: prompt, tokens: tokens, estimated: true}
+      }
+    }
+  end
+
   private
 
   # One-line version preamble so the agent knows its own version.

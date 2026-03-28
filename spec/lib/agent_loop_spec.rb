@@ -395,6 +395,28 @@ RSpec.describe AgentLoop do
 
       agent_loop.run
     end
+
+    it "broadcasts system prompt to debug-mode clients on LLM request" do
+      session.update!(view_mode: "debug")
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      allow(client).to receive(:chat_with_tools).and_return("ok")
+
+      expect {
+        agent_loop.run
+      }.to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("type" => "system_prompt"))
+    end
+
+    it "does not broadcast system prompt in basic mode" do
+      session.update!(view_mode: "basic")
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      allow(client).to receive(:chat_with_tools).and_return("ok")
+
+      expect {
+        agent_loop.run
+      }.not_to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("type" => "system_prompt"))
+    end
   end
 
   describe "registry injection" do

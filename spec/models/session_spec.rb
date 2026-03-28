@@ -769,6 +769,66 @@ RSpec.describe Session do
     end
   end
 
+  describe "#broadcast_system_prompt_update" do
+    it "broadcasts system prompt payload in debug mode" do
+      session = Session.create!(view_mode: "debug")
+
+      expect {
+        session.broadcast_system_prompt_update("You are Anima.")
+      }.to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including(
+          "type" => "system_prompt",
+          "rendered" => {"debug" => a_hash_including(
+            "role" => "system_prompt", "content" => "You are Anima.",
+            "tokens" => a_value > 0, "estimated" => true
+          )}
+        ))
+    end
+
+    it "does not broadcast in basic mode" do
+      session = Session.create!(view_mode: "basic")
+
+      expect {
+        session.broadcast_system_prompt_update("You are Anima.")
+      }.not_to have_broadcasted_to("session_#{session.id}")
+    end
+
+    it "does not broadcast in verbose mode" do
+      session = Session.create!(view_mode: "verbose")
+
+      expect {
+        session.broadcast_system_prompt_update("You are Anima.")
+      }.not_to have_broadcasted_to("session_#{session.id}")
+    end
+
+    it "does not broadcast when prompt is nil" do
+      session = Session.create!(view_mode: "debug")
+
+      expect {
+        session.broadcast_system_prompt_update(nil)
+      }.not_to have_broadcasted_to("session_#{session.id}")
+    end
+  end
+
+  describe ".system_prompt_payload" do
+    it "builds the expected payload structure" do
+      payload = Session.system_prompt_payload("Test prompt")
+
+      expect(payload).to eq({
+        "type" => "system_prompt",
+        "rendered" => {
+          "debug" => {role: :system_prompt, content: "Test prompt", tokens: 3, estimated: true}
+        }
+      })
+    end
+
+    it "estimates at least 1 token for tiny prompts" do
+      payload = Session.system_prompt_payload("hi")
+
+      expect(payload["rendered"]["debug"][:tokens]).to eq(1)
+    end
+  end
+
   describe "#assemble_system_prompt with workflows" do
     before do
       Skills::Registry.reload!
