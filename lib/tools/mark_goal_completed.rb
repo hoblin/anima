@@ -64,7 +64,8 @@ module Tools
     end
 
     # Delivers the sub-agent's result to the parent session as an
-    # attributed user message. No-op when the parent session is absent.
+    # attributed user message. Truncates oversized results to protect
+    # the parent's context window. No-op when the parent session is absent.
     #
     # @param result [String] the sub-agent's findings to forward
     # @return [void]
@@ -73,7 +74,10 @@ module Tools
       return unless parent
 
       name = @session.name || "agent-#{@session.id}"
-      attributed = "[sub-agent @#{name}]: #{result}"
+      truncated = Tools::ResponseTruncator.truncate(
+        result, threshold: Anima::Settings.max_subagent_response_chars
+      )
+      attributed = "[sub-agent @#{name}]: #{truncated}"
       parent.enqueue_user_message(attributed)
     end
   end

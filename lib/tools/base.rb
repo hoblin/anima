@@ -41,6 +41,15 @@ module Tools
       def schema
         {name: tool_name, description: description, input_schema: input_schema}
       end
+
+      # Per-tool character threshold for response truncation.
+      # Override in subclasses to use a custom limit, or return +nil+
+      # to skip truncation entirely (e.g. ReadTool has its own pagination).
+      #
+      # @return [Integer, nil] character threshold, or nil to skip truncation
+      def truncation_threshold
+        Anima::Settings.max_tool_response_chars
+      end
     end
 
     # Accepts and discards context keywords so that the Registry can pass

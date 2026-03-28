@@ -153,6 +153,31 @@ RSpec.describe Tools::Registry do
     end
   end
 
+  describe "#truncation_threshold" do
+    it "returns the tool's truncation threshold" do
+      registry.register(tool_class)
+      expect(registry.truncation_threshold("echo")).to eq(Anima::Settings.max_tool_response_chars)
+    end
+
+    it "returns nil when the tool opts out" do
+      registry.register(Tools::Read)
+      expect(registry.truncation_threshold("read")).to be_nil
+    end
+
+    it "returns default threshold for unknown tools" do
+      expect(registry.truncation_threshold("missing")).to eq(Anima::Settings.max_tool_response_chars)
+    end
+
+    it "returns default threshold for instance-based tools without truncation_threshold" do
+      instance = instance_double(Tools::McpTool,
+        tool_name: "server__tool",
+        schema: {name: "server__tool", description: "Test", input_schema: {}})
+      registry.register(instance)
+
+      expect(registry.truncation_threshold("server__tool")).to eq(Anima::Settings.max_tool_response_chars)
+    end
+  end
+
   describe "#registered?" do
     it "returns false for unregistered tools" do
       expect(registry.registered?("echo")).to be false

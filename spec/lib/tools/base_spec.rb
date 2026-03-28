@@ -39,6 +39,30 @@ RSpec.describe Tools::Base do
     end
   end
 
+  describe ".truncation_threshold" do
+    it "returns the default tool response threshold from settings" do
+      expect(described_class.truncation_threshold).to eq(Anima::Settings.max_tool_response_chars)
+    end
+
+    context "when overridden by a subclass" do
+      let(:custom_tool) do
+        Class.new(described_class) do
+          def self.truncation_threshold = 5_000
+        end
+      end
+
+      it "uses the subclass value" do
+        expect(custom_tool.truncation_threshold).to eq(5_000)
+      end
+    end
+
+    context "when set to nil to opt out" do
+      it "returns nil for ReadTool" do
+        expect(Tools::Read.truncation_threshold).to be_nil
+      end
+    end
+  end
+
   describe "#execute" do
     it "raises NotImplementedError" do
       expect { described_class.new.execute({}) }.to raise_error(NotImplementedError)
