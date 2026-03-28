@@ -532,7 +532,7 @@ RSpec.describe AnalyticalBrain::Runner do
         expect(captured_registry.registered?("rename_session")).to be false
       end
 
-      it "registers shared tools for skill/workflow management but NOT goal tools" do
+      it "registers skill tools but NOT goal or workflow tools" do
         captured_registry = nil
         allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
           captured_registry = opts[:registry]
@@ -545,7 +545,7 @@ RSpec.describe AnalyticalBrain::Runner do
           expect(captured_registry.registered?(name)).to be(true), "expected #{name} to be registered"
         end
 
-        %w[set_goal update_goal finish_goal].each do |name|
+        %w[set_goal update_goal finish_goal read_workflow deactivate_workflow].each do |name|
           expect(captured_registry.registered?(name)).to be(false), "expected #{name} NOT to be registered"
         end
       end

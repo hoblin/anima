@@ -71,6 +71,11 @@ module Tools
       end
     end
 
+    # Delivers the sub-agent's result to the parent session as an
+    # attributed user message. No-op when the parent session is absent.
+    #
+    # @param result [String] the sub-agent's findings to forward
+    # @return [void]
     def route_result_to_parent(result)
       parent = @session.parent_session
       return unless parent

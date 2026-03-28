@@ -168,6 +168,7 @@ The agent has access to these built-in tools:
 | `web_get` | Fetch content from HTTP/HTTPS URLs (HTML → Markdown, JSON → TOON) |
 | `spawn_specialist` | Spawn a named specialist sub-agent from the registry |
 | `spawn_subagent` | Spawn a generic child session with custom tool grants |
+| `mark_goal_completed` | Sub-agent only: signal task completion and deliver results to parent |
 
 Plus dynamic tools from configured MCP servers, namespaced as `server_name__tool_name`.
 
@@ -189,7 +190,9 @@ Two types:
 
 **Generic Sub-agents** — child sessions with custom tool grants for ad-hoc tasks. Each generic sub-agent gets a Haiku-generated nickname (e.g. `@loop-sleuth`, `@api-scout`) for @mention addressing.
 
-Sub-agents communicate through natural text — their `agent_message` events route to the parent session automatically, and the parent replies via `@name` mentions. No special tools needed; when a sub-agent writes text, the parent sees it. When the parent @mentions a sub-agent, the message arrives in that child's session. Workers become colleagues.
+Each sub-agent is spawned with a single **Goal** pinned from its task description and a framing message that redirects attention away from inherited parent goals. When done, the sub-agent calls `mark_goal_completed` to deliver results to the parent — this is the explicit finish line that prevents runaway agents. Sub-agents also get half the main agent's thinking budget to limit scope creep.
+
+Between spawn and completion, sub-agents communicate through natural text — their `agent_message` events route to the parent session automatically, and the parent replies via `@name` mentions. Workers become colleagues.
 
 ### Skills
 

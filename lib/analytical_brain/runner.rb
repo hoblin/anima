@@ -9,8 +9,9 @@ module AnalyticalBrain
   # active depends on the session type:
   #
   # * **Parent sessions** — session naming, skill/workflow/goal management
-  # * **Child sessions** — sub-agent nickname assignment, skill/workflow management
-  #   (goal tracking disabled — sub-agents manage their own goal via mark_goal_completed)
+  # * **Child sessions** — sub-agent nickname assignment, skill management
+  #   (goal tracking and workflows disabled — sub-agents manage their sole goal
+  #   via mark_goal_completed)
   #
   # Tools mutate the observed session directly (e.g. renaming it, activating
   # skills), but no trace of the brain's reasoning is persisted — events are
@@ -105,7 +106,7 @@ module AnalyticalBrain
 
     # Which responsibilities activate for each session type.
     PARENT_RESPONSIBILITIES = %i[session_naming skill_management workflow_management goal_tracking].freeze
-    CHILD_RESPONSIBILITIES = %i[sub_agent_naming skill_management workflow_management].freeze
+    CHILD_RESPONSIBILITIES = %i[sub_agent_naming skill_management].freeze
 
     # @param session [Session] the session to observe and maintain
     # @param client [LLM::Client, nil] injectable LLM client (defaults to fast model)

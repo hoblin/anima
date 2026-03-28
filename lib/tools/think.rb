@@ -54,7 +54,7 @@ module Tools
     #
     # @return [Hash] Anthropic tool schema with maxLength constraint
     def schema_with_budget
-      schema = self.class.schema
+      schema = self.class.schema.deep_dup
       budget = Anima::Settings.thinking_budget
       budget /= 2 if @session&.sub_agent?
       schema[:input_schema][:properties][:thoughts][:maxLength] = budget
