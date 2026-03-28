@@ -562,7 +562,7 @@ RSpec.describe AnalyticalBrain::Runner do
         expect(captured_opts[:system]).not_to include("GOAL TRACKING")
       end
 
-      it "instructs brain not to set goals" do
+      it "does not mention goals in child message" do
         captured_messages = nil
         allow(client).to receive(:chat_with_tools) { |msgs, **_opts|
           captured_messages = msgs
@@ -571,7 +571,7 @@ RSpec.describe AnalyticalBrain::Runner do
 
         child_runner.call
 
-        expect(captured_messages.first[:content]).to include("Do NOT set goals")
+        expect(captured_messages.first[:content]).not_to include("goal")
       end
 
       it "includes SUB-AGENT NAMING in system prompt" do

@@ -204,7 +204,6 @@ module AnalyticalBrain
         ```
 
         Assign a nickname and activate relevant skills, then call everything_is_ready.
-        Do NOT set goals — the sub-agent's goal is already assigned.
       MSG
       [{role: "user", content: content}]
     end
