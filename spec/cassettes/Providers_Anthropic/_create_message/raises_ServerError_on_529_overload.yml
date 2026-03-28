@@ -28,13 +28,9 @@ http_interactions:
         (default) is silent. aloud is shown to the user."},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["thoughts"]}},{"name":"remember","description":"Recall
         the full conversation around a past message.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["message_id"]}},{"name":"recall","description":"Search
-        all past conversations by keywords (FTS5 full-text search). Returns ranked snippets
-        with message IDs — use remember(message_id:) to zoom into full context. Searches
-        all sessions by default; set session_only: true to restrict to current session.","input_schema":{"type":"object","properties":{"query":{"type":"string","description":"Search
-        keywords or phrase"},"session_only":{"type":"boolean","description":"Search
-        current session only (default: all sessions)"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["query"]}}],"system":[{"type":"text","text":"You
+        (default: 180)."}},"required":["message_id"]}},{"name":"recall","description":"Find
+        messages across past conversations by keywords.","input_schema":{"type":"object","properties":{"query":{"type":"string"},"session_only":{"type":"boolean","description":"Default:
+        all sessions"},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["query"]}}],"system":[{"type":"text","text":"You
         are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
         are running on Anima v1.2.0\n\n# Soul\n\nHello. You''ve just woken up in a
         new body.\n\nYour body is called **Anima**.\n- Repository: https://github.com/hoblin/anima\n-

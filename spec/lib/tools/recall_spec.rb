@@ -33,7 +33,7 @@ RSpec.describe Tools::Recall do
       schema = described_class.schema
 
       expect(schema[:name]).to eq("recall")
-      expect(schema[:description]).to include("Search all past conversations")
+      expect(schema[:description]).to include("past conversations")
       expect(schema[:input_schema][:required]).to include("query")
     end
   end

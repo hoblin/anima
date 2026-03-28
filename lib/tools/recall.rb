@@ -19,16 +19,14 @@ module Tools
   class Recall < Base
     def self.tool_name = "recall"
 
-    def self.description = "Search all past conversations by keywords (FTS5 full-text search). " \
-      "Returns ranked snippets with message IDs — use remember(message_id:) to zoom into full context. " \
-      "Searches all sessions by default; set session_only: true to restrict to current session."
+    def self.description = "Find messages across past conversations by keywords."
 
     def self.input_schema
       {
         type: "object",
         properties: {
-          query: {type: "string", description: "Search keywords or phrase"},
-          session_only: {type: "boolean", description: "Search current session only (default: all sessions)"}
+          query: {type: "string"},
+          session_only: {type: "boolean", description: "Default: all sessions"}
         },
         required: ["query"]
       }
