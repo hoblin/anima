@@ -31,7 +31,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 28 Mar 2026 18:19:05 GMT
+      - Sat, 28 Mar 2026 18:51:34 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -45,7 +45,7 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1774728000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.18'
+      - '0.2'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
@@ -77,11 +77,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1669'
+      - '1540'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=1671
+      - x-originResponse;dur=1542
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -96,11 +96,11 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxUXlybjNDS0ZXb0dDUFk3S0dRTjlUUSIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxQ3hRWHY0QlRKZlZEOUxoQWtCazlpTSIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6IkknbGwgZmV0Y2ggdGhlIGNvbnRlbnRzIG9mIGh0dHBzOi8vZXhh
         bXBsZS5jb20gZm9yIHlvdS4ifSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoi
-        dG9vbHVfMDE2ZXBaOTNvd0ZiY2JVckd2TDhVQlFwIiwibmFtZSI6IndlYl9n
+        dG9vbHVfMDFSR01kUUN5M0pzYlB3VTZUeFZINTdVIiwibmFtZSI6IndlYl9n
         ZXQiLCJpbnB1dCI6eyJ1cmwiOiJodHRwczovL2V4YW1wbGUuY29tIn0sImNh
         bGxlciI6eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29s
         X3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rv
@@ -110,5 +110,5 @@ http_interactions:
         dXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6NzIsInNlcnZpY2VfdGll
         ciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFpbGFibGUi
         fX0=
-  recorded_at: Sat, 28 Mar 2026 18:19:05 GMT
+  recorded_at: Sat, 28 Mar 2026 18:51:34 GMT
 recorded_with: VCR 6.4.0
