@@ -227,10 +227,14 @@ module TUI
       @entries_by_id[id] = entry
     end
 
-    # Inserts an entry in sorted order by message ID. Optimized for the
-    # common case where messages arrive in order (appends without scanning).
-    # Entries without IDs (tool counters, etc.) are skipped during the
-    # sort scan and don't affect insertion position.
+    # Inserts an entry in sorted order by message ID. Optimized for two
+    # common cases: appending (live streaming, ascending order) and
+    # prepending (session history replay, descending/newest-first order).
+    # Falls back to binary scan for out-of-order arrivals.
+    #
+    # Note: prepending N messages via +unshift+ is O(n) per call. For
+    # large viewport replays this totals O(n²), acceptable at typical
+    # viewport sizes (50–100 messages).
     #
     # @param entry [Hash] entry with a non-nil +:id+
     # @return [void]
@@ -244,6 +248,15 @@ module TUI
         return
       end
 
+      # Fast path: entry belongs at the beginning (session history replay, newest-first).
+      # Only safe when the first entry has an ID — non-ID entries (tool counters)
+      # at the head would be displaced, so we fall through to the general path.
+      first_id = @entries.first&.dig(:id)
+      if first_id && id < first_id
+        @entries.unshift(entry)
+        return
+      end
+
       # Out-of-order arrival: insert before the first entry with a higher ID
       insert_pos = @entries.index { |e| e[:id] && e[:id] > id } || @entries.size
       @entries.insert(insert_pos, entry)
@@ -251,6 +264,7 @@ module TUI
 
     # Returns the highest message ID in the entries array, scanning from the
     # end for efficiency (entries with IDs are typically at the tail).
+    # Used by {#insert_sorted_by_id} to detect the append fast path.
     #
     # @return [Integer, nil] the highest message ID, or nil if no entries have IDs
     def last_entry_id

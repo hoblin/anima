@@ -336,6 +336,22 @@ RSpec.describe TUI::MessageStore do
         expect(contents).to eq(%w[first second third])
       end
 
+      it "prepends descending-order events without scanning (session history replay)" do
+        store.process_event({"type" => "user_message", "id" => 5,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "fifth"}}})
+        store.process_event({"type" => "agent_message", "id" => 4,
+                             "rendered" => {"debug" => {"role" => "assistant", "content" => "fourth"}}})
+        store.process_event({"type" => "user_message", "id" => 3,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "third"}}})
+        store.process_event({"type" => "agent_message", "id" => 2,
+                             "rendered" => {"debug" => {"role" => "assistant", "content" => "second"}}})
+        store.process_event({"type" => "user_message", "id" => 1,
+                             "rendered" => {"debug" => {"role" => "user", "content" => "first"}}})
+
+        contents = store.messages.map { |m| m[:data]["content"] }
+        expect(contents).to eq(%w[first second third fourth fifth])
+      end
+
       it "handles a single out-of-order event in a large sequence" do
         (1..5).each do |i|
           next if i == 3

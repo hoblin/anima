@@ -6,7 +6,7 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Sat
-        Mar 28 17:03\nWhat is the latest issue on hoblin/anima repo?"}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
+        Mar 28 17:52\nWhat is the latest issue on hoblin/anima repo?"}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
         shell commands. Working directory and environment persist between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
         command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
         (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
@@ -64,9 +64,9 @@ http_interactions:
         who you wake up as.\n\n- Who are you? What name feels right?\n- What do you
         value? What matters to you?\n- What did you learn about your human?\n- What
         kind of relationship do you want to build?\n\nThis is your soul. It''s yours
-        to write.\n\n## Environment\n\nOS: Arch Linux (pacman, yay)\n\nCWD: /home/hoblin/Work/anima\nGit:
-        hoblin/anima (git@github.com:hoblin/anima.git)\nBranch: feature/337-broadcast-system-prompt-debug\nPR:
-        #340 (open)\n\nProject files that may contain useful context:\n- CLAUDE.md\n-
+        to write.\n\n## Environment\n\nOS: Arch Linux (pacman, yay)\n\nCWD: /home/hoblin/Work/anima-two\nGit:
+        hoblin/anima (git@github.com:hoblin/anima.git)\nBranch: feature/333-tui-fixes-broadcast-think-limit\nPR:
+        #341 (open)\n\nProject files that may contain useful context:\n- CLAUDE.md\n-
         README.md\n- thoughts/CLAUDE.md\n- thoughts/global/README.md\nUse read_file
         to examine these when needed."}]}'
     headers:
@@ -90,7 +90,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 28 Mar 2026 15:03:34 GMT
+      - Sat, 28 Mar 2026 15:52:29 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -104,19 +104,19 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1774728000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.0'
+      - '0.06'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1775196000'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.25'
+      - '0.26'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
       - '1775206800'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
-      - '0.01'
+      - '0.02'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
@@ -136,11 +136,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2291'
+      - '3514'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=2294
+      - x-originResponse;dur=3518
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -155,26 +155,27 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxUDJBVkV0NkhtQ1hDRjR4UGVpZEVWQSIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxRmtYZTVaTVdubjNOb3R5dnQ0RHBTNSIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6IkknbGwgaGVscCB5b3UgZmluZCB0aGUgbGF0ZXN0IGlzc3VlIG9u
         IHRoZSBob2JsaW4vYW5pbWEgcmVwb3NpdG9yeS4gTGV0IG1lIGZldGNoIHRo
-        YXQgaW5mb3JtYXRpb24gZm9yIHlvdS4ifSx7InR5cGUiOiJ0b29sX3VzZSIs
-        ImlkIjoidG9vbHVfMDFCTDdrSnlIVE5QdHhTTk1ma1FTOFVzIiwibmFtZSI6
-        IndlYl9nZXQiLCJpbnB1dCI6eyJ1cmwiOiJodHRwczovL2FwaS5naXRodWIu
-        Y29tL3JlcG9zL2hvYmxpbi9hbmltYS9pc3N1ZXM/c3RhdGU9YWxsJnNvcnQ9
-        Y3JlYXRlZCZkaXJlY3Rpb249ZGVzYyZwZXJfcGFnZT0xIn0sImNhbGxlciI6
-        eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIs
-        InN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6
-        MjEyNywiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9y
-        ZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1l
-        cmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rv
-        a2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjExMywic2VydmljZV90aWVyIjoi
-        c3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Sat, 28 Mar 2026 15:03:34 GMT
+        YXQgaW5mb3JtYXRpb24gZnJvbSBHaXRIdWIuIn0seyJ0eXBlIjoidG9vbF91
+        c2UiLCJpZCI6InRvb2x1XzAxOEJYMnVTazJBZGpwak5xNU5VMTRBNCIsIm5h
+        bWUiOiJ3ZWJfZ2V0IiwiaW5wdXQiOnsidXJsIjoiaHR0cHM6Ly9hcGkuZ2l0
+        aHViLmNvbS9yZXBvcy9ob2JsaW4vYW5pbWEvaXNzdWVzP3N0YXRlPW9wZW4m
+        c29ydD1jcmVhdGVkJmRpcmVjdGlvbj1kZXNjJnBlcl9wYWdlPTEifSwiY2Fs
+        bGVyIjp7InR5cGUiOiJkaXJlY3QifX1dLCJzdG9wX3JlYXNvbiI6InRvb2xf
+        dXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9r
+        ZW5zIjoyMTMyLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNh
+        Y2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJl
+        cGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5w
+        dXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MTEzLCJzZXJ2aWNlX3Rp
+        ZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJub3RfYXZhaWxhYmxl
+        In19
+  recorded_at: Sat, 28 Mar 2026 15:52:29 GMT
 - request:
     method: get
-    uri: https://api.github.com/repos/hoblin/anima/issues?direction=desc&per_page=1&sort=created&state=all
+    uri: https://api.github.com/repos/hoblin/anima/issues?direction=desc&per_page=1&sort=created&state=open
     body:
       encoding: US-ASCII
       string: ''
@@ -191,7 +192,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 28 Mar 2026 15:03:34 GMT
+      - Sat, 28 Mar 2026 15:52:29 GMT
       Content-Type:
       - application/json; charset=utf-8
       Cache-Control:
@@ -199,11 +200,11 @@ http_interactions:
       Vary:
       - Accept,Accept-Encoding, Accept, X-Requested-With
       Etag:
-      - W/"dcc027cf44d043741febf102820f8f77d2ff63f02dc24d714e5a17b8c55e12ad"
+      - W/"36653c5031ffe3977e1c08a7daefe1d7e13a25e2779ef79fa6b0d7fad7afe67e"
       X-Github-Media-Type:
       - github.v3; format=json
       Link:
-      - <https://api.github.com/repositories/1171062522/issues?state=all&sort=created&direction=desc&per_page=1&after=Y3Vyc29yOnYyOpLPAAABnTSQsRjO9_Ijlg%3D%3D&page=2>;
+      - <https://api.github.com/repositories/1171062522/issues?state=open&sort=created&direction=desc&per_page=1&after=Y3Vyc29yOnYyOpLPAAABnTUQ-PDO9_rLww%3D%3D&page=2>;
         rel="next"
       X-Github-Api-Version-Selected:
       - '2022-11-28'
@@ -233,145 +234,172 @@ http_interactions:
       X-Ratelimit-Limit:
       - '60'
       X-Ratelimit-Remaining:
-      - '56'
+      - '59'
       X-Ratelimit-Used:
-      - '4'
+      - '1'
       X-Ratelimit-Resource:
       - core
       X-Ratelimit-Reset:
-      - '1774712884'
+      - '1774716749'
       Content-Length:
-      - '4600'
+      - '5849'
       X-Github-Request-Id:
-      - 71B4:261A67:2897F00:215505A:69C7EDC6
+      - 712C:3BCF1:2CAFF00:24D5FB7:69C7F93D
     body:
       encoding: ASCII-8BIT
       base64_string: |
         W3sidXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS9yZXBvcy9ob2JsaW4v
-        YW5pbWEvaXNzdWVzLzM0MCIsInJlcG9zaXRvcnlfdXJsIjoiaHR0cHM6Ly9h
+        YW5pbWEvaXNzdWVzLzM0MiIsInJlcG9zaXRvcnlfdXJsIjoiaHR0cHM6Ly9h
         cGkuZ2l0aHViLmNvbS9yZXBvcy9ob2JsaW4vYW5pbWEiLCJsYWJlbHNfdXJs
         IjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS9yZXBvcy9ob2JsaW4vYW5pbWEv
-        aXNzdWVzLzM0MC9sYWJlbHN7L25hbWV9IiwiY29tbWVudHNfdXJsIjoiaHR0
+        aXNzdWVzLzM0Mi9sYWJlbHN7L25hbWV9IiwiY29tbWVudHNfdXJsIjoiaHR0
         cHM6Ly9hcGkuZ2l0aHViLmNvbS9yZXBvcy9ob2JsaW4vYW5pbWEvaXNzdWVz
-        LzM0MC9jb21tZW50cyIsImV2ZW50c191cmwiOiJodHRwczovL2FwaS5naXRo
-        dWIuY29tL3JlcG9zL2hvYmxpbi9hbmltYS9pc3N1ZXMvMzQwL2V2ZW50cyIs
+        LzM0Mi9jb21tZW50cyIsImV2ZW50c191cmwiOiJodHRwczovL2FwaS5naXRo
+        dWIuY29tL3JlcG9zL2hvYmxpbi9hbmltYS9pc3N1ZXMvMzQyL2V2ZW50cyIs
         Imh0bWxfdXJsIjoiaHR0cHM6Ly9naXRodWIuY29tL2hvYmxpbi9hbmltYS9w
-        dWxsLzM0MCIsImlkIjo0MTU5ODQxMTc0LCJub2RlX2lkIjoiUFJfa3dET1Jj
-        ei0tczdPUmFuYyIsIm51bWJlciI6MzQwLCJ0aXRsZSI6IiMzMzcgZmVhdDog
-        QnJvYWRjYXN0IHN5c3RlbSBwcm9tcHQgdG8gVFVJIGluIGRlYnVnIG1vZGUi
-        LCJ1c2VyIjp7ImxvZ2luIjoiaG9ibGluIiwiaWQiOjI4MDkwLCJub2RlX2lk
-        IjoiTURRNlZYTmxjakk0TURrdyIsImF2YXRhcl91cmwiOiJodHRwczovL2F2
-        YXRhcnMuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3UvMjgwOTA/dj00IiwiZ3Jh
-        dmF0YXJfaWQiOiIiLCJ1cmwiOiJodHRwczovL2FwaS5naXRodWIuY29tL3Vz
-        ZXJzL2hvYmxpbiIsImh0bWxfdXJsIjoiaHR0cHM6Ly9naXRodWIuY29tL2hv
-        YmxpbiIsImZvbGxvd2Vyc191cmwiOiJodHRwczovL2FwaS5naXRodWIuY29t
-        L3VzZXJzL2hvYmxpbi9mb2xsb3dlcnMiLCJmb2xsb3dpbmdfdXJsIjoiaHR0
-        cHM6Ly9hcGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4vZm9sbG93aW5ney9v
-        dGhlcl91c2VyfSIsImdpc3RzX3VybCI6Imh0dHBzOi8vYXBpLmdpdGh1Yi5j
-        b20vdXNlcnMvaG9ibGluL2dpc3Rzey9naXN0X2lkfSIsInN0YXJyZWRfdXJs
-        IjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4vc3RhcnJl
-        ZHsvb3duZXJ9ey9yZXBvfSIsInN1YnNjcmlwdGlvbnNfdXJsIjoiaHR0cHM6
-        Ly9hcGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4vc3Vic2NyaXB0aW9ucyIs
-        Im9yZ2FuaXphdGlvbnNfdXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91
-        c2Vycy9ob2JsaW4vb3JncyIsInJlcG9zX3VybCI6Imh0dHBzOi8vYXBpLmdp
-        dGh1Yi5jb20vdXNlcnMvaG9ibGluL3JlcG9zIiwiZXZlbnRzX3VybCI6Imh0
-        dHBzOi8vYXBpLmdpdGh1Yi5jb20vdXNlcnMvaG9ibGluL2V2ZW50c3svcHJp
-        dmFjeX0iLCJyZWNlaXZlZF9ldmVudHNfdXJsIjoiaHR0cHM6Ly9hcGkuZ2l0
-        aHViLmNvbS91c2Vycy9ob2JsaW4vcmVjZWl2ZWRfZXZlbnRzIiwidHlwZSI6
-        IlVzZXIiLCJ1c2VyX3ZpZXdfdHlwZSI6InB1YmxpYyIsInNpdGVfYWRtaW4i
-        OmZhbHNlfSwibGFiZWxzIjpbXSwic3RhdGUiOiJvcGVuIiwibG9ja2VkIjpm
-        YWxzZSwiYXNzaWduZWVzIjpbXSwibWlsZXN0b25lIjpudWxsLCJjb21tZW50
-        cyI6MCwiY3JlYXRlZF9hdCI6IjIwMjYtMDMtMjhUMTM6MDk6NTJaIiwidXBk
-        YXRlZF9hdCI6IjIwMjYtMDMtMjhUMTQ6NDk6NTBaIiwiY2xvc2VkX2F0Ijpu
-        dWxsLCJhc3NpZ25lZSI6bnVsbCwiYXV0aG9yX2Fzc29jaWF0aW9uIjoiT1dO
-        RVIiLCJhY3RpdmVfbG9ja19yZWFzb24iOm51bGwsImRyYWZ0Ijp0cnVlLCJw
-        dWxsX3JlcXVlc3QiOnsidXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS9y
-        ZXBvcy9ob2JsaW4vYW5pbWEvcHVsbHMvMzQwIiwiaHRtbF91cmwiOiJodHRw
-        czovL2dpdGh1Yi5jb20vaG9ibGluL2FuaW1hL3B1bGwvMzQwIiwiZGlmZl91
-        cmwiOiJodHRwczovL2dpdGh1Yi5jb20vaG9ibGluL2FuaW1hL3B1bGwvMzQw
-        LmRpZmYiLCJwYXRjaF91cmwiOiJodHRwczovL2dpdGh1Yi5jb20vaG9ibGlu
-        L2FuaW1hL3B1bGwvMzQwLnBhdGNoIiwibWVyZ2VkX2F0IjpudWxsfSwiYm9k
-        eSI6IiMjIFN1bW1hcnlcblxuLSBCcm9hZGNhc3QgdGhlIGZ1bGwgTExNIGRl
-        YnVnIGNvbnRleHQgKHN5c3RlbSBwcm9tcHQgKyB0b29sIHNjaGVtYXMpIHRv
-        IFRVSSBjbGllbnRzIG9uIGV2ZXJ5IExMTSByZXF1ZXN0IGluIGRlYnVnIG1v
-        ZGVcbi0gQWRkIGBTZXNzaW9uI3Rvb2xfc2NoZW1hc2Ag4oCUIGRldGVybWlu
-        aXN0aWMgdG9vbCBsaXN0IGZyb20gc2Vzc2lvbiB0eXBlIGFuZCBgZ3JhbnRl
-        ZF90b29sc2AsIGF2YWlsYWJsZSBhdCBzdWJzY3JpcHRpb24gdGltZSB3aXRo
-        b3V0IEFnZW50TG9vcFxuLSBFeHRyYWN0IGBTZXNzaW9uLnN5c3RlbV9wcm9t
-        cHRfcGF5bG9hZGAgY2xhc3MgbWV0aG9kIHNoYXJlZCBieSBib3RoIGxpdmUg
-        YnJvYWRjYXN0cyAoQWdlbnRMb29wKSBhbmQgaW5pdGlhbCBzdWJzY3JpcHRp
-        b24gKFNlc3Npb25DaGFubmVsKVxuLSBUVUkgcmVuZGVycyB0b29scyBpbiBU
-        T09OIGZvcm1hdCB3aXRoIHByb3BlciBpbmRlbnRhdGlvbjsgc2VydmVyIHNl
-        bmRzIHN0cnVjdHVyZWQgZGF0YSBwZXIgZXhpc3RpbmcgZGVjb3JhdG9yIGFy
-        Y2hpdGVjdHVyZVxuLSBTeXN0ZW0gcHJvbXB0IGVudHJ5IHVzZXMgSUQgMCBm
-        b3IgaW4tcGxhY2UgdXBkYXRlcyB2aWEgTWVzc2FnZVN0b3JlIGRlZHVwXG5c
-        biMjIEltcGxlbWVudGF0aW9uXG5cbioqU2VydmVyIChkYXRhIGxheWVyKToq
-        KlxuLSBgU2Vzc2lvbiNicm9hZGNhc3RfZGVidWdfY29udGV4dChzeXN0ZW06
-        LCB0b29sczopYCDigJQgYnJvYWRjYXN0cyBvbiBldmVyeSBMTE0gcmVxdWVz
-        dCwgbm8tb3Agb3V0c2lkZSBkZWJ1ZyBtb2RlXG4tIGBTZXNzaW9uI3Rvb2xf
-        c2NoZW1hc2Ag4oCUIGNvbXB1dGVzIHN0YW5kYXJkICsgc3Bhd24gdG9vbHMg
-        ZnJvbSBzZXNzaW9uIGNvbmZpZzsgTUNQIHRvb2xzIGFwcGVhciBhZnRlciBm
-        aXJzdCBMTE0gcmVxdWVzdFxuLSBgU2Vzc2lvbi5zeXN0ZW1fcHJvbXB0X3Bh
-        eWxvYWQocHJvbXB0LCB0b29sczopYCDigJQgc2hhcmVkIHBheWxvYWQgYnVp
-        bGRlciwgdG9rZW4gZXN0aW1hdGUgY292ZXJzIGJvdGggcHJvbXB0IGFuZCB0
-        b29sc1xuLSBgU2Vzc2lvbkNoYW5uZWwjc3lzdGVtX3Byb21wdF9wYXlsb2Fk
-        YCDigJQgaW5jbHVkZXMgYHNlc3Npb24udG9vbF9zY2hlbWFzYCBvbiBpbml0
-        aWFsIHN1YnNjcmlwdGlvblxuXG4qKkNsaWVudCAocHJlc2VudGF0aW9uIGxh
-        eWVyKToqKlxuLSBgcmVuZGVyX3N5c3RlbV9wcm9tcHRfZW50cnlgIOKAlCBy
-        ZW5kZXJzIHRvb2xzIHNlY3Rpb24gaW4gY3lhbiB2aWEgVE9PTiBmb3JtYXRc
-        bi0gYHRvb2xzX3Rvb25gIOKAlCBjb252ZXJ0cyB0b29sIHNjaGVtYXMgYXJy
-        YXkgdG8gVE9PTiB3aXRoIG5vbi1icmVha2luZyBzcGFjZSBpbmRlbnRhdGlv
-        biAocmF0YXR1aSBgUGFyYWdyYXBoYCB3aXRoIGB3cmFwOnRydWVgIHRyaW1z
-        IHJlZ3VsYXIgc3BhY2VzKVxuLSBgTWVzc2FnZVN0b3JlYCDigJQgc3lzdGVt
-        IHByb21wdCB1c2VzIElEIDAgZm9yIGRlZHVwIGluc3RlYWQgb2YgYWx3YXlz
-        IHByZXBlbmRpbmdcblxuIyMgVGVzdCBwbGFuXG5cbi0gW3hdIFNlc3Npb24j
-        YnJvYWRjYXN0X2RlYnVnX2NvbnRleHQgYnJvYWRjYXN0cyBpbiBkZWJ1ZyBt
-        b2RlIHdpdGggdG9vbHNcbi0gW3hdIFNlc3Npb24jYnJvYWRjYXN0X2RlYnVn
-        X2NvbnRleHQgc2tpcHMgYmFzaWMvdmVyYm9zZS9uaWwgcHJvbXB0XG4tIFt4
-        XSBTZXNzaW9uLnN5c3RlbV9wcm9tcHRfcGF5bG9hZCBidWlsZHMgY29ycmVj
-        dCBzdHJ1Y3R1cmUgd2l0aCBhbmQgd2l0aG91dCB0b29sc1xuLSBbeF0gU2Vz
-        c2lvbiN0b29sX3NjaGVtYXMgcmV0dXJucyBjb3JyZWN0IHRvb2xzIGZvciBt
-        YWluL3N1Yi1hZ2VudC9yZXN0cmljdGVkIHNlc3Npb25zXG4tIFt4XSBBZ2Vu
-        dExvb3AgYnJvYWRjYXN0cyBkZWJ1ZyBjb250ZXh0IHdpdGggdG9vbHMgaW4g
-        ZGVidWcgbW9kZVxuLSBbeF0gQWdlbnRMb29wIGRvZXMgbm90IGJyb2FkY2Fz
-        dCBpbiBiYXNpYyBtb2RlXG4tIFt4XSBTZXNzaW9uQ2hhbm5lbCBkZWJ1ZyBt
-        b2RlIHNwZWNzIHBhc3MgKERSWSByZWZhY3Rvcilcbi0gW3hdIE1lc3NhZ2VT
-        dG9yZSBkZWR1cGxpY2F0ZXMgc3lzdGVtIHByb21wdCB2aWEgSUQgMFxuLSBb
-        eF0gU21va2UgdGVzdGVkIGluIFRVSTogdG9vbHMgdmlzaWJsZSBvbiBsb2Fk
-        IHdpdGggcHJvcGVyIFRPT04gaW5kZW50YXRpb25cbi0gW3hdIDM2MiBzcGVj
-        cyBwYXNzLCBzdGFuZGFyZHJiIGNsZWFuLCBubyBuZXcgcmVlayB3YXJuaW5n
-        c1xuXG5DbG9zZXMgIzMzN1xuXG7wn6SWIEdlbmVyYXRlZCB3aXRoIFtDbGF1
-        ZGUgQ29kZV0oaHR0cHM6Ly9jbGF1ZGUuY29tL2NsYXVkZS1jb2RlKSIsImNs
-        b3NlZF9ieSI6bnVsbCwicmVhY3Rpb25zIjp7InVybCI6Imh0dHBzOi8vYXBp
-        LmdpdGh1Yi5jb20vcmVwb3MvaG9ibGluL2FuaW1hL2lzc3Vlcy8zNDAvcmVh
-        Y3Rpb25zIiwidG90YWxfY291bnQiOjAsIisxIjowLCItMSI6MCwibGF1Z2gi
-        OjAsImhvb3JheSI6MCwiY29uZnVzZWQiOjAsImhlYXJ0IjowLCJyb2NrZXQi
-        OjAsImV5ZXMiOjB9LCJ0aW1lbGluZV91cmwiOiJodHRwczovL2FwaS5naXRo
-        dWIuY29tL3JlcG9zL2hvYmxpbi9hbmltYS9pc3N1ZXMvMzQwL3RpbWVsaW5l
-        IiwicGVyZm9ybWVkX3ZpYV9naXRodWJfYXBwIjpudWxsLCJzdGF0ZV9yZWFz
-        b24iOm51bGx9XQ==
-  recorded_at: Sat, 28 Mar 2026 15:03:34 GMT
+        dWxsLzM0MiIsImlkIjo0MTYwNDA4NTE1LCJub2RlX2lkIjoiUFJfa3dET1Jj
+        ei0tczdPU0YzZCIsIm51bWJlciI6MzQyLCJ0aXRsZSI6IiMzMzAgZmVhdDog
+        Q29tcGxldGVkIGdvYWwgZGVjYXkg4oCUIGV2aWN0IGZpbmlzaGVkIGdvYWxz
+        IGZyb20gY29udGV4dCIsInVzZXIiOnsibG9naW4iOiJob2JsaW4iLCJpZCI6
+        MjgwOTAsIm5vZGVfaWQiOiJNRFE2VlhObGNqSTRNRGt3IiwiYXZhdGFyX3Vy
+        bCI6Imh0dHBzOi8vYXZhdGFycy5naXRodWJ1c2VyY29udGVudC5jb20vdS8y
+        ODA5MD92PTQiLCJncmF2YXRhcl9pZCI6IiIsInVybCI6Imh0dHBzOi8vYXBp
+        LmdpdGh1Yi5jb20vdXNlcnMvaG9ibGluIiwiaHRtbF91cmwiOiJodHRwczov
+        L2dpdGh1Yi5jb20vaG9ibGluIiwiZm9sbG93ZXJzX3VybCI6Imh0dHBzOi8v
+        YXBpLmdpdGh1Yi5jb20vdXNlcnMvaG9ibGluL2ZvbGxvd2VycyIsImZvbGxv
+        d2luZ191cmwiOiJodHRwczovL2FwaS5naXRodWIuY29tL3VzZXJzL2hvYmxp
+        bi9mb2xsb3dpbmd7L290aGVyX3VzZXJ9IiwiZ2lzdHNfdXJsIjoiaHR0cHM6
+        Ly9hcGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4vZ2lzdHN7L2dpc3RfaWR9
+        Iiwic3RhcnJlZF91cmwiOiJodHRwczovL2FwaS5naXRodWIuY29tL3VzZXJz
+        L2hvYmxpbi9zdGFycmVkey9vd25lcn17L3JlcG99Iiwic3Vic2NyaXB0aW9u
+        c191cmwiOiJodHRwczovL2FwaS5naXRodWIuY29tL3VzZXJzL2hvYmxpbi9z
+        dWJzY3JpcHRpb25zIiwib3JnYW5pemF0aW9uc191cmwiOiJodHRwczovL2Fw
+        aS5naXRodWIuY29tL3VzZXJzL2hvYmxpbi9vcmdzIiwicmVwb3NfdXJsIjoi
+        aHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4vcmVwb3MiLCJl
+        dmVudHNfdXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91c2Vycy9ob2Js
+        aW4vZXZlbnRzey9wcml2YWN5fSIsInJlY2VpdmVkX2V2ZW50c191cmwiOiJo
+        dHRwczovL2FwaS5naXRodWIuY29tL3VzZXJzL2hvYmxpbi9yZWNlaXZlZF9l
+        dmVudHMiLCJ0eXBlIjoiVXNlciIsInVzZXJfdmlld190eXBlIjoicHVibGlj
+        Iiwic2l0ZV9hZG1pbiI6ZmFsc2V9LCJsYWJlbHMiOltdLCJzdGF0ZSI6Im9w
+        ZW4iLCJsb2NrZWQiOmZhbHNlLCJhc3NpZ25lZXMiOlt7ImxvZ2luIjoiaG9i
+        bGluIiwiaWQiOjI4MDkwLCJub2RlX2lkIjoiTURRNlZYTmxjakk0TURrdyIs
+        ImF2YXRhcl91cmwiOiJodHRwczovL2F2YXRhcnMuZ2l0aHVidXNlcmNvbnRl
+        bnQuY29tL3UvMjgwOTA/dj00IiwiZ3JhdmF0YXJfaWQiOiIiLCJ1cmwiOiJo
+        dHRwczovL2FwaS5naXRodWIuY29tL3VzZXJzL2hvYmxpbiIsImh0bWxfdXJs
+        IjoiaHR0cHM6Ly9naXRodWIuY29tL2hvYmxpbiIsImZvbGxvd2Vyc191cmwi
+        OiJodHRwczovL2FwaS5naXRodWIuY29tL3VzZXJzL2hvYmxpbi9mb2xsb3dl
+        cnMiLCJmb2xsb3dpbmdfdXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91
+        c2Vycy9ob2JsaW4vZm9sbG93aW5ney9vdGhlcl91c2VyfSIsImdpc3RzX3Vy
+        bCI6Imh0dHBzOi8vYXBpLmdpdGh1Yi5jb20vdXNlcnMvaG9ibGluL2dpc3Rz
+        ey9naXN0X2lkfSIsInN0YXJyZWRfdXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHVi
+        LmNvbS91c2Vycy9ob2JsaW4vc3RhcnJlZHsvb3duZXJ9ey9yZXBvfSIsInN1
+        YnNjcmlwdGlvbnNfdXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91c2Vy
+        cy9ob2JsaW4vc3Vic2NyaXB0aW9ucyIsIm9yZ2FuaXphdGlvbnNfdXJsIjoi
+        aHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4vb3JncyIsInJl
+        cG9zX3VybCI6Imh0dHBzOi8vYXBpLmdpdGh1Yi5jb20vdXNlcnMvaG9ibGlu
+        L3JlcG9zIiwiZXZlbnRzX3VybCI6Imh0dHBzOi8vYXBpLmdpdGh1Yi5jb20v
+        dXNlcnMvaG9ibGluL2V2ZW50c3svcHJpdmFjeX0iLCJyZWNlaXZlZF9ldmVu
+        dHNfdXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4v
+        cmVjZWl2ZWRfZXZlbnRzIiwidHlwZSI6IlVzZXIiLCJ1c2VyX3ZpZXdfdHlw
+        ZSI6InB1YmxpYyIsInNpdGVfYWRtaW4iOmZhbHNlfV0sIm1pbGVzdG9uZSI6
+        bnVsbCwiY29tbWVudHMiOjAsImNyZWF0ZWRfYXQiOiIyMDI2LTAzLTI4VDE1
+        OjI5OjU4WiIsInVwZGF0ZWRfYXQiOiIyMDI2LTAzLTI4VDE1OjQwOjI0WiIs
+        ImNsb3NlZF9hdCI6bnVsbCwiYXNzaWduZWUiOnsibG9naW4iOiJob2JsaW4i
+        LCJpZCI6MjgwOTAsIm5vZGVfaWQiOiJNRFE2VlhObGNqSTRNRGt3IiwiYXZh
+        dGFyX3VybCI6Imh0dHBzOi8vYXZhdGFycy5naXRodWJ1c2VyY29udGVudC5j
+        b20vdS8yODA5MD92PTQiLCJncmF2YXRhcl9pZCI6IiIsInVybCI6Imh0dHBz
+        Oi8vYXBpLmdpdGh1Yi5jb20vdXNlcnMvaG9ibGluIiwiaHRtbF91cmwiOiJo
+        dHRwczovL2dpdGh1Yi5jb20vaG9ibGluIiwiZm9sbG93ZXJzX3VybCI6Imh0
+        dHBzOi8vYXBpLmdpdGh1Yi5jb20vdXNlcnMvaG9ibGluL2ZvbGxvd2VycyIs
+        ImZvbGxvd2luZ191cmwiOiJodHRwczovL2FwaS5naXRodWIuY29tL3VzZXJz
+        L2hvYmxpbi9mb2xsb3dpbmd7L290aGVyX3VzZXJ9IiwiZ2lzdHNfdXJsIjoi
+        aHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4vZ2lzdHN7L2dp
+        c3RfaWR9Iiwic3RhcnJlZF91cmwiOiJodHRwczovL2FwaS5naXRodWIuY29t
+        L3VzZXJzL2hvYmxpbi9zdGFycmVkey9vd25lcn17L3JlcG99Iiwic3Vic2Ny
+        aXB0aW9uc191cmwiOiJodHRwczovL2FwaS5naXRodWIuY29tL3VzZXJzL2hv
+        Ymxpbi9zdWJzY3JpcHRpb25zIiwib3JnYW5pemF0aW9uc191cmwiOiJodHRw
+        czovL2FwaS5naXRodWIuY29tL3VzZXJzL2hvYmxpbi9vcmdzIiwicmVwb3Nf
+        dXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4vcmVw
+        b3MiLCJldmVudHNfdXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91c2Vy
+        cy9ob2JsaW4vZXZlbnRzey9wcml2YWN5fSIsInJlY2VpdmVkX2V2ZW50c191
+        cmwiOiJodHRwczovL2FwaS5naXRodWIuY29tL3VzZXJzL2hvYmxpbi9yZWNl
+        aXZlZF9ldmVudHMiLCJ0eXBlIjoiVXNlciIsInVzZXJfdmlld190eXBlIjoi
+        cHVibGljIiwic2l0ZV9hZG1pbiI6ZmFsc2V9LCJhdXRob3JfYXNzb2NpYXRp
+        b24iOiJPV05FUiIsImFjdGl2ZV9sb2NrX3JlYXNvbiI6bnVsbCwiZHJhZnQi
+        OmZhbHNlLCJwdWxsX3JlcXVlc3QiOnsidXJsIjoiaHR0cHM6Ly9hcGkuZ2l0
+        aHViLmNvbS9yZXBvcy9ob2JsaW4vYW5pbWEvcHVsbHMvMzQyIiwiaHRtbF91
+        cmwiOiJodHRwczovL2dpdGh1Yi5jb20vaG9ibGluL2FuaW1hL3B1bGwvMzQy
+        IiwiZGlmZl91cmwiOiJodHRwczovL2dpdGh1Yi5jb20vaG9ibGluL2FuaW1h
+        L3B1bGwvMzQyLmRpZmYiLCJwYXRjaF91cmwiOiJodHRwczovL2dpdGh1Yi5j
+        b20vaG9ibGluL2FuaW1hL3B1bGwvMzQyLnBhdGNoIiwibWVyZ2VkX2F0Ijpu
+        dWxsfSwiYm9keSI6IiMjIFN1bW1hcnlcblxuLSBBZGQgYGV2aWN0ZWRfYXRg
+        IGNvbHVtbiB0byBgZ29hbHNgIHRhYmxlIOKAlCBtYXJrcyBnb2FscyBhcyBy
+        ZW1vdmVkIGZyb20gdGhlIGFnZW50J3MgY29udGV4dCB3aXRob3V0IGRlbGV0
+        aW5nIHRoZW1cbi0gTmV3IGBldmljdF9nb2FsYCBhbmFseXRpY2FsIGJyYWlu
+        IHRvb2wg4oCUIHNldHMgYGV2aWN0ZWRfYXRgIG9uIGNvbXBsZXRlZCBnb2Fs
+        cywgd2l0aCBndWFyZHMgYWdhaW5zdCBldmljdGluZyBhY3RpdmUgb3IgYWxy
+        ZWFkeS1ldmljdGVkIGdvYWxzXG4tIEZpbHRlciBldmljdGVkIGdvYWxzIGZy
+        b20gYFNlc3Npb24jYXNzZW1ibGVfZ29hbHNfc2VjdGlvbmAg4oCUIGBnb2Fs
+        cy5yb290Lm5vdF9ldmljdGVkYCByZXBsYWNlcyBgZ29hbHMucm9vdGBcbi0g
+        U2hvdyBjb21wbGV0ZWQtYnV0LW5vdC1ldmljdGVkIGdvYWxzIGluIGEgbmV3
+        IFwiQ09NUExFVEVEIEdPQUxTXCIgYnJhaW4gY29udGV4dCBzZWN0aW9uIHdp
+        dGggbWVzc2FnZSBhZ2UgYW5kIGNvbmZpZ3VyYWJsZSB0aHJlc2hvbGRcbi0g
+        TmV3IGBnb2FsX2V2aWN0aW9uX3RocmVzaG9sZGAgc2V0dGluZyBpbiBgY29u
+        ZmlnLnRvbWxgIChkZWZhdWx0OiA1IG1lYW5pbmdmdWwgbWVzc2FnZXMgYWZ0
+        ZXIgY29tcGxldGlvbilcblxuIyMgSG93IGl0IHdvcmtzXG5cbjEuIEdvYWwg
+        Y29tcGxldGVzIOKGkiBgY29tcGxldGVkX2F0YCBzZXQgKGV4aXN0aW5nIGJl
+        aGF2aW9yKVxuMi4gQW5hbHl0aWNhbCBicmFpbiBydW5zIOKGkiBzZWVzIGNv
+        bXBsZXRlZCBnb2FscyBpbiBDT01QTEVURUQgR09BTFMgc2VjdGlvbiB3aXRo
+        IGFnZSBpbiBtZWFuaW5nZnVsIG1lc3NhZ2VzXG4zLiBXaGVuIGFnZSDiiaUg
+        dGhyZXNob2xkIOKGkiBicmFpbiBjYWxscyBgZXZpY3RfZ29hbGAg4oaSIHNl
+        dHMgYGV2aWN0ZWRfYXRgXG40LiBgYXNzZW1ibGVfZ29hbHNfc2VjdGlvbmAg
+        ZmlsdGVycyBvdXQgYGV2aWN0ZWRfYXQgSVMgTk9UIE5VTExgIGdvYWxzXG5c
+        blRoZSBicmFpbiBkZWNpZGVzIChub3QgYXV0b21hdGljIGFyaXRobWV0aWMp
+        IOKAlCBpdCBjYW4ga2VlcCBhIGNvbXBsZXRlZCBnb2FsIHZpc2libGUgbG9u
+        Z2VyIGlmIHRoZSBjb252ZXJzYXRpb24gc3RpbGwgcmVmZXJlbmNlcyB0aGF0
+        IHdvcmsuXG5cbiMjIFRlc3QgcGxhblxuXG4tIFsgXSBFdmljdEdvYWwgdG9v
+        bDogZXZpY3RzIGNvbXBsZXRlZCBnb2FscywgcmVqZWN0cyBhY3RpdmUvYWxy
+        ZWFkeS1ldmljdGVkL21pc3NpbmcgZ29hbHNcbi0gWyBdIEdvYWwgbW9kZWw6
+        IG5ldyBzY29wZXMgKGAubm90X2V2aWN0ZWRgLCBgLmV2aWN0YWJsZWApIGFu
+        ZCBgI2V2aWN0ZWQ/YCBwcmVkaWNhdGVcbi0gWyBdIFNlc3Npb246IGV2aWN0
+        ZWQgZ29hbHMgZXhjbHVkZWQgZnJvbSBzeXN0ZW0gcHJvbXB0LCBuaWwgc2Vj
+        dGlvbiB3aGVuIGFsbCBldmljdGVkXG4tIFsgXSBSdW5uZXI6IGNvbXBsZXRl
+        ZCBnb2FscyBzZWN0aW9uIHdpdGggYWdlL3RocmVzaG9sZCwgZXZpY3Rpb24g
+        aW5zdHJ1Y3Rpb25zLCBgZXZpY3RfZ29hbGAgcmVnaXN0ZXJlZFxuLSBbIF0g
+        U2V0dGluZ3M6IGBnb2FsX2V2aWN0aW9uX3RocmVzaG9sZGAgcmVhZHMgZnJv
+        bSBjb25maWdcbi0gWyBdIENvbmZpZyBtaWdyYXRvcjogZGV0ZWN0cyBuZXcg
+        a2V5IGluIGBbYW5hbHl0aWNhbF9icmFpbl1gIHNlY3Rpb25cblxuQ2xvc2Vz
+        ICMzMzBcblxu8J+kliBHZW5lcmF0ZWQgd2l0aCBbQ2xhdWRlIENvZGVdKGh0
+        dHBzOi8vY2xhdWRlLmNvbS9jbGF1ZGUtY29kZSkiLCJjbG9zZWRfYnkiOm51
+        bGwsInJlYWN0aW9ucyI6eyJ1cmwiOiJodHRwczovL2FwaS5naXRodWIuY29t
+        L3JlcG9zL2hvYmxpbi9hbmltYS9pc3N1ZXMvMzQyL3JlYWN0aW9ucyIsInRv
+        dGFsX2NvdW50IjowLCIrMSI6MCwiLTEiOjAsImxhdWdoIjowLCJob29yYXki
+        OjAsImNvbmZ1c2VkIjowLCJoZWFydCI6MCwicm9ja2V0IjowLCJleWVzIjow
+        fSwidGltZWxpbmVfdXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS9yZXBv
+        cy9ob2JsaW4vYW5pbWEvaXNzdWVzLzM0Mi90aW1lbGluZSIsInBlcmZvcm1l
+        ZF92aWFfZ2l0aHViX2FwcCI6bnVsbCwic3RhdGVfcmVhc29uIjpudWxsfV0=
+  recorded_at: Sat, 28 Mar 2026 15:52:30 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
       string: "{\"model\":\"claude-sonnet-4-20250514\",\"messages\":[{\"role\":\"user\",\"content\":\"Sat
-        Mar 28 17:03\\nWhat is the latest issue on hoblin/anima repo?\"},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll
+        Mar 28 17:52\\nWhat is the latest issue on hoblin/anima repo?\"},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll
         help you find the latest issue on the hoblin/anima repository. Let me fetch
-        that information for you.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01BL7kJyHTNPtxSNMfkQS8Us\",\"name\":\"web_get\",\"input\":{\"url\":\"https://api.github.com/repos/hoblin/anima/issues?state=all\\u0026sort=created\\u0026direction=desc\\u0026per_page=1\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01BL7kJyHTNPtxSNMfkQS8Us\",\"content\":\"[Converted:
-        JSON → TOON]\\n\\n[1]:\\n  - url: \\\"https://api.github.com/repos/hoblin/anima/issues/340\\\"\\n
+        that information from GitHub.\"},{\"type\":\"tool_use\",\"id\":\"toolu_018BX2uSk2AdjpjNq5NU14A4\",\"name\":\"web_get\",\"input\":{\"url\":\"https://api.github.com/repos/hoblin/anima/issues?state=open\\u0026sort=created\\u0026direction=desc\\u0026per_page=1\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_018BX2uSk2AdjpjNq5NU14A4\",\"content\":\"[Converted:
+        JSON → TOON]\\n\\n[1]:\\n  - url: \\\"https://api.github.com/repos/hoblin/anima/issues/342\\\"\\n
         \   repository_url: \\\"https://api.github.com/repos/hoblin/anima\\\"\\n    labels_url:
-        \\\"https://api.github.com/repos/hoblin/anima/issues/340/labels{/name}\\\"\\n
-        \   comments_url: \\\"https://api.github.com/repos/hoblin/anima/issues/340/comments\\\"\\n
-        \   events_url: \\\"https://api.github.com/repos/hoblin/anima/issues/340/events\\\"\\n
-        \   html_url: \\\"https://github.com/hoblin/anima/pull/340\\\"\\n    id: 4159841174\\n
-        \   node_id: PR_kwDORcz--s7ORanc\\n    number: 340\\n    title: \\\"#337 feat:
-        Broadcast system prompt to TUI in debug mode\\\"\\n    user:\\n      login:
-        hoblin\\n      id: 28090\\n      node_id: MDQ6VXNlcjI4MDkw\\n      avatar_url:
-        \\\"https://avatars.githubusercontent.com/u/28090?v=4\\\"\\n      gravatar_id:
-        \\\"\\\"\\n      url: \\\"https://api.github.com/users/hoblin\\\"\\n      html_url:
-        \\\"https://github.com/hoblin\\\"\\n      followers_url: \\\"https://api.github.com/users/hoblin/followers\\\"\\n
+        \\\"https://api.github.com/repos/hoblin/anima/issues/342/labels{/name}\\\"\\n
+        \   comments_url: \\\"https://api.github.com/repos/hoblin/anima/issues/342/comments\\\"\\n
+        \   events_url: \\\"https://api.github.com/repos/hoblin/anima/issues/342/events\\\"\\n
+        \   html_url: \\\"https://github.com/hoblin/anima/pull/342\\\"\\n    id: 4160408515\\n
+        \   node_id: PR_kwDORcz--s7OSF3d\\n    number: 342\\n    title: \\\"#330 feat:
+        Completed goal decay — evict finished goals from context\\\"\\n    user:\\n
+        \     login: hoblin\\n      id: 28090\\n      node_id: MDQ6VXNlcjI4MDkw\\n
+        \     avatar_url: \\\"https://avatars.githubusercontent.com/u/28090?v=4\\\"\\n
+        \     gravatar_id: \\\"\\\"\\n      url: \\\"https://api.github.com/users/hoblin\\\"\\n
+        \     html_url: \\\"https://github.com/hoblin\\\"\\n      followers_url: \\\"https://api.github.com/users/hoblin/followers\\\"\\n
         \     following_url: \\\"https://api.github.com/users/hoblin/following{/other_user}\\\"\\n
         \     gists_url: \\\"https://api.github.com/users/hoblin/gists{/gist_id}\\\"\\n
         \     starred_url: \\\"https://api.github.com/users/hoblin/starred{/owner}{/repo}\\\"\\n
@@ -381,48 +409,54 @@ http_interactions:
         \\\"https://api.github.com/users/hoblin/events{/privacy}\\\"\\n      received_events_url:
         \\\"https://api.github.com/users/hoblin/received_events\\\"\\n      type:
         User\\n      user_view_type: public\\n      site_admin: false\\n    labels[0]:\\n
-        \   state: open\\n    locked: false\\n    assignees[0]:\\n    milestone: null\\n
-        \   comments: 0\\n    created_at: \\\"2026-03-28T13:09:52Z\\\"\\n    updated_at:
-        \\\"2026-03-28T14:49:50Z\\\"\\n    closed_at: null\\n    assignee: null\\n
-        \   author_association: OWNER\\n    active_lock_reason: null\\n    draft:
-        true\\n    pull_request:\\n      url: \\\"https://api.github.com/repos/hoblin/anima/pulls/340\\\"\\n
-        \     html_url: \\\"https://github.com/hoblin/anima/pull/340\\\"\\n      diff_url:
-        \\\"https://github.com/hoblin/anima/pull/340.diff\\\"\\n      patch_url: \\\"https://github.com/hoblin/anima/pull/340.patch\\\"\\n
-        \     merged_at: null\\n    body: \\\"## Summary\\\\n\\\\n- Broadcast the
-        full LLM debug context (system prompt + tool schemas) to TUI clients on every
-        LLM request in debug mode\\\\n- Add `Session#tool_schemas` — deterministic
-        tool list from session type and `granted_tools`, available at subscription
-        time without AgentLoop\\\\n- Extract `Session.system_prompt_payload` class
-        method shared by both live broadcasts (AgentLoop) and initial subscription
-        (SessionChannel)\\\\n- TUI renders tools in TOON format with proper indentation;
-        server sends structured data per existing decorator architecture\\\\n- System
-        prompt entry uses ID 0 for in-place updates via MessageStore dedup\\\\n\\\\n##
-        Implementation\\\\n\\\\n**Server (data layer):**\\\\n- `Session#broadcast_debug_context(system:,
-        tools:)` — broadcasts on every LLM request, no-op outside debug mode\\\\n-
-        `Session#tool_schemas` — computes standard + spawn tools from session config;
-        MCP tools appear after first LLM request\\\\n- `Session.system_prompt_payload(prompt,
-        tools:)` — shared payload builder, token estimate covers both prompt and tools\\\\n-
-        `SessionChannel#system_prompt_payload` — includes `session.tool_schemas` on
-        initial subscription\\\\n\\\\n**Client (presentation layer):**\\\\n- `render_system_prompt_entry`
-        — renders tools section in cyan via TOON format\\\\n- `tools_toon` — converts
-        tool schemas array to TOON with non-breaking space indentation (ratatui `Paragraph`
-        with `wrap:true` trims regular spaces)\\\\n- `MessageStore` — system prompt
-        uses ID 0 for dedup instead of always prepending\\\\n\\\\n## Test plan\\\\n\\\\n-
-        [x] Session#broadcast_debug_context broadcasts in debug mode with tools\\\\n-
-        [x] Session#broadcast_debug_context skips basic/verbose/nil prompt\\\\n- [x]
-        Session.system_prompt_payload builds correct structure with and without tools\\\\n-
-        [x] Session#tool_schemas returns correct tools for main/sub-agent/restricted
-        sessions\\\\n- [x] AgentLoop broadcasts debug context with tools in debug
-        mode\\\\n- [x] AgentLoop does not broadcast in basic mode\\\\n- [x] SessionChannel
-        debug mode specs pass (DRY refactor)\\\\n- [x] MessageStore deduplicates system
-        prompt via ID 0\\\\n- [x] Smoke tested in TUI: tools visible on load with
-        proper TOON indentation\\\\n- [x] 362 specs pass, standardrb clean, no new
-        reek warnings\\\\n\\\\nCloses #337\\\\n\\\\n\U0001F916 Generated with [Claude
-        Code](https://claude.com/claude-code)\\\"\\n    closed_by: null\\n    reactions:\\n
-        \     url: \\\"https://api.github.com/repos/hoblin/anima/issues/340/reactions\\\"\\n
+        \   state: open\\n    locked: false\\n    assignees[1]{login,id,node_id,avatar_url,gravatar_id,url,html_url,followers_url,following_url,gists_url,starred_url,subscriptions_url,organizations_url,repos_url,events_url,received_events_url,type,user_view_type,site_admin}:\\n
+        \     hoblin,28090,MDQ6VXNlcjI4MDkw,\\\"https://avatars.githubusercontent.com/u/28090?v=4\\\",\\\"\\\",\\\"https://api.github.com/users/hoblin\\\",\\\"https://github.com/hoblin\\\",\\\"https://api.github.com/users/hoblin/followers\\\",\\\"https://api.github.com/users/hoblin/following{/other_user}\\\",\\\"https://api.github.com/users/hoblin/gists{/gist_id}\\\",\\\"https://api.github.com/users/hoblin/starred{/owner}{/repo}\\\",\\\"https://api.github.com/users/hoblin/subscriptions\\\",\\\"https://api.github.com/users/hoblin/orgs\\\",\\\"https://api.github.com/users/hoblin/repos\\\",\\\"https://api.github.com/users/hoblin/events{/privacy}\\\",\\\"https://api.github.com/users/hoblin/received_events\\\",User,public,false\\n
+        \   milestone: null\\n    comments: 0\\n    created_at: \\\"2026-03-28T15:29:58Z\\\"\\n
+        \   updated_at: \\\"2026-03-28T15:40:24Z\\\"\\n    closed_at: null\\n    assignee:\\n
+        \     login: hoblin\\n      id: 28090\\n      node_id: MDQ6VXNlcjI4MDkw\\n
+        \     avatar_url: \\\"https://avatars.githubusercontent.com/u/28090?v=4\\\"\\n
+        \     gravatar_id: \\\"\\\"\\n      url: \\\"https://api.github.com/users/hoblin\\\"\\n
+        \     html_url: \\\"https://github.com/hoblin\\\"\\n      followers_url: \\\"https://api.github.com/users/hoblin/followers\\\"\\n
+        \     following_url: \\\"https://api.github.com/users/hoblin/following{/other_user}\\\"\\n
+        \     gists_url: \\\"https://api.github.com/users/hoblin/gists{/gist_id}\\\"\\n
+        \     starred_url: \\\"https://api.github.com/users/hoblin/starred{/owner}{/repo}\\\"\\n
+        \     subscriptions_url: \\\"https://api.github.com/users/hoblin/subscriptions\\\"\\n
+        \     organizations_url: \\\"https://api.github.com/users/hoblin/orgs\\\"\\n
+        \     repos_url: \\\"https://api.github.com/users/hoblin/repos\\\"\\n      events_url:
+        \\\"https://api.github.com/users/hoblin/events{/privacy}\\\"\\n      received_events_url:
+        \\\"https://api.github.com/users/hoblin/received_events\\\"\\n      type:
+        User\\n      user_view_type: public\\n      site_admin: false\\n    author_association:
+        OWNER\\n    active_lock_reason: null\\n    draft: false\\n    pull_request:\\n
+        \     url: \\\"https://api.github.com/repos/hoblin/anima/pulls/342\\\"\\n
+        \     html_url: \\\"https://github.com/hoblin/anima/pull/342\\\"\\n      diff_url:
+        \\\"https://github.com/hoblin/anima/pull/342.diff\\\"\\n      patch_url: \\\"https://github.com/hoblin/anima/pull/342.patch\\\"\\n
+        \     merged_at: null\\n    body: \\\"## Summary\\\\n\\\\n- Add `evicted_at`
+        column to `goals` table — marks goals as removed from the agent's context
+        without deleting them\\\\n- New `evict_goal` analytical brain tool — sets
+        `evicted_at` on completed goals, with guards against evicting active or already-evicted
+        goals\\\\n- Filter evicted goals from `Session#assemble_goals_section` — `goals.root.not_evicted`
+        replaces `goals.root`\\\\n- Show completed-but-not-evicted goals in a new
+        \\\\\\\"COMPLETED GOALS\\\\\\\" brain context section with message age and
+        configurable threshold\\\\n- New `goal_eviction_threshold` setting in `config.toml`
+        (default: 5 meaningful messages after completion)\\\\n\\\\n## How it works\\\\n\\\\n1.
+        Goal completes → `completed_at` set (existing behavior)\\\\n2. Analytical
+        brain runs → sees completed goals in COMPLETED GOALS section with age in meaningful
+        messages\\\\n3. When age ≥ threshold → brain calls `evict_goal` → sets `evicted_at`\\\\n4.
+        `assemble_goals_section` filters out `evicted_at IS NOT NULL` goals\\\\n\\\\nThe
+        brain decides (not automatic arithmetic) — it can keep a completed goal visible
+        longer if the conversation still references that work.\\\\n\\\\n## Test plan\\\\n\\\\n-
+        [ ] EvictGoal tool: evicts completed goals, rejects active/already-evicted/missing
+        goals\\\\n- [ ] Goal model: new scopes (`.not_evicted`, `.evictable`) and
+        `#evicted?` predicate\\\\n- [ ] Session: evicted goals excluded from system
+        prompt, nil section when all evicted\\\\n- [ ] Runner: completed goals section
+        with age/threshold, eviction instructions, `evict_goal` registered\\\\n- [
+        ] Settings: `goal_eviction_threshold` reads from config\\\\n- [ ] Config migrator:
+        detects new key in `[analytical_brain]` section\\\\n\\\\nCloses #330\\\\n\\\\n\U0001F916
+        Generated with [Claude Code](https://claude.com/claude-code)\\\"\\n    closed_by:
+        null\\n    reactions:\\n      url: \\\"https://api.github.com/repos/hoblin/anima/issues/342/reactions\\\"\\n
         \     total_count: 0\\n      \\\"+1\\\": 0\\n      \\\"-1\\\": 0\\n      laugh:
         0\\n      hooray: 0\\n      confused: 0\\n      heart: 0\\n      rocket: 0\\n
-        \     eyes: 0\\n    timeline_url: \\\"https://api.github.com/repos/hoblin/anima/issues/340/timeline\\\"\\n
+        \     eyes: 0\\n    timeline_url: \\\"https://api.github.com/repos/hoblin/anima/issues/342/timeline\\\"\\n
         \   performed_via_github_app: null\\n    state_reason: null\"}]}],\"max_tokens\":8192,\"tools\":[{\"name\":\"bash\",\"description\":\"Execute
         shell commands. Working directory and environment persist between calls.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"command\":{\"type\":\"string\"},\"commands\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Each
         command gets its own timeout and result.\"},\"mode\":{\"type\":\"string\",\"enum\":[\"sequential\",\"parallel\"],\"description\":\"sequential
@@ -483,9 +517,9 @@ http_interactions:
         What do you value? What matters to you?\\n- What did you learn about your
         human?\\n- What kind of relationship do you want to build?\\n\\nThis is your
         soul. It's yours to write.\\n\\n## Environment\\n\\nOS: Arch Linux (pacman,
-        yay)\\n\\nCWD: /home/hoblin/Work/anima\\nGit: hoblin/anima (git@github.com:hoblin/anima.git)\\nBranch:
-        feature/337-broadcast-system-prompt-debug\\nPR: #340 (open)\\n\\nProject files
-        that may contain useful context:\\n- CLAUDE.md\\n- README.md\\n- thoughts/CLAUDE.md\\n-
+        yay)\\n\\nCWD: /home/hoblin/Work/anima-two\\nGit: hoblin/anima (git@github.com:hoblin/anima.git)\\nBranch:
+        feature/333-tui-fixes-broadcast-think-limit\\nPR: #341 (open)\\n\\nProject
+        files that may contain useful context:\\n- CLAUDE.md\\n- README.md\\n- thoughts/CLAUDE.md\\n-
         thoughts/global/README.md\\nUse read_file to examine these when needed.\"}]}"
     headers:
       Authorization:
@@ -508,7 +542,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 28 Mar 2026 15:03:41 GMT
+      - Sat, 28 Mar 2026 15:52:38 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -522,19 +556,19 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1774728000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.0'
+      - '0.06'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1775196000'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.25'
+      - '0.26'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
       - '1775206800'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
-      - '0.01'
+      - '0.02'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
@@ -554,11 +588,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '6793'
+      - '7778'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=6795
+      - x-originResponse;dur=7781
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -573,42 +607,47 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxOWRLWkY4N0Jqbm1QY0ZpWWl2aFRVNSIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxTTZWMzJ4RG5tQzdqb2tBcGN6VmdqYiIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6IlRoZSBsYXRlc3QgaXNzdWUgb24gdGhlIGhvYmxpbi9hbmltYSBy
-        ZXBvc2l0b3J5IGlzICoqUHVsbCBSZXF1ZXN0ICMzNDAqKiwgd2hpY2ggaXMg
-        Y3VycmVudGx5IG9wZW4gYW5kIGluIGRyYWZ0IHN0YXR1cy4gSGVyZSBhcmUg
-        dGhlIGtleSBkZXRhaWxzOlxuXG4qKlRpdGxlOioqIFwiIzMzNyBmZWF0OiBC
-        cm9hZGNhc3Qgc3lzdGVtIHByb21wdCB0byBUVUkgaW4gZGVidWcgbW9kZVwi
-        XG5cbioqU3RhdHVzOioqIE9wZW4gKGRyYWZ0KVxuKipDcmVhdGVkOioqIE1h
-        cmNoIDI4LCAyMDI2IGF0IDEzOjA5IFVUQ1xuKipMYXN0IFVwZGF0ZWQ6Kiog
-        TWFyY2ggMjgsIDIwMjYgYXQgMTQ6NDkgVVRDXG4qKkF1dGhvcjoqKiBob2Js
-        aW4gKHJlcG9zaXRvcnkgb3duZXIpXG5cbioqU3VtbWFyeToqKlxuVGhpcyBQ
-        UiBpbXBsZW1lbnRzIGJyb2FkY2FzdGluZyBvZiB0aGUgZnVsbCBMTE0gZGVi
-        dWcgY29udGV4dCAoc3lzdGVtIHByb21wdCArIHRvb2wgc2NoZW1hcykgdG8g
-        VFVJIGNsaWVudHMgZHVyaW5nIGRlYnVnIG1vZGUuIEtleSBmZWF0dXJlcyBp
-        bmNsdWRlOlxuXG4tIEJyb2FkY2FzdGluZyBkZWJ1ZyBjb250ZXh0IG9uIGV2
-        ZXJ5IExMTSByZXF1ZXN0IHdoZW4gaW4gZGVidWcgbW9kZVxuLSBBZGRpbmcg
-        YFNlc3Npb24jdG9vbF9zY2hlbWFzYCBmb3IgZGV0ZXJtaW5pc3RpYyB0b29s
-        IGxpc3RzXG4tIEV4dHJhY3Rpbmcgc2hhcmVkIGBTZXNzaW9uLnN5c3RlbV9w
-        cm9tcHRfcGF5bG9hZGAgY2xhc3MgbWV0aG9kXG4tIFRVSSByZW5kZXJpbmcg
-        b2YgdG9vbHMgaW4gVE9PTiBmb3JtYXQgd2l0aCBwcm9wZXIgaW5kZW50YXRp
-        b25cbi0gU3lzdGVtIHByb21wdCBkZWR1cGxpY2F0aW9uIHVzaW5nIElEIDAg
-        aW4gTWVzc2FnZVN0b3JlXG5cbioqSW1wbGVtZW50YXRpb24gaGlnaGxpZ2h0
-        czoqKlxuLSBTZXJ2ZXItc2lkZSBkYXRhIGxheWVyIGltcHJvdmVtZW50cyBm
-        b3IgYnJvYWRjYXN0aW5nIGRlYnVnIGNvbnRleHRcbi0gQ2xpZW50LXNpZGUg
-        cHJlc2VudGF0aW9uIGxheWVyIGVuaGFuY2VtZW50cyBmb3IgcmVuZGVyaW5n
-        IHN5c3RlbSBwcm9tcHRzIGFuZCB0b29sc1xuLSBDb21wcmVoZW5zaXZlIHRl
-        c3QgY292ZXJhZ2Ugd2l0aCAzNjIgcGFzc2luZyBzcGVjc1xuXG5UaGlzIGFw
-        cGVhcnMgdG8gYmUgYWN0aXZlbHkgYmVpbmcgd29ya2VkIG9uIGFzIGl0IHJl
-        bGF0ZXMgdG8gdGhlIGN1cnJlbnQgYnJhbmNoIHlvdSdyZSBvbiAoYGZlYXR1
-        cmUvMzM3LWJyb2FkY2FzdC1zeXN0ZW0tcHJvbXB0LWRlYnVnYCkgYW5kIGNs
-        b3NlcyBpc3N1ZSAjMzM3LiJ9XSwic3RvcF9yZWFzb24iOiJlbmRfdHVybiIs
-        InN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6
-        MzgyNiwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9y
-        ZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1l
-        cmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rv
-        a2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjMxMSwic2VydmljZV90aWVyIjoi
-        c3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Sat, 28 Mar 2026 15:03:41 GMT
+        ZXBvc2l0b3J5IGlzOlxuXG4qKiMzNDI6IFwiIzMzMCBmZWF0OiBDb21wbGV0
+        ZWQgZ29hbCBkZWNheSDigJQgZXZpY3QgZmluaXNoZWQgZ29hbHMgZnJvbSBj
+        b250ZXh0XCIqKlxuXG4tICoqVHlwZSoqOiBQdWxsIFJlcXVlc3QgKG9wZW4p
+        XG4tICoqQ3JlYXRlZCoqOiBNYXJjaCAyOCwgMjAyNiBhdCAxNToyOSBVVEMg
+        IFxuLSAqKkF1dGhvcioqOiBob2JsaW5cbi0gKipTdGF0dXMqKjogT3Blbiwg
+        YXNzaWduZWQgdG8gaG9ibGluXG5cbiMjIFN1bW1hcnlcblxuVGhpcyBQUiBp
+        bXBsZW1lbnRzIGEgXCJnb2FsIGRlY2F5XCIgZmVhdHVyZSB0aGF0IHJlbW92
+        ZXMgY29tcGxldGVkIGdvYWxzIGZyb20gdGhlIGFnZW50J3MgY29udGV4dCB3
+        aXRob3V0IHBlcm1hbmVudGx5IGRlbGV0aW5nIHRoZW0uIEtleSBmZWF0dXJl
+        cyBpbmNsdWRlOlxuXG4tICoqYGV2aWN0ZWRfYXRgIGNvbHVtbioqIGluIHRo
+        ZSBnb2FscyB0YWJsZSB0byBtYXJrIGdvYWxzIGFzIHJlbW92ZWQgZnJvbSBj
+        b250ZXh0XG4tICoqYGV2aWN0X2dvYWxgIGFuYWx5dGljYWwgYnJhaW4gdG9v
+        bCoqIHRvIGV2aWN0IGNvbXBsZXRlZCBnb2FscyB3aXRoIHNhZmV0eSBndWFy
+        ZHNcbi0gKipGaWx0ZXJlZCBnb2FsIGRpc3BsYXkqKiAtIGV2aWN0ZWQgZ29h
+        bHMgYXJlIGV4Y2x1ZGVkIGZyb20gdGhlIG1haW4gZ29hbHMgc2VjdGlvblxu
+        LSAqKlwiQ09NUExFVEVEIEdPQUxTXCIgc2VjdGlvbioqIHNob3dpbmcgY29t
+        cGxldGVkLWJ1dC1ub3QtZXZpY3RlZCBnb2FscyB3aXRoIGFnZSB0cmFja2lu
+        Z1xuLSAqKkNvbmZpZ3VyYWJsZSB0aHJlc2hvbGQqKiAoYGdvYWxfZXZpY3Rp
+        b25fdGhyZXNob2xkYCBzZXR0aW5nLCBkZWZhdWx0OiA1IG1lYW5pbmdmdWwg
+        bWVzc2FnZXMpXG5cbiMjIEhvdyBpdCB3b3Jrc1xuXG4xLiBHb2FsIGNvbXBs
+        ZXRlcyDihpIgYGNvbXBsZXRlZF9hdGAgdGltZXN0YW1wIGlzIHNldFxuMi4g
+        QW5hbHl0aWNhbCBicmFpbiBzZWVzIGNvbXBsZXRlZCBnb2FscyB3aXRoIHRo
+        ZWlyIGFnZSBpbiBtZWFuaW5nZnVsIG1lc3NhZ2VzICBcbjMuIFdoZW4gYWdl
+        IOKJpSB0aHJlc2hvbGQg4oaSIGJyYWluIGNhbiBjYWxsIGBldmljdF9nb2Fs
+        YCDihpIgc2V0cyBgZXZpY3RlZF9hdGBcbjQuIFN5c3RlbSBwcm9tcHQgZmls
+        dGVycyBvdXQgZXZpY3RlZCBnb2Fsc1xuXG5UaGUgYnJhaW4gbWFrZXMgdGhl
+        IGV2aWN0aW9uIGRlY2lzaW9uIChub3QgYXV0b21hdGljKSAtIGl0IGNhbiBr
+        ZWVwIGNvbXBsZXRlZCBnb2FscyB2aXNpYmxlIGxvbmdlciBpZiB0aGUgY29u
+        dmVyc2F0aW9uIHN0aWxsIHJlZmVyZW5jZXMgdGhhdCB3b3JrLlxuXG5UaGlz
+        IGFkZHJlc3NlcyBpc3N1ZSAjMzMwIGFuZCBoZWxwcyBtYW5hZ2UgY29udGV4
+        dCBzaXplIGJ5IGludGVsbGlnZW50bHkgcmVtb3ZpbmcgZmluaXNoZWQgZ29h
+        bHMgZnJvbSB0aGUgYWdlbnQncyB3b3JraW5nIG1lbW9yeS4ifV0sInN0b3Bf
+        cmVhc29uIjoiZW5kX3R1cm4iLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJ1c2Fn
+        ZSI6eyJpbnB1dF90b2tlbnMiOjQzNTQsImNhY2hlX2NyZWF0aW9uX2lucHV0
+        X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hl
+        X2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVw
+        aGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoz
+        NTksInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6
+        Im5vdF9hdmFpbGFibGUifX0=
+  recorded_at: Sat, 28 Mar 2026 15:52:38 GMT
 recorded_with: VCR 6.4.0

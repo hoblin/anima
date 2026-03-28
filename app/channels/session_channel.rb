@@ -282,9 +282,14 @@ class SessionChannel < ApplicationCable::Channel
   end
 
   # Loads the viewport, snapshots it for eviction tracking, and yields
-  # each message with its decorated payload. Snapshot uses snapshot_viewport!
-  # (not recalculate_viewport!) because full viewport refreshes don't need
-  # eviction diffs — clients clear their store before rendering.
+  # each message with its decorated payload in newest-first order.
+  # Newest-first prevents render thrashing during session switches: the
+  # most recent messages fill the visible viewport immediately, while
+  # older messages are inserted above the fold without visual disruption.
+  #
+  # Snapshot uses snapshot_viewport! (not recalculate_viewport!) because
+  # full viewport refreshes don't need eviction diffs — clients clear
+  # their store before rendering.
   #
   # @param session [Session] the session whose viewport to iterate
   # @yieldparam message [Message] the persisted message record
@@ -294,7 +299,7 @@ class SessionChannel < ApplicationCable::Channel
     viewport = session.viewport_messages
     session.snapshot_viewport!(viewport.map(&:id))
 
-    viewport.each do |msg|
+    viewport.reverse_each do |msg|
       yield msg, decorate_message_payload(msg, session.view_mode)
     end
   end
