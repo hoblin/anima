@@ -3,8 +3,8 @@
 module TUI
   module Decorators
     # Renders bash tool calls and responses.
-    # Calls show the shell command with a terminal icon.
-    # Responses use green for success, red for failure.
+    # Calls show the shell command with a terminal icon in the unified tool color.
+    # Responses use green for success, red for failure — immediate actionable feedback.
     class BashDecorator < BaseDecorator
       ICON = "\u{1F4BB}" # laptop / terminal
 

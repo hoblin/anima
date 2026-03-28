@@ -3,8 +3,8 @@
 module TUI
   module Decorators
     # Renders read tool calls and responses.
-    # Calls show the file path with a page icon.
-    # Responses show file content in dim text.
+    # Calls show the file path with a page icon in the unified tool color.
+    # Responses use the CRUD Read color (light_blue) for informational content.
     class ReadDecorator < BaseDecorator
       ICON = "\u{1F4C4}" # page facing up
 
@@ -12,12 +12,8 @@ module TUI
         ICON
       end
 
-      def color
-        "cyan"
-      end
-
       def response_color
-        "dark_gray"
+        "light_blue"
       end
     end
   end

@@ -7,7 +7,7 @@ require "tui/decorators/bash_decorator"
 RSpec.describe TUI::Decorators::BashDecorator do
   let(:tui) do
     stub = Object.new
-    def stub.style(fg: nil, modifiers: nil) = {fg: fg, modifiers: modifiers}
+    def stub.style(fg: nil, bg: nil, modifiers: nil) = {fg: fg, bg: bg, modifiers: modifiers}
     def stub.span(content:, style: nil) = {content: content, style: style}
     def stub.line(spans:) = {spans: spans}
     stub

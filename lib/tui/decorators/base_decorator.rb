@@ -71,6 +71,8 @@ module TUI
       end
 
       # Generic tool response rendering — success/failure indicator and content.
+      # Token counts get their own color-coded span so expensive responses
+      # visually jump out in debug mode.
       # Subclasses override for tool-specific presentation.
       #
       # @param tui [RatatuiRuby] TUI rendering API
@@ -79,16 +81,22 @@ module TUI
         indicator = (data["success"] == false) ? ERROR_ICON : CHECKMARK
         tool_id = data["tool_use_id"]
         tokens = data["tokens"]
+        style = tui.style(fg: response_color)
 
         meta_parts = []
         meta_parts << "[#{tool_id}]" if tool_id
         meta_parts << indicator
-        meta_parts << format_token_label(tokens, data["estimated"]) if tokens
         prefix = "  #{RETURN_ARROW} #{meta_parts.join(" ")} "
 
         content_lines = data["content"].to_s.split("\n", -1)
-        style = tui.style(fg: response_color)
-        lines = [tui.line(spans: [tui.span(content: "#{prefix}#{content_lines.first}", style: style)])]
+        first_line_spans = [tui.span(content: prefix, style: style)]
+        if tokens
+          tok_label = format_token_label(tokens, data["estimated"])
+          first_line_spans << tui.span(content: "#{tok_label} ", style: tui.style(fg: token_count_color(tokens)))
+        end
+        first_line_spans << tui.span(content: content_lines.first.to_s, style: style)
+
+        lines = [tui.line(spans: first_line_spans)]
         content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: "    #{line}", style: style)]) }
         lines
       end
@@ -108,10 +116,11 @@ module TUI
         ICON
       end
 
-      # Color for tool call headers. Subclasses override for tool-specific colors.
+      # Unified color for all tool call headers. Keeps tool invocations
+      # visually distinct from conversation messages (user/assistant/thought).
       # @return [String]
       def color
-        "white"
+        "magenta"
       end
 
       # Color for tool response content. Subclasses override for tool-specific colors.

@@ -3,7 +3,8 @@
 module TUI
   module Decorators
     # Renders write tool calls and responses.
-    # Calls show the file path with a memo icon.
+    # Calls show the file path with a memo icon in the unified tool color.
+    # Responses use the CRUD Create color (light_green) to signal new content.
     class WriteDecorator < BaseDecorator
       ICON = "\u{1F4DD}" # memo
 
@@ -11,8 +12,8 @@ module TUI
         ICON
       end
 
-      def color
-        "yellow"
+      def response_color
+        "light_green"
       end
     end
   end

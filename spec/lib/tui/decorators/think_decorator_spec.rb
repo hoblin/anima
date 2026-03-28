@@ -7,14 +7,14 @@ require "tui/decorators/think_decorator"
 RSpec.describe TUI::Decorators::ThinkDecorator do
   let(:tui) do
     stub = Object.new
-    def stub.style(fg: nil, modifiers: nil) = {fg: fg, modifiers: modifiers}
+    def stub.style(fg: nil, bg: nil, modifiers: nil) = {fg: fg, bg: bg, modifiers: modifiers}
     def stub.span(content:, style: nil) = {content: content, style: style}
     def stub.line(spans:) = {spans: spans}
     stub
   end
 
   describe "#render_think" do
-    it "renders aloud thoughts in yellow with thought bubble" do
+    it "renders aloud thoughts in dark_gray with thought bubble" do
       data = {"role" => "think", "content" => "Let me check that.", "visibility" => "aloud"}
       lines = described_class.new(data).render_think(tui)
 
@@ -23,7 +23,7 @@ RSpec.describe TUI::Decorators::ThinkDecorator do
       expect(header).to include("Let me check that.")
 
       style = lines.first[:spans].first[:style]
-      expect(style[:fg]).to eq("yellow")
+      expect(style[:fg]).to eq("dark_gray")
     end
 
     it "renders inner thoughts in dark gray" do

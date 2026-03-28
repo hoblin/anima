@@ -14,7 +14,7 @@ RSpec.describe TUI::Decorators::BaseDecorator do
   # RatatuiRuby native objects, so we can assert on content and style.
   let(:tui) do
     stub = Object.new
-    def stub.style(fg: nil, modifiers: nil) = {fg: fg, modifiers: modifiers}
+    def stub.style(fg: nil, bg: nil, modifiers: nil) = {fg: fg, bg: bg, modifiers: modifiers}
     def stub.span(content:, style: nil) = {content: content, style: style}
     def stub.line(spans:) = {spans: spans}
     stub
@@ -165,12 +165,39 @@ RSpec.describe TUI::Decorators::BaseDecorator do
       expect(first_line).to include("[toolu_xyz]")
     end
 
-    it "includes token count when present" do
+    it "renders token count as a separate color-coded span" do
       data = {"role" => "tool_response", "content" => "out", "success" => true, "tokens" => 42, "estimated" => true}
       lines = described_class.for(data).render_response(tui)
 
-      first_line = lines.first[:spans].first[:content]
-      expect(first_line).to include("[~42 tok]")
+      token_span = lines.first[:spans][1]
+      expect(token_span[:content]).to include("[~42 tok]")
+      expect(token_span[:style][:fg]).to eq("dark_gray") # < 1k tokens
+    end
+
+    it "uses yellow for token counts between 3k and 10k" do
+      data = {"role" => "tool_response", "content" => "out", "success" => true, "tokens" => 5000}
+      lines = described_class.for(data).render_response(tui)
+
+      token_span = lines.first[:spans][1]
+      expect(token_span[:style][:fg]).to eq("yellow")
+    end
+
+    it "uses red for token counts over 20k" do
+      data = {"role" => "tool_response", "content" => "out", "success" => true, "tokens" => 25_000}
+      lines = described_class.for(data).render_response(tui)
+
+      token_span = lines.first[:spans][1]
+      expect(token_span[:style][:fg]).to eq("red")
+    end
+  end
+
+  describe "#color" do
+    it "uses unified magenta for all tool call headers" do
+      data = {"role" => "tool_call", "tool" => "custom_tool", "input" => "param data"}
+      lines = described_class.for(data).render_call(tui)
+
+      style = lines.first[:spans].first[:style]
+      expect(style[:fg]).to eq("magenta")
     end
   end
 end
