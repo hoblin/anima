@@ -22,7 +22,7 @@ module TUI
   # @example Dismissing
   #   flash.dismiss!
   class Flash
-    AUTO_DISMISS_SECONDS = 5.0
+    AUTO_DISMISS_SECONDS = 20.0
 
     # Flash area occupies at most 1/3 of the chat pane height.
     MAX_HEIGHT_FRACTION = 3

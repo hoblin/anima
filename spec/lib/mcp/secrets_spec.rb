@@ -42,6 +42,12 @@ RSpec.describe Mcp::Secrets do
 
       expect(described_class.get("api_key")).to eq("sk-xxx")
     end
+
+    it "returns nil when secret does not exist" do
+      expect(CredentialStore).to receive(:read).with("mcp", "missing").and_return(nil)
+
+      expect(described_class.get("missing")).to be_nil
+    end
   end
 
   describe ".list" do

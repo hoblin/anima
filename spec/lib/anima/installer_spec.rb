@@ -111,6 +111,29 @@ RSpec.describe Anima::Installer do
       expect(mcp_path.read).to include("[servers.example]")
     end
 
+    it "includes Active Record Encryption keys in credentials" do
+      installer.run
+
+      %w[production development test].each do |env|
+        content_path = tmp_home.join("config", "credentials", "#{env}.yml.enc")
+        key_path = tmp_home.join("config", "credentials", "#{env}.key")
+
+        config = ActiveSupport::EncryptedConfiguration.new(
+          config_path: content_path.to_s,
+          key_path: key_path.to_s,
+          env_key: "RAILS_MASTER_KEY",
+          raise_if_missing_key: true
+        )
+        creds = config.read
+        parsed = YAML.safe_load(creds)
+
+        expect(parsed).to have_key("active_record_encryption")
+        expect(parsed["active_record_encryption"]).to include(
+          "primary_key", "deterministic_key", "key_derivation_salt"
+        )
+      end
+    end
+
     it "is idempotent" do
       installer.run
       expect { installer.run }.not_to raise_error

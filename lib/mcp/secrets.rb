@@ -1,12 +1,11 @@
 # frozen_string_literal: true
 
 module Mcp
-  # CRUD operations for MCP server secrets stored in Rails encrypted credentials.
-  # Secrets live under the +mcp+ namespace in the credentials file:
+  # CRUD operations for MCP server secrets stored in the encrypted secrets table.
+  # Secrets live under the +mcp+ namespace:
   #
-  #   mcp:
-  #     linear_api_key: "sk-xxx"
-  #     mythonix_api_key: "Bearer tok-yyy"
+  #   Mcp::Secrets.set("linear_api_key", "sk-xxx")
+  #   Mcp::Secrets.get("linear_api_key") #=> "sk-xxx"
   #
   # Referenced in mcp.toml via +${credential:key_name}+ syntax, resolved at
   # runtime by {Mcp::Config#interpolate_credentials}.
@@ -23,7 +22,7 @@ module Mcp
     VALID_KEY_PATTERN = /\A\w+\z/
 
     class << self
-      # Stores a secret in encrypted credentials.
+      # Stores a secret in encrypted storage.
       #
       # @param key [String] secret identifier (e.g. "linear_api_key")
       # @param value [String] secret value
@@ -35,7 +34,7 @@ module Mcp
         CredentialStore.write(NAMESPACE, key => value)
       end
 
-      # Retrieves a secret from encrypted credentials.
+      # Retrieves a secret from encrypted storage.
       #
       # @param key [String] secret identifier
       # @return [String, nil] secret value or nil if not found
@@ -50,7 +49,7 @@ module Mcp
         CredentialStore.list(NAMESPACE)
       end
 
-      # Removes a secret from encrypted credentials.
+      # Removes a secret from encrypted storage.
       #
       # @param key [String] secret identifier to remove
       # @return [void]

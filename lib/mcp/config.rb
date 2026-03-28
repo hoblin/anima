@@ -6,7 +6,7 @@ require "toml-rb"
 module Mcp
   # Reads and writes MCP server configuration from a TOML file at
   # {DEFAULT_PATH}. Supports HTTP and stdio transports. Secrets stored
-  # in Rails encrypted credentials are interpolated via
+  # in the encrypted secrets table are interpolated via
   # +${credential:key_name}+ syntax in any string value.
   #
   # @example Config file format (~/.anima/mcp.toml)
@@ -187,7 +187,7 @@ module Mcp
     end
 
     # Replaces +${credential:key_name}+ placeholders with values from
-    # Rails encrypted credentials via {Mcp::Secrets}.
+    # the encrypted secrets table via {Mcp::Secrets}.
     #
     # @param value [String] string potentially containing placeholders
     # @return [String] interpolated string

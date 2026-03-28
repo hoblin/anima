@@ -12,7 +12,7 @@ module Anima
         true
       end
 
-      desc "secrets SUBCOMMAND", "Manage MCP secrets in encrypted credentials"
+      desc "secrets SUBCOMMAND", "Manage MCP secrets in encrypted storage"
       subcommand "secrets", Secrets
 
       desc "list", "List configured MCP servers with health status"
@@ -40,14 +40,14 @@ module Anima
 
         Use -e KEY=VALUE to set environment variables (stdio servers).
         Use -H "Header: Value" to set HTTP headers (HTTP servers).
-        Use -s KEY=VALUE to store a secret in encrypted credentials.
+        Use -s KEY=VALUE to store a secret in encrypted storage.
       DESC
       option :env, aliases: "-e", type: :string, repeatable: true, banner: "KEY=VALUE",
         desc: "Environment variables (repeatable)"
       option :header, aliases: "-H", type: :string, repeatable: true, banner: "Header: Value",
         desc: "HTTP headers (repeatable)"
       option :secret, aliases: "-s", type: :string, repeatable: true, banner: "KEY=VALUE",
-        desc: "Store secret in encrypted credentials (repeatable)"
+        desc: "Store secret in encrypted storage (repeatable)"
       def add(name, *rest)
         if rest.empty?
           say "Error: missing server URL or command.", :red
@@ -87,7 +87,7 @@ module Anima
         ::Mcp::Config.new
       end
 
-      # Stores secrets from -s KEY=VALUE flags in encrypted credentials.
+      # Stores secrets from -s KEY=VALUE flags in the encrypted secrets table.
       def store_secrets(secret_strings)
         return unless secret_strings&.any?
 

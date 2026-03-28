@@ -132,9 +132,9 @@ class SessionChannel < ApplicationCable::Channel
     transmit_error("Session not found")
   end
 
-  # Validates and saves an Anthropic subscription token to encrypted credentials.
+  # Validates and saves an Anthropic subscription token to encrypted storage.
   # Format-validated and API-validated before storage. The token never enters the
-  # LLM context window — it flows directly from WebSocket to encrypted credentials.
+  # LLM context window — it flows directly from WebSocket to the secrets table.
   #
   # @param data [Hash] must include "token" (Anthropic subscription token string)
   def save_token(data)
@@ -353,8 +353,7 @@ class SessionChannel < ApplicationCable::Channel
     }
   end
 
-  # Merges the Anthropic subscription token into encrypted credentials,
-  # preserving existing keys (e.g. secret_key_base).
+  # Writes the Anthropic subscription token to encrypted storage.
   #
   # @param token [String] validated Anthropic subscription token
   # @return [void]

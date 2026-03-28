@@ -5,8 +5,8 @@ require "thor"
 module Anima
   class CLI < Thor
     class Mcp < Thor
-      # CLI commands for managing MCP secrets stored in Rails encrypted
-      # credentials. Secrets are referenced in mcp.toml via
+      # CLI commands for managing MCP secrets stored in the encrypted
+      # secrets table. Secrets are referenced in mcp.toml via
       # +${credential:key_name}+ syntax.
       #
       # @example Store a secret
@@ -22,7 +22,7 @@ module Anima
           true
         end
 
-        desc "set KEY=VALUE", "Store an MCP secret in encrypted credentials"
+        desc "set KEY=VALUE", "Store an MCP secret in encrypted secrets"
         def set(pair)
           key, value = pair.split("=", 2)
           unless value
@@ -50,7 +50,7 @@ module Anima
           keys.each { |key| say "  #{key}" }
         end
 
-        desc "remove KEY", "Remove an MCP secret from encrypted credentials"
+        desc "remove KEY", "Remove an MCP secret from encrypted storage"
         def remove(key)
           secrets = require_mcp_secrets
           unless secrets.list.include?(key)

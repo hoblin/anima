@@ -117,7 +117,13 @@ module Anima
           raise_if_missing_key: true
         )
 
-        config.write("secret_key_base: #{SecureRandom.hex(64)}\n")
+        config.write(<<~YAML)
+          secret_key_base: #{SecureRandom.hex(64)}
+          active_record_encryption:
+            primary_key: #{SecureRandom.base64(32)}
+            deterministic_key: #{SecureRandom.base64(32)}
+            key_derivation_salt: #{SecureRandom.base64(32)}
+        YAML
         File.chmod(0o600, content_str)
         say "  created credentials for #{env}"
       end
