@@ -146,10 +146,13 @@ module Tools
 
     # Formats the result of an interrupted command for the LLM.
     # Includes partial output captured before the interrupt.
+    #
+    # @param result [Hash] ShellSession result with :stdout, :stderr keys
+    # @return [String] formatted message for the LLM
     def format_interrupted(result)
       stdout = result[:stdout].to_s
       stderr = result[:stderr].to_s
-      parts = ["Your human wants your attention."]
+      parts = [LLM::Client::INTERRUPT_MESSAGE]
       parts << "Partial stdout:\n#{stdout}" unless stdout.empty?
       parts << "stderr:\n#{stderr}" unless stderr.empty?
       parts.join("\n\n")
@@ -158,6 +161,8 @@ module Tools
     # Builds a lambda that checks the database for a pending interrupt flag.
     # Called every {Anima::Settings.interrupt_check_interval} seconds during
     # command execution inside {ShellSession}.
+    #
+    # @return [Proc] lambda returning truthy when interrupt is pending
     def interrupt_checker
       session_id = @session.id
       -> { Session.where(id: session_id, interrupt_requested: true).exists? }

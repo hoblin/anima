@@ -402,6 +402,8 @@ The difference from every other system: memory isn't a tool the agent uses. It's
 
 The right-side HUD panel shows session state at a glance: session name, goals (with status icons), active skills, workflow, and sub-agents. Toggle with `C-a → h`; when hidden, the input border shows `C-a → h HUD` as a reminder.
 
+**Escape key interrupt:** Press `Escape` while the agent is working to stop execution mid-tool. Running shell commands receive Ctrl+C and return partial output; pending tool calls are skipped; LLM text generation is discarded. The interrupt cascades to active sub-agents.
+
 Three switchable view modes let you control how much detail the TUI shows. Cycle with `C-a → v`:
 
 | Mode | What you see |

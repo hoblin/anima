@@ -107,7 +107,7 @@ RSpec.describe ShellSession do
 
     context "interrupt_check" do
       it "returns interrupted result when callback fires" do
-        # Use a simpler approach: set a flag that fires on first check
+        # Fires on the second poll, giving the command one cycle to start
         check_count = 0
         checker = -> { (check_count += 1) > 1 }
 

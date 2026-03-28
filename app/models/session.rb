@@ -32,6 +32,7 @@ class Session < ApplicationRecord
 
   scope :recent, ->(limit = 10) { order(updated_at: :desc).limit(limit) }
   scope :root_sessions, -> { where(parent_session_id: nil) }
+  scope :processing_children_of, ->(parent_id) { where(parent_session_id: parent_id, processing: true) }
 
   # Cycles to the next view mode: basic → verbose → debug → basic.
   #

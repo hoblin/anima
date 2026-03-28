@@ -111,7 +111,7 @@ RSpec.describe AgentRequestJob do
 
         expect(ActionCable.server).to receive(:broadcast).with(
           "session_#{session.id}",
-          {"action" => "processing_stopped"}
+          hash_including("action" => "processing_stopped")
         )
         allow(ActionCable.server).to receive(:broadcast)
 

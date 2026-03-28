@@ -101,7 +101,7 @@ class SessionChannel < ApplicationCable::Channel
 
     return unless updated > 0
 
-    Session.where(parent_session_id: @current_session_id, processing: true)
+    Session.processing_children_of(@current_session_id)
       .update_all(interrupt_requested: true)
 
     ActionCable.server.broadcast(stream_name, {"action" => "interrupt_acknowledged"})

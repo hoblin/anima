@@ -244,7 +244,7 @@ class ShellSession
     stdout, exit_code = read_until_marker(marker, deadline: deadline, interrupt_check: interrupt_check)
 
     if exit_code == :interrupted
-      recover_from_timeout
+      recover_shell
       update_pwd
       stderr = drain_stderr
       return {
@@ -255,7 +255,7 @@ class ShellSession
     end
 
     if exit_code.nil?
-      recover_from_timeout
+      recover_shell
       stderr = drain_stderr
       parts = ["Command timed out after #{timeout} seconds."]
       parts << "Partial stdout:\n#{truncate(stdout)}" unless stdout.empty?
@@ -289,9 +289,10 @@ class ShellSession
   def read_until_marker(marker, deadline:, interrupt_check: nil)
     lines = []
     exit_code = nil
+    check_interval = interrupt_check ? [Anima::Settings.interrupt_check_interval, 0.5].max : nil
 
     loop do
-      line = gets_with_deadline(deadline, interrupt_check: interrupt_check)
+      line = gets_with_deadline(deadline, interrupt_check: interrupt_check, check_interval: check_interval)
 
       if line == :interrupted
         exit_code = :interrupted
@@ -345,14 +346,14 @@ class ShellSession
   #
   # @param deadline [Float] monotonic clock deadline
   # @param interrupt_check [Proc, nil] callable returning truthy on user interrupt
+  # @param check_interval [Float, nil] resolved interrupt check interval (seconds);
+  #   pre-computed by the caller to avoid re-reading Settings on every line
   # @return [String] line including trailing newline
   # @return [:interrupted] when user interrupt detected
   # @return [nil] if deadline expired
   # @raise [Errno::EIO] when the PTY child process exits (Linux)
   # @raise [IOError] when the PTY file descriptor is closed
-  def gets_with_deadline(deadline, interrupt_check: nil)
-    check_interval = interrupt_check ? Anima::Settings.interrupt_check_interval : nil
-
+  def gets_with_deadline(deadline, interrupt_check: nil, check_interval: nil)
     loop do
       if (idx = @read_buffer.index("\n"))
         return @read_buffer.slice!(0..idx)
@@ -377,13 +378,13 @@ class ShellSession
     end
   end
 
-  # Sends Ctrl+C to interrupt the running command and drains leftover output.
+  # Sends Ctrl+C and drains leftover output after a timeout or user interrupt.
   # If recovery fails, marks the session as dead (will be respawned on next run).
   #
   # @return [void]
   # @raise [Errno::EIO] when the PTY child process has exited
   # @raise [IOError] when the PTY file descriptor is closed
-  def recover_from_timeout
+  def recover_shell
     @pty_stdin.write("\x03")
     sleep 0.1
     marker = "__ANIMA_RECOVER_#{SecureRandom.hex(8)}__"

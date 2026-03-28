@@ -154,9 +154,12 @@ module LLM
     def execute_tools(response, registry, session_id)
       tool_uses = extract_tool_uses(response)
       results = []
+      interrupted = false
 
       tool_uses.each_with_index do |tool_use, index|
-        if Session.where(id: session_id, interrupt_requested: true).exists?
+        # Check-only here; clearing happens in handle_interrupt! after the loop
+        interrupted ||= interrupt_requested?(session_id)
+        if interrupted
           remaining = tool_uses[index..]
           results.concat(interrupt_remaining_tools(remaining, session_id)) if remaining&.any?
           break
@@ -254,17 +257,23 @@ module LLM
       {type: "tool_result", tool_use_id: id, content: INTERRUPT_MESSAGE}
     end
 
-    # Checks for a pending interrupt and clears it in one step.
+    # Checks whether the session has a pending interrupt flag.
+    #
+    # @param session_id [Integer, String] session to check
+    # @return [Boolean] true when interrupt is pending
+    def interrupt_requested?(session_id)
+      Session.where(id: session_id, interrupt_requested: true).exists?
+    end
+
+    # Atomically checks for a pending interrupt and clears it in one query.
     # Used at loop boundaries (after tools, before LLM text return) to
     # short-circuit the agent loop when the user presses Escape.
     #
     # @param session_id [Integer, String] session to check
     # @return [Boolean] true when interrupt was detected and cleared
     def handle_interrupt!(session_id)
-      return false unless Session.where(id: session_id, interrupt_requested: true).exists?
-
-      Session.where(id: session_id).update_all(interrupt_requested: false)
-      true
+      Session.where(id: session_id, interrupt_requested: true)
+        .update_all(interrupt_requested: false) > 0
     end
 
     def log(level, message)

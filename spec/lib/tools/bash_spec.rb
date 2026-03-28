@@ -226,7 +226,6 @@ RSpec.describe Tools::Bash do
     context "when interrupted by user" do
       it "returns interrupted message for single command" do
         session.update_column(:interrupt_requested, true)
-        session.update_column(:processing, true)
         result = tool.execute("command" => "sleep 30")
         expect(result).to include("Your human wants your attention")
       end
@@ -247,12 +246,22 @@ RSpec.describe Tools::Bash do
         allow(shell_session).to receive(:run).with("sleep 999", hash_including(:interrupt_check)).and_return(
           {interrupted: true, stdout: "", stderr: ""}
         )
+        expect(shell_session).not_to receive(:run).with("echo third", anything)
 
         result = tool.execute("commands" => ["echo first", "sleep 999", "echo third"])
         expect(result).to include("[1/3] $ echo first")
         expect(result).to include("[2/3] $ sleep 999")
-        expect(result).to include("Your human wants your attention")
+        expect(result).to include(LLM::Client::INTERRUPT_MESSAGE)
         expect(result).to include("[3/3] $ echo third\n(skipped — interrupted by user)")
+      end
+
+      it "includes stderr in interrupted result" do
+        allow(shell_session).to receive(:run).and_return(
+          {interrupted: true, stdout: "", stderr: "warning: something"}
+        )
+        result = tool.execute("command" => "failing-command")
+        expect(result).to include(LLM::Client::INTERRUPT_MESSAGE)
+        expect(result).to include("stderr:\nwarning: something")
       end
     end
 

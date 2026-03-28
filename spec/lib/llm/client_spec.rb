@@ -302,7 +302,6 @@ RSpec.describe LLM::Client do
     context "when the user interrupts during text generation", :vcr do
       it "discards the text response and returns nil" do
         messages = [{role: "user", content: "Reply with the single word OK"}]
-        session = Session.create!
         session.update_column(:interrupt_requested, true)
 
         result = client.chat_with_tools(
