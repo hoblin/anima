@@ -191,7 +191,7 @@ RSpec.describe SessionChannel, type: :channel do
       expect(session.reload.viewport_message_ids).to eq([e1.id, e2.id])
     end
 
-    it "transmits chat history including tool events for existing session" do
+    it "transmits chat history newest-first to prevent render thrashing" do
       session = Session.create!(id: session_id)
       session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
       session.messages.create!(message_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi there"}, timestamp: 2)
@@ -201,9 +201,9 @@ RSpec.describe SessionChannel, type: :channel do
 
       history = transmissions.reject { |t| t["action"] }
       expect(history.size).to eq(3)
-      expect(history[0]).to include("type" => "user_message", "content" => "hello")
+      expect(history[0]).to include("type" => "tool_call", "content" => "calling bash")
       expect(history[1]).to include("type" => "agent_message", "content" => "hi there")
-      expect(history[2]).to include("type" => "tool_call", "content" => "calling bash")
+      expect(history[2]).to include("type" => "user_message", "content" => "hello")
     end
 
     it "includes structured rendered output in history transmissions" do
@@ -214,14 +214,14 @@ RSpec.describe SessionChannel, type: :channel do
 
       subscribe(session_id: session_id)
 
-      # First transmission is session_changed, then view_mode, then history
+      # First transmission is session_changed, then view_mode, then history (newest-first)
       view_mode_msg = transmissions.find { |t| t["action"] == "view_mode" }
       expect(view_mode_msg["view_mode"]).to eq("basic")
 
       history = transmissions.reject { |t| t["action"] }
-      expect(history[0]["rendered"]).to eq("basic" => {"role" => :user, "content" => "hello"})
+      expect(history[0]["rendered"]).to eq("basic" => nil)
       expect(history[1]["rendered"]).to eq("basic" => {"role" => :assistant, "content" => "hi"})
-      expect(history[2]["rendered"]).to eq("basic" => nil)
+      expect(history[2]["rendered"]).to eq("basic" => {"role" => :user, "content" => "hello"})
     end
 
     it "transmits view_mode on subscription" do
@@ -628,13 +628,13 @@ RSpec.describe SessionChannel, type: :channel do
       expect(changed["view_mode"]).to eq("basic")
     end
 
-    it "transmits chat history from the target session" do
+    it "transmits chat history from the target session newest-first" do
       perform(:switch_session, {"session_id" => target_session.id})
 
       history = transmissions.select { |t| t["type"].in?(%w[user_message agent_message]) }
       expect(history.size).to eq(2)
-      expect(history[0]["content"]).to eq("old msg")
-      expect(history[1]["content"]).to eq("old reply")
+      expect(history[0]["content"]).to eq("old reply")
+      expect(history[1]["content"]).to eq("old msg")
     end
 
     it "switches the stream to the target session" do

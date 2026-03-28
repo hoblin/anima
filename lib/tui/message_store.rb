@@ -227,8 +227,9 @@ module TUI
       @entries_by_id[id] = entry
     end
 
-    # Inserts an entry in sorted order by message ID. Optimized for the
-    # common case where messages arrive in order (appends without scanning).
+    # Inserts an entry in sorted order by message ID. Optimized for two
+    # common cases: appending (live streaming, ascending order) and
+    # prepending (session history replay, descending/newest-first order).
     # Entries without IDs (tool counters, etc.) are skipped during the
     # sort scan and don't affect insertion position.
     #
@@ -241,6 +242,15 @@ module TUI
       last_id = last_entry_id
       if last_id.nil? || last_id < id
         @entries << entry
+        return
+      end
+
+      # Fast path: entry belongs at the beginning (session history replay, newest-first).
+      # Only safe when the first entry has an ID — non-ID entries (tool counters)
+      # at the head would be displaced, so we fall through to the general path.
+      first_id = @entries.first&.dig(:id)
+      if first_id && id < first_id
+        @entries.unshift(entry)
         return
       end
 
