@@ -302,7 +302,7 @@ completed_decay_messages = 5
 [analytical_brain]
 max_tokens = 4096
 blocking_on_user_message = true
-event_window = 20
+message_window = 20
 
 [session]
 default_view_mode = "basic"

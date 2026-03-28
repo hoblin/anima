@@ -711,6 +711,21 @@ RSpec.describe Session do
       expect(goal.reload.evicted_at).to be_present
     end
 
+    it "evicts completed goals at exactly the decay threshold" do
+      goal = Goal.create!(
+        session: session, description: "Boundary goal",
+        status: "completed", completed_at: 1.hour.ago
+      )
+      # Exactly 5 meaningful messages — at the >= threshold boundary
+      5.times do |i|
+        session.messages.create!(message_type: "user_message", payload: {content: "msg #{i}"}, timestamp: i + 1)
+      end
+
+      session.assemble_system_prompt
+
+      expect(goal.reload.evicted_at).to be_present
+    end
+
     it "does not evict completed goals below the decay threshold" do
       goal = Goal.create!(
         session: session, description: "Recent goal",
@@ -779,6 +794,29 @@ RSpec.describe Session do
       session.assemble_system_prompt
 
       expect(goal.reload.evicted_at).to be_nil
+    end
+
+    it "evicts old goals but keeps recent ones with multiple completed goals" do
+      old_goal = Goal.create!(
+        session: session, description: "Old goal",
+        status: "completed", completed_at: 3.hours.ago
+      )
+      recent_goal = Goal.create!(
+        session: session, description: "Recent goal",
+        status: "completed", completed_at: Time.current
+      )
+      # 6 messages — all after old_goal's completion, but before recent_goal's
+      6.times do |i|
+        session.messages.create!(
+          message_type: "user_message", payload: {content: "msg #{i}"},
+          timestamp: i + 1, created_at: 2.hours.ago
+        )
+      end
+
+      session.assemble_system_prompt
+
+      expect(old_goal.reload.evicted_at).to be_present
+      expect(recent_goal.reload.evicted_at).to be_nil
     end
   end
 

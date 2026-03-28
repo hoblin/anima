@@ -516,13 +516,14 @@ class Session < ApplicationRecord
   # @return [void]
   def evict_stale_goals!
     threshold = Anima::Settings.completed_decay_messages
-    goals.evictable.find_each do |goal|
+    goals.evictable.each do |goal|
       messages_since = messages.llm_messages.where("created_at > ?", goal.completed_at).count
       goal.update!(evicted_at: Time.current) if messages_since >= threshold
     end
   end
 
   # Assembles the goals section of the system prompt.
+  # Automatically evicts stale completed goals before filtering.
   # Active root goals render as `###` headings with sub-goal checkboxes.
   # Completed root goals collapse to a single strikethrough line.
   # Evicted goals are excluded entirely to free context budget.
