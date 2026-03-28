@@ -400,29 +400,66 @@ class Session < ApplicationRecord
     })
   end
 
-  # Broadcasts the fully assembled system prompt to debug-mode TUI clients.
-  # Called on every LLM request so the TUI shows exactly what the LLM receives,
-  # including environment context. No-op outside debug mode.
+  # Broadcasts the full LLM debug context to debug-mode TUI clients.
+  # Called on every LLM request so the TUI shows exactly what the LLM
+  # receives — system prompt and tool schemas. No-op outside debug mode.
   #
-  # @param prompt [String, nil] the final system prompt sent to the LLM
+  # @param system [String, nil] the final system prompt sent to the LLM
+  # @param tools [Array<Hash>, nil] tool schemas sent to the LLM
   # @return [void]
-  def broadcast_system_prompt_update(prompt)
-    return unless view_mode == "debug" && prompt
+  def broadcast_debug_context(system:, tools: nil)
+    return unless view_mode == "debug" && system
 
-    ActionCable.server.broadcast("session_#{id}", self.class.system_prompt_payload(prompt))
+    ActionCable.server.broadcast("session_#{id}", self.class.system_prompt_payload(system, tools: tools))
+  end
+
+  # Returns the deterministic tool schemas for this session's type and
+  # granted_tools configuration. Standard and spawn tools are static
+  # class-level definitions — no ShellSession or registry needed.
+  # MCP tools are excluded (they require live server queries and appear
+  # after the first LLM request via {#broadcast_debug_context}).
+  #
+  # @return [Array<Hash>] tool schema hashes matching Anthropic tools API format
+  def tool_schemas
+    tools = if granted_tools
+      granted = granted_tools.filter_map { |name| AgentLoop::STANDARD_TOOLS_BY_NAME[name] }
+      (AgentLoop::ALWAYS_GRANTED_TOOLS + granted).uniq
+    else
+      AgentLoop::STANDARD_TOOLS.dup
+    end
+
+    unless sub_agent?
+      tools.push(Tools::SpawnSubagent, Tools::SpawnSpecialist, Tools::OpenIssue)
+    end
+
+    if sub_agent?
+      tools.push(Tools::MarkGoalCompleted)
+    end
+
+    tools.map(&:schema)
   end
 
   # Builds the system prompt payload for debug mode transmission.
+  # Token estimate covers both the system prompt and tool schemas
+  # since both consume the LLM's context window.
+  # Tools are pre-formatted as TOON with non-breaking spaces for
+  # indentation (ratatui's Paragraph widget trims regular spaces).
   #
   # @param prompt [String] system prompt text
+  # @param tools [Array<Hash>, nil] tool schemas
   # @return [Hash] payload with type, rendered debug content, and token estimate
-  def self.system_prompt_payload(prompt)
-    tokens = [(prompt.bytesize / Message::BYTES_PER_TOKEN.to_f).ceil, 1].max
+  def self.system_prompt_payload(prompt, tools: nil)
+    total_bytes = prompt.bytesize
+    total_bytes += tools.to_json.bytesize if tools&.any?
+    tokens = [(total_bytes / Message::BYTES_PER_TOKEN.to_f).ceil, 1].max
+
+    debug = {role: :system_prompt, content: prompt, tokens: tokens, estimated: true}
+    debug[:tools] = tools if tools&.any?
+
     {
+      "id" => 0,
       "type" => "system_prompt",
-      "rendered" => {
-        "debug" => {role: :system_prompt, content: prompt, tokens: tokens, estimated: true}
-      }
+      "rendered" => {"debug" => debug}
     }
   end
 

@@ -396,7 +396,7 @@ RSpec.describe AgentLoop do
       agent_loop.run
     end
 
-    it "broadcasts system prompt to debug-mode clients on LLM request" do
+    it "broadcasts debug context with system prompt and tools in debug mode" do
       session.update!(view_mode: "debug")
       session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       allow(client).to receive(:chat_with_tools).and_return("ok")
@@ -404,10 +404,13 @@ RSpec.describe AgentLoop do
       expect {
         agent_loop.run
       }.to have_broadcasted_to("session_#{session.id}")
-        .with(a_hash_including("type" => "system_prompt"))
+        .with(a_hash_including(
+          "type" => "system_prompt",
+          "rendered" => {"debug" => a_hash_including("tools" => an_instance_of(Array))}
+        ))
     end
 
-    it "does not broadcast system prompt in basic mode" do
+    it "does not broadcast debug context in basic mode" do
       session.update!(view_mode: "basic")
       session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       allow(client).to receive(:chat_with_tools).and_return("ok")

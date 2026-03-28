@@ -339,13 +339,15 @@ class SessionChannel < ApplicationCable::Channel
 
   # Builds the system prompt payload for debug mode transmission.
   # Delegates to {Session.system_prompt_payload} for the shared format.
+  # Includes deterministic tool schemas (standard + spawn tools).
+  # MCP tools appear after the first LLM request via live broadcast.
   # @param session [Session]
   # @return [Hash, nil] the system prompt payload, or nil if no prompt
   def system_prompt_payload(session)
     prompt = session.system_prompt
     return unless prompt
 
-    Session.system_prompt_payload(prompt)
+    Session.system_prompt_payload(prompt, tools: session.tool_schemas)
   end
 
   # Merges the Anthropic subscription token into encrypted credentials,

@@ -769,12 +769,12 @@ RSpec.describe Session do
     end
   end
 
-  describe "#broadcast_system_prompt_update" do
+  describe "#broadcast_debug_context" do
     it "broadcasts system prompt payload in debug mode" do
       session = Session.create!(view_mode: "debug")
 
       expect {
-        session.broadcast_system_prompt_update("You are Anima.")
+        session.broadcast_debug_context(system: "You are Anima.")
       }.to have_broadcasted_to("session_#{session.id}")
         .with(a_hash_including(
           "type" => "system_prompt",
@@ -785,11 +785,23 @@ RSpec.describe Session do
         ))
     end
 
+    it "includes tool schemas when provided" do
+      session = Session.create!(view_mode: "debug")
+      tools = [{"name" => "bash", "description" => "Run commands"}]
+
+      expect {
+        session.broadcast_debug_context(system: "You are Anima.", tools: tools)
+      }.to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including(
+          "rendered" => {"debug" => a_hash_including("tools" => tools)}
+        ))
+    end
+
     it "does not broadcast in basic mode" do
       session = Session.create!(view_mode: "basic")
 
       expect {
-        session.broadcast_system_prompt_update("You are Anima.")
+        session.broadcast_debug_context(system: "You are Anima.")
       }.not_to have_broadcasted_to("session_#{session.id}")
     end
 
@@ -797,24 +809,25 @@ RSpec.describe Session do
       session = Session.create!(view_mode: "verbose")
 
       expect {
-        session.broadcast_system_prompt_update("You are Anima.")
+        session.broadcast_debug_context(system: "You are Anima.")
       }.not_to have_broadcasted_to("session_#{session.id}")
     end
 
-    it "does not broadcast when prompt is nil" do
+    it "does not broadcast when system prompt is nil" do
       session = Session.create!(view_mode: "debug")
 
       expect {
-        session.broadcast_system_prompt_update(nil)
+        session.broadcast_debug_context(system: nil)
       }.not_to have_broadcasted_to("session_#{session.id}")
     end
   end
 
   describe ".system_prompt_payload" do
-    it "builds the expected payload structure" do
+    it "builds the expected payload structure without tools" do
       payload = Session.system_prompt_payload("Test prompt")
 
       expect(payload).to eq({
+        "id" => 0,
         "type" => "system_prompt",
         "rendered" => {
           "debug" => {role: :system_prompt, content: "Test prompt", tokens: 3, estimated: true}
@@ -822,10 +835,60 @@ RSpec.describe Session do
       })
     end
 
+    it "includes tools and estimates combined tokens" do
+      tools = [{"name" => "bash", "description" => "Run commands", "input_schema" => {"type" => "object"}}]
+      payload = Session.system_prompt_payload("Test", tools: tools)
+
+      debug = payload["rendered"]["debug"]
+      expect(debug[:tools]).to eq(tools)
+      # Token estimate covers both prompt and tool JSON
+      prompt_only_tokens = [("Test".bytesize / Message::BYTES_PER_TOKEN.to_f).ceil, 1].max
+      expect(debug[:tokens]).to be > prompt_only_tokens
+    end
+
+    it "omits tools key when tools are empty" do
+      payload = Session.system_prompt_payload("Test", tools: [])
+
+      expect(payload["rendered"]["debug"]).not_to have_key(:tools)
+    end
+
     it "estimates at least 1 token for tiny prompts" do
       payload = Session.system_prompt_payload("hi")
 
       expect(payload["rendered"]["debug"][:tokens]).to eq(1)
+    end
+  end
+
+  describe "#tool_schemas" do
+    it "returns standard + spawn tools for main sessions" do
+      session = Session.create!
+      schemas = session.tool_schemas
+      names = schemas.map { |s| s[:name] }
+
+      expect(names).to include("bash", "read", "write", "edit", "web_get", "think", "remember")
+      expect(names).to include("spawn_subagent", "spawn_specialist", "open_issue")
+      expect(names).not_to include("mark_goal_completed")
+    end
+
+    it "returns granted tools + mark_goal_completed for sub-agents" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "sub", granted_tools: ["read", "web_get"])
+      schemas = child.tool_schemas
+      names = schemas.map { |s| s[:name] }
+
+      expect(names).to include("think", "read", "web_get", "mark_goal_completed")
+      expect(names).not_to include("bash", "spawn_subagent")
+    end
+
+    it "returns all standard tools when granted_tools is nil" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "full agent")
+      schemas = child.tool_schemas
+      names = schemas.map { |s| s[:name] }
+
+      AgentLoop::STANDARD_TOOLS.each do |tool|
+        expect(names).to include(tool.tool_name)
+      end
     end
   end
 

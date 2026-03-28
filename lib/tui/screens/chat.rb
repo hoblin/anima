@@ -12,6 +12,7 @@ require_relative "../decorators/write_decorator"
 require_relative "../decorators/web_get_decorator"
 require_relative "../decorators/think_decorator"
 require_relative "../formatting"
+require "toon"
 
 module TUI
   module Screens
@@ -854,14 +855,17 @@ module TUI
         lines
       end
 
-      # Renders the assembled system prompt block in debug mode.
+      # Renders the assembled system prompt and tool schemas in debug mode.
+      # Tool schemas are converted to TOON format for readability.
       # @param tui [RatatuiRuby] TUI rendering API
-      # @param data [Hash] structured data with "content", "tokens", "estimated"
+      # @param data [Hash] structured data with "content", "tokens", "estimated",
+      #   and optionally "tools" (Array<Hash> of tool schemas)
       # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_system_prompt_entry(tui, data)
         tokens = data["tokens"]
         bold_style = tui.style(fg: "magenta", modifiers: [:bold])
         style = tui.style(fg: "magenta")
+        tool_style = tui.style(fg: "cyan")
 
         header_spans = [tui.span(content: "[SYSTEM] ", style: bold_style)]
         if tokens
@@ -873,7 +877,27 @@ module TUI
         data["content"].to_s.split("\n").each do |line|
           lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)])
         end
+
+        if data["tools"].is_a?(Array) && data["tools"].any?
+          lines << tui.line(spans: [tui.span(content: "", style: style)])
+          lines << tui.line(spans: [tui.span(content: "\u00a0\u00a0## Tools (#{data["tools"].size})", style: bold_style)])
+          tools_toon(data).split("\n").each do |line|
+            lines << tui.line(spans: [tui.span(content: line, style: tool_style)])
+          end
+        end
+
         lines
+      end
+
+      # Converts tool schemas to TOON format for display. Caches the result
+      # on the data hash so the conversion runs once per broadcast, not per
+      # frame. Uses non-breaking spaces for indentation because ratatui's
+      # Paragraph widget with wrap:true trims regular leading spaces.
+      # @param data [Hash] entry data containing "tools" array
+      # @return [String] TOON-formatted tool schemas
+      def tools_toon(data)
+        data["tools_toon"] ||= Toon.encode(data["tools"])
+          .gsub(/^( +)/) { "\u00a0" * _1.length }
       end
 
       def build_chat_message_lines(tui, msg)
