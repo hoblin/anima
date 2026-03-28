@@ -127,7 +127,7 @@ class AgentLoop
 
   # Tool classes available to all sessions by default.
   # @return [Array<Class<Tools::Base>>]
-  STANDARD_TOOLS = [Tools::Bash, Tools::Read, Tools::Write, Tools::Edit, Tools::WebGet, Tools::Think, Tools::Remember].freeze
+  STANDARD_TOOLS = [Tools::Bash, Tools::Read, Tools::Write, Tools::Edit, Tools::WebGet, Tools::Think, Tools::Remember, Tools::Recall].freeze
 
   # Tools that bypass {Session#granted_tools} filtering.
   # The agent's reasoning depends on these regardless of task scope.
