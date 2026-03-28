@@ -493,6 +493,16 @@ RSpec.describe AgentLoop do
   end
 
   describe "integration smoke test", :vcr do
+    around { |example| freeze_time(Time.utc(2026, 3, 29, 12, 30, 0)) { example.run } }
+
+    before do
+      allow(Tools::ResponseTruncator).to receive(:save_full_output).and_wrap_original do |_method, content|
+        path = "/tmp/tool_result_stable.txt"
+        File.write(path, content)
+        path
+      end
+    end
+
     it "processes a message with the full production tool set and system prompt" do
       loop = described_class.new(session: session)
       result = loop.process("What is the latest issue on hoblin/anima repo?")
