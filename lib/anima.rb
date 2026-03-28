@@ -12,7 +12,7 @@ module Anima
   end
 
   # Boots Rails when CLI commands need access to Rails-managed resources
-  # like encrypted credentials. No-op if Rails is already loaded.
+  # like the encrypted secrets table. No-op if Rails is already loaded.
   def self.boot_rails!
     return if defined?(Rails)
 

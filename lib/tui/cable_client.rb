@@ -143,7 +143,7 @@ module TUI
     end
 
     # Sends an Anthropic subscription token to the brain for validation and storage.
-    # The token flows directly from TUI input to encrypted credentials — never
+    # The token flows directly from TUI input to the encrypted secrets table — never
     # enters the LLM context window.
     #
     # @param token [String] Anthropic subscription token (sk-ant-oat01-...)

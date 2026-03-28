@@ -283,7 +283,7 @@ RSpec.describe Anima::CLI::Mcp do
       allow(Mcp::Secrets).to receive(:set)
     end
 
-    it "stores secrets in encrypted credentials" do
+    it "stores secrets in encrypted storage" do
       expect(Mcp::Secrets).to receive(:set).with("api_key", "sk-xxx")
 
       expect {
