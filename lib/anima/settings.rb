@@ -211,10 +211,12 @@ module Anima
       # @return [Integer]
       def analytical_brain_message_window = get("analytical_brain", "message_window")
 
-      # Number of meaningful messages after completion before the brain should
-      # evict a completed goal from the agent's context.
+      # ─── Goals ──────────────────────────────────────────────────────
+
+      # Number of meaningful messages (user + agent turns) after completion
+      # before a completed goal is automatically evicted from context.
       # @return [Integer]
-      def goal_eviction_threshold = get("analytical_brain", "goal_eviction_threshold")
+      def completed_decay_messages = get("goals", "completed_decay_messages")
 
       # ─── Mneme (Memory Department) ────────────────────────────────
 

@@ -85,14 +85,8 @@ module AnalyticalBrain
           Mark goals complete when the agent finishes the work they describe.
           Completing a root goal cascades — all sub-goals are finished too.
           Never duplicate an existing goal — check the active goals list first.
-
-          EVICTION: completed goals stay visible briefly, then must be evicted
-          to free context budget. Check completed goals below — each shows
-          how many meaningful messages have passed since completion.
-          Evict when count ≥ threshold using the evict_goal tool.
-          Use judgment: keep a goal longer if the conversation still references it.
         PROMPT
-        tools: [Tools::SetGoal, Tools::UpdateGoal, Tools::FinishGoal, Tools::EvictGoal]
+        tools: [Tools::SetGoal, Tools::UpdateGoal, Tools::FinishGoal]
       )
     }.freeze
 
@@ -236,8 +230,7 @@ module AnalyticalBrain
         active_siblings_section,
         skills_catalog_section,
         workflows_catalog_section,
-        active_goals_section,
-        completed_goals_section
+        active_goals_section
       ]
       sections.compact.join("\n")
     end
@@ -323,41 +316,6 @@ module AnalyticalBrain
         ──────────────────────────────
         #{lines.join("\n")}
       SECTION
-    end
-
-    # Shows completed-but-not-evicted goals with their age in meaningful
-    # messages so the brain can decide whether to evict them.
-    #
-    # Loads all LLM message timestamps in one query to avoid N+1 when
-    # multiple goals are pending eviction.
-    #
-    # @return [String, nil] completed goals section, or nil when none pending eviction
-    def completed_goals_section
-      evictable = @session.goals.root.evictable.order(:completed_at)
-      return if evictable.empty?
-
-      threshold = Anima::Settings.goal_eviction_threshold
-      llm_timestamps = @session.messages.llm_messages.pluck(:created_at)
-
-      lines = evictable.map { |goal| format_evictable_goal(goal, llm_timestamps) }
-
-      <<~SECTION
-        ──────────────────────────────
-        COMPLETED GOALS (evict when ≥ #{threshold} messages since completion)
-        ──────────────────────────────
-        #{lines.join("\n")}
-      SECTION
-    end
-
-    # Formats a completed goal for the brain's eviction context,
-    # showing age in meaningful messages since completion.
-    #
-    # @param goal [Goal] a completed, non-evicted root goal
-    # @param llm_timestamps [Array<Time>] preloaded message timestamps
-    # @return [String] formatted goal line with age
-    def format_evictable_goal(goal, llm_timestamps)
-      messages_since = llm_timestamps.count { |ts| ts > goal.completed_at }
-      "- ~~#{goal.description}~~ (id: #{goal.id}, #{messages_since} messages since completion)"
     end
 
     # Formats a root goal and its sub-goals as a markdown checklist

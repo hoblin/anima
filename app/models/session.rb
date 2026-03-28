@@ -508,6 +508,20 @@ class Session < ApplicationRecord
     "## Your Expertise\n\nYou know this deeply. Now's your chance to put it to work.\n\n#{sections.join("\n\n")}"
   end
 
+  # Evicts completed goals that have aged past the configured threshold
+  # of meaningful messages (user + agent turns). Pure arithmetic — no LLM
+  # involvement. Called before prompt assembly so evicted goals are
+  # excluded from the very next context window.
+  #
+  # @return [void]
+  def evict_stale_goals!
+    threshold = Anima::Settings.completed_decay_messages
+    goals.evictable.find_each do |goal|
+      messages_since = messages.llm_messages.where("created_at > ?", goal.completed_at).count
+      goal.update!(evicted_at: Time.current) if messages_since >= threshold
+    end
+  end
+
   # Assembles the goals section of the system prompt.
   # Active root goals render as `###` headings with sub-goal checkboxes.
   # Completed root goals collapse to a single strikethrough line.
@@ -515,6 +529,8 @@ class Session < ApplicationRecord
   #
   # @return [String, nil] goals section, or nil when no goals exist
   def assemble_goals_section
+    evict_stale_goals!
+
     root_goals = goals.root.not_evicted.includes(:sub_goals).order(:created_at)
     return if root_goals.empty?
 
