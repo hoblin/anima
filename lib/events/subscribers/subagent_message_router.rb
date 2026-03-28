@@ -25,9 +25,8 @@ module Events
     class SubagentMessageRouter
       include Events::Subscriber
 
-      # Attribution prefix format for messages routed from child to parent.
-      # @example "[sub-agent @loop-sleuth]: Here's what I found..."
-      ATTRIBUTION_FORMAT = "[sub-agent @%s]: %s"
+      # @see Tools::ResponseTruncator::ATTRIBUTION_FORMAT
+      ATTRIBUTION_FORMAT = Tools::ResponseTruncator::ATTRIBUTION_FORMAT
 
       # Regex to extract @mention names from parent agent messages.
       MENTION_PATTERN = /@(\w[\w-]*)/

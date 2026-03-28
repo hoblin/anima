@@ -11,6 +11,15 @@ RSpec.describe Tools::ResponseTruncator do
         content = "short output"
         expect(described_class.truncate(content, threshold: threshold)).to eq(content)
       end
+
+      it "returns empty string unchanged" do
+        expect(described_class.truncate("", threshold: threshold)).to eq("")
+      end
+
+      it "returns content unchanged when exactly at threshold" do
+        content = "x" * threshold
+        expect(described_class.truncate(content, threshold: threshold)).to eq(content)
+      end
     end
 
     context "when content is not a string" do

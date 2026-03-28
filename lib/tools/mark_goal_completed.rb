@@ -77,7 +77,7 @@ module Tools
       truncated = Tools::ResponseTruncator.truncate(
         result, threshold: Anima::Settings.max_subagent_response_chars
       )
-      attributed = "[sub-agent @#{name}]: #{truncated}"
+      attributed = format(Tools::ResponseTruncator::ATTRIBUTION_FORMAT, name, truncated)
       parent.enqueue_user_message(attributed)
     end
   end

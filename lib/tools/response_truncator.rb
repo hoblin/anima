@@ -21,6 +21,11 @@ module Tools
     HEAD_LINES = 10
     TAIL_LINES = 10
 
+    # Attribution prefix for messages routed from sub-agent to parent.
+    # Shared by {Events::Subscribers::SubagentMessageRouter} and
+    # {Tools::MarkGoalCompleted} to keep formatting consistent.
+    ATTRIBUTION_FORMAT = "[sub-agent @%s]: %s"
+
     NOTICE = <<~NOTICE.strip
       ---
       ⚠️ Response truncated (%<total>d lines total). Full output saved to: %<path>s
@@ -30,9 +35,9 @@ module Tools
 
     # Truncates content that exceeds the character threshold.
     #
-    # @param content [String] the tool result to (maybe) truncate
+    # @param content [Object] the tool result to (maybe) truncate; non-strings pass through unchanged
     # @param threshold [Integer] character limit before truncation kicks in
-    # @return [String] original content if under threshold, truncated version otherwise
+    # @return [Object] original value if non-String/under threshold/few lines, truncated String otherwise
     def self.truncate(content, threshold:)
       return content unless content.is_a?(String)
       return content if content.length <= threshold

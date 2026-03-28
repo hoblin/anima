@@ -63,7 +63,7 @@ module Tools
     # @return [Integer, nil] character threshold, or nil to skip truncation
     def truncation_threshold(name)
       tool = @tools[name]
-      return tool.truncation_threshold if tool.respond_to?(:truncation_threshold)
+      return tool.truncation_threshold if tool&.respond_to?(:truncation_threshold)
 
       Anima::Settings.max_tool_response_chars
     end

@@ -176,6 +176,15 @@ RSpec.describe Tools::Registry do
 
       expect(registry.truncation_threshold("server__tool")).to eq(Anima::Settings.max_tool_response_chars)
     end
+
+    it "returns custom threshold when instance-based tool defines truncation_threshold" do
+      instance = double("custom_tool",
+        tool_name: "custom__tool",
+        truncation_threshold: 5000)
+      registry.register(instance)
+
+      expect(registry.truncation_threshold("custom__tool")).to eq(5000)
+    end
   end
 
   describe "#registered?" do
