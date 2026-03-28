@@ -200,6 +200,7 @@ module LLM
       result = registry.execute(name, input)
       result = ToolDecorator.call(name, result)
       result_content = format_tool_result(result)
+      result_content = truncate_tool_result(result_content, registry, name)
       log(:debug, "tool_result: #{name} → #{result_content.to_s.truncate(200)}")
 
       Events::Bus.emit(Events::ToolResponse.new(
@@ -274,6 +275,15 @@ module LLM
 
     def format_tool_result(result)
       result.is_a?(Hash) ? result.to_json : result.to_s
+    end
+
+    # Applies head+tail truncation when a tool result exceeds the tool's
+    # configured character threshold. Skips tools that opt out (e.g. read).
+    def truncate_tool_result(content, registry, tool_name)
+      threshold = registry.truncation_threshold(tool_name)
+      return content unless threshold
+
+      Tools::ResponseTruncator.truncate(content, threshold: threshold)
     end
   end
 end

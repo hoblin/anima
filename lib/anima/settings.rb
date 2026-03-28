@@ -151,6 +151,16 @@ module Anima
       # @return [Integer]
       def min_web_content_chars = get("tools", "min_web_content_chars")
 
+      # Maximum characters of tool output before head+tail truncation.
+      # Full output saved to a temp file for paginated reading.
+      # @return [Integer]
+      def max_tool_response_chars = get("tools", "max_tool_response_chars")
+
+      # Maximum characters of sub-agent result before head+tail truncation.
+      # Higher than tool threshold because sub-agent output is already curated.
+      # @return [Integer]
+      def max_subagent_response_chars = get("tools", "max_subagent_response_chars")
+
       # ─── Session ────────────────────────────────────────────────────
 
       # View mode applied to new sessions: "basic", "verbose", or "debug".

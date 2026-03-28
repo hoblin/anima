@@ -17,6 +17,7 @@ module Tools
   #   # => "line 2001 content\n..."
   class Read < Base
     def self.tool_name = "read"
+    def self.truncation_threshold = nil
 
     def self.description = "Read file. Relative paths resolve against working directory."
 

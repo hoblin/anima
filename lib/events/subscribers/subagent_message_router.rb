@@ -25,9 +25,8 @@ module Events
     class SubagentMessageRouter
       include Events::Subscriber
 
-      # Attribution prefix format for messages routed from child to parent.
-      # @example "[sub-agent @loop-sleuth]: Here's what I found..."
-      ATTRIBUTION_FORMAT = "[sub-agent @%s]: %s"
+      # @see Tools::ResponseTruncator::ATTRIBUTION_FORMAT
+      ATTRIBUTION_FORMAT = Tools::ResponseTruncator::ATTRIBUTION_FORMAT
 
       # Regex to extract @mention names from parent agent messages.
       MENTION_PATTERN = /@(\w[\w-]*)/
@@ -64,7 +63,8 @@ module Events
       private
 
       # Forwards a sub-agent's text message to its parent session
-      # via {Session#enqueue_user_message}.
+      # via {Session#enqueue_user_message}. Truncates oversized messages
+      # to protect the parent's context window.
       #
       # @param child [Session] the sub-agent session
       # @param content [String] the sub-agent's message text
@@ -73,7 +73,10 @@ module Events
         return unless parent
 
         name = child.name || "agent-#{child.id}"
-        attributed = format(ATTRIBUTION_FORMAT, name, content)
+        truncated = Tools::ResponseTruncator.truncate(
+          content, threshold: Anima::Settings.max_subagent_response_chars
+        )
+        attributed = format(ATTRIBUTION_FORMAT, name, truncated)
 
         parent.enqueue_user_message(attributed)
       end
