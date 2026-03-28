@@ -107,7 +107,7 @@ When prompt text changes, re-record affected cassettes:
 
 Never delete cassettes before the first full run — you won't know which ones are affected.
 
-**Exception: error cassettes recorded during outages** (e.g. the 529 overload cassette) cannot be re-recorded on demand. When tool schema or prompt changes alter the request body, manually edit the cassette to match the new body and remove any accidentally appended episodes.
+**Exception: error cassettes recorded during outages** (e.g. the 529 overload cassette) cannot be re-recorded on demand. When tool schema or prompt changes alter the request body, manually edit the cassette to match the new body and remove any accidentally appended episodes. Never manually edit cassettes that can be re-recorded — always use the delete-and-rerecord flow above.
 
 ## GitHub sub-issues
 
