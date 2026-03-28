@@ -328,18 +328,18 @@ module AnalyticalBrain
     # Shows completed-but-not-evicted goals with their age in meaningful
     # messages so the brain can decide whether to evict them.
     #
+    # Loads all LLM message timestamps in one query to avoid N+1 when
+    # multiple goals are pending eviction.
+    #
     # @return [String, nil] completed goals section, or nil when none pending eviction
     def completed_goals_section
       evictable = @session.goals.root.evictable.order(:completed_at)
       return if evictable.empty?
 
       threshold = Anima::Settings.goal_eviction_threshold
-      current_count = @session.messages.llm_messages.count
+      llm_timestamps = @session.messages.llm_messages.pluck(:created_at)
 
-      lines = evictable.map do |goal|
-        messages_since = messages_since_completion(goal, current_count)
-        "- ~~#{goal.description}~~ (id: #{goal.id}, #{messages_since} messages since completion)"
-      end
+      lines = evictable.map { |goal| format_evictable_goal(goal, llm_timestamps) }
 
       <<~SECTION
         ──────────────────────────────
@@ -349,14 +349,15 @@ module AnalyticalBrain
       SECTION
     end
 
-    # Counts meaningful messages created after the goal was completed.
+    # Formats a completed goal for the brain's eviction context,
+    # showing age in meaningful messages since completion.
     #
-    # @param goal [Goal] a completed goal
-    # @param current_count [Integer] total LLM message count (precomputed to avoid N+1)
-    # @return [Integer] messages since completion
-    def messages_since_completion(goal, current_count)
-      count_at_completion = @session.messages.llm_messages.where("created_at <= ?", goal.completed_at).count
-      current_count - count_at_completion
+    # @param goal [Goal] a completed, non-evicted root goal
+    # @param llm_timestamps [Array<Time>] preloaded message timestamps
+    # @return [String] formatted goal line with age
+    def format_evictable_goal(goal, llm_timestamps)
+      messages_since = llm_timestamps.count { |ts| ts > goal.completed_at }
+      "- ~~#{goal.description}~~ (id: #{goal.id}, #{messages_since} messages since completion)"
     end
 
     # Formats a root goal and its sub-goals as a markdown checklist

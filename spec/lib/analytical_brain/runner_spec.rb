@@ -237,7 +237,8 @@ RSpec.describe AnalyticalBrain::Runner do
 
         runner.call
 
-        expect(captured_opts[:system]).to include("evict when ≥ 5 messages since completion")
+        threshold = Anima::Settings.goal_eviction_threshold
+        expect(captured_opts[:system]).to include("evict when ≥ #{threshold} messages since completion")
       end
 
       it "excludes evicted goals from completed goals section" do
