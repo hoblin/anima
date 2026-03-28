@@ -21,6 +21,7 @@ Rails.application.config.after_initialize do
   migrated = 0
   creds.each do |namespace, section|
     next if namespace == "secret_key_base"
+    next if namespace == "active_record_encryption"
     next unless section.is_a?(Hash)
 
     section.each do |key, value|

@@ -132,7 +132,7 @@ State directory (`~/.anima/`):
 ├── config.toml      # Main settings (hot-reloadable)
 ├── mcp.toml         # MCP server configuration
 ├── config/
-│   └── encryption.key # Active Record Encryption keys (generated during install)
+│   └── credentials/   # Rails encrypted credentials (includes AR encryption keys)
 ├── agents/          # User-defined specialist agents (override built-ins)
 ├── skills/          # User-defined skills (override built-ins)
 ├── workflows/       # User-defined workflows (override built-ins)
