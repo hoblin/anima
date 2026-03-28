@@ -150,14 +150,19 @@ class Session < ApplicationRecord
   end
 
   # Returns the system prompt for this session.
-  # Sub-agent sessions use their stored prompt. Main sessions assemble
-  # a system prompt from active skills and current goals.
+  # Sub-agent sessions use their stored prompt plus the pinned task.
+  # Main sessions assemble a full system prompt from active skills and
+  # current goals.
   #
   # @param environment_context [String, nil] pre-assembled environment block
   #   from {EnvironmentProbe}; injected between soul and expertise sections
   # @return [String, nil] the system prompt text, or nil when nothing to inject
   def system_prompt(environment_context: nil)
-    sub_agent? ? prompt : assemble_system_prompt(environment_context: environment_context)
+    if sub_agent?
+      [prompt, assemble_task_section].compact.join("\n\n")
+    else
+      assemble_system_prompt(environment_context: environment_context)
+    end
   end
 
   # Activates a skill on this session. Validates the skill exists in the
@@ -538,6 +543,25 @@ class Session < ApplicationRecord
 
     entries = root_goals.map { |goal| render_goal_markdown(goal) }
     "## Current Goals\n\n#{entries.join("\n\n")}"
+  end
+
+  # Assembles the task section for sub-agent system prompts.
+  # Sub-agents have a single pinned goal — their entire raison d'etre.
+  # Rendered as a persistent task block so the LLM always knows what it
+  # was spawned to do, regardless of conversation length.
+  #
+  # @return [String, nil] task section, or nil when no active goal exists
+  def assemble_task_section
+    goal = goals.active.root.first
+    return unless goal
+
+    <<~SECTION.strip
+      ## Your Task
+
+      #{goal.description}
+
+      Complete this task and call mark_goal_completed when done.
+    SECTION
   end
 
   # Renders a single root goal with its sub-goals as Markdown.
