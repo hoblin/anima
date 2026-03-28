@@ -7,6 +7,7 @@ Rails.application.configure do
   config.active_support.deprecation = :stderr
   config.active_job.queue_adapter = :test
 
+  # Fixed keys for test determinism — production/development load real keys from Rails credentials.
   config.active_record.encryption.primary_key = "test-primary-key-for-ar-encryption"
   config.active_record.encryption.deterministic_key = "test-deterministic-key-for-ar-encryption"
   config.active_record.encryption.key_derivation_salt = "test-key-derivation-salt-for-ar-encryption"

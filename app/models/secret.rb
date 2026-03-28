@@ -23,6 +23,9 @@ class Secret < ApplicationRecord
   validates :value, presence: true
   validates :key, uniqueness: {scope: :namespace}
 
+  # @!method self.for_namespace(ns)
+  #   @param ns [String] namespace to filter by
+  #   @return [ActiveRecord::Relation] secrets in the given namespace
   scope :for_namespace, ->(ns) { where(namespace: ns) }
 
   # Reads a single secret value.

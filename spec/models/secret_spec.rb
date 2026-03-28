@@ -85,6 +85,14 @@ RSpec.describe Secret do
       expect(described_class.read("mcp", "key1")).to eq("val1")
       expect(described_class.read("mcp", "key2")).to eq("val2")
     end
+
+    it "rolls back all writes when any pair fails validation" do
+      expect {
+        described_class.write("mcp", "good_key" => "val", "bad_key" => "")
+      }.to raise_error(ActiveRecord::RecordInvalid)
+
+      expect(described_class.read("mcp", "good_key")).to be_nil
+    end
   end
 
   describe ".list" do
