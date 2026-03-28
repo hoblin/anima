@@ -150,16 +150,16 @@ class Session < ApplicationRecord
   end
 
   # Returns the system prompt for this session.
-  # Sub-agent sessions use their stored prompt plus the pinned task.
-  # Main sessions assemble a full system prompt from active skills and
-  # current goals.
+  # Sub-agent sessions use their stored prompt plus active skills and
+  # the pinned task. Main sessions assemble a full system prompt from
+  # soul, environment, skills/workflow, and goals.
   #
   # @param environment_context [String, nil] pre-assembled environment block
   #   from {EnvironmentProbe}; injected between soul and expertise sections
   # @return [String, nil] the system prompt text, or nil when nothing to inject
   def system_prompt(environment_context: nil)
     if sub_agent?
-      [prompt, assemble_task_section].compact.join("\n\n")
+      [prompt, assemble_expertise_section, assemble_task_section].compact.join("\n\n")
     else
       assemble_system_prompt(environment_context: environment_context)
     end

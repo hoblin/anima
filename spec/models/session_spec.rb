@@ -371,6 +371,27 @@ RSpec.describe Session do
       expect(prompt_pos).to be < task_pos
     end
 
+    it "includes activated skills in sub-agent system prompt" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "You are a focused sub-agent.")
+      child.activate_skill("gh-issue")
+
+      prompt = child.system_prompt
+      expect(prompt).to include("Your Expertise")
+    end
+
+    it "places skills before task section for sub-agents" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "You are a focused sub-agent.")
+      child.activate_skill("gh-issue")
+      Goal.create!(session: child, description: "File a bug report")
+
+      prompt = child.system_prompt
+      expertise_pos = prompt.index("Your Expertise")
+      task_pos = prompt.index("Your Task")
+      expect(expertise_pos).to be < task_pos
+    end
+
     it "includes soul content for main sessions" do
       session = Session.create!
 
