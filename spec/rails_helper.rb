@@ -26,7 +26,8 @@ RSpec.configure do |config|
         "fast_model" => "claude-haiku-4-5",
         "max_tokens" => 8192,
         "max_tool_rounds" => 500,
-        "token_budget" => 190_000
+        "token_budget" => 190_000,
+        "thinking_budget" => 10_000
       },
       "timeouts" => {"api" => 300, "command" => 30, "mcp_response" => 60, "web_request" => 10, "tool" => 180},
       "shell" => {"max_output_bytes" => 100_000},

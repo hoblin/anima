@@ -24,7 +24,7 @@ http_interactions:
         180)."}},"required":["path","old_text","new_text"]}},{"name":"web_get","description":"Fetch
         a URL.","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["url"]}},{"name":"think","description":"Think
-        out loud or silently.","input_schema":{"type":"object","properties":{"thoughts":{"type":"string"},"visibility":{"type":"string","enum":["inner","aloud"],"description":"inner
+        out loud or silently.","input_schema":{"type":"object","properties":{"thoughts":{"type":"string","maxLength":10000},"visibility":{"type":"string","enum":["inner","aloud"],"description":"inner
         (default) is silent. aloud is shown to the user."},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["thoughts"]}},{"name":"remember","description":"Recall
         the full conversation around a past message.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
