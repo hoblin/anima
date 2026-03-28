@@ -29,8 +29,9 @@ http_interactions:
         (default: 180)."}},"required":["thoughts"]}},{"name":"remember","description":"Recall
         the full conversation around a past message.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["message_id"]}},{"name":"recall","description":"Search
-        past conversations by keywords. Returns snippets with message IDs for drill-down
-        via remember tool.","input_schema":{"type":"object","properties":{"query":{"type":"string","description":"Search
+        all past conversations by keywords (FTS5 full-text search). Returns ranked snippets
+        with message IDs — use remember(message_id:) to zoom into full context. Searches
+        all sessions by default; set session_only: true to restrict to current session.","input_schema":{"type":"object","properties":{"query":{"type":"string","description":"Search
         keywords or phrase"},"session_only":{"type":"boolean","description":"Search
         current session only (default: all sessions)"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["query"]}}],"system":[{"type":"text","text":"You
