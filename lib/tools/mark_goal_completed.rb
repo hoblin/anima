@@ -17,21 +17,13 @@ module Tools
   class MarkGoalCompleted < Base
     def self.tool_name = "mark_goal_completed"
 
-    def self.description
-      "Signal that your assigned task is complete. " \
-        "Pass your findings/result — it will be delivered to the parent agent. " \
-        "After calling this, stop working."
-    end
+    def self.description = "Deliver result to parent. Stop working after this call."
 
     def self.input_schema
       {
         type: "object",
         properties: {
-          result: {
-            type: "string",
-            description: "Your findings, summary, or deliverable. " \
-              "This is forwarded to the parent agent."
-          }
+          result: {type: "string"}
         },
         required: %w[result]
       }
@@ -58,7 +50,7 @@ module Tools
       complete_goal(goal)
       route_result_to_parent(result)
 
-      "Goal completed: #{goal.description}. Result delivered to parent. You can stop now."
+      "Done. Result delivered to parent."
     end
 
     private

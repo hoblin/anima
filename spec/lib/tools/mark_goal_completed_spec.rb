@@ -16,9 +16,9 @@ RSpec.describe Tools::MarkGoalCompleted do
   end
 
   describe ".description" do
-    it "mentions task completion and parent delivery" do
-      expect(described_class.description).to include("complete")
+    it "mentions parent delivery and stop signal" do
       expect(described_class.description).to include("parent")
+      expect(described_class.description).to include("Stop working")
     end
   end
 
@@ -81,9 +81,7 @@ RSpec.describe Tools::MarkGoalCompleted do
     it "returns confirmation message" do
       result = tool.execute(input)
 
-      expect(result).to include("Goal completed")
-      expect(result).to include("Analyze the auth module")
-      expect(result).to include("stop now")
+      expect(result).to eq("Done. Result delivered to parent.")
     end
 
     it "uses fallback name when sub-agent has no name" do

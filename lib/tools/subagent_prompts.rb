@@ -4,16 +4,17 @@ module Tools
   # Shared prompt fragments and spawn logic for tools that create sub-agent sessions.
   # Included by {SpawnSubagent} and {SpawnSpecialist} to avoid duplication.
   module SubagentPrompts
-    COMMUNICATION_INSTRUCTION = "Your text messages are automatically forwarded to the parent agent. " \
-      "When you finish your task, call mark_goal_completed with your findings. " \
-      "If you need clarification, just ask — the parent can reply."
+    COMMUNICATION_INSTRUCTION = "You are a sub-agent collaborating with a parent agent. " \
+      "Your messages reach the parent automatically. " \
+      "Ask if you need clarification — the parent can reply."
 
     # Framing message inserted as the sub-agent's first user message.
-    # Explains forked context and redirects attention to the assigned Goal.
-    FORK_FRAMING_MESSAGE = "The conversation above is forked from the main agent's context. " \
-      "The goals described there belong to the main agent, not you. " \
-      "You were spawned to help with a single task — it's described in your Goal. " \
-      "Complete it and call mark_goal_completed."
+    # This is the "brake" between inherited parent context and the sub-agent's
+    # own task — without it, the model continues the parent's trajectory.
+    FORK_FRAMING_MESSAGE = "You were spawned to help with a single task. " \
+      "The messages above are the parent agent's context — background for your work, " \
+      "but the parent's goals are not yours. " \
+      "Your sole task is described in your Goal."
 
     private
 

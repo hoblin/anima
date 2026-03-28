@@ -111,8 +111,8 @@ RSpec.describe Tools::SpawnSubagent do
       child = Session.last
       user_event = child.messages.find_by(message_type: "user_message")
       expect(user_event).to be_present
-      expect(user_event.payload["content"]).to include("forked from the main agent")
-      expect(user_event.payload["content"]).to include("mark_goal_completed")
+      expect(user_event.payload["content"]).to include("parent agent's context")
+      expect(user_event.payload["content"]).to include("Your sole task")
     end
 
     it "does not persist the task text as a user message" do

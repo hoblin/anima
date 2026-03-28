@@ -109,7 +109,7 @@ RSpec.describe Tools::SpawnSpecialist do
       tool.execute(input)
 
       child = Session.last
-      expect(child.prompt).to include("automatically forwarded to the parent agent")
+      expect(child.prompt).to include("sub-agent collaborating with a parent")
     end
 
     it "does not append an expected deliverable to the prompt" do
@@ -161,8 +161,8 @@ RSpec.describe Tools::SpawnSpecialist do
       child = Session.last
       user_event = child.messages.find_by(message_type: "user_message")
       expect(user_event).to be_present
-      expect(user_event.payload["content"]).to include("forked from the main agent")
-      expect(user_event.payload["content"]).to include("mark_goal_completed")
+      expect(user_event.payload["content"]).to include("parent agent's context")
+      expect(user_event.payload["content"]).to include("Your sole task")
     end
 
     it "does not persist the task text as a user message" do
