@@ -542,7 +542,7 @@ class Session < ApplicationRecord
     return if root_goals.empty?
 
     entries = root_goals.map { |goal| render_goal_markdown(goal) }
-    "## Current Goals\n\n#{entries.join("\n\n")}"
+    "Current Goals\n=============\n\n#{entries.join("\n\n")}"
   end
 
   # Assembles the task section for sub-agent system prompts.
@@ -556,7 +556,8 @@ class Session < ApplicationRecord
     return unless goal
 
     <<~SECTION.strip
-      ## Your Task
+      Your Task
+      =========
 
       #{goal.description}
 

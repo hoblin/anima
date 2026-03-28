@@ -347,7 +347,7 @@ RSpec.describe Session do
       Goal.create!(session: child, description: "Analyze the authentication module")
 
       prompt = child.system_prompt
-      expect(prompt).to include("## Your Task")
+      expect(prompt).to include("Your Task\n=========")
       expect(prompt).to include("Analyze the authentication module")
       expect(prompt).to include("mark_goal_completed")
     end
@@ -367,7 +367,7 @@ RSpec.describe Session do
 
       prompt = child.system_prompt
       prompt_pos = prompt.index("You are a focused sub-agent.")
-      task_pos = prompt.index("## Your Task")
+      task_pos = prompt.index("Your Task\n=========")
       expect(prompt_pos).to be < task_pos
     end
 
@@ -408,7 +408,7 @@ RSpec.describe Session do
       prompt = session.system_prompt(environment_context: env)
       soul_pos = prompt.index("# Soul")
       env_pos = prompt.index("## Environment")
-      goals_pos = prompt.index("## Current Goals")
+      goals_pos = prompt.index("Current Goals\n=============")
       expect(soul_pos).to be < env_pos
       expect(env_pos).to be < goals_pos
     end
@@ -639,7 +639,7 @@ RSpec.describe Session do
       Goal.create!(session: child, description: "Analyze the authentication module")
 
       section = child.send(:assemble_task_section)
-      expect(section).to include("## Your Task")
+      expect(section).to include("Your Task\n=========")
       expect(section).to include("Analyze the authentication module")
       expect(section).to include("call mark_goal_completed when done")
     end
@@ -678,7 +678,7 @@ RSpec.describe Session do
 
       prompt = session.assemble_system_prompt
       expect(prompt).to start_with("You are running on Anima v")
-      expect(prompt).to include("## Current Goals")
+      expect(prompt).to include("Current Goals\n=============")
       expect(prompt).to include("### Implement feature")
       expect(prompt).not_to include("Your Expertise")
     end
@@ -689,7 +689,7 @@ RSpec.describe Session do
 
       prompt = session.assemble_system_prompt
       expect(prompt).to include("## Your Expertise")
-      expect(prompt).to include("## Current Goals")
+      expect(prompt).to include("Current Goals\n=============")
     end
 
     it "renders sub-goals as checkbox items" do
