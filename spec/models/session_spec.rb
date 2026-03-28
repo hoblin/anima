@@ -827,7 +827,7 @@ RSpec.describe Session do
       payload = Session.system_prompt_payload("Test prompt")
 
       expect(payload).to eq({
-        "id" => 0,
+        "id" => Message::SYSTEM_PROMPT_ID,
         "type" => "system_prompt",
         "rendered" => {
           "debug" => {role: :system_prompt, content: "Test prompt", tokens: 3, estimated: true}
@@ -878,6 +878,16 @@ RSpec.describe Session do
 
       expect(names).to include("think", "read", "web_get", "mark_goal_completed")
       expect(names).not_to include("bash", "spawn_subagent")
+    end
+
+    it "returns only always-granted tools for sub-agents with empty granted_tools" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "reasoning only", granted_tools: [])
+      schemas = child.tool_schemas
+      names = schemas.map { |s| s[:name] }
+
+      expect(names).to include("think", "mark_goal_completed")
+      expect(names).not_to include("bash", "read", "write", "spawn_subagent")
     end
 
     it "returns all standard tools when granted_tools is nil" do

@@ -442,8 +442,7 @@ class Session < ApplicationRecord
   # Builds the system prompt payload for debug mode transmission.
   # Token estimate covers both the system prompt and tool schemas
   # since both consume the LLM's context window.
-  # Tools are pre-formatted as TOON with non-breaking spaces for
-  # indentation (ratatui's Paragraph widget trims regular spaces).
+  # Tools are sent as raw schemas; the TUI formats them as TOON for display.
   #
   # @param prompt [String] system prompt text
   # @param tools [Array<Hash>, nil] tool schemas
@@ -451,13 +450,13 @@ class Session < ApplicationRecord
   def self.system_prompt_payload(prompt, tools: nil)
     total_bytes = prompt.bytesize
     total_bytes += tools.to_json.bytesize if tools&.any?
-    tokens = [(total_bytes / Message::BYTES_PER_TOKEN.to_f).ceil, 1].max
+    tokens = Message.estimate_token_count(total_bytes)
 
     debug = {role: :system_prompt, content: prompt, tokens: tokens, estimated: true}
     debug[:tools] = tools if tools&.any?
 
     {
-      "id" => 0,
+      "id" => Message::SYSTEM_PROMPT_ID,
       "type" => "system_prompt",
       "rendered" => {"debug" => debug}
     }
@@ -852,7 +851,7 @@ class Session < ApplicationRecord
       next unless msg
 
       text = format_recall_snippet(msg)
-      cost = [(text.bytesize / Message::BYTES_PER_TOKEN.to_f).ceil, 1].max
+      cost = Message.estimate_token_count(text.bytesize)
       break if cost > remaining && snippets.any?
 
       snippets << text
