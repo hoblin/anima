@@ -38,8 +38,10 @@ module Tools
     end
 
     # @param shell_session [ShellSession] persistent shell backing this tool
-    def initialize(shell_session:, **)
+    # @param session [Session] conversation session for interrupt checking
+    def initialize(shell_session:, session:, **)
       @shell_session = shell_session
+      @session = session
     end
 
     # @param input [Hash<String, Object>] string-keyed hash from the Anthropic API.
@@ -70,13 +72,18 @@ module Tools
       command = command.to_s
       return {error: "Command cannot be blank"} if command.strip.empty?
 
-      result = @shell_session.run(command, timeout: timeout)
+      result = @shell_session.run(command, timeout: timeout, interrupt_check: interrupt_checker)
+
+      return format_interrupted(result) if result[:interrupted]
       return result if result.key?(:error)
 
       format_result(result[:stdout], result[:stderr], result[:exit_code])
     end
 
     # Executes an array of commands, returning a combined result string.
+    # Checks for user interrupt between commands and during each command
+    # via the {ShellSession} interrupt_check callback.
+    #
     # @param commands [Array<String>] commands to execute
     # @param mode [String] "sequential" (stop on first failure) or "parallel" (run all)
     # @param timeout [Integer, nil] per-command timeout override
@@ -85,12 +92,19 @@ module Tools
     def execute_batch(commands, mode:, timeout: nil)
       return {error: "Commands array cannot be empty"} unless commands.is_a?(Array) && commands.any?
 
+      checker = interrupt_checker
       total = commands.size
       results = []
       failed = false
+      interrupted = false
 
       commands.each_with_index do |command, index|
         position = "[#{index + 1}/#{total}]"
+
+        if interrupted
+          results << "#{position} $ #{command}\n(skipped — interrupted by user)"
+          next
+        end
 
         if failed && mode == "sequential"
           results << "#{position} $ #{command}\n(skipped)"
@@ -103,9 +117,12 @@ module Tools
           next
         end
 
-        result = @shell_session.run(command, timeout: timeout)
+        result = @shell_session.run(command, timeout: timeout, interrupt_check: checker)
 
-        if result.key?(:error)
+        if result[:interrupted]
+          results << "#{position} $ #{command}\n#{format_interrupted(result)}"
+          interrupted = true
+        elsif result.key?(:error)
           results << "#{position} $ #{command}\n#{result[:error]}"
           failed = true
         else
@@ -125,6 +142,25 @@ module Tools
       parts << "stderr:\n#{stderr}" unless stderr.empty?
       parts << "exit_code: #{exit_code}"
       parts.join("\n\n")
+    end
+
+    # Formats the result of an interrupted command for the LLM.
+    # Includes partial output captured before the interrupt.
+    def format_interrupted(result)
+      stdout = result[:stdout].to_s
+      stderr = result[:stderr].to_s
+      parts = ["Interrupted by user."]
+      parts << "Partial stdout:\n#{stdout}" unless stdout.empty?
+      parts << "stderr:\n#{stderr}" unless stderr.empty?
+      parts.join("\n\n")
+    end
+
+    # Builds a lambda that checks the database for a pending interrupt flag.
+    # Called every {Anima::Settings.interrupt_check_interval} seconds during
+    # command execution inside {ShellSession}.
+    def interrupt_checker
+      session_id = @session.id
+      -> { Session.where(id: session_id, interrupt_requested: true).exists? }
     end
   end
 end

@@ -29,7 +29,7 @@ RSpec.configure do |config|
         "token_budget" => 190_000,
         "thinking_budget" => 10_000
       },
-      "timeouts" => {"api" => 300, "command" => 30, "mcp_response" => 60, "web_request" => 10, "tool" => 180},
+      "timeouts" => {"api" => 300, "command" => 30, "mcp_response" => 60, "web_request" => 10, "tool" => 180, "interrupt_check" => 2},
       "shell" => {"max_output_bytes" => 100_000},
       "tools" => {"max_file_size" => 10_485_760, "max_read_lines" => 2_000, "max_read_bytes" => 50_000, "max_web_response_bytes" => 100_000, "min_web_content_chars" => 100},
       "paths" => {"soul" => Rails.root.join("templates/soul.md").to_s},

@@ -288,6 +288,10 @@ module TUI
             @token_save_result = {success: true, warning: msg["warning"]}.compact
           when "token_error"
             @token_save_result = {success: false, message: msg["message"]}
+          when "interrupt_acknowledged"
+            @flash.info("Interrupting...")
+          when "processing_stopped"
+            @loading = false
           when "error"
             @flash.error(msg["message"]) if msg["message"]
           else

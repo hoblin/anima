@@ -87,14 +87,24 @@ class SessionChannel < ApplicationCable::Channel
   # receive synthetic "Stopped by user" results to satisfy the API's
   # tool_use/tool_result pairing requirement.
   #
+  # Cascades to running sub-agent sessions to avoid burning tokens in
+  # child jobs that the parent will discard anyway.
+  #
   # Atomic: a single UPDATE with WHERE avoids the read-then-write race where
   # the session could finish processing between the SELECT and UPDATE.
   # No-op if the session isn't currently processing.
   #
   # @param _data [Hash] unused
   def interrupt_execution(_data)
-    Session.where(id: @current_session_id, processing: true)
+    updated = Session.where(id: @current_session_id, processing: true)
       .update_all(interrupt_requested: true)
+
+    return unless updated > 0
+
+    Session.where(parent_session_id: @current_session_id, processing: true)
+      .update_all(interrupt_requested: true)
+
+    ActionCable.server.broadcast(stream_name, {"action" => "interrupt_acknowledged"})
   end
 
   # Returns recent root sessions with nested child metadata for session picker UI.

@@ -77,6 +77,7 @@ RSpec.describe AgentRequestJob do
           "session_#{parent.id}",
           hash_including("action" => "children_updated")
         ).at_least(:once)
+        allow(ActionCable.server).to receive(:broadcast)
 
         described_class.perform_now(child.id)
       end
@@ -93,10 +94,26 @@ RSpec.describe AgentRequestJob do
         expect(children_updates.size).to be >= 2 # claim + release
       end
 
-      it "does not broadcast for root sessions" do
+      it "does not broadcast children_updated for root sessions" do
         session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
-        expect(ActionCable.server).not_to receive(:broadcast)
+        expect(ActionCable.server).not_to receive(:broadcast).with(
+          anything,
+          hash_including("action" => "children_updated")
+        )
+        allow(ActionCable.server).to receive(:broadcast)
+
+        described_class.perform_now(session.id)
+      end
+
+      it "broadcasts processing_stopped when releasing processing" do
+        session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+
+        expect(ActionCable.server).to receive(:broadcast).with(
+          "session_#{session.id}",
+          {"action" => "processing_stopped"}
+        )
+        allow(ActionCable.server).to receive(:broadcast)
 
         described_class.perform_now(session.id)
       end

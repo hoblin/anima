@@ -109,11 +109,14 @@ module LLM
             {role: "user", content: tool_results}
           ]
 
-          if interrupted?(session_id)
-            clear_interrupt!(session_id)
-            return nil
-          end
+          return nil if handle_interrupt!(session_id)
         else
+          # Discard the text response if the user pressed Escape while
+          # the API was generating it. Without this check the interrupt
+          # flag set during the blocking API call would be silently
+          # cleared by the ensure block in AgentRequestJob.
+          return nil if handle_interrupt!(session_id)
+
           return extract_text(response)
         end
       end
@@ -153,7 +156,7 @@ module LLM
       results = []
 
       tool_uses.each_with_index do |tool_use, index|
-        if interrupted?(session_id)
+        if Session.where(id: session_id, interrupt_requested: true).exists?
           remaining = tool_uses[index..]
           results.concat(interrupt_remaining_tools(remaining, session_id)) if remaining&.any?
           break
@@ -250,22 +253,17 @@ module LLM
       {type: "tool_result", tool_use_id: id, content: INTERRUPT_MESSAGE}
     end
 
-    # Checks the database for a pending interrupt flag on the session.
+    # Checks for a pending interrupt and clears it in one step.
+    # Used at loop boundaries (after tools, before LLM text return) to
+    # short-circuit the agent loop when the user presses Escape.
     #
     # @param session_id [Integer, String] session to check
-    # @return [Boolean] whether the session has a pending interrupt request
-    def interrupted?(session_id)
-      Session.where(id: session_id, interrupt_requested: true).exists?
-    end
+    # @return [Boolean] true when interrupt was detected and cleared
+    def handle_interrupt!(session_id)
+      return false unless Session.where(id: session_id, interrupt_requested: true).exists?
 
-    # Clears the interrupt flag so the agent loop can continue with pending
-    # messages. Also cleared by {AgentRequestJob#clear_interrupt} as a safety
-    # net for unexpected exits.
-    #
-    # @param session_id [Integer, String] session to clear
-    # @return [void]
-    def clear_interrupt!(session_id)
       Session.where(id: session_id).update_all(interrupt_requested: false)
+      true
     end
 
     def log(level, message)

@@ -3,9 +3,10 @@
 require "rails_helper"
 
 RSpec.describe Tools::Bash do
+  let(:session) { Session.create! }
   let(:shell_session) { ShellSession.new(session_id: "bash-tool-#{SecureRandom.hex(4)}") }
 
-  subject(:tool) { described_class.new(shell_session: shell_session) }
+  subject(:tool) { described_class.new(shell_session: shell_session, session: session) }
 
   after { shell_session.finalize }
 
@@ -106,7 +107,7 @@ RSpec.describe Tools::Bash do
       end
 
       it "passes timeout parameter to shell session" do
-        expect(shell_session).to receive(:run).with("echo hi", timeout: 300).and_return(stdout: "hi\n", stderr: "", exit_code: 0)
+        expect(shell_session).to receive(:run).with("echo hi", timeout: 300, interrupt_check: an_instance_of(Proc)).and_return(stdout: "hi\n", stderr: "", exit_code: 0)
         tool.execute("command" => "echo hi", "timeout" => 300)
       end
 
@@ -153,7 +154,7 @@ RSpec.describe Tools::Bash do
       end
 
       it "stops on shell session errors" do
-        allow(shell_session).to receive(:run).and_return(
+        allow(shell_session).to receive(:run).with(anything, hash_including(:timeout, :interrupt_check)).and_return(
           {stdout: "ok\n", stderr: "", exit_code: 0},
           {error: "Command timed out after 30s"},
           {stdout: "unreachable\n", stderr: "", exit_code: 0}
@@ -183,7 +184,7 @@ RSpec.describe Tools::Bash do
       end
 
       it "continues past shell session errors" do
-        allow(shell_session).to receive(:run).and_return(
+        allow(shell_session).to receive(:run).with(anything, hash_including(:timeout, :interrupt_check)).and_return(
           {error: "Command timed out after 30s"},
           {stdout: "still running\n", stderr: "", exit_code: 0}
         )
@@ -216,9 +217,42 @@ RSpec.describe Tools::Bash do
       end
 
       it "passes timeout to each command in batch" do
-        expect(shell_session).to receive(:run).with("echo a", timeout: 60).and_return(stdout: "a\n", stderr: "", exit_code: 0)
-        expect(shell_session).to receive(:run).with("echo b", timeout: 60).and_return(stdout: "b\n", stderr: "", exit_code: 0)
+        expect(shell_session).to receive(:run).with("echo a", timeout: 60, interrupt_check: an_instance_of(Proc)).and_return(stdout: "a\n", stderr: "", exit_code: 0)
+        expect(shell_session).to receive(:run).with("echo b", timeout: 60, interrupt_check: an_instance_of(Proc)).and_return(stdout: "b\n", stderr: "", exit_code: 0)
         tool.execute("commands" => ["echo a", "echo b"], "timeout" => 60)
+      end
+    end
+
+    context "when interrupted by user" do
+      it "returns interrupted message for single command" do
+        session.update_column(:interrupt_requested, true)
+        session.update_column(:processing, true)
+        result = tool.execute("command" => "sleep 30")
+        expect(result).to include("Interrupted by user")
+      end
+
+      it "includes partial stdout in interrupted result" do
+        allow(shell_session).to receive(:run).and_return(
+          {interrupted: true, stdout: "partial output", stderr: ""}
+        )
+        result = tool.execute("command" => "long-command")
+        expect(result).to include("Interrupted by user")
+        expect(result).to include("Partial stdout:\npartial output")
+      end
+
+      it "skips remaining batch commands after interrupt" do
+        allow(shell_session).to receive(:run).with("echo first", hash_including(:interrupt_check)).and_return(
+          {stdout: "first\n", stderr: "", exit_code: 0}
+        )
+        allow(shell_session).to receive(:run).with("sleep 999", hash_including(:interrupt_check)).and_return(
+          {interrupted: true, stdout: "", stderr: ""}
+        )
+
+        result = tool.execute("commands" => ["echo first", "sleep 999", "echo third"])
+        expect(result).to include("[1/3] $ echo first")
+        expect(result).to include("[2/3] $ sleep 999")
+        expect(result).to include("Interrupted by user")
+        expect(result).to include("[3/3] $ echo third\n(skipped — interrupted by user)")
       end
     end
 

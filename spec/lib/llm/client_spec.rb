@@ -299,6 +299,23 @@ RSpec.describe LLM::Client do
       end
     end
 
+    context "when the user interrupts during text generation", :vcr do
+      it "discards the text response and returns nil" do
+        messages = [{role: "user", content: "Reply with the single word OK"}]
+        session = Session.create!
+        session.update_column(:interrupt_requested, true)
+
+        result = client.chat_with_tools(
+          messages,
+          registry: Tools::Registry.new,
+          session_id: session.id
+        )
+
+        expect(result).to be_nil
+        expect(session.reload.interrupt_requested?).to be false
+      end
+    end
+
     context "when post-execution code raises", :vcr do
       let(:messages) { [{role: "user", content: "Use the web_get tool to fetch https://example.com"}] }
 
