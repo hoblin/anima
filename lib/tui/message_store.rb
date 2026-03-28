@@ -230,8 +230,11 @@ module TUI
     # Inserts an entry in sorted order by message ID. Optimized for two
     # common cases: appending (live streaming, ascending order) and
     # prepending (session history replay, descending/newest-first order).
-    # Entries without IDs (tool counters, etc.) are skipped during the
-    # sort scan and don't affect insertion position.
+    # Falls back to binary scan for out-of-order arrivals.
+    #
+    # Note: prepending N messages via +unshift+ is O(n) per call. For
+    # large viewport replays this totals O(n²), acceptable at typical
+    # viewport sizes (50–100 messages).
     #
     # @param entry [Hash] entry with a non-nil +:id+
     # @return [void]
@@ -261,6 +264,7 @@ module TUI
 
     # Returns the highest message ID in the entries array, scanning from the
     # end for efficiency (entries with IDs are typically at the tail).
+    # Used by {#insert_sorted_by_id} to detect the append fast path.
     #
     # @return [Integer, nil] the highest message ID, or nil if no entries have IDs
     def last_entry_id
