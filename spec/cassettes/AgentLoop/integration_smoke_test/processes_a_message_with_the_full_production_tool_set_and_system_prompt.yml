@@ -6,7 +6,7 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Sat
-        Mar 28 23:48\nWhat is the latest issue on hoblin/anima repo?"}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
+        Mar 28 23:51\nWhat is the latest issue on hoblin/anima repo?"}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
         shell commands. Working directory and environment persist between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
         command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
         (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
@@ -93,7 +93,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 28 Mar 2026 21:48:05 GMT
+      - Sat, 28 Mar 2026 21:51:25 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -139,11 +139,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2664'
+      - '4225'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=2665
+      - x-originResponse;dur=4227
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
       X-Robots-Tag:
@@ -158,24 +158,23 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxUjVVMVZDelB1RWs4TUZzY2VKaGJGciIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxNTRGM2hGczVrWVZ1Rk5mS285R1ZpRyIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6IkknbGwgaGVscCB5b3UgY2hlY2sgdGhlIGxhdGVzdCBpc3N1ZSBv
-        biB0aGUgaG9ibGluL2FuaW1hIHJlcG9zaXRvcnkuIExldCBtZSBmZXRjaCB0
-        aGUgR2l0SHViIEFQSSB0byBnZXQgdGhlIG1vc3QgcmVjZW50IGlzc3Vlcy4i
-        fSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoidG9vbHVfMDFWRGN0bXdNdkdY
-        cUVqTGZWVDhFaEpRIiwibmFtZSI6IndlYl9nZXQiLCJpbnB1dCI6eyJ1cmwi
-        OiJodHRwczovL2FwaS5naXRodWIuY29tL3JlcG9zL2hvYmxpbi9hbmltYS9p
-        c3N1ZXM/c3RhdGU9YWxsJnNvcnQ9Y3JlYXRlZCZkaXJlY3Rpb249ZGVzYyZw
-        ZXJfcGFnZT0xIn0sImNhbGxlciI6eyJ0eXBlIjoiZGlyZWN0In19XSwic3Rv
-        cF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVz
-        YWdlIjp7ImlucHV0X3Rva2VucyI6MjIyNiwiY2FjaGVfY3JlYXRpb25faW5w
-        dXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2Fj
-        aGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwi
-        ZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMi
-        OjExOCwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2Vv
-        Ijoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Sat, 28 Mar 2026 21:48:05 GMT
+        dGV4dCI6IkknbGwgaGVscCB5b3UgZmluZCB0aGUgbGF0ZXN0IGlzc3VlIG9u
+        IHRoZSBob2JsaW4vYW5pbWEgcmVwb3NpdG9yeS4gTGV0IG1lIGZldGNoIHRo
+        YXQgaW5mb3JtYXRpb24gZm9yIHlvdS4ifSx7InR5cGUiOiJ0b29sX3VzZSIs
+        ImlkIjoidG9vbHVfMDFDb2ZFejVFOXZyWnhrTnZjOG9BSldSIiwibmFtZSI6
+        IndlYl9nZXQiLCJpbnB1dCI6eyJ1cmwiOiJodHRwczovL2FwaS5naXRodWIu
+        Y29tL3JlcG9zL2hvYmxpbi9hbmltYS9pc3N1ZXM/c3RhdGU9YWxsJnNvcnQ9
+        Y3JlYXRlZCZkaXJlY3Rpb249ZGVzYyZwZXJfcGFnZT0xIn0sImNhbGxlciI6
+        eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIs
+        InN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6
+        MjIyNiwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9y
+        ZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1l
+        cmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rv
+        a2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjExMywic2VydmljZV90aWVyIjoi
+        c3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
+  recorded_at: Sat, 28 Mar 2026 21:51:25 GMT
 - request:
     method: get
     uri: https://api.github.com/repos/hoblin/anima/issues?direction=desc&per_page=1&sort=created&state=all
@@ -195,7 +194,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 28 Mar 2026 21:48:06 GMT
+      - Sat, 28 Mar 2026 21:51:26 GMT
       Content-Type:
       - application/json; charset=utf-8
       Cache-Control:
@@ -203,7 +202,7 @@ http_interactions:
       Vary:
       - Accept,Accept-Encoding, Accept, X-Requested-With
       Etag:
-      - W/"592e953834f6ac0e23854cafa863d7bb3155559fcdf5bf4a7f59e8429ef5b269"
+      - W/"9bada70a2b4c60bf2a99dd7d011eaec09cfed51145647a496719755250f45ec2"
       X-Github-Media-Type:
       - github.v3; format=json
       Link:
@@ -237,9 +236,9 @@ http_interactions:
       X-Ratelimit-Limit:
       - '60'
       X-Ratelimit-Remaining:
-      - '58'
+      - '57'
       X-Ratelimit-Used:
-      - '2'
+      - '3'
       X-Ratelimit-Resource:
       - core
       X-Ratelimit-Reset:
@@ -247,7 +246,7 @@ http_interactions:
       Content-Length:
       - '3445'
       X-Github-Request-Id:
-      - 7172:1EBE2B:4A746B3:3D1B601:69C84C95
+      - 70BF:2F6E8A:484701C:3B3EA06:69C84D5D
     body:
       encoding: ASCII-8BIT
       base64_string: |
@@ -286,7 +285,7 @@ http_interactions:
         aW4iOmZhbHNlfSwibGFiZWxzIjpbXSwic3RhdGUiOiJvcGVuIiwibG9ja2Vk
         IjpmYWxzZSwiYXNzaWduZWVzIjpbXSwibWlsZXN0b25lIjpudWxsLCJjb21t
         ZW50cyI6MCwiY3JlYXRlZF9hdCI6IjIwMjYtMDMtMjhUMjE6Mjc6MjRaIiwi
-        dXBkYXRlZF9hdCI6IjIwMjYtMDMtMjhUMjE6NDQ6NTZaIiwiY2xvc2VkX2F0
+        dXBkYXRlZF9hdCI6IjIwMjYtMDMtMjhUMjE6NTA6NTBaIiwiY2xvc2VkX2F0
         IjpudWxsLCJhc3NpZ25lZSI6bnVsbCwiYXV0aG9yX2Fzc29jaWF0aW9uIjoi
         T1dORVIiLCJhY3RpdmVfbG9ja19yZWFzb24iOm51bGwsImRyYWZ0Ijp0cnVl
         LCJwdWxsX3JlcXVlc3QiOnsidXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNv
@@ -328,22 +327,22 @@ http_interactions:
         dHRwczovL2FwaS5naXRodWIuY29tL3JlcG9zL2hvYmxpbi9hbmltYS9pc3N1
         ZXMvMzU4L3RpbWVsaW5lIiwicGVyZm9ybWVkX3ZpYV9naXRodWJfYXBwIjpu
         dWxsLCJzdGF0ZV9yZWFzb24iOm51bGx9XQ==
-  recorded_at: Sat, 28 Mar 2026 21:48:06 GMT
+  recorded_at: Sat, 28 Mar 2026 21:51:26 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Sat
-        Mar 28 23:48\nWhat is the latest issue on hoblin/anima repo?"},{"role":"assistant","content":[{"type":"text","text":"I''ll
-        help you check the latest issue on the hoblin/anima repository. Let me fetch
-        the GitHub API to get the most recent issues."},{"type":"tool_use","id":"toolu_01VDctmwMvGXqEjLfVT8EhJQ","name":"web_get","input":{"url":"https://api.github.com/repos/hoblin/anima/issues?state=all\u0026sort=created\u0026direction=desc\u0026per_page=1"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01VDctmwMvGXqEjLfVT8EhJQ","content":"[Converted:
+        Mar 28 23:51\nWhat is the latest issue on hoblin/anima repo?"},{"role":"assistant","content":[{"type":"text","text":"I''ll
+        help you find the latest issue on the hoblin/anima repository. Let me fetch
+        that information for you."},{"type":"tool_use","id":"toolu_01CofEz5E9vrZxkNvc8oAJWR","name":"web_get","input":{"url":"https://api.github.com/repos/hoblin/anima/issues?state=all\u0026sort=created\u0026direction=desc\u0026per_page=1"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01CofEz5E9vrZxkNvc8oAJWR","content":"[Converted:
         JSON → TOON]\n\n[1]:\n  - url: \"https://api.github.com/repos/hoblin/anima/issues/358\"\n    repository_url:
         \"https://api.github.com/repos/hoblin/anima\"\n    labels_url: \"https://api.github.com/repos/hoblin/anima/issues/358/labels{/name}\"\n    comments_url:
         \"https://api.github.com/repos/hoblin/anima/issues/358/comments\"\n    events_url:
         \"https://api.github.com/repos/hoblin/anima/issues/358/events\"\n    html_url:
         \"https://github.com/hoblin/anima/pull/358\"\n    id: 4161710970\n\n---\n⚠️
-        Response truncated (68 lines total). Full output saved to: /tmp/tool_result_20260328-4099295-c5zrg7.txt\nUse
+        Response truncated (68 lines total). Full output saved to: /tmp/tool_result_20260328-4104158-bxfiz6.txt\nUse
         `read` tool with offset/limit to inspect specific sections.\n---\n\n      \"-1\":
         0\n      laugh: 0\n      hooray: 0\n      confused: 0\n      heart: 0\n      rocket:
         0\n      eyes: 0\n    timeline_url: \"https://api.github.com/repos/hoblin/anima/issues/358/timeline\"\n    performed_via_github_app:
@@ -434,7 +433,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 28 Mar 2026 21:48:08 GMT
+      - Sat, 28 Mar 2026 21:51:27 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -480,11 +479,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1682'
+      - '1413'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=1683
+      - x-originResponse;dur=1416
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
       X-Robots-Tag:
@@ -499,44 +498,42 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxRnR2dG5pdlI3TFJLZFpnRHdZeGZUMiIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxN3dvWkgyVGVGR0ZmNjd6RHZITmtzayIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6IkxldCBtZSByZWFkIHRoZSBmdWxsIHJlc3BvbnNlIHRvIGdldCB0
-        aGUgY29tcGxldGUgaW5mb3JtYXRpb24gYWJvdXQgdGhlIGxhdGVzdCBpc3N1
-        ZToifSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoidG9vbHVfMDE5b3N2cFRY
-        WllyVnFWY1d0R2lVRzZiIiwibmFtZSI6InJlYWQiLCJpbnB1dCI6eyJwYXRo
-        IjoiL3RtcC90b29sX3Jlc3VsdF8yMDI2MDMyOC00MDk5Mjk1LWM1enJnNy50
-        eHQifSwiY2FsbGVyIjp7InR5cGUiOiJkaXJlY3QifX1dLCJzdG9wX3JlYXNv
-        biI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsi
-        aW5wdXRfdG9rZW5zIjoyNjkzLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tl
-        bnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVh
-        dGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVy
-        YWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6OTAsInNl
-        cnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9h
-        dmFpbGFibGUifX0=
-  recorded_at: Sat, 28 Mar 2026 21:48:08 GMT
+        dGV4dCI6IkxldCBtZSByZWFkIHRoZSBmdWxsIHJlc3BvbnNlIHRvIGdldCBh
+        bGwgdGhlIGRldGFpbHM6In0seyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRv
+        b2x1XzAxOGRRSlFRUEFUUjk4andoRnphdDRxRyIsIm5hbWUiOiJyZWFkIiwi
+        aW5wdXQiOnsicGF0aCI6Ii90bXAvdG9vbF9yZXN1bHRfMjAyNjAzMjgtNDEw
+        NDE1OC1ieGZpejYudHh0In0sImNhbGxlciI6eyJ0eXBlIjoiZGlyZWN0In19
+        XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51
+        bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MjY4NywiY2FjaGVfY3JlYXRp
+        b25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6
+        MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2Vu
+        cyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90
+        b2tlbnMiOjg1LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5j
+        ZV9nZW8iOiJub3RfYXZhaWxhYmxlIn19
+  recorded_at: Sat, 28 Mar 2026 21:51:28 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
       string: "{\"model\":\"claude-sonnet-4-20250514\",\"messages\":[{\"role\":\"user\",\"content\":\"Sat
-        Mar 28 23:48\\nWhat is the latest issue on hoblin/anima repo?\"},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll
-        help you check the latest issue on the hoblin/anima repository. Let me fetch
-        the GitHub API to get the most recent issues.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01VDctmwMvGXqEjLfVT8EhJQ\",\"name\":\"web_get\",\"input\":{\"url\":\"https://api.github.com/repos/hoblin/anima/issues?state=all\\u0026sort=created\\u0026direction=desc\\u0026per_page=1\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01VDctmwMvGXqEjLfVT8EhJQ\",\"content\":\"[Converted:
+        Mar 28 23:51\\nWhat is the latest issue on hoblin/anima repo?\"},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll
+        help you find the latest issue on the hoblin/anima repository. Let me fetch
+        that information for you.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01CofEz5E9vrZxkNvc8oAJWR\",\"name\":\"web_get\",\"input\":{\"url\":\"https://api.github.com/repos/hoblin/anima/issues?state=all\\u0026sort=created\\u0026direction=desc\\u0026per_page=1\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01CofEz5E9vrZxkNvc8oAJWR\",\"content\":\"[Converted:
         JSON → TOON]\\n\\n[1]:\\n  - url: \\\"https://api.github.com/repos/hoblin/anima/issues/358\\\"\\n
         \   repository_url: \\\"https://api.github.com/repos/hoblin/anima\\\"\\n    labels_url:
         \\\"https://api.github.com/repos/hoblin/anima/issues/358/labels{/name}\\\"\\n
         \   comments_url: \\\"https://api.github.com/repos/hoblin/anima/issues/358/comments\\\"\\n
         \   events_url: \\\"https://api.github.com/repos/hoblin/anima/issues/358/events\\\"\\n
         \   html_url: \\\"https://github.com/hoblin/anima/pull/358\\\"\\n    id: 4161710970\\n\\n---\\n⚠️
-        Response truncated (68 lines total). Full output saved to: /tmp/tool_result_20260328-4099295-c5zrg7.txt\\nUse
+        Response truncated (68 lines total). Full output saved to: /tmp/tool_result_20260328-4104158-bxfiz6.txt\\nUse
         `read` tool with offset/limit to inspect specific sections.\\n---\\n\\n      \\\"-1\\\":
         0\\n      laugh: 0\\n      hooray: 0\\n      confused: 0\\n      heart: 0\\n
         \     rocket: 0\\n      eyes: 0\\n    timeline_url: \\\"https://api.github.com/repos/hoblin/anima/issues/358/timeline\\\"\\n
         \   performed_via_github_app: null\\n    state_reason: null\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Let
-        me read the full response to get the complete information about the latest
-        issue:\"},{\"type\":\"tool_use\",\"id\":\"toolu_019osvpTXZYrVqVcWtGiUG6b\",\"name\":\"read\",\"input\":{\"path\":\"/tmp/tool_result_20260328-4099295-c5zrg7.txt\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_019osvpTXZYrVqVcWtGiUG6b\",\"content\":\"[Converted:
+        me read the full response to get all the details:\"},{\"type\":\"tool_use\",\"id\":\"toolu_018dQJQQPATR98jwhFzat4qG\",\"name\":\"read\",\"input\":{\"path\":\"/tmp/tool_result_20260328-4104158-bxfiz6.txt\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_018dQJQQPATR98jwhFzat4qG\",\"content\":\"[Converted:
         JSON → TOON]\\n\\n[1]:\\n  - url: \\\"https://api.github.com/repos/hoblin/anima/issues/358\\\"\\n
         \   repository_url: \\\"https://api.github.com/repos/hoblin/anima\\\"\\n    labels_url:
         \\\"https://api.github.com/repos/hoblin/anima/issues/358/labels{/name}\\\"\\n
@@ -560,7 +557,7 @@ http_interactions:
         User\\n      user_view_type: public\\n      site_admin: false\\n    labels[0]:\\n
         \   state: open\\n    locked: false\\n    assignees[0]:\\n    milestone: null\\n
         \   comments: 0\\n    created_at: \\\"2026-03-28T21:27:24Z\\\"\\n    updated_at:
-        \\\"2026-03-28T21:44:56Z\\\"\\n    closed_at: null\\n    assignee: null\\n
+        \\\"2026-03-28T21:50:50Z\\\"\\n    closed_at: null\\n    assignee: null\\n
         \   author_association: OWNER\\n    active_lock_reason: null\\n    draft:
         true\\n    pull_request:\\n      url: \\\"https://api.github.com/repos/hoblin/anima/pulls/358\\\"\\n
         \     html_url: \\\"https://github.com/hoblin/anima/pull/358\\\"\\n      diff_url:
@@ -674,7 +671,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 28 Mar 2026 21:48:15 GMT
+      - Sat, 28 Mar 2026 21:51:35 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -720,11 +717,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '6824'
+      - '7121'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=6825
+      - x-originResponse;dur=7123
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
       X-Robots-Tag:
@@ -739,36 +736,40 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxWVVoQUI0Uk50NmFYN0p0Q3k5c0dVRyIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxWTI5a0RRb2hzNnFnanFyTHVkYlJKSCIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6IlRoZSBsYXRlc3QgaXNzdWUgb24gdGhlIGhvYmxpbi9hbmltYSBy
-        ZXBvc2l0b3J5IGlzOlxuXG4qKiMzNTg6IFwiIzM1MyBmZWF0OiBJbmplY3Qg
-        cGlubmVkIGdvYWwgaW50byBzdWItYWdlbnQgc3lzdGVtIHByb21wdFwiKipc
-        blxuLSAqKlR5cGUqKjogUHVsbCBSZXF1ZXN0IChvcGVuLCBkcmFmdClcbi0g
-        KipBdXRob3IqKjogaG9ibGluXG4tICoqQ3JlYXRlZCoqOiBNYXJjaCAyOCwg
-        MjAyNiwgMjE6MjcgVVRDXG4tICoqU3RhdHVzKio6IE9wZW4gKGRyYWZ0KVxu
-        LSAqKkxhYmVscyoqOiBOb25lXG5cbioqU3VtbWFyeSoqOiBUaGlzIFBSIGlt
-        cGxlbWVudHMgZnVuY3Rpb25hbGl0eSB0byBpbmplY3QgcGlubmVkIGdvYWxz
-        IGludG8gc3ViLWFnZW50IHN5c3RlbSBwcm9tcHRzLiBUaGUga2V5IGNoYW5n
-        ZXMgaW5jbHVkZTpcblxuLSBTdWItYWdlbnRzIG5vdyBzZWUgdGhlaXIgcGlu
-        bmVkIGdvYWwgYXMgYSBwZXJzaXN0ZW50IGAjIyBZb3VyIFRhc2tgIHNlY3Rp
-        b24gaW4gdGhlIHN5c3RlbSBwcm9tcHQsIHZpc2libGUgb24gZXZlcnkgTExN
-        IHR1cm5cbi0gTmV3IGBTZXNzaW9uI2Fzc2VtYmxlX3Rhc2tfc2VjdGlvbmAg
-        bWV0aG9kIHJlbmRlcnMgdGhlIGFjdGl2ZSByb290IGdvYWwgd2l0aCBhIGBt
-        YXJrX2dvYWxfY29tcGxldGVkYCBpbnN0cnVjdGlvblxuLSBSZS1yZWNvcmRl
-        ZCBpbnRlZ3JhdGlvbiBzbW9rZSB0ZXN0IGNhc3NldHRlXG4tIENsb3NlcyBp
-        c3N1ZSAjMzUzXG5cbioqVGVzdCBTdGF0dXMqKjogTW9zdCB0ZXN0cyBhcmUg
-        Y29tcGxldGUgKHBhc3NpbmcgMzAwIHNwZWNzKSwgd2l0aCBDSSBzdGlsbCBw
-        ZW5kaW5nLlxuXG5UaGlzIGFwcGVhcnMgdG8gYmUgdGhlIGN1cnJlbnQgd29y
-        ayBiZWluZyBkb25lIHRvIGVuaGFuY2UgaG93IHN1Yi1hZ2VudHMgcmVjZWl2
-        ZSBhbmQgbWFpbnRhaW4gYXdhcmVuZXNzIG9mIHRoZWlyIGFzc2lnbmVkIGdv
-        YWxzIHRocm91Z2hvdXQgdGhlaXIgZXhlY3V0aW9uLiJ9XSwic3RvcF9yZWFz
-        b24iOiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7
-        ImlucHV0X3Rva2VucyI6NDA2MywiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9r
-        ZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3Jl
-        YXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1l
-        cmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjI0NSwi
-        c2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90
-        X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Sat, 28 Mar 2026 21:48:15 GMT
+        ZXBvc2l0b3J5IGlzICoqUHVsbCBSZXF1ZXN0ICMzNTgqKiwgd2hpY2ggaXMg
+        Y3VycmVudGx5IG9wZW4uIEhlcmUgYXJlIHRoZSBrZXkgZGV0YWlsczpcblxu
+        KipUaXRsZToqKiBcIiMzNTMgZmVhdDogSW5qZWN0IHBpbm5lZCBnb2FsIGlu
+        dG8gc3ViLWFnZW50IHN5c3RlbSBwcm9tcHRcIlxuXG4qKlN0YXR1czoqKiBP
+        cGVuIChkcmFmdClcblxuKipDcmVhdGVkOioqIE1hcmNoIDI4LCAyMDI2IGF0
+        IDIxOjI3IFVUQyAoYWJvdXQgMi41IGhvdXJzIGFnbylcblxuKipTdW1tYXJ5
+        OioqIFxuVGhpcyBQUiBpbXBsZW1lbnRzIGEgZmVhdHVyZSB3aGVyZSBzdWIt
+        YWdlbnRzIG5vdyBzZWUgdGhlaXIgcGlubmVkIGdvYWwgYXMgYSBwZXJzaXN0
+        ZW50IFwiIyMgWW91ciBUYXNrXCIgc2VjdGlvbiBpbiB0aGUgc3lzdGVtIHBy
+        b21wdCwgdmlzaWJsZSBvbiBldmVyeSBMTE0gdHVybi4gS2V5IGNoYW5nZXMg
+        aW5jbHVkZTpcblxuLSBOZXcgYFNlc3Npb24jYXNzZW1ibGVfdGFza19zZWN0
+        aW9uYCB0aGF0IHJlbmRlcnMgdGhlIGFjdGl2ZSByb290IGdvYWwgd2l0aCBh
+        IGBtYXJrX2dvYWxfY29tcGxldGVkYCBpbnN0cnVjdGlvblxuLSBSZS1yZWNv
+        cmRlZCBpbnRlZ3JhdGlvbiBzbW9rZSB0ZXN0IGNhc3NldHRlXG4tIFRoZSBt
+        YWluIGFnZW50J3MgZ29hbCBoYW5kbGluZyB3YXMgYWxyZWFkeSB3b3JraW5n
+        IGNvcnJlY3RseSwgc28gbm8gY2hhbmdlcyBuZWVkZWQgdGhlcmVcblxuKipQ
+        dXJwb3NlOioqIFRoaXMgY2xvc2VzIGlzc3VlICMzNTNcblxuKipDdXJyZW50
+        IFN0YXR1czoqKiBcbi0gTW9zdCB0ZXN0cyBhcmUgcGFzc2luZyAoMzAwKyBz
+        cGVjcylcbi0gQ29kZSBxdWFsaXR5IGNoZWNrcyAoc3RhbmRhcmRyYiwgcmVl
+        aykgYXJlIGNsZWFuXG4tIFN0aWxsIHdhaXRpbmcgZm9yIENJIHRvIGdvIGdy
+        ZWVuXG4tIEN1cnJlbnRseSBpbiBkcmFmdCBzdGF0dXNcblxuVGhpcyBhcHBl
+        YXJzIHRvIGJlIGFuIGFjdGl2ZSBkZXZlbG9wbWVudCBlZmZvcnQgdG8gaW1w
+        cm92ZSBob3cgZ29hbHMgYXJlIGNvbW11bmljYXRlZCB0byBzdWItYWdlbnRz
+        IHdpdGhpbiB0aGUgQW5pbWEgc3lzdGVtLCBlbnN1cmluZyB0aGV5IG1haW50
+        YWluIGF3YXJlbmVzcyBvZiB0aGVpciB0YXNrcyB0aHJvdWdob3V0IHRoZWly
+        IGV4ZWN1dGlvbi4ifV0sInN0b3BfcmVhc29uIjoiZW5kX3R1cm4iLCJzdG9w
+        X3NlcXVlbmNlIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjQwNTIs
+        ImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9p
+        bnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81
+        bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMi
+        OjB9LCJvdXRwdXRfdG9rZW5zIjoyODgsInNlcnZpY2VfdGllciI6InN0YW5k
+        YXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFpbGFibGUifX0=
+  recorded_at: Sat, 28 Mar 2026 21:51:35 GMT
 recorded_with: VCR 6.4.0
