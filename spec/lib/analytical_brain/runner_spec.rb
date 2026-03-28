@@ -200,8 +200,10 @@ RSpec.describe AnalyticalBrain::Runner do
 
         runner.call
 
-        expect(captured_opts[:system]).to include("Active goal")
-        expect(captured_opts[:system]).not_to include("Done goal")
+        system = captured_opts[:system]
+        expect(system).to include("ACTIVE GOALS")
+        expect(system).to include("- Active goal (id:")
+        expect(system).not_to include("Done goal")
       end
 
       it "includes action instruction in the user message" do

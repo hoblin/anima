@@ -118,6 +118,21 @@ RSpec.describe Goal do
 
       expect(Goal.root).to eq([root])
     end
+
+    it ".not_evicted returns goals without evicted_at" do
+      visible = Goal.create!(session: session, description: "visible")
+      Goal.create!(session: session, description: "evicted", status: "completed", completed_at: 2.hours.ago, evicted_at: 1.hour.ago)
+
+      expect(Goal.not_evicted).to eq([visible])
+    end
+
+    it ".evictable returns completed goals without evicted_at" do
+      Goal.create!(session: session, description: "active")
+      evictable = Goal.create!(session: session, description: "completed", status: "completed", completed_at: 1.hour.ago)
+      Goal.create!(session: session, description: "already evicted", status: "completed", completed_at: 2.hours.ago, evicted_at: 1.hour.ago)
+
+      expect(Goal.evictable).to eq([evictable])
+    end
   end
 
   describe "#completed?" do
@@ -146,6 +161,20 @@ RSpec.describe Goal do
       root = Goal.create!(session: session, description: "root")
       sub = Goal.create!(session: session, parent_goal: root, description: "sub")
       expect(sub).not_to be_root
+    end
+  end
+
+  describe "#evicted?" do
+    let(:session) { Session.create! }
+
+    it "returns true when evicted_at is set" do
+      goal = Goal.create!(session: session, description: "gone", status: "completed", completed_at: 2.hours.ago, evicted_at: 1.hour.ago)
+      expect(goal).to be_evicted
+    end
+
+    it "returns false when evicted_at is nil" do
+      goal = Goal.create!(session: session, description: "present", status: "completed", completed_at: 1.hour.ago)
+      expect(goal).not_to be_evicted
     end
   end
 

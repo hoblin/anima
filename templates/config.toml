@@ -119,6 +119,14 @@ default_view_mode = "basic"
 # Regenerate session name every N messages.
 name_generation_interval = 30
 
+# ─── Goals ──────────────────────────────────────────────────────
+
+[goals]
+
+# Number of meaningful messages (user + agent turns) after completion
+# before a completed goal is automatically evicted from context.
+completed_decay_messages = 5
+
 # ─── Analytical Brain ─────────────────────────────────────────
 
 [analytical_brain]

@@ -672,6 +672,152 @@ RSpec.describe Session do
       expect(prompt).to include("### Active task")
       expect(prompt).to include("- [ ] Step 1")
     end
+
+    it "excludes evicted goals from the prompt" do
+      Goal.create!(
+        session: session, description: "Evicted task",
+        status: "completed", completed_at: 2.hours.ago, evicted_at: 1.hour.ago
+      )
+      Goal.create!(session: session, description: "Visible task")
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).not_to include("Evicted task")
+      expect(prompt).to include("### Visible task")
+    end
+
+    it "returns nil goals section when all goals are evicted" do
+      Goal.create!(
+        session: session, description: "Gone",
+        status: "completed", completed_at: 2.hours.ago, evicted_at: 1.hour.ago
+      )
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).not_to include("Current Goals")
+    end
+
+    it "automatically evicts completed goals past the decay threshold" do
+      goal = Goal.create!(
+        session: session, description: "Stale goal",
+        status: "completed", completed_at: 1.hour.ago
+      )
+      # Create enough meaningful messages to exceed the default threshold of 5
+      6.times do |i|
+        type = i.even? ? "user_message" : "agent_message"
+        session.messages.create!(message_type: type, payload: {content: "msg #{i}"}, timestamp: i + 1)
+      end
+
+      session.assemble_system_prompt
+
+      expect(goal.reload.evicted_at).to be_present
+    end
+
+    it "evicts completed goals at exactly the decay threshold" do
+      goal = Goal.create!(
+        session: session, description: "Boundary goal",
+        status: "completed", completed_at: 1.hour.ago
+      )
+      # Exactly 5 meaningful messages — at the >= threshold boundary
+      5.times do |i|
+        session.messages.create!(message_type: "user_message", payload: {content: "msg #{i}"}, timestamp: i + 1)
+      end
+
+      session.assemble_system_prompt
+
+      expect(goal.reload.evicted_at).to be_present
+    end
+
+    it "does not evict completed goals below the decay threshold" do
+      goal = Goal.create!(
+        session: session, description: "Recent goal",
+        status: "completed", completed_at: 1.hour.ago
+      )
+      # Only 3 meaningful messages — below default threshold of 5
+      3.times do |i|
+        session.messages.create!(message_type: "user_message", payload: {content: "msg #{i}"}, timestamp: i + 1)
+      end
+
+      session.assemble_system_prompt
+
+      expect(goal.reload.evicted_at).to be_nil
+    end
+
+    it "does not evict active goals" do
+      goal = Goal.create!(session: session, description: "Active goal")
+      6.times do |i|
+        type = i.even? ? "user_message" : "agent_message"
+        session.messages.create!(message_type: type, payload: {content: "msg #{i}"}, timestamp: i + 1)
+      end
+
+      session.assemble_system_prompt
+
+      expect(goal.reload.evicted_at).to be_nil
+    end
+
+    it "only counts messages after the goal was completed" do
+      # 4 messages created before completion
+      4.times do |i|
+        session.messages.create!(message_type: "user_message", payload: {content: "old #{i}"}, timestamp: i + 1)
+      end
+
+      goal = Goal.create!(
+        session: session, description: "Recently done",
+        status: "completed", completed_at: Time.current
+      )
+
+      # Only 2 messages after completion — below threshold
+      2.times do |i|
+        session.messages.create!(message_type: "agent_message", payload: {content: "new #{i}"}, timestamp: 10 + i)
+      end
+
+      session.assemble_system_prompt
+
+      expect(goal.reload.evicted_at).to be_nil
+    end
+
+    it "excludes tool calls from the meaningful message count" do
+      goal = Goal.create!(
+        session: session, description: "Tool-heavy goal",
+        status: "completed", completed_at: 1.hour.ago
+      )
+      # 3 meaningful messages (below threshold)
+      3.times do |i|
+        session.messages.create!(message_type: "user_message", payload: {content: "msg #{i}"}, timestamp: i + 1)
+      end
+      # 10 tool calls — should not count toward eviction
+      10.times do |i|
+        session.messages.create!(
+          message_type: "tool_call", payload: {content: "call #{i}"},
+          timestamp: 100 + i, tool_use_id: "tool_#{i}"
+        )
+      end
+
+      session.assemble_system_prompt
+
+      expect(goal.reload.evicted_at).to be_nil
+    end
+
+    it "evicts old goals but keeps recent ones with multiple completed goals" do
+      old_goal = Goal.create!(
+        session: session, description: "Old goal",
+        status: "completed", completed_at: 3.hours.ago
+      )
+      recent_goal = Goal.create!(
+        session: session, description: "Recent goal",
+        status: "completed", completed_at: Time.current
+      )
+      # 6 messages — all after old_goal's completion, but before recent_goal's
+      6.times do |i|
+        session.messages.create!(
+          message_type: "user_message", payload: {content: "msg #{i}"},
+          timestamp: i + 1, created_at: 2.hours.ago
+        )
+      end
+
+      session.assemble_system_prompt
+
+      expect(old_goal.reload.evicted_at).to be_present
+      expect(recent_goal.reload.evicted_at).to be_nil
+    end
   end
 
   describe "#activate_workflow" do
