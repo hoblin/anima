@@ -400,6 +400,68 @@ class Session < ApplicationRecord
     })
   end
 
+  # Broadcasts the full LLM debug context to debug-mode TUI clients.
+  # Called on every LLM request so the TUI shows exactly what the LLM
+  # receives — system prompt and tool schemas. No-op outside debug mode.
+  #
+  # @param system [String, nil] the final system prompt sent to the LLM
+  # @param tools [Array<Hash>, nil] tool schemas sent to the LLM
+  # @return [void]
+  def broadcast_debug_context(system:, tools: nil)
+    return unless view_mode == "debug" && system
+
+    ActionCable.server.broadcast("session_#{id}", self.class.system_prompt_payload(system, tools: tools))
+  end
+
+  # Returns the deterministic tool schemas for this session's type and
+  # granted_tools configuration. Standard and spawn tools are static
+  # class-level definitions — no ShellSession or registry needed.
+  # MCP tools are excluded (they require live server queries and appear
+  # after the first LLM request via {#broadcast_debug_context}).
+  #
+  # @return [Array<Hash>] tool schema hashes matching Anthropic tools API format
+  def tool_schemas
+    tools = if granted_tools
+      granted = granted_tools.filter_map { |name| AgentLoop::STANDARD_TOOLS_BY_NAME[name] }
+      (AgentLoop::ALWAYS_GRANTED_TOOLS + granted).uniq
+    else
+      AgentLoop::STANDARD_TOOLS.dup
+    end
+
+    unless sub_agent?
+      tools.push(Tools::SpawnSubagent, Tools::SpawnSpecialist, Tools::OpenIssue)
+    end
+
+    if sub_agent?
+      tools.push(Tools::MarkGoalCompleted)
+    end
+
+    tools.map(&:schema)
+  end
+
+  # Builds the system prompt payload for debug mode transmission.
+  # Token estimate covers both the system prompt and tool schemas
+  # since both consume the LLM's context window.
+  # Tools are sent as raw schemas; the TUI formats them as TOON for display.
+  #
+  # @param prompt [String] system prompt text
+  # @param tools [Array<Hash>, nil] tool schemas
+  # @return [Hash] payload with type, rendered debug content, and token estimate
+  def self.system_prompt_payload(prompt, tools: nil)
+    total_bytes = prompt.bytesize
+    total_bytes += tools.to_json.bytesize if tools&.any?
+    tokens = Message.estimate_token_count(total_bytes)
+
+    debug = {role: :system_prompt, content: prompt, tokens: tokens, estimated: true}
+    debug[:tools] = tools if tools&.any?
+
+    {
+      "id" => Message::SYSTEM_PROMPT_ID,
+      "type" => "system_prompt",
+      "rendered" => {"debug" => debug}
+    }
+  end
+
   private
 
   # One-line version preamble so the agent knows its own version.
@@ -789,7 +851,7 @@ class Session < ApplicationRecord
       next unless msg
 
       text = format_recall_snippet(msg)
-      cost = [(text.bytesize / Message::BYTES_PER_TOKEN.to_f).ceil, 1].max
+      cost = Message.estimate_token_count(text.bytesize)
       break if cost > remaining && snippets.any?
 
       snippets << text

@@ -146,6 +146,8 @@ class AgentLoop
   end
 
   # Assembles LLM options (system prompt, environment context).
+  # Broadcasts the full debug context (system prompt + tool schemas)
+  # to debug-mode TUI clients on every LLM request.
   # @return [Hash] options for {LLM::Client#chat_with_tools}
   def build_llm_options
     options = {}
@@ -154,6 +156,7 @@ class AgentLoop
     end
     prompt = @session.system_prompt(environment_context: env_context)
     options[:system] = prompt if prompt
+    @session.broadcast_debug_context(system: prompt, tools: @registry&.schemas)
     options
   end
 

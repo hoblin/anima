@@ -395,6 +395,38 @@ RSpec.describe AgentLoop do
 
       agent_loop.run
     end
+
+    it "broadcasts debug context with system prompt and tools in debug mode" do
+      session.update!(view_mode: "debug")
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      allow(client).to receive(:chat_with_tools).and_return("ok")
+
+      expect {
+        agent_loop.run
+      }.to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including(
+          "id" => Message::SYSTEM_PROMPT_ID,
+          "type" => "system_prompt",
+          "rendered" => {"debug" => a_hash_including(
+            "tools" => a_collection_including(
+              a_hash_including(name: "bash"),
+              a_hash_including(name: "read"),
+              a_hash_including(name: "spawn_subagent")
+            )
+          )}
+        ))
+    end
+
+    it "does not broadcast debug context in basic mode" do
+      session.update!(view_mode: "basic")
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      allow(client).to receive(:chat_with_tools).and_return("ok")
+
+      expect {
+        agent_loop.run
+      }.not_to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("type" => "system_prompt"))
+    end
   end
 
   describe "registry injection" do

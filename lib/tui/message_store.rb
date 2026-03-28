@@ -202,16 +202,13 @@ module TUI
     # Inserts an entry in message-ID order. Entries without an ID are
     # appended. If an entry with the same ID already exists, updates
     # it in-place (deduplication for live/viewport replay races).
-    # System prompt entries are always placed at position 0.
+    # Callers send system prompt entries with {Message::SYSTEM_PROMPT_ID}
+    # (0) so they sort before all positive-ID messages and deduplicate
+    # on subsequent broadcasts.
     #
     # @param entry [Hash] the entry to insert
     # @return [void]
     def insert_ordered(entry)
-      if entry[:message_type] == "system_prompt"
-        @entries.unshift(entry)
-        return
-      end
-
       id = entry[:id]
       unless id
         @entries << entry

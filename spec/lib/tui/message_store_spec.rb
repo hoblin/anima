@@ -302,7 +302,7 @@ RSpec.describe TUI::MessageStore do
                              "rendered" => {"debug" => {"role" => "user", "content" => "hello"}}})
         store.process_event({"type" => "agent_message", "id" => 2,
                              "rendered" => {"debug" => {"role" => "assistant", "content" => "hi"}}})
-        store.process_event({"type" => "system_prompt",
+        store.process_event({"id" => 0, "type" => "system_prompt",
                              "rendered" => {"debug" => {"role" => "system_prompt", "content" => "You are..."}}})
 
         entries = store.messages
@@ -310,19 +310,18 @@ RSpec.describe TUI::MessageStore do
         expect(entries.map { |m| m[:data]["content"] }).to eq(["You are...", "hello", "hi"])
       end
 
-      it "replaces previous system prompt when a new one arrives" do
-        store.process_event({"type" => "system_prompt",
+      it "updates system prompt in-place when a new one arrives" do
+        store.process_event({"id" => 0, "type" => "system_prompt",
                              "rendered" => {"debug" => {"role" => "system_prompt", "content" => "v1"}}})
         store.process_event({"type" => "user_message", "id" => 1,
                              "rendered" => {"debug" => {"role" => "user", "content" => "hello"}}})
-        store.process_event({"type" => "system_prompt",
+        store.process_event({"id" => 0, "type" => "system_prompt",
                              "rendered" => {"debug" => {"role" => "system_prompt", "content" => "v2"}}})
 
         entries = store.messages
         system_prompts = entries.select { |e| e[:message_type] == "system_prompt" }
-        expect(system_prompts.size).to eq(2)
+        expect(system_prompts.size).to eq(1)
         expect(entries.first[:data]["content"]).to eq("v2")
-        expect(entries[1][:data]["content"]).to eq("v1")
       end
 
       it "appends in-order events without scanning (fast path)" do

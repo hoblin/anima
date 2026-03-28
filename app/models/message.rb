@@ -39,6 +39,18 @@ class Message < ApplicationRecord
   # Heuristic: average bytes per token for English prose.
   BYTES_PER_TOKEN = 4
 
+  # Synthetic ID for system prompt entries in the TUI message store.
+  # Real message IDs are positive integers from the database, so 0
+  # is safe for deduplication without collision risk.
+  SYSTEM_PROMPT_ID = 0
+
+  # Estimates token count from a byte size using the {BYTES_PER_TOKEN} heuristic.
+  # @param bytesize [Integer] number of bytes
+  # @return [Integer] estimated token count (at least 1)
+  def self.estimate_token_count(bytesize)
+    [(bytesize / BYTES_PER_TOKEN.to_f).ceil, 1].max
+  end
+
   belongs_to :session
   has_many :pinned_messages, dependent: :destroy
 
@@ -121,7 +133,7 @@ class Message < ApplicationRecord
     else
       payload["content"].to_s
     end
-    [(text.bytesize / BYTES_PER_TOKEN.to_f).ceil, 1].max
+    self.class.estimate_token_count(text.bytesize)
   end
 
   private
