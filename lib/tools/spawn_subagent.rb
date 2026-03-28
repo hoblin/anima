@@ -78,7 +78,7 @@ module Tools
         prompt: GENERIC_PROMPT,
         granted_tools: granted_tools
       )
-      child.create_user_message(task)
+      pin_goal_and_frame(child, task)
       assign_nickname_via_brain(child)
       child.broadcast_children_update_to_parent
       AgentRequestJob.perform_later(child.id)

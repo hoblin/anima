@@ -10,7 +10,8 @@ RSpec.describe Anima::Settings do
         "fast_model" => "claude-haiku-4-5",
         "max_tokens" => 8192,
         "max_tool_rounds" => 500,
-        "token_budget" => 190_000
+        "token_budget" => 190_000,
+        "thinking_budget" => 10_000
       },
       "timeouts" => {"api" => 300, "command" => 30, "mcp_response" => 60, "web_request" => 10},
       "shell" => {"max_output_bytes" => 100_000},
@@ -33,6 +34,7 @@ RSpec.describe Anima::Settings do
       expect(described_class.max_tokens).to eq(8192)
       expect(described_class.max_tool_rounds).to eq(500)
       expect(described_class.token_budget).to eq(190_000)
+      expect(described_class.thinking_budget).to eq(10_000)
     end
 
     it "reads timeout settings" do
