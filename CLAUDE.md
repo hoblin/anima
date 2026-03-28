@@ -97,17 +97,17 @@ Temporarily break `OAUTH_PASSPHRASE` in `lib/providers/anthropic.rb` — revert 
 
 Use VCR cassettes for all HTTP tests — never `stub_request`. Add `:vcr` metadata (bare symbol, no cassette path) and VCR auto-names cassettes from the spec description. Use a real token via `CredentialStore` for happy-path tests.
 
-Record mode is `:new_episodes` — VCR appends new entries when the request body doesn't match any existing episode. Prompt changes alter the request body, so the old episode becomes dead text that will never replay.
+Record mode is `:once` — VCR records a cassette the first time, then replays on subsequent runs. If the request body changes (e.g. prompt text changed), VCR raises `UnhandledHTTPRequestError` instead of silently appending dead episodes.
 
 When prompt text changes, re-record affected cassettes:
 
-1. Run full specs (`bundle exec rspec`) — surfaces affected cassettes as modified in `git status`.
-2. Delete modified cassettes with `rm -f`.
+1. Run full specs (`bundle exec rspec`) — affected cassettes surface as test failures.
+2. Delete failing cassettes with `rm -f`.
 3. Run full specs again — records fresh single-episode cassettes.
 
 Never delete cassettes before the first full run — you won't know which ones are affected.
 
-**Exception: error cassettes recorded during outages** (e.g. the 529 overload cassette) cannot be re-recorded on demand. When tool schema or prompt changes alter the request body, manually edit the cassette to match the new body and remove any accidentally appended episodes. Never manually edit cassettes that can be re-recorded — always use the delete-and-rerecord flow above.
+**Exception: error cassettes recorded during outages** (e.g. the 529 overload cassette) cannot be re-recorded on demand. When tool schema or prompt changes alter the request body, manually edit the cassette to match the new body. Never manually edit cassettes that can be re-recorded — always use the delete-and-rerecord flow above.
 
 ## GitHub sub-issues
 
