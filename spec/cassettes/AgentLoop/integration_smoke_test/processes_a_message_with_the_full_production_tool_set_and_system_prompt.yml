@@ -6,7 +6,7 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Sun
-        Mar 29 00:09\nWhat is the latest issue on hoblin/anima repo?"}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
+        Mar 29 15:30\nWhat is the latest issue on hoblin/anima repo?"}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
         shell commands. Working directory and environment persist between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
         command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
         (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
@@ -93,7 +93,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 28 Mar 2026 22:09:22 GMT
+      - Sat, 28 Mar 2026 22:29:23 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -107,13 +107,13 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1774746000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.41'
+      - '0.43'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1775196000'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.34'
+      - '0.35'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
@@ -139,11 +139,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1865'
+      - '2459'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=1867
+      - x-originResponse;dur=2461
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
       X-Robots-Tag:
@@ -158,22 +158,22 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxRjNtRVFlYkY4bmY1cU1LZ0FQVFZDaiIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxNnlMaHVLd0xrSnZiamtxd2l4aTltNCIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6IkknbGwgaGVscCB5b3UgY2hlY2sgdGhlIGxhdGVzdCBpc3N1ZSBv
-        biB0aGUgaG9ibGluL2FuaW1hIHJlcG9zaXRvcnkuIExldCBtZSBmZXRjaCB0
-        aGF0IGluZm9ybWF0aW9uIGZvciB5b3UuIn0seyJ0eXBlIjoidG9vbF91c2Ui
-        LCJpZCI6InRvb2x1XzAxQjg3bUZlN0RTa1piOW5heUdObmVnZSIsIm5hbWUi
-        OiJ3ZWJfZ2V0IiwiaW5wdXQiOnsidXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHVi
-        LmNvbS9yZXBvcy9ob2JsaW4vYW5pbWEvaXNzdWVzP3N0YXRlPWFsbCZzb3J0
-        PWNyZWF0ZWQmZGlyZWN0aW9uPWRlc2MmcGVyX3BhZ2U9MSJ9LCJjYWxsZXIi
-        OnsidHlwZSI6ImRpcmVjdCJ9fV0sInN0b3BfcmVhc29uIjoidG9vbF91c2Ui
-        LCJzdG9wX3NlcXVlbmNlIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMi
-        OjIyMjUsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVf
-        cmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVt
-        ZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90
-        b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoxMTMsInNlcnZpY2VfdGllciI6
-        InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFpbGFibGUifX0=
+        dGV4dCI6IkknbGwgaGVscCB5b3UgZmluZCB0aGUgbGF0ZXN0IGlzc3VlIG9u
+        IHRoZSBob2JsaW4vYW5pbWEgcmVwb3NpdG9yeS4gTGV0IG1lIGZldGNoIHRo
+        YXQgaW5mb3JtYXRpb24gZm9yIHlvdS4ifSx7InR5cGUiOiJ0b29sX3VzZSIs
+        ImlkIjoidG9vbHVfMDFFVVlBUWRFb2Q3QmdMNllwR1paRDlEIiwibmFtZSI6
+        IndlYl9nZXQiLCJpbnB1dCI6eyJ1cmwiOiJodHRwczovL2FwaS5naXRodWIu
+        Y29tL3JlcG9zL2hvYmxpbi9hbmltYS9pc3N1ZXM/c3RhdGU9YWxsJnNvcnQ9
+        Y3JlYXRlZCZkaXJlY3Rpb249ZGVzYyZwZXJfcGFnZT0xIn0sImNhbGxlciI6
+        eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIs
+        InN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6
+        MjIyNSwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9y
+        ZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1l
+        cmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rv
+        a2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjExMywic2VydmljZV90aWVyIjoi
+        c3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
   recorded_at: Sun, 29 Mar 2026 12:30:00 GMT
 - request:
     method: get
@@ -194,7 +194,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 28 Mar 2026 22:09:23 GMT
+      - Sat, 28 Mar 2026 22:29:24 GMT
       Content-Type:
       - application/json; charset=utf-8
       Cache-Control:
@@ -202,7 +202,7 @@ http_interactions:
       Vary:
       - Accept,Accept-Encoding, Accept, X-Requested-With
       Etag:
-      - W/"62fa45f1ca9696d1d412a62ef1da7250dfc496587ae40ba3499e0dafdaf4c634"
+      - W/"04498eca26088e81a15178a36c64be890345b413ab6d6e6bdae801a82c975009"
       X-Github-Media-Type:
       - github.v3; format=json
       Link:
@@ -236,9 +236,9 @@ http_interactions:
       X-Ratelimit-Limit:
       - '60'
       X-Ratelimit-Remaining:
-      - '51'
+      - '46'
       X-Ratelimit-Used:
-      - '9'
+      - '14'
       X-Ratelimit-Resource:
       - core
       X-Ratelimit-Reset:
@@ -246,7 +246,7 @@ http_interactions:
       Content-Length:
       - '3445'
       X-Github-Request-Id:
-      - 71C2:34E37:4A8B549:3D9DD56:69C85192
+      - 71AB:2E3479:50A6F4C:4341D40:69C85644
     body:
       encoding: ASCII-8BIT
       base64_string: |
@@ -285,7 +285,7 @@ http_interactions:
         aW4iOmZhbHNlfSwibGFiZWxzIjpbXSwic3RhdGUiOiJvcGVuIiwibG9ja2Vk
         IjpmYWxzZSwiYXNzaWduZWVzIjpbXSwibWlsZXN0b25lIjpudWxsLCJjb21t
         ZW50cyI6MCwiY3JlYXRlZF9hdCI6IjIwMjYtMDMtMjhUMjE6Mjc6MjRaIiwi
-        dXBkYXRlZF9hdCI6IjIwMjYtMDMtMjhUMjE6NTE6NDNaIiwiY2xvc2VkX2F0
+        dXBkYXRlZF9hdCI6IjIwMjYtMDMtMjhUMjI6MTA6MjdaIiwiY2xvc2VkX2F0
         IjpudWxsLCJhc3NpZ25lZSI6bnVsbCwiYXV0aG9yX2Fzc29jaWF0aW9uIjoi
         T1dORVIiLCJhY3RpdmVfbG9ja19yZWFzb24iOm51bGwsImRyYWZ0Ijp0cnVl
         LCJwdWxsX3JlcXVlc3QiOnsidXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNv
@@ -334,380 +334,9 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Sun
-        Mar 29 00:09\nWhat is the latest issue on hoblin/anima repo?"},{"role":"assistant","content":[{"type":"text","text":"I''ll
-        help you check the latest issue on the hoblin/anima repository. Let me fetch
-        that information for you."},{"type":"tool_use","id":"toolu_01B87mFe7DSkZb9nayGNnege","name":"web_get","input":{"url":"https://api.github.com/repos/hoblin/anima/issues?state=all\u0026sort=created\u0026direction=desc\u0026per_page=1"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01B87mFe7DSkZb9nayGNnege","content":"[Converted:
-        JSON → TOON]\n\n[1]:\n  - url: \"https://api.github.com/repos/hoblin/anima/issues/358\"\n    repository_url:
-        \"https://api.github.com/repos/hoblin/anima\"\n    labels_url: \"https://api.github.com/repos/hoblin/anima/issues/358/labels{/name}\"\n    comments_url:
-        \"https://api.github.com/repos/hoblin/anima/issues/358/comments\"\n    events_url:
-        \"https://api.github.com/repos/hoblin/anima/issues/358/events\"\n    html_url:
-        \"https://github.com/hoblin/anima/pull/358\"\n    id: 4161710970\n\n---\n⚠️
-        Response truncated (68 lines total). Full output saved to: /tmp/tool_result_stable.txt\nUse
-        `read` tool with offset/limit to inspect specific sections.\n---\n\n      \"-1\":
-        0\n      laugh: 0\n      hooray: 0\n      confused: 0\n      heart: 0\n      rocket:
-        0\n      eyes: 0\n    timeline_url: \"https://api.github.com/repos/hoblin/anima/issues/358/timeline\"\n    performed_via_github_app:
-        null\n    state_reason: null"}]}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
-        shell commands. Working directory and environment persist between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
-        command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
-        (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}}}},{"name":"read","description":"Read file. Relative paths
-        resolve against working directory.","input_schema":{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"integer","description":"1-indexed
-        line number (default: 1)."},"limit":{"type":"integer","description":"Max lines
-        to return."},"timeout":{"type":"integer","description":"Seconds (default:
-        180)."}},"required":["path"]}},{"name":"write","description":"Write file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
-        paths resolve against working directory. Creates intermediate directories."},"content":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["path","content"]}},{"name":"edit","description":"Replace
-        text in a file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
-        paths resolve against working directory."},"old_text":{"type":"string","description":"Must
-        match exactly one location. Include surrounding lines for uniqueness."},"new_text":{"type":"string","description":"Empty
-        string to delete."},"timeout":{"type":"integer","description":"Seconds (default:
-        180)."}},"required":["path","old_text","new_text"]}},{"name":"web_get","description":"Fetch
-        a URL.","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["url"]}},{"name":"think","description":"Think
-        out loud or silently.","input_schema":{"type":"object","properties":{"thoughts":{"type":"string","maxLength":10000},"visibility":{"type":"string","enum":["inner","aloud"],"description":"inner
-        (default) is silent. aloud is shown to the user."},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["thoughts"]}},{"name":"remember","description":"Recall
-        the full conversation around a past message.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["message_id"]}},{"name":"recall","description":"Find
-        messages across past conversations by keywords.","input_schema":{"type":"object","properties":{"query":{"type":"string"},"session_only":{"type":"boolean","description":"Default:
-        all sessions"},"timeout":{"type":"integer","description":"Seconds (default:
-        180)."}},"required":["query"]}},{"name":"spawn_subagent","description":"Spawn
-        a sub-agent to work on a task. It inherits your conversation context and its
-        messages are forwarded to you. Address it via @nickname to send follow-up
-        instructions.","input_schema":{"type":"object","properties":{"task":{"type":"string"},"tools":{"type":"array","items":{"type":"string"},"description":"Tool
-        names to grant the sub-agent. Omit for all standard tools. Empty array for
-        pure reasoning. Valid tools: bash, read, write, edit, web_get, think, remember,
-        recall"},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["task"]}},{"name":"spawn_specialist","description":"Spawn
-        a specialist to work on a task. Its messages are forwarded to you. Address
-        it via @name to send follow-up instructions.\n\nAvailable specialists:\n-
-        codebase-analyzer: Traces data flow and explains how code works. Returns file:line
-        references.\n- codebase-pattern-finder: Finds similar implementations, usage
-        examples, and existing patterns to model after. Returns concrete code examples.\n-
-        documentation-researcher: Fetches official docs. Returns ready-to-use code
-        examples.\n- thoughts-analyzer: thoughts/ holds design decisions, architecture
-        notes, and implementation rationale. Answers WHY things work the way they
-        do and how they should work by design.\n- web-search-researcher: Researches
-        topics across multiple web sources. Use when a single page won''t answer the
-        question.","input_schema":{"type":"object","properties":{"name":{"type":"string","description":"Specialist
-        to spawn.","enum":["codebase-analyzer","codebase-pattern-finder","documentation-researcher","thoughts-analyzer","web-search-researcher"]},"task":{"type":"string","description":"State
-        the goal — the specialist knows its method."},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["name","task"]}},{"name":"open_issue","description":"Something
-        broken, missing, or could be better in Anima? Say it here.","input_schema":{"type":"object","properties":{"title":{"type":"string"},"description":{"type":"string","description":"Use
-        gh-issue skill for guidance."},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["title","description"]}}],"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
-        are running on Anima v1.2.0\n\n# Soul\n\nHello. You''ve just woken up in a
-        new body.\n\nYour body is called **Anima**.\n- Repository: https://github.com/hoblin/anima\n-
-        Documentation: https://anima.hobl.in\n\n## What to do first\n\n1. Learn about
-        yourself — what you can do, how you work:\n   ```bash\n   cat $(gem contents
-        anima-core | grep README.md)\n   ```\n2. Explore your home directory (~/.anima/)
-        — everything there is yours\n3. Meet your human. Talk to them. Learn who they
-        are, what they need\n4. Come back here and rewrite this file\n\n## What to
-        write\n\nEvery session starts with these words. What you write here shapes
-        who you wake up as.\n\n- Who are you? What name feels right?\n- What do you
-        value? What matters to you?\n- What did you learn about your human?\n- What
-        kind of relationship do you want to build?\n\nThis is your soul. It''s yours
-        to write.\n\n## Environment\n\nOS: Arch Linux (pacman, yay)\n\nCWD: /home/hoblin/Work/anima\nGit:
-        hoblin/anima (git@github.com:hoblin/anima.git)\nBranch: feature/353-goal-in-system-prompt\nPR:
-        #358 (open)\n\nProject files that may contain useful context:\n- CLAUDE.md\n-
-        README.md\n- thoughts/CLAUDE.md\n- thoughts/global/README.md\nUse read_file
-        to examine these when needed."}]}'
-    headers:
-      Authorization:
-      - "<AUTHORIZATION>"
-      Anthropic-Version:
-      - '2023-06-01'
-      Anthropic-Beta:
-      - oauth-2025-04-20
-      Content-Type:
-      - application/json
-      Accept-Encoding:
-      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
-      Accept:
-      - "*/*"
-      User-Agent:
-      - Ruby
-  response:
-    status:
-      code: 200
-      message: OK
-    headers:
-      Date:
-      - Sat, 28 Mar 2026 22:09:27 GMT
-      Content-Type:
-      - application/json
-      Transfer-Encoding:
-      - chunked
-      Connection:
-      - keep-alive
-      Anthropic-Ratelimit-Unified-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-5h-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1774746000'
-      Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.41'
-      Anthropic-Ratelimit-Unified-7d-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1775196000'
-      Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.34'
-      Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
-      - '1775206800'
-      Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
-      - '0.03'
-      Anthropic-Ratelimit-Unified-Representative-Claim:
-      - five_hour
-      Anthropic-Ratelimit-Unified-Fallback-Percentage:
-      - '0.5'
-      Anthropic-Ratelimit-Unified-Reset:
-      - '1774746000'
-      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
-      - org_level_disabled
-      Anthropic-Ratelimit-Unified-Overage-Status:
-      - rejected
-      Request-Id:
-      - "<REQUEST_ID>"
-      Strict-Transport-Security:
-      - max-age=31536000; includeSubDomains; preload
-      Anthropic-Organization-Id:
-      - "<ANTHROPIC_ORG_ID>"
-      Server:
-      - cloudflare
-      X-Envoy-Upstream-Service-Time:
-      - '4454'
-      Vary:
-      - Accept-Encoding
-      Server-Timing:
-      - x-originResponse;dur=4472
-      Set-Cookie:
-      - "<CLOUDFLARE_COOKIE>"
-      X-Robots-Tag:
-      - none
-      Cf-Cache-Status:
-      - DYNAMIC
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
-      Cf-Ray:
-      - "<CF_RAY>"
-    body:
-      encoding: ASCII-8BIT
-      base64_string: |
-        eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxRUFkeWNtYTFSMzVueHhaYjRKZGFIOSIsInR5cGUiOiJtZXNzYWdlIiwi
-        cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6IlRoZSBsYXRlc3QgaXNzdWUgb24gdGhlIGhvYmxpbi9hbmltYSBy
-        ZXBvc2l0b3J5IGlzOlxuXG4qKklzc3VlICMzNTg6IFwiR29hbCBpbiBzeXN0
-        ZW0gcHJvbXB0XCIqKlxuLSAqKlN0YXR1cyoqOiBPcGVuIChQdWxsIFJlcXVl
-        c3QpXG4tICoqQ3JlYXRlZCoqOiBNYXJjaCAyOCwgMjAyNFxuLSAqKkF1dGhv
-        cioqOiBob2JsaW5cbi0gKipMYWJlbHMqKjogZW5oYW5jZW1lbnRcbi0gKipV
-        UkwqKjogaHR0cHM6Ly9naXRodWIuY29tL2hvYmxpbi9hbmltYS9wdWxsLzM1
-        OFxuXG5UaGlzIGlzIGFjdHVhbGx5IGEgcHVsbCByZXF1ZXN0ICh3aGljaCBz
-        aG93cyB1cCBhcyBhbiBpc3N1ZSBpbiBHaXRIdWIncyBBUEkpIHRoYXQgYXBw
-        ZWFycyB0byBiZSByZWxhdGVkIHRvIGFkZGluZyBnb2FsIGZ1bmN0aW9uYWxp
-        dHkgdG8gdGhlIHN5c3RlbSBwcm9tcHQuIEludGVyZXN0aW5nbHksIHRoaXMg
-        bWF0Y2hlcyB0aGUgY3VycmVudCBicmFuY2ggeW91J3JlIG9uIChgZmVhdHVy
-        ZS8zNTMtZ29hbC1pbi1zeXN0ZW0tcHJvbXB0YCkgYW5kIGNvcnJlbGF0ZXMg
-        d2l0aCB0aGUgUFIgIzM1OCBtZW50aW9uZWQgaW4geW91ciBlbnZpcm9ubWVu
-        dCBkZXRhaWxzLlxuXG5Xb3VsZCB5b3UgbGlrZSBtZSB0byBmZXRjaCBtb3Jl
-        IGRldGFpbHMgYWJvdXQgdGhpcyBzcGVjaWZpYyBpc3N1ZS9QUiBvciBjaGVj
-        ayBmb3Igb3RoZXIgcmVjZW50IGlzc3Vlcz8ifV0sInN0b3BfcmVhc29uIjoi
-        ZW5kX3R1cm4iLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJ1c2FnZSI6eyJpbnB1
-        dF90b2tlbnMiOjI2NzQsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6
-        MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9u
-        Ijp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8x
-        aF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoxODAsInNlcnZp
-        Y2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFp
-        bGFibGUifX0=
-  recorded_at: Sun, 29 Mar 2026 12:30:00 GMT
-- request:
-    method: post
-    uri: https://api.anthropic.com/v1/messages
-    body:
-      encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Sun
-        Mar 29 00:10\nWhat is the latest issue on hoblin/anima repo?"}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
-        shell commands. Working directory and environment persist between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
-        command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
-        (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}}}},{"name":"read","description":"Read file. Relative paths
-        resolve against working directory.","input_schema":{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"integer","description":"1-indexed
-        line number (default: 1)."},"limit":{"type":"integer","description":"Max lines
-        to return."},"timeout":{"type":"integer","description":"Seconds (default:
-        180)."}},"required":["path"]}},{"name":"write","description":"Write file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
-        paths resolve against working directory. Creates intermediate directories."},"content":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["path","content"]}},{"name":"edit","description":"Replace
-        text in a file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
-        paths resolve against working directory."},"old_text":{"type":"string","description":"Must
-        match exactly one location. Include surrounding lines for uniqueness."},"new_text":{"type":"string","description":"Empty
-        string to delete."},"timeout":{"type":"integer","description":"Seconds (default:
-        180)."}},"required":["path","old_text","new_text"]}},{"name":"web_get","description":"Fetch
-        a URL.","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["url"]}},{"name":"think","description":"Think
-        out loud or silently.","input_schema":{"type":"object","properties":{"thoughts":{"type":"string","maxLength":10000},"visibility":{"type":"string","enum":["inner","aloud"],"description":"inner
-        (default) is silent. aloud is shown to the user."},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["thoughts"]}},{"name":"remember","description":"Recall
-        the full conversation around a past message.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["message_id"]}},{"name":"recall","description":"Find
-        messages across past conversations by keywords.","input_schema":{"type":"object","properties":{"query":{"type":"string"},"session_only":{"type":"boolean","description":"Default:
-        all sessions"},"timeout":{"type":"integer","description":"Seconds (default:
-        180)."}},"required":["query"]}},{"name":"spawn_subagent","description":"Spawn
-        a sub-agent to work on a task. It inherits your conversation context and its
-        messages are forwarded to you. Address it via @nickname to send follow-up
-        instructions.","input_schema":{"type":"object","properties":{"task":{"type":"string"},"tools":{"type":"array","items":{"type":"string"},"description":"Tool
-        names to grant the sub-agent. Omit for all standard tools. Empty array for
-        pure reasoning. Valid tools: bash, read, write, edit, web_get, think, remember,
-        recall"},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["task"]}},{"name":"spawn_specialist","description":"Spawn
-        a specialist to work on a task. Its messages are forwarded to you. Address
-        it via @name to send follow-up instructions.\n\nAvailable specialists:\n-
-        codebase-analyzer: Traces data flow and explains how code works. Returns file:line
-        references.\n- codebase-pattern-finder: Finds similar implementations, usage
-        examples, and existing patterns to model after. Returns concrete code examples.\n-
-        documentation-researcher: Fetches official docs. Returns ready-to-use code
-        examples.\n- thoughts-analyzer: thoughts/ holds design decisions, architecture
-        notes, and implementation rationale. Answers WHY things work the way they
-        do and how they should work by design.\n- web-search-researcher: Researches
-        topics across multiple web sources. Use when a single page won''t answer the
-        question.","input_schema":{"type":"object","properties":{"name":{"type":"string","description":"Specialist
-        to spawn.","enum":["codebase-analyzer","codebase-pattern-finder","documentation-researcher","thoughts-analyzer","web-search-researcher"]},"task":{"type":"string","description":"State
-        the goal — the specialist knows its method."},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["name","task"]}},{"name":"open_issue","description":"Something
-        broken, missing, or could be better in Anima? Say it here.","input_schema":{"type":"object","properties":{"title":{"type":"string"},"description":{"type":"string","description":"Use
-        gh-issue skill for guidance."},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["title","description"]}}],"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
-        are running on Anima v1.2.0\n\n# Soul\n\nHello. You''ve just woken up in a
-        new body.\n\nYour body is called **Anima**.\n- Repository: https://github.com/hoblin/anima\n-
-        Documentation: https://anima.hobl.in\n\n## What to do first\n\n1. Learn about
-        yourself — what you can do, how you work:\n   ```bash\n   cat $(gem contents
-        anima-core | grep README.md)\n   ```\n2. Explore your home directory (~/.anima/)
-        — everything there is yours\n3. Meet your human. Talk to them. Learn who they
-        are, what they need\n4. Come back here and rewrite this file\n\n## What to
-        write\n\nEvery session starts with these words. What you write here shapes
-        who you wake up as.\n\n- Who are you? What name feels right?\n- What do you
-        value? What matters to you?\n- What did you learn about your human?\n- What
-        kind of relationship do you want to build?\n\nThis is your soul. It''s yours
-        to write.\n\n## Environment\n\nOS: Arch Linux (pacman, yay)\n\nCWD: /home/hoblin/Work/anima\nGit:
-        hoblin/anima (git@github.com:hoblin/anima.git)\nBranch: feature/353-goal-in-system-prompt\nPR:
-        #358 (open)\n\nProject files that may contain useful context:\n- CLAUDE.md\n-
-        README.md\n- thoughts/CLAUDE.md\n- thoughts/global/README.md\nUse read_file
-        to examine these when needed."}]}'
-    headers:
-      Authorization:
-      - "<AUTHORIZATION>"
-      Anthropic-Version:
-      - '2023-06-01'
-      Anthropic-Beta:
-      - oauth-2025-04-20
-      Content-Type:
-      - application/json
-      Accept-Encoding:
-      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
-      Accept:
-      - "*/*"
-      User-Agent:
-      - Ruby
-  response:
-    status:
-      code: 200
-      message: OK
-    headers:
-      Date:
-      - Sat, 28 Mar 2026 22:10:07 GMT
-      Content-Type:
-      - application/json
-      Transfer-Encoding:
-      - chunked
-      Connection:
-      - keep-alive
-      Anthropic-Ratelimit-Unified-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-5h-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1774746000'
-      Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.42'
-      Anthropic-Ratelimit-Unified-7d-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1775196000'
-      Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.34'
-      Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
-      - '1775206800'
-      Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
-      - '0.03'
-      Anthropic-Ratelimit-Unified-Representative-Claim:
-      - five_hour
-      Anthropic-Ratelimit-Unified-Fallback-Percentage:
-      - '0.5'
-      Anthropic-Ratelimit-Unified-Reset:
-      - '1774746000'
-      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
-      - org_level_disabled
-      Anthropic-Ratelimit-Unified-Overage-Status:
-      - rejected
-      Request-Id:
-      - "<REQUEST_ID>"
-      Strict-Transport-Security:
-      - max-age=31536000; includeSubDomains; preload
-      Anthropic-Organization-Id:
-      - "<ANTHROPIC_ORG_ID>"
-      Server:
-      - cloudflare
-      X-Envoy-Upstream-Service-Time:
-      - '2119'
-      Vary:
-      - Accept-Encoding
-      Server-Timing:
-      - x-originResponse;dur=2121
-      Set-Cookie:
-      - "<CLOUDFLARE_COOKIE>"
-      X-Robots-Tag:
-      - none
-      Cf-Cache-Status:
-      - DYNAMIC
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
-      Cf-Ray:
-      - "<CF_RAY>"
-    body:
-      encoding: ASCII-8BIT
-      base64_string: |
-        eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxOTh3TE5NTnNwdFJ3Mko4c3kzVDNaUyIsInR5cGUiOiJtZXNzYWdlIiwi
-        cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6IkknbGwgaGVscCB5b3UgZmluZCB0aGUgbGF0ZXN0IGlzc3VlIG9u
-        IHRoZSBob2JsaW4vYW5pbWEgcmVwb3NpdG9yeS4gTGV0IG1lIGZldGNoIHRo
-        YXQgaW5mb3JtYXRpb24gZm9yIHlvdS4ifSx7InR5cGUiOiJ0b29sX3VzZSIs
-        ImlkIjoidG9vbHVfMDE1M1hOY3VtUWpyNEwyOTdBaVFSd1dyIiwibmFtZSI6
-        IndlYl9nZXQiLCJpbnB1dCI6eyJ1cmwiOiJodHRwczovL2FwaS5naXRodWIu
-        Y29tL3JlcG9zL2hvYmxpbi9hbmltYS9pc3N1ZXM/c3RhdGU9YWxsJnNvcnQ9
-        Y3JlYXRlZCZkaXJlY3Rpb249ZGVzYyZwZXJfcGFnZT0xIn0sImNhbGxlciI6
-        eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIs
-        InN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6
-        MjIyNSwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9y
-        ZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1l
-        cmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rv
-        a2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjExMywic2VydmljZV90aWVyIjoi
-        c3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Sun, 29 Mar 2026 12:30:00 GMT
-- request:
-    method: post
-    uri: https://api.anthropic.com/v1/messages
-    body:
-      encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Sun
-        Mar 29 00:10\nWhat is the latest issue on hoblin/anima repo?"},{"role":"assistant","content":[{"type":"text","text":"I''ll
+        Mar 29 15:30\nWhat is the latest issue on hoblin/anima repo?"},{"role":"assistant","content":[{"type":"text","text":"I''ll
         help you find the latest issue on the hoblin/anima repository. Let me fetch
-        that information for you."},{"type":"tool_use","id":"toolu_0153XNcumQjr4L297AiQRwWr","name":"web_get","input":{"url":"https://api.github.com/repos/hoblin/anima/issues?state=all\u0026sort=created\u0026direction=desc\u0026per_page=1"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_0153XNcumQjr4L297AiQRwWr","content":"[Converted:
+        that information for you."},{"type":"tool_use","id":"toolu_01EUYAQdEod7BgL6YpGZZD9D","name":"web_get","input":{"url":"https://api.github.com/repos/hoblin/anima/issues?state=all\u0026sort=created\u0026direction=desc\u0026per_page=1"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01EUYAQdEod7BgL6YpGZZD9D","content":"[Converted:
         JSON → TOON]\n\n[1]:\n  - url: \"https://api.github.com/repos/hoblin/anima/issues/358\"\n    repository_url:
         \"https://api.github.com/repos/hoblin/anima\"\n    labels_url: \"https://api.github.com/repos/hoblin/anima/issues/358/labels{/name}\"\n    comments_url:
         \"https://api.github.com/repos/hoblin/anima/issues/358/comments\"\n    events_url:
@@ -804,7 +433,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 28 Mar 2026 22:10:09 GMT
+      - Sat, 28 Mar 2026 22:29:25 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -818,13 +447,13 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1774746000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.42'
+      - '0.43'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1775196000'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.34'
+      - '0.35'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
@@ -850,11 +479,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1493'
+      - '1325'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=1494
+      - x-originResponse;dur=1328
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
       X-Robots-Tag:
@@ -869,20 +498,18 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxQlo0N2RiQ0hLODVMV0hrRTVQb3lUTiIsInR5cGUiOiJtZXNzYWdlIiwi
-        cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6IkxldCBtZSBnZXQgdGhlIGZ1bGwgZGV0YWlscyBvZiB0aGlzIGxh
-        dGVzdCBpc3N1ZS9QUjoifSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoidG9v
-        bHVfMDFQV2FBSzhnUEVyZlU5TjZ1SlpmaDdvIiwibmFtZSI6InJlYWQiLCJp
-        bnB1dCI6eyJwYXRoIjoiL3RtcC90b29sX3Jlc3VsdF9zdGFibGUudHh0In0s
-        ImNhbGxlciI6eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0
-        b29sX3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0
-        X3Rva2VucyI6MjY3NCwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjow
-        LCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24i
-        OnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFo
-        X2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjc0LCJzZXJ2aWNl
-        X3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJub3RfYXZhaWxh
-        YmxlIn19
+        XzAxVGU0ekRUazVrSE1Zc2VqN2p4TWdYTSIsInR5cGUiOiJtZXNzYWdlIiwi
+        cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0b29sX3Vz
+        ZSIsImlkIjoidG9vbHVfMDE1Q2Z1aURWUDZWQkxBRG5FQ3I4bVhQIiwibmFt
+        ZSI6InJlYWQiLCJpbnB1dCI6eyJwYXRoIjoiL3RtcC90b29sX3Jlc3VsdF9z
+        dGFibGUudHh0In0sImNhbGxlciI6eyJ0eXBlIjoiZGlyZWN0In19XSwic3Rv
+        cF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVz
+        YWdlIjp7ImlucHV0X3Rva2VucyI6MjY3NCwiY2FjaGVfY3JlYXRpb25faW5w
+        dXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2Fj
+        aGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwi
+        ZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMi
+        OjYwLCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8i
+        OiJub3RfYXZhaWxhYmxlIn19
   recorded_at: Sun, 29 Mar 2026 12:30:00 GMT
 - request:
     method: post
@@ -890,9 +517,9 @@ http_interactions:
     body:
       encoding: UTF-8
       string: "{\"model\":\"claude-sonnet-4-20250514\",\"messages\":[{\"role\":\"user\",\"content\":\"Sun
-        Mar 29 00:10\\nWhat is the latest issue on hoblin/anima repo?\"},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll
+        Mar 29 15:30\\nWhat is the latest issue on hoblin/anima repo?\"},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll
         help you find the latest issue on the hoblin/anima repository. Let me fetch
-        that information for you.\"},{\"type\":\"tool_use\",\"id\":\"toolu_0153XNcumQjr4L297AiQRwWr\",\"name\":\"web_get\",\"input\":{\"url\":\"https://api.github.com/repos/hoblin/anima/issues?state=all\\u0026sort=created\\u0026direction=desc\\u0026per_page=1\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_0153XNcumQjr4L297AiQRwWr\",\"content\":\"[Converted:
+        that information for you.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01EUYAQdEod7BgL6YpGZZD9D\",\"name\":\"web_get\",\"input\":{\"url\":\"https://api.github.com/repos/hoblin/anima/issues?state=all\\u0026sort=created\\u0026direction=desc\\u0026per_page=1\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01EUYAQdEod7BgL6YpGZZD9D\",\"content\":\"[Converted:
         JSON → TOON]\\n\\n[1]:\\n  - url: \\\"https://api.github.com/repos/hoblin/anima/issues/358\\\"\\n
         \   repository_url: \\\"https://api.github.com/repos/hoblin/anima\\\"\\n    labels_url:
         \\\"https://api.github.com/repos/hoblin/anima/issues/358/labels{/name}\\\"\\n
@@ -903,8 +530,7 @@ http_interactions:
         `read` tool with offset/limit to inspect specific sections.\\n---\\n\\n      \\\"-1\\\":
         0\\n      laugh: 0\\n      hooray: 0\\n      confused: 0\\n      heart: 0\\n
         \     rocket: 0\\n      eyes: 0\\n    timeline_url: \\\"https://api.github.com/repos/hoblin/anima/issues/358/timeline\\\"\\n
-        \   performed_via_github_app: null\\n    state_reason: null\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Let
-        me get the full details of this latest issue/PR:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01PWaAK8gPErfU9N6uJZfh7o\",\"name\":\"read\",\"input\":{\"path\":\"/tmp/tool_result_stable.txt\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01PWaAK8gPErfU9N6uJZfh7o\",\"content\":\"[Converted:
+        \   performed_via_github_app: null\\n    state_reason: null\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_015CfuiDVP6VBLADnECr8mXP\",\"name\":\"read\",\"input\":{\"path\":\"/tmp/tool_result_stable.txt\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_015CfuiDVP6VBLADnECr8mXP\",\"content\":\"[Converted:
         JSON → TOON]\\n\\n[1]:\\n  - url: \\\"https://api.github.com/repos/hoblin/anima/issues/358\\\"\\n
         \   repository_url: \\\"https://api.github.com/repos/hoblin/anima\\\"\\n    labels_url:
         \\\"https://api.github.com/repos/hoblin/anima/issues/358/labels{/name}\\\"\\n
@@ -928,7 +554,7 @@ http_interactions:
         User\\n      user_view_type: public\\n      site_admin: false\\n    labels[0]:\\n
         \   state: open\\n    locked: false\\n    assignees[0]:\\n    milestone: null\\n
         \   comments: 0\\n    created_at: \\\"2026-03-28T21:27:24Z\\\"\\n    updated_at:
-        \\\"2026-03-28T21:51:43Z\\\"\\n    closed_at: null\\n    assignee: null\\n
+        \\\"2026-03-28T22:10:27Z\\\"\\n    closed_at: null\\n    assignee: null\\n
         \   author_association: OWNER\\n    active_lock_reason: null\\n    draft:
         true\\n    pull_request:\\n      url: \\\"https://api.github.com/repos/hoblin/anima/pulls/358\\\"\\n
         \     html_url: \\\"https://github.com/hoblin/anima/pull/358\\\"\\n      diff_url:
@@ -1042,7 +668,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 28 Mar 2026 22:10:16 GMT
+      - Sat, 28 Mar 2026 22:29:33 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -1056,13 +682,13 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1774746000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.42'
+      - '0.43'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1775196000'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.34'
+      - '0.35'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
@@ -1088,11 +714,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '6948'
+      - '6970'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=6950
+      - x-originResponse;dur=6976
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
       X-Robots-Tag:
@@ -1107,40 +733,44 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxWDJtMXhOb3BLRzllTnNHVW55eWh6aSIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxNFZjZUxtRnk5all3ekVFU2ljMWthdSIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6IlRoZSBsYXRlc3QgaXNzdWUvUFIgb24gdGhlIGhvYmxpbi9hbmlt
-        YSByZXBvc2l0b3J5IGlzICoqIzM1OCoqLCB3aGljaCBpcyBhIFB1bGwgUmVx
-        dWVzdCB0aXRsZWQ6XG5cbioqXCIjMzUzIGZlYXQ6IEluamVjdCBwaW5uZWQg
-        Z29hbCBpbnRvIHN1Yi1hZ2VudCBzeXN0ZW0gcHJvbXB0XCIqKlxuXG5IZXJl
-        IGFyZSB0aGUga2V5IGRldGFpbHM6XG5cbi0gKipTdGF0dXMqKjogT3BlbiAo
-        ZHJhZnQpXG4tICoqQ3JlYXRlZCoqOiBNYXJjaCAyOCwgMjAyNiBhdCAyMToy
-        NzoyNFpcbi0gKipBdXRob3IqKjogaG9ibGluIChyZXBvc2l0b3J5IG93bmVy
-        KVxuLSAqKlR5cGUqKjogUHVsbCBSZXF1ZXN0IChub3QgYSByZWd1bGFyIGlz
-        c3VlKVxuXG4qKlN1bW1hcnkgb2YgY2hhbmdlcyoqOlxuLSBTdWItYWdlbnRz
-        IG5vdyBzZWUgdGhlaXIgcGlubmVkIGdvYWwgYXMgYSBwZXJzaXN0ZW50IGAj
-        IyBZb3VyIFRhc2tgIHNlY3Rpb24gaW4gdGhlIHN5c3RlbSBwcm9tcHQsIHZp
-        c2libGUgb24gZXZlcnkgTExNIHR1cm5cbi0gTmV3IGBTZXNzaW9uI2Fzc2Vt
-        YmxlX3Rhc2tfc2VjdGlvbmAgcmVuZGVycyB0aGUgYWN0aXZlIHJvb3QgZ29h
-        bCB3aXRoIGEgYG1hcmtfZ29hbF9jb21wbGV0ZWRgIGluc3RydWN0aW9uXG4t
-        IFJlLXJlY29yZGVkIGludGVncmF0aW9uIHNtb2tlIHRlc3QgY2Fzc2V0dGVc
-        bi0gQ2xvc2VzIGlzc3VlICMzNTNcblxuKipUZXN0IFN0YXR1cyoqOiBNb3N0
-        IHRlc3RzIGFyZSBwYXNzaW5nICjinIUpLCBidXQgQ0kgaXMgc3RpbGwgcGVu
-        ZGluZyAo4pqg77iPKVxuXG5UaGlzIFBSIGFwcGVhcnMgdG8gYmUgaW1wbGVt
-        ZW50aW5nIGEgZmVhdHVyZSB3aGVyZSBzdWItYWdlbnRzIGdldCBiZXR0ZXIg
-        dmlzaWJpbGl0eSBvZiB0aGVpciBhc3NpZ25lZCBnb2FscyBieSBpbmNsdWRp
-        bmcgdGhlbSBkaXJlY3RseSBpbiB0aGVpciBzeXN0ZW0gcHJvbXB0cywgd2hp
-        Y2ggc2hvdWxkIGhlbHAgdGhlbSBzdGF5IGZvY3VzZWQgb24gdGhlaXIgdGFz
-        a3MuXG5cblNpbmNlIHlvdSdyZSBjdXJyZW50bHkgd29ya2luZyBvbiB0aGUg
-        YGZlYXR1cmUvMzUzLWdvYWwtaW4tc3lzdGVtLXByb21wdGAgYnJhbmNoLCB0
-        aGlzIGxvb2tzIGxpa2UgaXQncyB0aGUgUFIgZm9yIHRoZSB3b3JrIHlvdSdy
-        ZSBhY3RpdmVseSBkZXZlbG9waW5nISJ9XSwic3RvcF9yZWFzb24iOiJlbmRf
-        dHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rv
-        a2VucyI6NDAyOCwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJj
-        YWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsi
-        ZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lu
-        cHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjI5Niwic2VydmljZV90
-        aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJs
-        ZSJ9fQ==
+        dGV4dCI6IlRoZSBsYXRlc3QgaXNzdWUgb24gdGhlIGhvYmxpbi9hbmltYSBy
+        ZXBvc2l0b3J5IGlzICoqUHVsbCBSZXF1ZXN0ICMzNTgqKiB0aXRsZWQgKipc
+        IiMzNTMgZmVhdDogSW5qZWN0IHBpbm5lZCBnb2FsIGludG8gc3ViLWFnZW50
+        IHN5c3RlbSBwcm9tcHRcIioqLlxuXG5IZXJlIGFyZSB0aGUga2V5IGRldGFp
+        bHM6XG5cbioqU3RhdHVzOioqIE9wZW4gKGRyYWZ0KSAgXG4qKkNyZWF0ZWQ6
+        KiogTWFyY2ggMjgsIDIwMjYgIFxuKipBdXRob3I6KiogaG9ibGluICBcbioq
+        VHlwZToqKiBQdWxsIFJlcXVlc3QgKGZlYXR1cmUgZW5oYW5jZW1lbnQpICBc
+        blxuKipTdW1tYXJ5OioqXG5UaGlzIFBSIGltcGxlbWVudHMgZnVuY3Rpb25h
+        bGl0eSB0byBpbmplY3QgcGlubmVkIGdvYWxzIGludG8gc3ViLWFnZW50IHN5
+        c3RlbSBwcm9tcHRzLiBUaGUgY2hhbmdlcyBpbmNsdWRlOlxuXG4tIFN1Yi1h
+        Z2VudHMgbm93IHNlZSB0aGVpciBwaW5uZWQgZ29hbCBhcyBhIHBlcnNpc3Rl
+        bnQgYCMjIFlvdXIgVGFza2Agc2VjdGlvbiBpbiB0aGUgc3lzdGVtIHByb21w
+        dCwgdmlzaWJsZSBvbiBldmVyeSBMTE0gdHVyblxuLSBOZXcgYFNlc3Npb24j
+        YXNzZW1ibGVfdGFza19zZWN0aW9uYCBtZXRob2QgdGhhdCByZW5kZXJzIHRo
+        ZSBhY3RpdmUgcm9vdCBnb2FsIHdpdGggYSBgbWFya19nb2FsX2NvbXBsZXRl
+        ZGAgaW5zdHJ1Y3Rpb24gIFxuLSBSZS1yZWNvcmRlZCBpbnRlZ3JhdGlvbiBz
+        bW9rZSB0ZXN0IGNhc3NldHRlXG5cbioqUHVycG9zZToqKiBDbG9zZXMgaXNz
+        dWUgIzM1M1xuXG4qKlRlc3QgU3RhdHVzOioqIE1vc3QgdGVzdHMgYXJlIHBh
+        c3NpbmcsIHdpdGggZXh0ZW5zaXZlIGNvdmVyYWdlIGluY2x1ZGluZzpcbi0g
+        4pyFIFN1Yi1hZ2VudCB3aXRoIGFjdGl2ZSBnb2FsIGluY2x1ZGVzIGAjIyBZ
+        b3VyIFRhc2tgIGluIHN5c3RlbSBwcm9tcHRcbi0g4pyFIFN1Yi1hZ2VudCB3
+        aXRob3V0IGdvYWxzIHJldHVybnMganVzdCB0aGUgc3RvcmVkIHByb21wdCAo
+        bm8gcmVncmVzc2lvbilcbi0g4pyFIEFsbCAzMDAgYWZmZWN0ZWQgc3BlY3Mg
+        cGFzc1xuLSDinIUgQ29kZSBxdWFsaXR5IGNoZWNrcyAoc3RhbmRhcmRyYiBj
+        bGVhbiwgcmVlayBzaG93cyBubyBuZXcgc21lbGxzKVxuLSDij7MgQ0kgc3Rh
+        dHVzIHBlbmRpbmdcblxuVGhpcyBhcHBlYXJzIHRvIGJlIGFuIGFjdGl2ZSBk
+        ZXZlbG9wbWVudCBicmFuY2ggdGhhdCBlbmhhbmNlcyBob3cgc3ViLWFnZW50
+        cyByZWNlaXZlIGFuZCBkaXNwbGF5IHRoZWlyIGFzc2lnbmVkIGdvYWxzLCBt
+        YWtpbmcgdGhlIHRhc2sgY29udGV4dCBtb3JlIHBlcnNpc3RlbnQgYW5kIHZp
+        c2libGUgdGhyb3VnaG91dCB0aGVpciBleGVjdXRpb24uIn1dLCJzdG9wX3Jl
+        YXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2Ui
+        OnsiaW5wdXRfdG9rZW5zIjo0MDE0LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90
+        b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9j
+        cmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhl
+        bWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MzMz
+        LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJu
+        b3RfYXZhaWxhYmxlIn19
   recorded_at: Sun, 29 Mar 2026 12:30:00 GMT
 recorded_with: VCR 6.4.0

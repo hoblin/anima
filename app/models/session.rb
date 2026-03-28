@@ -299,7 +299,7 @@ class Session < ApplicationRecord
   #
   # @return [Integer] number of synthetic responses created
   def heal_orphaned_tool_calls!
-    now_ns = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+    current_ns = now_ns
     responded_ids = messages.where(message_type: "tool_response").select(:tool_use_id)
     unresponded = messages.where(message_type: "tool_call")
       .where.not(tool_use_id: responded_ids)
@@ -308,7 +308,7 @@ class Session < ApplicationRecord
     unresponded.find_each do |orphan|
       timeout = orphan.payload["timeout"] || Anima::Settings.tool_timeout
       deadline_ns = orphan.timestamp + (timeout * 1_000_000_000)
-      next if now_ns < deadline_ns
+      next if current_ns < deadline_ns
 
       messages.create!(
         message_type: "tool_response",
@@ -320,7 +320,7 @@ class Session < ApplicationRecord
           "success" => false
         },
         tool_use_id: orphan.tool_use_id,
-        timestamp: now_ns
+        timestamp: current_ns
       )
       healed += 1
     end
@@ -363,7 +363,7 @@ class Session < ApplicationRecord
   # @param content [String] user message text
   # @return [Message] the persisted message record
   def create_user_message(content)
-    now = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+    now = now_ns
     messages.create!(
       message_type: "user_message",
       payload: {type: "user_message", content: content, session_id: id, timestamp: now},
@@ -1000,6 +1000,14 @@ class Session < ApplicationRecord
   #   format_message_time(1_710_406_260_000_000_000) #=> "Thu Mar 14 09:51"
   def format_message_time(timestamp_ns)
     Time.at(timestamp_ns / 1_000_000_000.0).strftime("%a %b %-d %H:%M")
+  end
+
+  # Current time as nanoseconds since epoch. Uses Time.current so
+  # ActiveSupport's freeze_time works in tests.
+  #
+  # @return [Integer] nanoseconds since epoch
+  def now_ns
+    (Time.current.to_r * 1_000_000_000).to_i
   end
 
   # Delegates to {Message#estimate_tokens} for messages not yet counted
