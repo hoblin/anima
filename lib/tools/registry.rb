@@ -55,6 +55,19 @@ module Tools
       instance.execute(input)
     end
 
+    # Returns the truncation threshold for a tool, or +nil+ if the tool
+    # opts out of truncation (e.g. ReadTool has its own pagination).
+    # MCP tools and other duck-typed instances use the default threshold.
+    #
+    # @param name [String] registered tool name
+    # @return [Integer, nil] character threshold, or nil to skip truncation
+    def truncation_threshold(name)
+      tool = @tools[name]
+      return tool.truncation_threshold if tool&.respond_to?(:truncation_threshold)
+
+      Anima::Settings.max_tool_response_chars
+    end
+
     # @param name [String] tool name to check
     # @return [Boolean] whether a tool with the given name is registered
     def registered?(name)
