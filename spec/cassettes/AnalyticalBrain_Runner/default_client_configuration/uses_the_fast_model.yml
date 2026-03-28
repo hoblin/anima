@@ -24,6 +24,8 @@ http_interactions:
         a goal''s wording as understanding evolves.","input_schema":{"type":"object","properties":{"goal_id":{"type":"integer"},"description":{"type":"string","description":"1
         sentence."},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["goal_id","description"]}},{"name":"finish_goal","description":"Mark
         a goal as completed.","input_schema":{"type":"object","properties":{"goal_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["goal_id"]}},{"name":"evict_goal","description":"Remove
+        a completed goal from the agent''s context.","input_schema":{"type":"object","properties":{"goal_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["goal_id"]}},{"name":"everything_is_ready","description":"Nothing
         else to do.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":[]}}],"system":[{"type":"text","text":"You are
@@ -47,7 +49,11 @@ http_interactions:
         goal wording as understanding evolves.\nMark goals complete when the agent
         finishes the work they describe.\nCompleting a root goal cascades — all sub-goals
         are finished too.\nNever duplicate an existing goal — check the active goals
-        list first.\n\n──────────────────────────────\nCOMPLETION\n──────────────────────────────\nAlways
+        list first.\n\nEVICTION: completed goals stay visible briefly, then must be
+        evicted\nto free context budget. Check completed goals below — each shows\nhow
+        many meaningful messages have passed since completion.\nEvict when count ≥
+        threshold using the evict_goal tool.\nUse judgment: keep a goal longer if
+        the conversation still references it.\n\n──────────────────────────────\nCOMPLETION\n──────────────────────────────\nAlways
         finish with everything_is_ready.\nIf nothing needs attention, call it immediately.\n\n──────────────────────────────\nCURRENT
         STATE\n──────────────────────────────\nSession name: (unnamed)\nActive skills:
         None\nActive workflow: None\n\n──────────────────────────────\nAVAILABLE SKILLS\n──────────────────────────────\n-
@@ -112,7 +118,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 26 Mar 2026 17:51:16 GMT
+      - Sat, 28 Mar 2026 15:33:34 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -124,21 +130,21 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1774555200'
+      - '1774728000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.28'
+      - '0.04'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1774591200'
+      - '1775196000'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.72'
+      - '0.26'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1774555200'
+      - '1774728000'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -152,11 +158,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2761'
+      - '2894'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=2763
+      - x-originResponse;dur=2899
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
       X-Robots-Tag:
@@ -171,29 +177,26 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMUtpRzIyTlJRUkdUZHhwSFp2OXFBUVQiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMTZMZVJBaDdLUzd0RUFuckVES3NxWTMiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
-        InRleHQiOiJJJ2xsIHJldmlldyB0aGUgY3VycmVudCBzZXNzaW9uIHN0YXRl
-        OlxuXG4tICoqU2Vzc2lvbiBuYW1lKio6ICh1bm5hbWVkKSDigJQgbm8gY2xl
-        YXIgdG9waWMgeWV0XG4tICoqQWN0aXZlIHNraWxscyoqOiBOb25lIOKAlCBh
-        cHByb3ByaWF0ZSwgc2luY2UgdGhlIGNvbnZlcnNhdGlvbiBpcyBqdXN0IGEg
-        Z3JlZXRpbmdcbi0gKipBY3RpdmUgd29ya2Zsb3cqKjogTm9uZSDigJQgbm8g
-        bXVsdGktc3RlcCB0YXNrIGhhcyBiZWVuIGluaXRpYXRlZFxuLSAqKkdvYWxz
-        Kio6IE5vbmUgY3JlYXRlZCDigJQgdGhlIGNvbnZlcnNhdGlvbiBoYXNuJ3Qg
-        aWRlbnRpZmllZCBhIHRhc2tcblxuVGhlIGNvbnZlcnNhdGlvbiBpcyBtaW5p
-        bWFsIGFuZCBkb2Vzbid0IGluZGljYXRlIGEgc3BlY2lmaWMgdG9waWMgb3Ig
-        dGFzay4gTm8gYWN0aW9uIGlzIG5lZWRlZCBhdCB0aGlzIHN0YWdlLiBJJ2xs
-        IGNhbGwgZXZlcnl0aGluZ19pc19yZWFkeS4ifSx7InR5cGUiOiJ0b29sX3Vz
-        ZSIsImlkIjoidG9vbHVfMDFKWWVwWlg2U0M1UGo0a2N3aDZQdWhDIiwibmFt
-        ZSI6ImV2ZXJ5dGhpbmdfaXNfcmVhZHkiLCJpbnB1dCI6e30sImNhbGxlciI6
-        eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIs
-        InN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6
-        MjUzOCwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9y
-        ZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1l
-        cmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rv
-        a2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjE0MSwic2VydmljZV90aWVyIjoi
-        c3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Thu, 26 Mar 2026 17:51:16 GMT
+        InRleHQiOiJJJ2xsIHJldmlldyB0aGUgY3VycmVudCBzdGF0ZSBhbmQgdGFr
+        ZSBhY3Rpb24uXG5cblRoZSBzZXNzaW9uIGlzIGp1c3Qgc3RhcnRpbmcgd2l0
+        aCBhIHNpbXBsZSBncmVldGluZyBleGNoYW5nZS4gTm8gY2xlYXIgdG9waWMg
+        eWV0LCBzbyBubyBzZXNzaW9uIG5hbWUgc2hvdWxkIGJlIHNldCwgbm8gc2tp
+        bGxzIGFjdGl2YXRlZCwgYW5kIG5vIGdvYWxzIGNyZWF0ZWQuIFRoZSBjb252
+        ZXJzYXRpb24gaXMgdG9vIGVhcmx5IHRvIGRldGVybWluZSBkaXJlY3Rpb24u
+        XG5cbkknbGwgc2lnbmFsIHRoYXQgdGhlIGNvbnRleHQgaXMgcmVhZHkgZm9y
+        IHRoZSBhZ2VudCB0byBjb250aW51ZToifSx7InR5cGUiOiJ0b29sX3VzZSIs
+        ImlkIjoidG9vbHVfMDFHU3NVU3ZiY3hIUFE1Ums5MkJSUlYzIiwibmFtZSI6
+        ImV2ZXJ5dGhpbmdfaXNfcmVhZHkiLCJpbnB1dCI6e30sImNhbGxlciI6eyJ0
+        eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0
+        b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MjY5
+        NiwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFk
+        X2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFs
+        XzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2Vu
+        cyI6MH0sIm91dHB1dF90b2tlbnMiOjEwNywic2VydmljZV90aWVyIjoic3Rh
+        bmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
+  recorded_at: Sat, 28 Mar 2026 15:33:34 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
@@ -202,12 +205,11 @@ http_interactions:
       string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":"The
         main session is working on this:\n```\nUser: Hello\nAssistant: Hi\n```\n\nReview
         and take any needed actions, then call everything_is_ready."},{"role":"assistant","content":[{"type":"text","text":"I''ll
-        review the current session state:\n\n- **Session name**: (unnamed) — no clear
-        topic yet\n- **Active skills**: None — appropriate, since the conversation
-        is just a greeting\n- **Active workflow**: None — no multi-step task has been
-        initiated\n- **Goals**: None created — the conversation hasn''t identified
-        a task\n\nThe conversation is minimal and doesn''t indicate a specific topic
-        or task. No action is needed at this stage. I''ll call everything_is_ready."},{"type":"tool_use","id":"toolu_01JYepZX6SC5Pj4kcwh6PuhC","name":"everything_is_ready","input":{},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01JYepZX6SC5Pj4kcwh6PuhC","content":"Acknowledged.
+        review the current state and take action.\n\nThe session is just starting
+        with a simple greeting exchange. No clear topic yet, so no session name should
+        be set, no skills activated, and no goals created. The conversation is too
+        early to determine direction.\n\nI''ll signal that the context is ready for
+        the agent to continue:"},{"type":"tool_use","id":"toolu_01GSsUSvbcxHPQ5Rk92BRRV3","name":"everything_is_ready","input":{},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01GSsUSvbcxHPQ5Rk92BRRV3","content":"Acknowledged.
         No changes needed."}]}],"max_tokens":4096,"tools":[{"name":"rename_session","description":"Rename
         the session.","input_schema":{"type":"object","properties":{"emoji":{"type":"string"},"name":{"type":"string","description":"1-3
         words."},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["emoji","name"]}},{"name":"activate_skill","description":"Give
@@ -225,6 +227,8 @@ http_interactions:
         a goal''s wording as understanding evolves.","input_schema":{"type":"object","properties":{"goal_id":{"type":"integer"},"description":{"type":"string","description":"1
         sentence."},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["goal_id","description"]}},{"name":"finish_goal","description":"Mark
         a goal as completed.","input_schema":{"type":"object","properties":{"goal_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["goal_id"]}},{"name":"evict_goal","description":"Remove
+        a completed goal from the agent''s context.","input_schema":{"type":"object","properties":{"goal_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["goal_id"]}},{"name":"everything_is_ready","description":"Nothing
         else to do.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":[]}}],"system":[{"type":"text","text":"You are
@@ -248,7 +252,11 @@ http_interactions:
         goal wording as understanding evolves.\nMark goals complete when the agent
         finishes the work they describe.\nCompleting a root goal cascades — all sub-goals
         are finished too.\nNever duplicate an existing goal — check the active goals
-        list first.\n\n──────────────────────────────\nCOMPLETION\n──────────────────────────────\nAlways
+        list first.\n\nEVICTION: completed goals stay visible briefly, then must be
+        evicted\nto free context budget. Check completed goals below — each shows\nhow
+        many meaningful messages have passed since completion.\nEvict when count ≥
+        threshold using the evict_goal tool.\nUse judgment: keep a goal longer if
+        the conversation still references it.\n\n──────────────────────────────\nCOMPLETION\n──────────────────────────────\nAlways
         finish with everything_is_ready.\nIf nothing needs attention, call it immediately.\n\n──────────────────────────────\nCURRENT
         STATE\n──────────────────────────────\nSession name: (unnamed)\nActive skills:
         None\nActive workflow: None\n\n──────────────────────────────\nAVAILABLE SKILLS\n──────────────────────────────\n-
@@ -313,7 +321,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 26 Mar 2026 17:51:16 GMT
+      - Sat, 28 Mar 2026 15:33:34 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -325,21 +333,21 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1774555200'
+      - '1774728000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.28'
+      - '0.04'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1774591200'
+      - '1775196000'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.72'
+      - '0.26'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1774555200'
+      - '1774728000'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -353,33 +361,33 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '512'
+      - '480'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=514
-      Set-Cookie:
-      - "<CLOUDFLARE_COOKIE>"
-      X-Robots-Tag:
-      - none
+      - x-originResponse;dur=482
       Cf-Cache-Status:
       - DYNAMIC
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
       Content-Security-Policy:
       - default-src 'none'; frame-ancestors 'none'
+      X-Robots-Tag:
+      - none
       Cf-Ray:
       - "<CF_RAY>"
     body:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMUtOeWdwWENXN2lDTFllakNCNkpzclMiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMUNoRENRYldVYWpnYUtqdFlqYmljeDkiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24i
         OiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7Imlu
-        cHV0X3Rva2VucyI6MjY5NywiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5z
+        cHV0X3Rva2VucyI6MjgyMSwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5z
         IjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRp
         b24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFs
         XzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjIsInNlcnZp
         Y2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFp
         bGFibGUifX0=
-  recorded_at: Thu, 26 Mar 2026 17:51:16 GMT
+  recorded_at: Sat, 28 Mar 2026 15:33:34 GMT
 recorded_with: VCR 6.4.0
