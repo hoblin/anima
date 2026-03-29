@@ -96,6 +96,19 @@ RSpec.describe AnalyticalBrain::Runner do
         expect(captured_opts[:system]).to include("gh-issue")
       end
 
+      it "frames skill activation as predictive, not reactive" do
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).to include("signals intent")
+        expect(captured_opts[:system]).to include("before the agent acts")
+      end
+
       it "includes currently active skills in system prompt" do
         Skills::Registry.reload!
         session.activate_skill("gh-issue")
