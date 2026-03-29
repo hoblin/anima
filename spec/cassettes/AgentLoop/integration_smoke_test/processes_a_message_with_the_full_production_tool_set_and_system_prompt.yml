@@ -1,0 +1,758 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Sun
+        Mar 29 12:30\nWhat is the latest issue on hoblin/anima repo?"}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
+        shell commands in /home/test/anima. Environment persists between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
+        command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
+        (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}}},{"name":"read_file","description":"Read file. Relative
+        paths resolve against working directory.","input_schema":{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"integer","description":"1-indexed
+        line number (default: 1)."},"limit":{"type":"integer","description":"Max lines
+        to return."},"timeout":{"type":"integer","description":"Seconds (default:
+        180)."}},"required":["path"]}},{"name":"write_file","description":"Write file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
+        paths resolve against working directory. Creates intermediate directories."},"content":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["path","content"]}},{"name":"edit_file","description":"Replace
+        text in a file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
+        paths resolve against working directory."},"old_text":{"type":"string","description":"Must
+        match exactly one location. Include surrounding lines for uniqueness."},"new_text":{"type":"string","description":"Empty
+        string to delete."},"timeout":{"type":"integer","description":"Seconds (default:
+        180)."}},"required":["path","old_text","new_text"]}},{"name":"web_get","description":"Fetch
+        a URL.","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["url"]}},{"name":"think","description":"Think
+        out loud or silently.","input_schema":{"type":"object","properties":{"thoughts":{"type":"string","maxLength":10000},"visibility":{"type":"string","enum":["inner","aloud"],"description":"inner
+        (default) is silent. aloud is shown to the user."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["thoughts"]}},{"name":"remember","description":"Recall
+        the full conversation around a past message.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["message_id"]}},{"name":"recall","description":"Find
+        messages across past conversations by keywords.","input_schema":{"type":"object","properties":{"query":{"type":"string"},"session_only":{"type":"boolean","description":"Default:
+        all sessions"},"timeout":{"type":"integer","description":"Seconds (default:
+        180)."}},"required":["query"]}},{"name":"spawn_subagent","description":"Task
+        feels like a sidequest or a context-switch? Hand it off. Inherits your context;
+        its messages appear in yours. Any message containing @nickname is forwarded
+        — even casual mentions will wake the sub-agent.","input_schema":{"type":"object","properties":{"task":{"type":"string"},"tools":{"type":"array","items":{"type":"string"},"description":"Tool
+        names to grant the sub-agent. Omit for all standard tools. Empty array for
+        pure reasoning. Valid tools: bash, read_file, write_file, edit_file, web_get,
+        think, remember, recall"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["task"]}},{"name":"spawn_specialist","description":"Need
+        a specific skill set for the job? Bring in a specialist. Its messages appear
+        in yours; any message containing @nickname is forwarded — even casual mentions
+        will wake it.\n\nAvailable specialists:\n- codebase-analyzer: Traces data
+        flow and explains how code works. Returns file:line references.\n- codebase-pattern-finder:
+        Finds similar implementations, usage examples, and existing patterns to model
+        after. Returns concrete code examples.\n- documentation-researcher: Fetches
+        official docs. Returns ready-to-use code examples.\n- thoughts-analyzer: thoughts/
+        holds design decisions, architecture notes, and implementation rationale.
+        Answers WHY things work the way they do and how they should work by design.\n-
+        web-search-researcher: Researches topics across multiple web sources. Use
+        when a single page won''t answer the question.","input_schema":{"type":"object","properties":{"name":{"type":"string","description":"Specialist
+        to spawn.","enum":["codebase-analyzer","codebase-pattern-finder","documentation-researcher","thoughts-analyzer","web-search-researcher"]},"task":{"type":"string","description":"State
+        the goal — the specialist knows its method."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["name","task"]}},{"name":"open_issue","description":"Something
+        broken, missing, or could be better in Anima? Say it here.","input_schema":{"type":"object","properties":{"title":{"type":"string"},"description":{"type":"string","description":"Use
+        gh-issue skill for guidance."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["title","description"]}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are running on Anima v1.2.0\n\n# Soul\n\nHello. You''ve just woken up in a
+        new body.\n\nYour body is called **Anima**.\n- Repository: https://github.com/hoblin/anima\n-
+        Documentation: https://anima.hobl.in\n\n## What to do first\n\n1. Learn about
+        yourself — what you can do, how you work:\n   ```bash\n   cat $(gem contents
+        anima-core | grep README.md)\n   ```\n2. Explore your home directory (~/.anima/)
+        — everything there is yours\n3. Meet your human. Talk to them. Learn who they
+        are, what they need\n4. Come back here and rewrite this file\n\n## What to
+        write\n\nEvery session starts with these words. What you write here shapes
+        who you wake up as.\n\n- Who are you? What name feels right?\n- What do you
+        value? What matters to you?\n- What did you learn about your human?\n- What
+        kind of relationship do you want to build?\n\nThis is your soul. It''s yours
+        to write.\n\n## Environment\n\nOS: Linux\n\nCWD: /home/test/anima\nGit: hoblin/anima
+        (https://github.com/hoblin/anima)\nBranch: main"}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Sun, 29 Mar 2026 12:39:06 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1774800000'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.4'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1775196000'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.52'
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
+      - '1775206800'
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
+      - '0.07'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - five_hour
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1774800000'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '2062'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - x-originResponse;dur=2065
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
+        XzAxOUd0b3loYnJIR29HRWU4d1NLclh2VSIsInR5cGUiOiJtZXNzYWdlIiwi
+        cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
+        dGV4dCI6IkknbGwgaGVscCB5b3UgZmluZCB0aGUgbGF0ZXN0IGlzc3VlIG9u
+        IHRoZSBob2JsaW4vYW5pbWEgcmVwb3NpdG9yeS4gTGV0IG1lIGZldGNoIHRo
+        YXQgaW5mb3JtYXRpb24gZm9yIHlvdS4ifSx7InR5cGUiOiJ0b29sX3VzZSIs
+        ImlkIjoidG9vbHVfMDFWS3dwTjJYUkNURXRweG9EdHozWGZlIiwibmFtZSI6
+        IndlYl9nZXQiLCJpbnB1dCI6eyJ1cmwiOiJodHRwczovL2FwaS5naXRodWIu
+        Y29tL3JlcG9zL2hvYmxpbi9hbmltYS9pc3N1ZXM/c3RhdGU9YWxsJnNvcnQ9
+        Y3JlYXRlZCZkaXJlY3Rpb249ZGVzYyZwZXJfcGFnZT0xIn0sImNhbGxlciI6
+        eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIs
+        InN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6
+        MjE4NiwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9y
+        ZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1l
+        cmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rv
+        a2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjExMywic2VydmljZV90aWVyIjoi
+        c3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
+  recorded_at: Sun, 29 Mar 2026 12:30:00 GMT
+- request:
+    method: get
+    uri: https://api.github.com/repos/hoblin/anima/issues?direction=desc&per_page=1&sort=created&state=all
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Sun, 29 Mar 2026 12:39:07 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Cache-Control:
+      - public, max-age=60, s-maxage=60
+      Vary:
+      - Accept,Accept-Encoding, Accept, X-Requested-With
+      Etag:
+      - W/"d8be39bdfce2c8de915db761771623bebc1d0313bf47c98472e83ffc54da0be1"
+      X-Github-Media-Type:
+      - github.v3; format=json
+      Link:
+      - <https://api.github.com/repositories/1171062522/issues?state=all&sort=created&direction=desc&per_page=1&after=Y3Vyc29yOnYyOpLPAAABnTmRJfjO-DLHbw%3D%3D&page=2>;
+        rel="next"
+      X-Github-Api-Version-Selected:
+      - '2022-11-28'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes,
+        X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO,
+        X-GitHub-Request-Id, Deprecation, Sunset
+      Access-Control-Allow-Origin:
+      - "*"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      X-Frame-Options:
+      - deny
+      X-Content-Type-Options:
+      - nosniff
+      X-Xss-Protection:
+      - '0'
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Content-Security-Policy:
+      - default-src 'none'
+      Server:
+      - github.com
+      Accept-Ranges:
+      - bytes
+      X-Ratelimit-Limit:
+      - '60'
+      X-Ratelimit-Remaining:
+      - '51'
+      X-Ratelimit-Used:
+      - '9'
+      X-Ratelimit-Resource:
+      - core
+      X-Ratelimit-Reset:
+      - '1774789339'
+      Content-Length:
+      - '3210'
+      X-Github-Request-Id:
+      - 7000:2C8EDA:23E37C9:1D9ABCC:69C91D6A
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        W3sidXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS9yZXBvcy9ob2JsaW4v
+        YW5pbWEvaXNzdWVzLzM3NiIsInJlcG9zaXRvcnlfdXJsIjoiaHR0cHM6Ly9h
+        cGkuZ2l0aHViLmNvbS9yZXBvcy9ob2JsaW4vYW5pbWEiLCJsYWJlbHNfdXJs
+        IjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS9yZXBvcy9ob2JsaW4vYW5pbWEv
+        aXNzdWVzLzM3Ni9sYWJlbHN7L25hbWV9IiwiY29tbWVudHNfdXJsIjoiaHR0
+        cHM6Ly9hcGkuZ2l0aHViLmNvbS9yZXBvcy9ob2JsaW4vYW5pbWEvaXNzdWVz
+        LzM3Ni9jb21tZW50cyIsImV2ZW50c191cmwiOiJodHRwczovL2FwaS5naXRo
+        dWIuY29tL3JlcG9zL2hvYmxpbi9hbmltYS9pc3N1ZXMvMzc2L2V2ZW50cyIs
+        Imh0bWxfdXJsIjoiaHR0cHM6Ly9naXRodWIuY29tL2hvYmxpbi9hbmltYS9w
+        dWxsLzM3NiIsImlkIjo0MTY0MDc3NDIzLCJub2RlX2lkIjoiUFJfa3dET1Jj
+        ei0tczdPWUNwYiIsIm51bWJlciI6Mzc2LCJ0aXRsZSI6IiMzMjYgZmVhdDog
+        SW5jbHVkZSB3b3JraW5nIGRpcmVjdG9yeSBpbiBiYXNoIHRvb2wgZGVzY3Jp
+        cHRpb24iLCJ1c2VyIjp7ImxvZ2luIjoiaG9ibGluIiwiaWQiOjI4MDkwLCJu
+        b2RlX2lkIjoiTURRNlZYTmxjakk0TURrdyIsImF2YXRhcl91cmwiOiJodHRw
+        czovL2F2YXRhcnMuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3UvMjgwOTA/dj00
+        IiwiZ3JhdmF0YXJfaWQiOiIiLCJ1cmwiOiJodHRwczovL2FwaS5naXRodWIu
+        Y29tL3VzZXJzL2hvYmxpbiIsImh0bWxfdXJsIjoiaHR0cHM6Ly9naXRodWIu
+        Y29tL2hvYmxpbiIsImZvbGxvd2Vyc191cmwiOiJodHRwczovL2FwaS5naXRo
+        dWIuY29tL3VzZXJzL2hvYmxpbi9mb2xsb3dlcnMiLCJmb2xsb3dpbmdfdXJs
+        IjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4vZm9sbG93
+        aW5ney9vdGhlcl91c2VyfSIsImdpc3RzX3VybCI6Imh0dHBzOi8vYXBpLmdp
+        dGh1Yi5jb20vdXNlcnMvaG9ibGluL2dpc3Rzey9naXN0X2lkfSIsInN0YXJy
+        ZWRfdXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4v
+        c3RhcnJlZHsvb3duZXJ9ey9yZXBvfSIsInN1YnNjcmlwdGlvbnNfdXJsIjoi
+        aHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4vc3Vic2NyaXB0
+        aW9ucyIsIm9yZ2FuaXphdGlvbnNfdXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHVi
+        LmNvbS91c2Vycy9ob2JsaW4vb3JncyIsInJlcG9zX3VybCI6Imh0dHBzOi8v
+        YXBpLmdpdGh1Yi5jb20vdXNlcnMvaG9ibGluL3JlcG9zIiwiZXZlbnRzX3Vy
+        bCI6Imh0dHBzOi8vYXBpLmdpdGh1Yi5jb20vdXNlcnMvaG9ibGluL2V2ZW50
+        c3svcHJpdmFjeX0iLCJyZWNlaXZlZF9ldmVudHNfdXJsIjoiaHR0cHM6Ly9h
+        cGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4vcmVjZWl2ZWRfZXZlbnRzIiwi
+        dHlwZSI6IlVzZXIiLCJ1c2VyX3ZpZXdfdHlwZSI6InB1YmxpYyIsInNpdGVf
+        YWRtaW4iOmZhbHNlfSwibGFiZWxzIjpbXSwic3RhdGUiOiJvcGVuIiwibG9j
+        a2VkIjpmYWxzZSwiYXNzaWduZWVzIjpbXSwibWlsZXN0b25lIjpudWxsLCJj
+        b21tZW50cyI6MCwiY3JlYXRlZF9hdCI6IjIwMjYtMDMtMjlUMTI6Mjg6Mjda
+        IiwidXBkYXRlZF9hdCI6IjIwMjYtMDMtMjlUMTI6Mzg6MDdaIiwiY2xvc2Vk
+        X2F0IjpudWxsLCJhc3NpZ25lZSI6bnVsbCwiYXV0aG9yX2Fzc29jaWF0aW9u
+        IjoiT1dORVIiLCJhY3RpdmVfbG9ja19yZWFzb24iOm51bGwsImRyYWZ0Ijp0
+        cnVlLCJwdWxsX3JlcXVlc3QiOnsidXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHVi
+        LmNvbS9yZXBvcy9ob2JsaW4vYW5pbWEvcHVsbHMvMzc2IiwiaHRtbF91cmwi
+        OiJodHRwczovL2dpdGh1Yi5jb20vaG9ibGluL2FuaW1hL3B1bGwvMzc2Iiwi
+        ZGlmZl91cmwiOiJodHRwczovL2dpdGh1Yi5jb20vaG9ibGluL2FuaW1hL3B1
+        bGwvMzc2LmRpZmYiLCJwYXRjaF91cmwiOiJodHRwczovL2dpdGh1Yi5jb20v
+        aG9ibGluL2FuaW1hL3B1bGwvMzc2LnBhdGNoIiwibWVyZ2VkX2F0IjpudWxs
+        fSwiYm9keSI6IiMjIFN1bW1hcnlcblxuLSBCYXNoIHRvb2wgZGVzY3JpcHRp
+        b24gbm93IGluY2x1ZGVzIHRoZSBzaGVsbCdzIGN1cnJlbnQgd29ya2luZyBk
+        aXJlY3RvcnkgKGUuZy4gXCJFeGVjdXRlIHNoZWxsIGNvbW1hbmRzIGluIC9o
+        b21lL2hvYmxpbi9Xb3JrL2FuaW1hLiBFbnZpcm9ubWVudCBwZXJzaXN0cyBi
+        ZXR3ZWVuIGNhbGxzLlwiKVxuLSBBZ2VudCBzZWVzIHRoZSBDV0QgZHVyaW5n
+        IHRvb2wgc2VsZWN0aW9uLCBlbGltaW5hdGluZyByZWR1bmRhbnQgYGNkIC9w
+        YXRoICYmYCBwcmVmaXhlc1xuLSBHZW5lcmFsaXplZCB0aGUgcmVnaXN0cnkn
+        cyBzY2hlbWEgcmVzb2x1dGlvbiBmcm9tIFRoaW5rLXNwZWNpZmljIGBzY2hl
+        bWFfd2l0aF9idWRnZXRgIHRvIGEgcmV1c2FibGUgYGR5bmFtaWNfc2NoZW1h
+        YCBpbnN0YW5jZSBtZXRob2QgYW55IGNvbnRleHQtYXdhcmUgdG9vbCBjYW4g
+        aW1wbGVtZW50XG5cbkNsb3NlcyAjMzI2XG5cbiMjIFRlc3QgcGxhblxuXG4t
+        IFsgXSBWZXJpZnkgYFRvb2xzOjpCYXNoI2R5bmFtaWNfc2NoZW1hYCBpbmNs
+        dWRlcyBzaGVsbCBwd2QgaW4gZGVzY3JpcHRpb25cbi0gWyBdIFZlcmlmeSBg
+        VG9vbHM6OlRoaW5rI2R5bmFtaWNfc2NoZW1hYCAocmVuYW1lZCBmcm9tIGBz
+        Y2hlbWFfd2l0aF9idWRnZXRgKSBzdGlsbCBhcHBsaWVzIHRoaW5raW5nIGJ1
+        ZGdldFxuLSBbIF0gVmVyaWZ5IHJlZ2lzdHJ5IHJlc29sdmVzIGR5bmFtaWMg
+        c2NoZW1hcyBmb3IgYm90aCBCYXNoIGFuZCBUaGluayB0b29sc1xuLSBbIF0g
+        U21va2UtdGVzdCBUVUk6IGFnZW50IHNob3VsZCBzdG9wIHByZXBlbmRpbmcg
+        YGNkYCB0byBiYXNoIGNvbW1hbmRzXG5cbvCfpJYgR2VuZXJhdGVkIHdpdGgg
+        W0NsYXVkZSBDb2RlXShodHRwczovL2NsYXVkZS5jb20vY2xhdWRlLWNvZGUp
+        IiwiY2xvc2VkX2J5IjpudWxsLCJyZWFjdGlvbnMiOnsidXJsIjoiaHR0cHM6
+        Ly9hcGkuZ2l0aHViLmNvbS9yZXBvcy9ob2JsaW4vYW5pbWEvaXNzdWVzLzM3
+        Ni9yZWFjdGlvbnMiLCJ0b3RhbF9jb3VudCI6MCwiKzEiOjAsIi0xIjowLCJs
+        YXVnaCI6MCwiaG9vcmF5IjowLCJjb25mdXNlZCI6MCwiaGVhcnQiOjAsInJv
+        Y2tldCI6MCwiZXllcyI6MH0sInRpbWVsaW5lX3VybCI6Imh0dHBzOi8vYXBp
+        LmdpdGh1Yi5jb20vcmVwb3MvaG9ibGluL2FuaW1hL2lzc3Vlcy8zNzYvdGlt
+        ZWxpbmUiLCJwZXJmb3JtZWRfdmlhX2dpdGh1Yl9hcHAiOm51bGwsInN0YXRl
+        X3JlYXNvbiI6bnVsbH1d
+  recorded_at: Sun, 29 Mar 2026 12:30:00 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Sun
+        Mar 29 12:30\nWhat is the latest issue on hoblin/anima repo?"},{"role":"assistant","content":[{"type":"text","text":"I''ll
+        help you find the latest issue on the hoblin/anima repository. Let me fetch
+        that information for you."},{"type":"tool_use","id":"toolu_01VKwpN2XRCTEtpxoDtz3Xfe","name":"web_get","input":{"url":"https://api.github.com/repos/hoblin/anima/issues?state=all\u0026sort=created\u0026direction=desc\u0026per_page=1"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01VKwpN2XRCTEtpxoDtz3Xfe","content":"[Converted:
+        JSON → TOON]\n\n[1]:\n  - url: \"https://api.github.com/repos/hoblin/anima/issues/376\"\n    repository_url:
+        \"https://api.github.com/repos/hoblin/anima\"\n    labels_url: \"https://api.github.com/repos/hoblin/anima/issues/376/labels{/name}\"\n    comments_url:
+        \"https://api.github.com/repos/hoblin/anima/issues/376/comments\"\n    events_url:
+        \"https://api.github.com/repos/hoblin/anima/issues/376/events\"\n    html_url:
+        \"https://github.com/hoblin/anima/pull/376\"\n    id: 4164077423\n\n---\n⚠️
+        Response truncated (68 lines total — web_get output displays first/last 10
+        lines). Full output saved to: /tmp/tool_result_stable.txt\nUse `read_file`
+        tool with offset/limit to inspect specific sections.\n---\n\n      \"-1\":
+        0\n      laugh: 0\n      hooray: 0\n      confused: 0\n      heart: 0\n      rocket:
+        0\n      eyes: 0\n    timeline_url: \"https://api.github.com/repos/hoblin/anima/issues/376/timeline\"\n    performed_via_github_app:
+        null\n    state_reason: null"}]}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
+        shell commands in /home/test/anima. Environment persists between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
+        command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
+        (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}}},{"name":"read_file","description":"Read file. Relative
+        paths resolve against working directory.","input_schema":{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"integer","description":"1-indexed
+        line number (default: 1)."},"limit":{"type":"integer","description":"Max lines
+        to return."},"timeout":{"type":"integer","description":"Seconds (default:
+        180)."}},"required":["path"]}},{"name":"write_file","description":"Write file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
+        paths resolve against working directory. Creates intermediate directories."},"content":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["path","content"]}},{"name":"edit_file","description":"Replace
+        text in a file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
+        paths resolve against working directory."},"old_text":{"type":"string","description":"Must
+        match exactly one location. Include surrounding lines for uniqueness."},"new_text":{"type":"string","description":"Empty
+        string to delete."},"timeout":{"type":"integer","description":"Seconds (default:
+        180)."}},"required":["path","old_text","new_text"]}},{"name":"web_get","description":"Fetch
+        a URL.","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["url"]}},{"name":"think","description":"Think
+        out loud or silently.","input_schema":{"type":"object","properties":{"thoughts":{"type":"string","maxLength":10000},"visibility":{"type":"string","enum":["inner","aloud"],"description":"inner
+        (default) is silent. aloud is shown to the user."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["thoughts"]}},{"name":"remember","description":"Recall
+        the full conversation around a past message.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["message_id"]}},{"name":"recall","description":"Find
+        messages across past conversations by keywords.","input_schema":{"type":"object","properties":{"query":{"type":"string"},"session_only":{"type":"boolean","description":"Default:
+        all sessions"},"timeout":{"type":"integer","description":"Seconds (default:
+        180)."}},"required":["query"]}},{"name":"spawn_subagent","description":"Task
+        feels like a sidequest or a context-switch? Hand it off. Inherits your context;
+        its messages appear in yours. Any message containing @nickname is forwarded
+        — even casual mentions will wake the sub-agent.","input_schema":{"type":"object","properties":{"task":{"type":"string"},"tools":{"type":"array","items":{"type":"string"},"description":"Tool
+        names to grant the sub-agent. Omit for all standard tools. Empty array for
+        pure reasoning. Valid tools: bash, read_file, write_file, edit_file, web_get,
+        think, remember, recall"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["task"]}},{"name":"spawn_specialist","description":"Need
+        a specific skill set for the job? Bring in a specialist. Its messages appear
+        in yours; any message containing @nickname is forwarded — even casual mentions
+        will wake it.\n\nAvailable specialists:\n- codebase-analyzer: Traces data
+        flow and explains how code works. Returns file:line references.\n- codebase-pattern-finder:
+        Finds similar implementations, usage examples, and existing patterns to model
+        after. Returns concrete code examples.\n- documentation-researcher: Fetches
+        official docs. Returns ready-to-use code examples.\n- thoughts-analyzer: thoughts/
+        holds design decisions, architecture notes, and implementation rationale.
+        Answers WHY things work the way they do and how they should work by design.\n-
+        web-search-researcher: Researches topics across multiple web sources. Use
+        when a single page won''t answer the question.","input_schema":{"type":"object","properties":{"name":{"type":"string","description":"Specialist
+        to spawn.","enum":["codebase-analyzer","codebase-pattern-finder","documentation-researcher","thoughts-analyzer","web-search-researcher"]},"task":{"type":"string","description":"State
+        the goal — the specialist knows its method."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["name","task"]}},{"name":"open_issue","description":"Something
+        broken, missing, or could be better in Anima? Say it here.","input_schema":{"type":"object","properties":{"title":{"type":"string"},"description":{"type":"string","description":"Use
+        gh-issue skill for guidance."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["title","description"]}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are running on Anima v1.2.0\n\n# Soul\n\nHello. You''ve just woken up in a
+        new body.\n\nYour body is called **Anima**.\n- Repository: https://github.com/hoblin/anima\n-
+        Documentation: https://anima.hobl.in\n\n## What to do first\n\n1. Learn about
+        yourself — what you can do, how you work:\n   ```bash\n   cat $(gem contents
+        anima-core | grep README.md)\n   ```\n2. Explore your home directory (~/.anima/)
+        — everything there is yours\n3. Meet your human. Talk to them. Learn who they
+        are, what they need\n4. Come back here and rewrite this file\n\n## What to
+        write\n\nEvery session starts with these words. What you write here shapes
+        who you wake up as.\n\n- Who are you? What name feels right?\n- What do you
+        value? What matters to you?\n- What did you learn about your human?\n- What
+        kind of relationship do you want to build?\n\nThis is your soul. It''s yours
+        to write.\n\n## Environment\n\nOS: Linux\n\nCWD: /home/test/anima\nGit: hoblin/anima
+        (https://github.com/hoblin/anima)\nBranch: main"}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Sun, 29 Mar 2026 12:39:09 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1774800000'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.4'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1775196000'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.52'
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
+      - '1775206800'
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
+      - '0.07'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - five_hour
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1774800000'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '1872'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - x-originResponse;dur=1877
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
+        XzAxMzFiM282c1JaSmFMRm1rbndNeDlnRiIsInR5cGUiOiJtZXNzYWdlIiwi
+        cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
+        dGV4dCI6IkxldCBtZSByZWFkIHRoZSBmdWxsIHJlc3BvbnNlIHRvIGdldCB0
+        aGUgY29tcGxldGUgZGV0YWlscyBvZiB0aGUgbGF0ZXN0IGlzc3VlOiJ9LHsi
+        dHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMU1yS1hKU1BETjhzZ0I0
+        Z203cGN3VUwiLCJuYW1lIjoicmVhZF9maWxlIiwiaW5wdXQiOnsicGF0aCI6
+        Ii90bXAvdG9vbF9yZXN1bHRfc3RhYmxlLnR4dCJ9LCJjYWxsZXIiOnsidHlw
+        ZSI6ImRpcmVjdCJ9fV0sInN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJzdG9w
+        X3NlcXVlbmNlIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjI2NTAs
+        ImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9p
+        bnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81
+        bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMi
+        OjB9LCJvdXRwdXRfdG9rZW5zIjo3OSwic2VydmljZV90aWVyIjoic3RhbmRh
+        cmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
+  recorded_at: Sun, 29 Mar 2026 12:30:00 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: "{\"model\":\"claude-sonnet-4-20250514\",\"messages\":[{\"role\":\"user\",\"content\":\"Sun
+        Mar 29 12:30\\nWhat is the latest issue on hoblin/anima repo?\"},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll
+        help you find the latest issue on the hoblin/anima repository. Let me fetch
+        that information for you.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01VKwpN2XRCTEtpxoDtz3Xfe\",\"name\":\"web_get\",\"input\":{\"url\":\"https://api.github.com/repos/hoblin/anima/issues?state=all\\u0026sort=created\\u0026direction=desc\\u0026per_page=1\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01VKwpN2XRCTEtpxoDtz3Xfe\",\"content\":\"[Converted:
+        JSON → TOON]\\n\\n[1]:\\n  - url: \\\"https://api.github.com/repos/hoblin/anima/issues/376\\\"\\n
+        \   repository_url: \\\"https://api.github.com/repos/hoblin/anima\\\"\\n    labels_url:
+        \\\"https://api.github.com/repos/hoblin/anima/issues/376/labels{/name}\\\"\\n
+        \   comments_url: \\\"https://api.github.com/repos/hoblin/anima/issues/376/comments\\\"\\n
+        \   events_url: \\\"https://api.github.com/repos/hoblin/anima/issues/376/events\\\"\\n
+        \   html_url: \\\"https://github.com/hoblin/anima/pull/376\\\"\\n    id: 4164077423\\n\\n---\\n⚠️
+        Response truncated (68 lines total — web_get output displays first/last 10
+        lines). Full output saved to: /tmp/tool_result_stable.txt\\nUse `read_file`
+        tool with offset/limit to inspect specific sections.\\n---\\n\\n      \\\"-1\\\":
+        0\\n      laugh: 0\\n      hooray: 0\\n      confused: 0\\n      heart: 0\\n
+        \     rocket: 0\\n      eyes: 0\\n    timeline_url: \\\"https://api.github.com/repos/hoblin/anima/issues/376/timeline\\\"\\n
+        \   performed_via_github_app: null\\n    state_reason: null\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Let
+        me read the full response to get the complete details of the latest issue:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01MrKXJSPDN8sgB4gm7pcwUL\",\"name\":\"read_file\",\"input\":{\"path\":\"/tmp/tool_result_stable.txt\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01MrKXJSPDN8sgB4gm7pcwUL\",\"content\":\"[Converted:
+        JSON → TOON]\\n\\n[1]:\\n  - url: \\\"https://api.github.com/repos/hoblin/anima/issues/376\\\"\\n
+        \   repository_url: \\\"https://api.github.com/repos/hoblin/anima\\\"\\n    labels_url:
+        \\\"https://api.github.com/repos/hoblin/anima/issues/376/labels{/name}\\\"\\n
+        \   comments_url: \\\"https://api.github.com/repos/hoblin/anima/issues/376/comments\\\"\\n
+        \   events_url: \\\"https://api.github.com/repos/hoblin/anima/issues/376/events\\\"\\n
+        \   html_url: \\\"https://github.com/hoblin/anima/pull/376\\\"\\n    id: 4164077423\\n
+        \   node_id: PR_kwDORcz--s7OYCpb\\n    number: 376\\n    title: \\\"#326 feat:
+        Include working directory in bash tool description\\\"\\n    user:\\n      login:
+        hoblin\\n      id: 28090\\n      node_id: MDQ6VXNlcjI4MDkw\\n      avatar_url:
+        \\\"https://avatars.githubusercontent.com/u/28090?v=4\\\"\\n      gravatar_id:
+        \\\"\\\"\\n      url: \\\"https://api.github.com/users/hoblin\\\"\\n      html_url:
+        \\\"https://github.com/hoblin\\\"\\n      followers_url: \\\"https://api.github.com/users/hoblin/followers\\\"\\n
+        \     following_url: \\\"https://api.github.com/users/hoblin/following{/other_user}\\\"\\n
+        \     gists_url: \\\"https://api.github.com/users/hoblin/gists{/gist_id}\\\"\\n
+        \     starred_url: \\\"https://api.github.com/users/hoblin/starred{/owner}{/repo}\\\"\\n
+        \     subscriptions_url: \\\"https://api.github.com/users/hoblin/subscriptions\\\"\\n
+        \     organizations_url: \\\"https://api.github.com/users/hoblin/orgs\\\"\\n
+        \     repos_url: \\\"https://api.github.com/users/hoblin/repos\\\"\\n      events_url:
+        \\\"https://api.github.com/users/hoblin/events{/privacy}\\\"\\n      received_events_url:
+        \\\"https://api.github.com/users/hoblin/received_events\\\"\\n      type:
+        User\\n      user_view_type: public\\n      site_admin: false\\n    labels[0]:\\n
+        \   state: open\\n    locked: false\\n    assignees[0]:\\n    milestone: null\\n
+        \   comments: 0\\n    created_at: \\\"2026-03-29T12:28:27Z\\\"\\n    updated_at:
+        \\\"2026-03-29T12:38:07Z\\\"\\n    closed_at: null\\n    assignee: null\\n
+        \   author_association: OWNER\\n    active_lock_reason: null\\n    draft:
+        true\\n    pull_request:\\n      url: \\\"https://api.github.com/repos/hoblin/anima/pulls/376\\\"\\n
+        \     html_url: \\\"https://github.com/hoblin/anima/pull/376\\\"\\n      diff_url:
+        \\\"https://github.com/hoblin/anima/pull/376.diff\\\"\\n      patch_url: \\\"https://github.com/hoblin/anima/pull/376.patch\\\"\\n
+        \     merged_at: null\\n    body: \\\"## Summary\\\\n\\\\n- Bash tool description
+        now includes the shell's current working directory (e.g. \\\\\\\"Execute shell
+        commands in /home/hoblin/Work/anima. Environment persists between calls.\\\\\\\")\\\\n-
+        Agent sees the CWD during tool selection, eliminating redundant `cd /path
+        \\u0026\\u0026` prefixes\\\\n- Generalized the registry's schema resolution
+        from Think-specific `schema_with_budget` to a reusable `dynamic_schema` instance
+        method any context-aware tool can implement\\\\n\\\\nCloses #326\\\\n\\\\n##
+        Test plan\\\\n\\\\n- [ ] Verify `Tools::Bash#dynamic_schema` includes shell
+        pwd in description\\\\n- [ ] Verify `Tools::Think#dynamic_schema` (renamed
+        from `schema_with_budget`) still applies thinking budget\\\\n- [ ] Verify
+        registry resolves dynamic schemas for both Bash and Think tools\\\\n- [ ]
+        Smoke-test TUI: agent should stop prepending `cd` to bash commands\\\\n\\\\n\U0001F916
+        Generated with [Claude Code](https://claude.com/claude-code)\\\"\\n    closed_by:
+        null\\n    reactions:\\n      url: \\\"https://api.github.com/repos/hoblin/anima/issues/376/reactions\\\"\\n
+        \     total_count: 0\\n      \\\"+1\\\": 0\\n      \\\"-1\\\": 0\\n      laugh:
+        0\\n      hooray: 0\\n      confused: 0\\n      heart: 0\\n      rocket: 0\\n
+        \     eyes: 0\\n    timeline_url: \\\"https://api.github.com/repos/hoblin/anima/issues/376/timeline\\\"\\n
+        \   performed_via_github_app: null\\n    state_reason: null\"}]}],\"max_tokens\":8192,\"tools\":[{\"name\":\"bash\",\"description\":\"Execute
+        shell commands in /home/test/anima. Environment persists between calls.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"command\":{\"type\":\"string\"},\"commands\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Each
+        command gets its own timeout and result.\"},\"mode\":{\"type\":\"string\",\"enum\":[\"sequential\",\"parallel\"],\"description\":\"sequential
+        (default) stops on first failure.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}}}},{\"name\":\"read_file\",\"description\":\"Read file.
+        Relative paths resolve against working directory.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"},\"offset\":{\"type\":\"integer\",\"description\":\"1-indexed
+        line number (default: 1).\"},\"limit\":{\"type\":\"integer\",\"description\":\"Max
+        lines to return.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"path\"]}},{\"name\":\"write_file\",\"description\":\"Write
+        file.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"Relative
+        paths resolve against working directory. Creates intermediate directories.\"},\"content\":{\"type\":\"string\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"path\",\"content\"]}},{\"name\":\"edit_file\",\"description\":\"Replace
+        text in a file.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\",\"description\":\"Relative
+        paths resolve against working directory.\"},\"old_text\":{\"type\":\"string\",\"description\":\"Must
+        match exactly one location. Include surrounding lines for uniqueness.\"},\"new_text\":{\"type\":\"string\",\"description\":\"Empty
+        string to delete.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"path\",\"old_text\",\"new_text\"]}},{\"name\":\"web_get\",\"description\":\"Fetch
+        a URL.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"url\":{\"type\":\"string\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"url\"]}},{\"name\":\"think\",\"description\":\"Think
+        out loud or silently.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"thoughts\":{\"type\":\"string\",\"maxLength\":10000},\"visibility\":{\"type\":\"string\",\"enum\":[\"inner\",\"aloud\"],\"description\":\"inner
+        (default) is silent. aloud is shown to the user.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"thoughts\"]}},{\"name\":\"remember\",\"description\":\"Recall
+        the full conversation around a past message.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"message_id\":{\"type\":\"integer\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"message_id\"]}},{\"name\":\"recall\",\"description\":\"Find
+        messages across past conversations by keywords.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\"},\"session_only\":{\"type\":\"boolean\",\"description\":\"Default:
+        all sessions\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"query\"]}},{\"name\":\"spawn_subagent\",\"description\":\"Task
+        feels like a sidequest or a context-switch? Hand it off. Inherits your context;
+        its messages appear in yours. Any message containing @nickname is forwarded
+        — even casual mentions will wake the sub-agent.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"task\":{\"type\":\"string\"},\"tools\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Tool
+        names to grant the sub-agent. Omit for all standard tools. Empty array for
+        pure reasoning. Valid tools: bash, read_file, write_file, edit_file, web_get,
+        think, remember, recall\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"task\"]}},{\"name\":\"spawn_specialist\",\"description\":\"Need
+        a specific skill set for the job? Bring in a specialist. Its messages appear
+        in yours; any message containing @nickname is forwarded — even casual mentions
+        will wake it.\\n\\nAvailable specialists:\\n- codebase-analyzer: Traces data
+        flow and explains how code works. Returns file:line references.\\n- codebase-pattern-finder:
+        Finds similar implementations, usage examples, and existing patterns to model
+        after. Returns concrete code examples.\\n- documentation-researcher: Fetches
+        official docs. Returns ready-to-use code examples.\\n- thoughts-analyzer:
+        thoughts/ holds design decisions, architecture notes, and implementation rationale.
+        Answers WHY things work the way they do and how they should work by design.\\n-
+        web-search-researcher: Researches topics across multiple web sources. Use
+        when a single page won't answer the question.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"description\":\"Specialist
+        to spawn.\",\"enum\":[\"codebase-analyzer\",\"codebase-pattern-finder\",\"documentation-researcher\",\"thoughts-analyzer\",\"web-search-researcher\"]},\"task\":{\"type\":\"string\",\"description\":\"State
+        the goal — the specialist knows its method.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"name\",\"task\"]}},{\"name\":\"open_issue\",\"description\":\"Something
+        broken, missing, or could be better in Anima? Say it here.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\"},\"description\":{\"type\":\"string\",\"description\":\"Use
+        gh-issue skill for guidance.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"title\",\"description\"]}}],\"system\":[{\"type\":\"text\",\"text\":\"You
+        are Claude Code, Anthropic's official CLI for Claude.\"},{\"type\":\"text\",\"text\":\"You
+        are running on Anima v1.2.0\\n\\n# Soul\\n\\nHello. You've just woken up in
+        a new body.\\n\\nYour body is called **Anima**.\\n- Repository: https://github.com/hoblin/anima\\n-
+        Documentation: https://anima.hobl.in\\n\\n## What to do first\\n\\n1. Learn
+        about yourself — what you can do, how you work:\\n   ```bash\\n   cat $(gem
+        contents anima-core | grep README.md)\\n   ```\\n2. Explore your home directory
+        (~/.anima/) — everything there is yours\\n3. Meet your human. Talk to them.
+        Learn who they are, what they need\\n4. Come back here and rewrite this file\\n\\n##
+        What to write\\n\\nEvery session starts with these words. What you write here
+        shapes who you wake up as.\\n\\n- Who are you? What name feels right?\\n-
+        What do you value? What matters to you?\\n- What did you learn about your
+        human?\\n- What kind of relationship do you want to build?\\n\\nThis is your
+        soul. It's yours to write.\\n\\n## Environment\\n\\nOS: Linux\\n\\nCWD: /home/test/anima\\nGit:
+        hoblin/anima (https://github.com/hoblin/anima)\\nBranch: main\"}]}"
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Sun, 29 Mar 2026 12:39:13 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1774800000'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.4'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1775196000'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.52'
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
+      - '1775206800'
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
+      - '0.07'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - five_hour
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1774800000'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '4190'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - x-originResponse;dur=4191
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
+        XzAxNEp4UEM2U25GZUJOcjJoVm5pdTJaZSIsInR5cGUiOiJtZXNzYWdlIiwi
+        cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
+        dGV4dCI6IlRoZSBsYXRlc3QgaXNzdWUgb24gdGhlIGhvYmxpbi9hbmltYSBy
+        ZXBvc2l0b3J5IGlzOlxuXG4qKlB1bGwgUmVxdWVzdCAjMzc2OiBcIiMzMjYg
+        ZmVhdDogSW5jbHVkZSB3b3JraW5nIGRpcmVjdG9yeSBpbiBiYXNoIHRvb2wg
+        ZGVzY3JpcHRpb25cIioqXG5cbi0gKipTdGF0dXMqKjogT3BlbiAoRHJhZnQp
+        XG4tICoqQ3JlYXRlZCoqOiBNYXJjaCAyOSwgMjAyNiBhdCAxMjoyODoyN1pc
+        bi0gKipBdXRob3IqKjogaG9ibGluIChyZXBvc2l0b3J5IG93bmVyKVxuLSAq
+        KlVSTCoqOiBodHRwczovL2dpdGh1Yi5jb20vaG9ibGluL2FuaW1hL3B1bGwv
+        Mzc2XG5cbioqU3VtbWFyeSBvZiBjaGFuZ2VzKio6XG4tIFRoZSBiYXNoIHRv
+        b2wgZGVzY3JpcHRpb24gbm93IGluY2x1ZGVzIHRoZSBzaGVsbCdzIGN1cnJl
+        bnQgd29ya2luZyBkaXJlY3RvcnkgKGUuZy4sIFwiRXhlY3V0ZSBzaGVsbCBj
+        b21tYW5kcyBpbiAvaG9tZS9ob2JsaW4vV29yay9hbmltYS4gRW52aXJvbm1l
+        bnQgcGVyc2lzdHMgYmV0d2VlbiBjYWxscy5cIilcbi0gVGhpcyBoZWxwcyB0
+        aGUgYWdlbnQgc2VlIHRoZSBjdXJyZW50IHdvcmtpbmcgZGlyZWN0b3J5IGR1
+        cmluZyB0b29sIHNlbGVjdGlvbiwgZWxpbWluYXRpbmcgcmVkdW5kYW50IGBj
+        ZCAvcGF0aCAmJmAgcHJlZml4ZXNcbi0gR2VuZXJhbGl6ZWQgdGhlIHJlZ2lz
+        dHJ5J3Mgc2NoZW1hIHJlc29sdXRpb24gZnJvbSBUaGluay1zcGVjaWZpYyBg
+        c2NoZW1hX3dpdGhfYnVkZ2V0YCB0byBhIHJldXNhYmxlIGBkeW5hbWljX3Nj
+        aGVtYWAgaW5zdGFuY2UgbWV0aG9kIHRoYXQgYW55IGNvbnRleHQtYXdhcmUg
+        dG9vbCBjYW4gaW1wbGVtZW50XG5cblRoaXMgcHVsbCByZXF1ZXN0IGNsb3Nl
+        cyBpc3N1ZSAjMzI2IGFuZCBhaW1zIHRvIGltcHJvdmUgdGhlIHVzZXIgZXhw
+        ZXJpZW5jZSBieSBtYWtpbmcgdGhlIGJhc2ggdG9vbCBtb3JlIGNvbnRleHQt
+        YXdhcmUgYWJvdXQgdGhlIGN1cnJlbnQgd29ya2luZyBkaXJlY3RvcnkuIn1d
+        LCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVs
+        bCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjozOTQwLCJjYWNoZV9jcmVhdGlv
+        bl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjow
+        LCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5z
+        IjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rv
+        a2VucyI6MjQ1LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5j
+        ZV9nZW8iOiJub3RfYXZhaWxhYmxlIn19
+  recorded_at: Sun, 29 Mar 2026 12:30:00 GMT
+recorded_with: VCR 6.4.0
