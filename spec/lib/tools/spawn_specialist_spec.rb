@@ -111,7 +111,6 @@ RSpec.describe Tools::SpawnSpecialist do
 
       child = Session.last
       expect(child.prompt).to start_with("You are @code-scout, a sub-agent")
-      expect(child.prompt).to include("Messages mentioning @code-scout are addressed to you")
     end
 
     it "preserves the agent's system prompt after identity context" do

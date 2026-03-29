@@ -5,10 +5,8 @@ module Tools
   # Included by {SpawnSubagent} and {SpawnSpecialist} to avoid duplication.
   module SubagentPrompts
     # Prepended to every sub-agent's stored prompt after nickname assignment.
-    # Establishes identity before any other instruction — the sub-agent knows
-    # who it is and how to recognize messages directed at it.
-    IDENTITY_TEMPLATE = "You are @%s, a sub-agent of the primary agent.\n" \
-      "Messages mentioning @%s are addressed to you."
+    # Establishes identity before any other instruction.
+    IDENTITY_TEMPLATE = "You are @%s, a sub-agent of the primary agent."
 
     COMMUNICATION_INSTRUCTION = "Your messages reach the parent automatically. " \
       "Ask if you need clarification — the parent can reply."
@@ -56,8 +54,7 @@ module Tools
     # @param child [Session] the child session with a nickname already set
     # @return [void]
     def inject_identity_context(child)
-      nickname = child.name
-      identity = format(IDENTITY_TEMPLATE, nickname, nickname)
+      identity = format(IDENTITY_TEMPLATE, child.name)
       child.update!(prompt: "#{identity}\n#{child.prompt}")
     end
 

@@ -99,7 +99,6 @@ RSpec.describe Tools::SpawnSubagent do
 
       child = Session.last
       expect(child.prompt).to start_with("You are @loop-sleuth, a sub-agent")
-      expect(child.prompt).to include("Messages mentioning @loop-sleuth are addressed to you")
       expect(child.prompt).to include("messages reach the parent automatically")
       expect(child.prompt).not_to include("Expected deliverable")
     end
