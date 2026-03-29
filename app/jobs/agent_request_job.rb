@@ -155,20 +155,27 @@ class AgentRequestJob < ApplicationJob
 
   # Sets the session's processing flag atomically. Returns true if this
   # job claimed the lock, false if another job already holds it.
-  # Broadcasts the state change to the parent session's HUD.
+  # Broadcasts +session_state: llm_generating+ and the state change to
+  # the parent session's HUD.
   def claim_processing(session_id)
     claimed = Session.where(id: session_id, processing: false).update_all(processing: true) == 1
-    Session.find_by(id: session_id)&.broadcast_children_update_to_parent if claimed
+    if claimed
+      session = Session.find_by(id: session_id)
+      session&.broadcast_session_state("llm_generating")
+      session&.broadcast_children_update_to_parent
+    end
     claimed
   end
 
   # Clears the processing flag so the session can accept new jobs.
-  # Broadcasts +processing_stopped+ to the session stream (clears TUI loading state)
-  # and +children_updated+ to the parent session's HUD.
+  # Broadcasts +session_state: idle+ to the session stream (replaces
+  # the old +processing_stopped+ action) and +children_updated+ to the
+  # parent session's HUD.
   def release_processing(session_id)
     Session.where(id: session_id).update_all(processing: false)
-    ActionCable.server.broadcast("session_#{session_id}", {"action" => "processing_stopped"})
-    Session.find_by(id: session_id)&.broadcast_children_update_to_parent
+    session = Session.find_by(id: session_id)
+    session&.broadcast_session_state("idle")
+    session&.broadcast_children_update_to_parent
   end
 
   # Safety-net clearing of the interrupt flag.

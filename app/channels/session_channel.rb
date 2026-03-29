@@ -104,6 +104,7 @@ class SessionChannel < ApplicationCable::Channel
     Session.processing_children_of(@current_session_id)
       .update_all(interrupt_requested: true)
 
+    Session.find_by(id: @current_session_id)&.broadcast_session_state("interrupting")
     ActionCable.server.broadcast(stream_name, {"action" => "interrupt_acknowledged"})
   end
 
@@ -227,7 +228,10 @@ class SessionChannel < ApplicationCable::Channel
 
     children = session.child_sessions.order(:created_at).select(:id, :name, :processing)
     if children.any?
-      payload["children"] = children.map { |child| {"id" => child.id, "name" => child.name, "processing" => child.processing?} }
+      payload["children"] = children.map { |child|
+        state = child.processing? ? "llm_generating" : "idle"
+        {"id" => child.id, "name" => child.name, "processing" => child.processing?, "session_state" => state}
+      }
     end
 
     transmit(payload)

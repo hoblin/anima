@@ -12,6 +12,7 @@ require_relative "../decorators/write_decorator"
 require_relative "../decorators/web_get_decorator"
 require_relative "../decorators/think_decorator"
 require_relative "../formatting"
+require_relative "../braille_spinner"
 require "toon"
 
 module TUI
@@ -51,7 +52,7 @@ module TUI
 
       attr_reader :message_store, :scroll_offset, :session_info, :view_mode, :sessions_list,
         :authentication_required, :token_save_result, :parent_session_id,
-        :chat_focused
+        :chat_focused, :session_state, :spinner
       attr_accessor :hud_hint
 
       # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
@@ -63,7 +64,8 @@ module TUI
         @perf_logger = perf_logger || PerformanceLogger.new(enabled: false)
         @input_buffer = InputBuffer.new
         @flash = Flash.new
-        @loading = false
+        @session_state = "idle"
+        @spinner = BrailleSpinner.new
         @scroll_offset = 0
         @auto_scroll = true
         @visible_height = 0
@@ -236,8 +238,12 @@ module TUI
       def finalize
       end
 
+      # Whether the session is actively processing (any state other than idle).
+      # Used by the App's HUD and scroll calculations.
+      #
+      # @return [Boolean]
       def loading?
-        @loading
+        @session_state != "idle"
       end
 
       # Switches focus to the chat pane for keyboard scrolling.
@@ -261,6 +267,10 @@ module TUI
           type = msg["type"]
 
           case action
+          when "session_state"
+            handle_session_state(msg)
+          when "child_state"
+            handle_child_state(msg)
           when "session_changed"
             handle_session_changed(msg)
           when "view_mode_changed"
@@ -291,7 +301,7 @@ module TUI
           when "interrupt_acknowledged"
             @flash.info("Interrupting...")
           when "processing_stopped"
-            @loading = false
+            update_session_state("idle")
           when "error"
             @flash.error(msg["message"]) if msg["message"]
           else
@@ -304,13 +314,11 @@ module TUI
               @message_store.process_event(msg)
               unless action == "update"
                 @session_info[:message_count] += 1
-                @loading = true
               end
             when "agent_message"
               @message_store.process_event(msg)
               unless action == "update"
                 @session_info[:message_count] += 1
-                @loading = false
               end
             else # tool_call, tool_response, and other event types
               @message_store.process_event(msg)
@@ -352,10 +360,10 @@ module TUI
         case msg["status"]
         when "subscribing"
           @message_store.clear
-          @loading = false
+          update_session_state("idle")
           @session_info[:message_count] = 0
         when "disconnected", "failed"
-          @loading = false
+          update_session_state("idle")
         end
       end
 
@@ -368,7 +376,7 @@ module TUI
         error = msg["error"]
 
         @message_store.remove_by_id(message_id) if message_id
-        @loading = false
+        update_session_state("idle")
 
         if content
           @input_buffer.clear
@@ -389,7 +397,7 @@ module TUI
                          goals: msg["goals"] || [], children: msg["children"] || []}
         @parent_session_id = msg["parent_session_id"]
         @input_buffer.clear
-        @loading = false
+        update_session_state("idle")
         @scroll_offset = 0
         @auto_scroll = true
         @input_scroll_offset = 0
@@ -437,6 +445,70 @@ module TUI
         @session_info[:children] = msg["children"] || []
       end
 
+      # Handles explicit session state transitions from the server.
+      # Drives the braille spinner animation and replaces the old
+      # @loading boolean.
+      def handle_session_state(msg)
+        return unless msg["session_id"] == @session_info[:id]
+
+        update_session_state(msg["state"])
+      end
+
+      # Handles a child session's state change broadcast from the
+      # parent stream. Merges the state into the children list so
+      # HUD icons update without a full children_updated query.
+      def handle_child_state(msg)
+        child_id = msg["child_id"]
+        return unless child_id
+
+        child = @session_info[:children]&.find { |c| c["id"] == child_id }
+        child["session_state"] = msg["state"] if child
+      end
+
+      # Updates the session state and synchronizes the spinner.
+      #
+      # @param state [String] one of "idle", "llm_generating",
+      #   "tool_executing", "interrupting"
+      def update_session_state(state)
+        @session_state = state
+        @spinner.state = state
+      end
+
+      # Builds the animated spinner line for the current session state.
+      # The braille character communicates state through its animation
+      # pattern; a short label follows for clarity.
+      #
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @return [RatatuiRuby::Widgets::Line]
+      def spinner_line(tui)
+        char = @spinner.tick || "\u2800"
+        label = spinner_label
+        color = spinner_color
+
+        tui.line(spans: [
+          tui.span(content: "#{char} ", style: tui.style(fg: color, modifiers: [:bold])),
+          tui.span(content: label, style: tui.style(fg: color))
+        ])
+      end
+
+      def spinner_label
+        case @session_state
+        when "llm_generating" then "Thinking..."
+        when "tool_executing" then "Executing..."
+        when "interrupting" then "Stopping..."
+        else "Working..."
+        end
+      end
+
+      def spinner_color
+        case @session_state
+        when "llm_generating" then "yellow"
+        when "tool_executing" then "cyan"
+        when "interrupting" then "red"
+        else "yellow"
+        end
+      end
+
       # Handles server broadcast of view mode change. Clears the message store
       # in preparation for the re-decorated viewport events that follow.
       def handle_view_mode_changed(msg)
@@ -445,7 +517,7 @@ module TUI
 
         @view_mode = new_mode
         @message_store.clear
-        @loading = false
+        update_session_state("idle")
         @scroll_offset = 0
         @auto_scroll = true
       end
@@ -480,7 +552,7 @@ module TUI
         # to the (under)estimated total, making the bottom unreachable.
         if @auto_scroll
           est_total = @height_map.total_height
-          est_total += 1 if @loading
+          est_total += 1 if loading?
           @scroll_offset = [est_total - @visible_height, 0].max
         end
 
@@ -506,7 +578,7 @@ module TUI
         vp_last = @viewport[:last]
         est_before = @height_map.cumulative_height(vp_first)
         est_after = @height_map.total_height - @height_map.cumulative_height(vp_last + 1)
-        loading_outside = @loading && vp_last < entries.size - 1
+        loading_outside = loading? && vp_last < entries.size - 1
         corrected_total = est_before + wrapped_height + est_after + (loading_outside ? 1 : 0)
 
         @max_scroll = [corrected_total - @visible_height, 0].max
@@ -546,10 +618,8 @@ module TUI
       # @param tui [RatatuiRuby] TUI rendering API
       # @return [void]
       def render_empty_or_loading(frame, area, tui)
-        lines = if @loading
-          [tui.line(spans: [
-            tui.span(content: "Thinking...", style: tui.style(fg: "yellow", modifiers: [:bold]))
-          ])]
+        lines = if loading?
+          [spinner_line(tui)]
         else
           [tui.line(spans: [
             tui.span(content: "Type a message to start chatting.", style: tui.style(fg: "dark_gray"))
@@ -573,12 +643,12 @@ module TUI
       # @param version [Integer] message store version counter
       # @return [void]
       def update_height_map(entries, width, version)
-        return if version == @height_map_version && width == @height_map_width && @loading == @height_map_loading
+        return if version == @height_map_version && width == @height_map_width && @session_state == @height_map_state
 
         @height_map.update(entries, width) { |entry, avail_width| estimate_entry_height(entry, avail_width) }
         @height_map_version = version
         @height_map_width = width
-        @height_map_loading = @loading
+        @height_map_state = @session_state
       end
 
       # Returns cached viewport lines, rebuilding only when content
@@ -592,7 +662,7 @@ module TUI
         vp_first = vp[:first]
 
         # Cache hit: content unchanged and scroll target within the built range
-        if version == vp[:version] && @loading == vp[:loading] &&
+        if version == vp[:version] && @session_state == vp[:session_state] &&
             vp_first && first_visible_est >= vp_first && first_visible_est <= vp[:last]
           return vp[:lines]
         end
@@ -622,11 +692,7 @@ module TUI
           break if pre_wrap_count >= target && entry_count - idx > VIEWPORT_BOTTOM_THRESHOLD
         end
 
-        if @loading && buf_last >= entry_count - 1
-          lines << tui.line(spans: [
-            tui.span(content: "Thinking...", style: tui.style(fg: "yellow", modifiers: [:bold]))
-          ])
-        end
+        lines << spinner_line(tui) if loading? && buf_last >= entry_count - 1
 
         @perf_logger.info(
           "viewport MISS range=#{buf_first}..#{buf_last} " \
@@ -634,7 +700,7 @@ module TUI
         )
 
         @viewport = {
-          version: version, loading: @loading, width: nil,
+          version: version, session_state: @session_state, width: nil,
           first: buf_first, last: buf_last,
           lines: lines, wrapped_height: nil
         }
@@ -647,7 +713,7 @@ module TUI
       def cached_viewport_line_count(widget, width, version)
         vp = @viewport
         cached_height = vp[:wrapped_height]
-        if cached_height && version == vp[:version] && @loading == vp[:loading] && width == vp[:width]
+        if cached_height && version == vp[:version] && @session_state == vp[:session_state] && width == vp[:width]
           return cached_height
         end
 

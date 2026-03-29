@@ -183,25 +183,28 @@ RSpec.describe TUI::Screens::Chat do
     end
 
     context "processing incoming WebSocket messages" do
-      it "sets loading to true when user_message received from server" do
+      it "preserves session_state when user_message received (server broadcasts state separately)" do
         allow(cable_client).to receive(:drain_messages).and_return([
           {"type" => "user_message", "content" => "hi"}
         ])
 
         screen.send(:process_incoming_messages)
 
-        expect(screen.loading?).to be true
+        # Session state is now driven by explicit session_state broadcasts,
+        # not inferred from message types
+        expect(screen.session_state).to eq("idle")
       end
 
-      it "sets loading to false when agent_message received" do
-        screen.instance_variable_set(:@loading, true)
+      it "preserves session_state when agent_message received (server broadcasts idle)" do
+        screen.send(:update_session_state, "llm_generating")
         allow(cable_client).to receive(:drain_messages).and_return([
           {"type" => "agent_message", "content" => "response"}
         ])
 
         screen.send(:process_incoming_messages)
 
-        expect(screen.loading?).to be false
+        # State is explicitly driven — agent_message alone doesn't change it
+        expect(screen.session_state).to eq("llm_generating")
       end
 
       it "adds messages to the message store" do
@@ -249,7 +252,7 @@ RSpec.describe TUI::Screens::Chat do
         ])
       end
 
-      it "does not increment message_count or set loading on user_message update" do
+      it "does not increment message_count on user_message update" do
         allow(cable_client).to receive(:drain_messages).and_return([
           {"type" => "user_message", "content" => "hi", "id" => 1, "action" => "create"},
           {"type" => "user_message", "content" => "hi", "id" => 1, "action" => "update"}
@@ -258,11 +261,10 @@ RSpec.describe TUI::Screens::Chat do
         screen.send(:process_incoming_messages)
 
         expect(screen.session_info[:message_count]).to eq(1)
-        expect(screen.loading?).to be true
       end
 
-      it "does not change loading state on agent_message update" do
-        screen.instance_variable_set(:@loading, true)
+      it "does not increment message_count on agent_message update" do
+        screen.send(:update_session_state, "llm_generating")
         allow(cable_client).to receive(:drain_messages).and_return([
           {"type" => "agent_message", "content" => "done", "id" => 2, "action" => "update"}
         ])

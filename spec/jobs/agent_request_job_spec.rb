@@ -106,12 +106,12 @@ RSpec.describe AgentRequestJob do
         described_class.perform_now(session.id)
       end
 
-      it "broadcasts processing_stopped when releasing processing" do
+      it "broadcasts session_state idle when releasing processing" do
         session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
         expect(ActionCable.server).to receive(:broadcast).with(
           "session_#{session.id}",
-          hash_including("action" => "processing_stopped")
+          hash_including("action" => "session_state", "state" => "idle")
         )
         allow(ActionCable.server).to receive(:broadcast)
 

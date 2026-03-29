@@ -168,7 +168,7 @@ RSpec.describe SessionChannel, type: :channel do
 
       changed = transmissions.find { |t| t["action"] == "session_changed" }
       expect(changed["children"]).to eq([
-        {"id" => child.id, "name" => "analyzer", "processing" => true}
+        {"id" => child.id, "name" => "analyzer", "processing" => true, "session_state" => "llm_generating"}
       ])
     end
 

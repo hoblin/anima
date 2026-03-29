@@ -406,6 +406,8 @@ The difference from every other system: memory isn't a tool the agent uses. It's
 
 The right-side HUD panel shows session state at a glance: session name, goals (with status icons), active skills, workflow, and sub-agents. Toggle with `C-a → h`; when hidden, the input border shows `C-a → h HUD` as a reminder.
 
+**Braille spinner**: An animated braille character (U+2800-U+28FF) replaces the old "Thinking..." label in both the chat viewport and HUD. Each processing state has a distinct animation pattern — smooth snake rotation for LLM generation, staccato pulse for tool execution, rapid deceleration for interrupting. Sub-agents in the HUD show state-driven icons: `●` (generating, green), `◉` (tool executing, green), `●` (interrupting, red), `◌` (idle, grey).
+
 When content exceeds the panel height, the HUD scrolls. Three input methods:
 
 | Input | Action |
