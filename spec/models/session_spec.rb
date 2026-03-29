@@ -111,8 +111,8 @@ RSpec.describe Session do
           "action" => "children_updated",
           "session_id" => parent.id,
           "children" => [
-            {"id" => child_a.id, "name" => "analyzer", "processing" => false},
-            {"id" => child_b.id, "name" => "reviewer", "processing" => true}
+            {"id" => child_a.id, "name" => "analyzer", "processing" => false, "session_state" => "idle"},
+            {"id" => child_b.id, "name" => "reviewer", "processing" => true, "session_state" => "llm_generating"}
           ]
         }
       )
@@ -147,7 +147,55 @@ RSpec.describe Session do
       Session.last.broadcast_children_update_to_parent
 
       child_data = payload["children"].first
-      expect(child_data.keys).to contain_exactly("id", "name", "processing")
+      expect(child_data.keys).to contain_exactly("id", "name", "processing", "session_state")
+    end
+  end
+
+  describe "#broadcast_session_state" do
+    it "broadcasts state to the session stream" do
+      session = Session.create!
+
+      expect(ActionCable.server).to receive(:broadcast).with(
+        "session_#{session.id}",
+        {"action" => "session_state", "state" => "llm_generating", "session_id" => session.id}
+      )
+
+      session.broadcast_session_state("llm_generating")
+    end
+
+    it "includes tool name for tool_executing state" do
+      session = Session.create!
+
+      expect(ActionCable.server).to receive(:broadcast).with(
+        "session_#{session.id}",
+        {"action" => "session_state", "state" => "tool_executing", "tool" => "bash", "session_id" => session.id}
+      )
+
+      session.broadcast_session_state("tool_executing", tool: "bash")
+    end
+
+    it "broadcasts child_state to parent stream for sub-agents" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "task")
+
+      expect(ActionCable.server).to receive(:broadcast).with(
+        "session_#{child.id}",
+        {"action" => "session_state", "state" => "llm_generating", "session_id" => child.id}
+      ).ordered
+      expect(ActionCable.server).to receive(:broadcast).with(
+        "session_#{parent.id}",
+        {"action" => "child_state", "state" => "llm_generating", "session_id" => child.id, "child_id" => child.id}
+      ).ordered
+
+      child.broadcast_session_state("llm_generating")
+    end
+
+    it "does not broadcast to parent for root sessions" do
+      session = Session.create!
+
+      expect(ActionCable.server).to receive(:broadcast).once
+
+      session.broadcast_session_state("idle")
     end
   end
 

@@ -403,8 +403,38 @@ class Session < ApplicationRecord
     ActionCable.server.broadcast("session_#{parent_session_id}", {
       "action" => "children_updated",
       "session_id" => parent_session_id,
-      "children" => children.map { |child| {"id" => child.id, "name" => child.name, "processing" => child.processing?} }
+      "children" => children.map { |child|
+        state = child.processing? ? "llm_generating" : "idle"
+        {"id" => child.id, "name" => child.name, "processing" => child.processing?, "session_state" => state}
+      }
     })
+  end
+
+  # Broadcasts the session's current processing state to all subscribed
+  # clients. Stateless — no storage, pure broadcast. The TUI uses this to
+  # drive the braille spinner animation and sub-agent HUD icons.
+  #
+  # Payload broadcast to +session_{id}+:
+  #   {"action" => "session_state", "state" => state, "session_id" => id}
+  #   # plus "tool" key when state is "tool_executing"
+  #
+  # For sub-agents, also broadcasts +child_state+ to the parent stream:
+  #   {"action" => "child_state", "state" => state, "session_id" => id, "child_id" => id}
+  #
+  # @param state [String] one of "idle", "llm_generating", "tool_executing", "interrupting"
+  # @param tool [String, nil] tool name when state is "tool_executing"
+  # @return [void]
+  def broadcast_session_state(state, tool: nil)
+    payload = {"action" => "session_state", "state" => state, "session_id" => id}
+    payload["tool"] = tool if tool
+    ActionCable.server.broadcast("session_#{id}", payload)
+
+    # Notify the parent's stream so the HUD updates child state icons
+    # without requiring a full children_updated query.
+    return unless parent_session_id
+
+    parent_payload = payload.merge("action" => "child_state", "child_id" => id)
+    ActionCable.server.broadcast("session_#{parent_session_id}", parent_payload)
   end
 
   # Broadcasts the full LLM debug context to debug-mode TUI clients.

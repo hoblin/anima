@@ -208,8 +208,13 @@ module TUI
     GOAL_ICON_ACTIVE = "\u25CF"       # ●
     GOAL_ICON_IN_PROGRESS = "\u25D0"  # ◐
     GOAL_ICON_COMPLETED = "\u2713"    # ✓
-    CHILD_ICON_RUNNING = "\u25CF"     # ●
-    CHILD_ICON_IDLE = "\u25CC"        # ◌
+
+    # Sub-agent state icons — form communicates type of work,
+    # color communicates status. Work independently.
+    CHILD_ICON_IDLE = "\u25CC"              # ◌ hollow — nothing happening
+    CHILD_ICON_GENERATING = "\u25CF"        # ● filled — LLM thinking
+    CHILD_ICON_TOOL_EXECUTING = "\u25C9"    # ◉ dot-in-circle — tool running
+    CHILD_ICON_INTERRUPTING = "\u25CF"      # ● filled — stopping
 
     def render_info(frame, area, tui)
       session = @screens[:chat].session_info
@@ -421,18 +426,27 @@ module TUI
     end
 
     # Returns the activity icon and color for a child session.
+    # Form communicates type of work, color communicates status —
+    # they work independently so even without color the shape tells
+    # the story.
     #
-    # @param child [Hash] child session data with "processing" key
+    # @param child [Hash] child session data with "session_state" key
     # @return [Array(String, String)] icon and color pair
     def child_icon_and_color(child)
-      if child["processing"]
-        [CHILD_ICON_RUNNING, "yellow"]
+      case child["session_state"]
+      when "llm_generating"
+        [CHILD_ICON_GENERATING, "green"]
+      when "tool_executing"
+        [CHILD_ICON_TOOL_EXECUTING, "green"]
+      when "interrupting"
+        [CHILD_ICON_INTERRUPTING, "red"]
       else
-        [CHILD_ICON_IDLE, "green"]
+        [CHILD_ICON_IDLE, "dark_gray"]
       end
     end
 
-    # Shows "Scrolling" when chat pane is focused, "Thinking..." during LLM processing.
+    # Shows focus mode when a pane is focused, or the braille spinner
+    # during active processing.
     def interaction_state_line(tui)
       if @hud_focused
         tui.line(spans: [
@@ -443,8 +457,13 @@ module TUI
           tui.span(content: "Scrolling", style: tui.style(fg: "yellow", modifiers: [:bold]))
         ])
       elsif chat_loading?
+        chat = @screens[:chat]
+        char = chat.spinner.tick || "\u2800"
+        color = chat.spinner_color
+        label = chat.spinner_label
         tui.line(spans: [
-          tui.span(content: "Thinking...", style: tui.style(fg: "magenta", modifiers: [:bold]))
+          tui.span(content: "#{char} ", style: tui.style(fg: color, modifiers: [:bold])),
+          tui.span(content: label, style: tui.style(fg: color))
         ])
       end
     end

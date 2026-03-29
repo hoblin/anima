@@ -735,7 +735,7 @@ RSpec.describe TUI::App do
 
       it "sends interrupt when loading and input is empty" do
         chat = app.instance_variable_get(:@screens)[:chat]
-        chat.instance_variable_set(:@loading, true)
+        chat.instance_variable_set(:@session_state, "llm_generating")
         allow(chat).to receive(:interrupt_execution)
         allow(chat).to receive(:switch_session)
 
@@ -759,7 +759,7 @@ RSpec.describe TUI::App do
 
       it "prefers interrupt over clear input when loading with empty input" do
         chat = app.instance_variable_get(:@screens)[:chat]
-        chat.instance_variable_set(:@loading, true)
+        chat.instance_variable_set(:@session_state, "llm_generating")
         allow(chat).to receive(:interrupt_execution)
 
         app.send(:handle_event, key_event(code: "esc", esc?: true))
@@ -1484,22 +1484,34 @@ RSpec.describe TUI::App do
     end
 
     describe "#child_icon_and_color" do
-      it "returns running icon for processing child" do
-        icon, color = app.send(:child_icon_and_color, {"processing" => true})
+      it "returns generating icon for llm_generating child" do
+        icon, color = app.send(:child_icon_and_color, {"session_state" => "llm_generating"})
         expect(icon).to eq("\u25CF") # ●
-        expect(color).to eq("yellow")
-      end
-
-      it "returns idle icon for non-processing child" do
-        icon, color = app.send(:child_icon_and_color, {"processing" => false})
-        expect(icon).to eq("\u25CC") # ◌
         expect(color).to eq("green")
       end
 
-      it "returns idle icon when processing key is nil" do
-        icon, color = app.send(:child_icon_and_color, {"processing" => nil})
-        expect(icon).to eq("\u25CC") # ◌
+      it "returns tool icon for tool_executing child" do
+        icon, color = app.send(:child_icon_and_color, {"session_state" => "tool_executing"})
+        expect(icon).to eq("\u25C9") # ◉
         expect(color).to eq("green")
+      end
+
+      it "returns interrupting icon for interrupting child" do
+        icon, color = app.send(:child_icon_and_color, {"session_state" => "interrupting"})
+        expect(icon).to eq("\u25CF") # ●
+        expect(color).to eq("red")
+      end
+
+      it "returns idle icon for idle child" do
+        icon, color = app.send(:child_icon_and_color, {"session_state" => "idle"})
+        expect(icon).to eq("\u25CC") # ◌
+        expect(color).to eq("dark_gray")
+      end
+
+      it "returns idle icon when session_state is nil" do
+        icon, color = app.send(:child_icon_and_color, {"session_state" => nil})
+        expect(icon).to eq("\u25CC") # ◌
+        expect(color).to eq("dark_gray")
       end
     end
 
@@ -1562,21 +1574,21 @@ RSpec.describe TUI::App do
 
       it "renders children with activity indicators" do
         children = [
-          {"id" => 1, "name" => "api-scout", "processing" => true},
-          {"id" => 2, "name" => "loop-sleuth", "processing" => false}
+          {"id" => 1, "name" => "api-scout", "session_state" => "llm_generating"},
+          {"id" => 2, "name" => "loop-sleuth", "session_state" => "idle"}
         ]
         result = app.send(:hud_children_section, tui, {children: children})
         # Blank line + header + 2 child lines = 4 lines
         expect(result.size).to eq(4)
-        # Running child
+        # Generating child
         child_spans = result[2][:spans]
-        expect(child_spans[0][:content]).to include("\u25CF") # ● running
-        expect(child_spans[0][:style][:fg]).to eq("yellow")
+        expect(child_spans[0][:content]).to include("\u25CF") # ● generating
+        expect(child_spans[0][:style][:fg]).to eq("green")
         expect(child_spans[1][:content]).to eq("@api-scout")
         # Idle child
         child_spans = result[3][:spans]
         expect(child_spans[0][:content]).to include("\u25CC") # ◌ idle
-        expect(child_spans[0][:style][:fg]).to eq("green")
+        expect(child_spans[0][:style][:fg]).to eq("dark_gray")
         expect(child_spans[1][:content]).to eq("@loop-sleuth")
       end
 
