@@ -180,7 +180,7 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(AgentRequestJob).to have_been_enqueued.with(child.id)
     end
 
-    it "returns confirmation including the nickname and @mention hint" do
+    it "returns confirmation including the nickname and forwarding warning" do
       result = tool.execute(input)
 
       expect(result).to include("Specialist @code-scout spawned")
