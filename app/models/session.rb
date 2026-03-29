@@ -233,13 +233,14 @@ class Session < ApplicationRecord
     [assemble_version_preamble, assemble_soul_section, environment_context, assemble_expertise_section, assemble_goals_section].compact.join("\n\n")
   end
 
-  # Serializes active goals as a lightweight summary for ActionCable
+  # Serializes non-evicted goals as a lightweight summary for ActionCable
   # broadcasts and TUI display. Returns a nested structure: root goals
-  # with their sub-goals inlined.
+  # with their sub-goals inlined. Evicted goals and their sub-goals are
+  # excluded.
   #
   # @return [Array<Hash>] each with :id, :description, :status, and :sub_goals
   def goals_summary
-    goals.root.includes(:sub_goals).order(:created_at).map(&:as_summary)
+    goals.root.not_evicted.includes(:sub_goals).order(:created_at).map(&:as_summary)
   end
 
   # Builds the message array expected by the Anthropic Messages API.
