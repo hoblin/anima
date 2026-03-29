@@ -25,9 +25,9 @@ class AgentLoop
   # @param shell_session [ShellSession, nil] injectable persistent shell;
   #   created automatically if not provided
   # @param client [LLM::Client, nil] injectable LLM client;
-  #   created lazily on first {#process} call if not provided
+  #   created lazily on first {#run} call if not provided
   # @param registry [Tools::Registry, nil] injectable tool registry;
-  #   built lazily on first {#process} call if not provided
+  #   built lazily on first {#run} call if not provided
   def initialize(session:, shell_session: nil, client: nil, registry: nil)
     @session = session
     @shell_session = shell_session || ShellSession.new(session_id: session.id)
@@ -112,7 +112,6 @@ class AgentLoop
   STANDARD_TOOLS_BY_NAME = STANDARD_TOOLS.index_by(&:tool_name).freeze
 
   private
-
 
   # Assembles LLM options (system prompt, environment context).
   # Broadcasts the full debug context (system prompt + tool schemas)

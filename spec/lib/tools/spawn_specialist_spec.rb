@@ -50,6 +50,14 @@ RSpec.describe Tools::SpawnSpecialist do
       allow(Agents::Registry).to receive(:instance).and_return(Agents::Registry.new)
       expect(described_class.description).not_to include("Available specialists")
     end
+
+    it "leads with hook and call-to-action" do
+      expect(described_class.description).to include("Need a specific skill set")
+    end
+
+    it "warns about @mention forwarding" do
+      expect(described_class.description).to include("forwarded")
+    end
   end
 
   describe ".input_schema" do
@@ -186,6 +194,7 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(result).to include("Specialist @code-scout spawned")
       expect(result).to include("session #{Session.last.id}")
       expect(result).to include("@code-scout")
+      expect(result).to include("forwarded")
     end
 
     it "falls back to agent-N on brain failure" do
