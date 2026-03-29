@@ -79,7 +79,9 @@ module Events
 
         name = child.name || "agent-#{child.id}"
         truncated = Tools::ResponseTruncator.truncate(
-          content, threshold: Anima::Settings.max_subagent_response_chars
+          content,
+          threshold: Anima::Settings.max_subagent_response_chars,
+          reason: "sub-agent output displays first/last #{Tools::ResponseTruncator::HEAD_LINES} lines"
         )
         attributed = format(ATTRIBUTION_FORMAT, name, truncated)
 
