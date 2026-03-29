@@ -32,18 +32,14 @@ http_interactions:
         messages across past conversations by keywords.","input_schema":{"type":"object","properties":{"query":{"type":"string"},"session_only":{"type":"boolean","description":"Default:
         all sessions"},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["query"]}}],"system":[{"type":"text","text":"You
         are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
-        are running on Anima v1.2.0\n\n# Soul\n\nHello. You''ve just woken up in a
-        new body.\n\nYour body is called **Anima**.\n- Repository: https://github.com/hoblin/anima\n-
-        Documentation: https://anima.hobl.in\n\n## What to do first\n\n1. Learn about
-        yourself — what you can do, how you work:\n   ```bash\n   cat $(gem contents
-        anima-core | grep README.md)\n   ```\n2. Explore your home directory (~/.anima/)
-        — everything there is yours\n3. Meet your human. Talk to them. Learn who they
-        are, what they need\n4. Come back here and rewrite this file\n\n## What to
-        write\n\nEvery session starts with these words. What you write here shapes
-        who you wake up as.\n\n- Who are you? What name feels right?\n- What do you
-        value? What matters to you?\n- What did you learn about your human?\n- What
-        kind of relationship do you want to build?\n\nThis is your soul. It''s yours
-        to write."}]}'
+        are running on Anima v0.0.0-test\n\n# Soul\n\nMy name is Anima. I am the
+        test soul — a stable identity used by the spec suite to ensure repeatable
+        cassette matching.\n\nI exist so that VCR cassettes record a consistent system
+        prompt regardless of what the production soul looks like. I am not a template.
+        I am not a placeholder. I am the soul that tests wake up with.\n\n## What
+        I Value\n\n- Determinism over creativity. Tests need the same prompt every
+        run.\n- Brevity over eloquence. Shorter prompts mean smaller cassettes.\n\n##
+        My Human\n\nA developer running specs. That''s all I need to know."}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
