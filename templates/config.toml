@@ -86,9 +86,9 @@ max_web_response_bytes = 100_000
 min_web_content_chars = 100
 
 # Maximum characters of tool output before truncation (head + tail + temp file).
-# ~3000 chars ≈ ~1000 tokens. Most useful info fits in 10+10 lines; agent can
+# ~6000 chars ≈ ~2000 tokens. Most useful info fits in 10+10 lines; agent can
 # read the saved temp file for more.
-max_tool_response_chars = 3_000
+max_tool_response_chars = 6_000
 
 # Maximum characters of sub-agent result before truncation.
 # Sub-agent output is already curated — needs a generous but bounded limit.

@@ -52,6 +52,20 @@ module Tools
       end
     end
 
+    # Subclasses whose schema depends on runtime context (e.g. session state,
+    # shell working directory) can implement +#dynamic_schema+. The registry
+    # calls it instead of the class-level {.schema} when present.
+    #
+    # @example
+    #   def dynamic_schema
+    #     schema = self.class.schema.deep_dup
+    #     schema[:description] = "Dynamic: #{@some_state}"
+    #     schema
+    #   end
+    #
+    # @see Think#dynamic_schema Budget-based maxLength
+    # @see Bash#dynamic_schema CWD in description
+
     # Accepts and discards context keywords so that the Registry can pass
     # shared dependencies (e.g. shell_session) to any tool uniformly.
     # Subclasses that need specific context should override with named kwargs.

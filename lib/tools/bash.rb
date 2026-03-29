@@ -51,7 +51,7 @@ module Tools
     # @return [Hash] Anthropic tool schema with dynamic description
     def dynamic_schema
       schema = self.class.schema.deep_dup
-      schema[:description] = "Execute shell commands in #{@shell_session.pwd}. Environment persists between calls."
+      schema[:description] = "Execute shell commands in #{@shell_session.pwd}. Working directory and environment persist between calls."
       schema
     end
 

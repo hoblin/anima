@@ -35,7 +35,9 @@ module Tools
     #   by the registry. The agent can override the default per call for
     #   long-running operations. Tools with session-dependent schemas (e.g.
     #   {Think} with budget-based maxLength, {Bash} with CWD in description)
-    #   are instantiated with context to generate their schema.
+    #   are instantiated with context to generate their schema:
+    #   - {Think}: budget-based maxLength
+    #   - {Bash}: CWD embedded in description
     def schemas
       default = Anima::Settings.tool_timeout
       @tools.values.map { |tool| inject_timeout(resolve_schema(tool), default) }

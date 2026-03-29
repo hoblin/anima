@@ -112,6 +112,11 @@ RSpec.describe Tools::Think do
       end
     end
 
+    it "does not mutate the class-level schema" do
+      tool.dynamic_schema
+      expect(described_class.input_schema[:properties][:thoughts]).not_to have_key(:maxLength)
+    end
+
     it "includes all standard schema fields" do
       schema = tool.dynamic_schema
       expect(schema[:name]).to eq("think")

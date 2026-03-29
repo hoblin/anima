@@ -7,7 +7,8 @@ http_interactions:
       encoding: UTF-8
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Sun
         Mar 29 12:30\nWhat is the latest issue on hoblin/anima repo?"}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
-        shell commands in /home/test/anima. Environment persists between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
+        shell commands in /home/test/anima. Working directory and environment persist
+        between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
         command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
         (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}}}},{"name":"read_file","description":"Read file. Relative
@@ -91,7 +92,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sun, 29 Mar 2026 12:39:06 GMT
+      - Sun, 29 Mar 2026 12:53:06 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -105,7 +106,7 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1774800000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.4'
+      - '0.43'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
@@ -137,11 +138,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2062'
+      - '1828'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=2065
+      - x-originResponse;dur=1829
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
       X-Robots-Tag:
@@ -156,22 +157,23 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxOUd0b3loYnJIR29HRWU4d1NLclh2VSIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxSENUN0tCZlRnZndqZ0gxMWpLcExKOSIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6IkknbGwgaGVscCB5b3UgZmluZCB0aGUgbGF0ZXN0IGlzc3VlIG9u
-        IHRoZSBob2JsaW4vYW5pbWEgcmVwb3NpdG9yeS4gTGV0IG1lIGZldGNoIHRo
-        YXQgaW5mb3JtYXRpb24gZm9yIHlvdS4ifSx7InR5cGUiOiJ0b29sX3VzZSIs
-        ImlkIjoidG9vbHVfMDFWS3dwTjJYUkNURXRweG9EdHozWGZlIiwibmFtZSI6
-        IndlYl9nZXQiLCJpbnB1dCI6eyJ1cmwiOiJodHRwczovL2FwaS5naXRodWIu
-        Y29tL3JlcG9zL2hvYmxpbi9hbmltYS9pc3N1ZXM/c3RhdGU9YWxsJnNvcnQ9
-        Y3JlYXRlZCZkaXJlY3Rpb249ZGVzYyZwZXJfcGFnZT0xIn0sImNhbGxlciI6
-        eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIs
-        InN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6
-        MjE4NiwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9y
-        ZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1l
-        cmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rv
-        a2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjExMywic2VydmljZV90aWVyIjoi
-        c3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
+        dGV4dCI6IkknbGwgaGVscCB5b3UgY2hlY2sgdGhlIGxhdGVzdCBpc3N1ZSBv
+        biB0aGUgaG9ibGluL2FuaW1hIHJlcG9zaXRvcnkuIExldCBtZSB1c2UgdGhl
+        IEdpdEh1YiBBUEkgdG8gZmV0Y2ggdGhpcyBpbmZvcm1hdGlvbi4ifSx7InR5
+        cGUiOiJ0b29sX3VzZSIsImlkIjoidG9vbHVfMDFGaWY1TUh4Mk10NFhNNFhH
+        M1BWZEJXIiwibmFtZSI6IndlYl9nZXQiLCJpbnB1dCI6eyJ1cmwiOiJodHRw
+        czovL2FwaS5naXRodWIuY29tL3JlcG9zL2hvYmxpbi9hbmltYS9pc3N1ZXM/
+        c3RhdGU9YWxsJnNvcnQ9Y3JlYXRlZCZkaXJlY3Rpb249ZGVzYyZwZXJfcGFn
+        ZT0xIn0sImNhbGxlciI6eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFz
+        b24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7
+        ImlucHV0X3Rva2VucyI6MjE4OCwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9r
+        ZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3Jl
+        YXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1l
+        cmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjExNiwi
+        c2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90
+        X2F2YWlsYWJsZSJ9fQ==
   recorded_at: Sun, 29 Mar 2026 12:30:00 GMT
 - request:
     method: get
@@ -192,7 +194,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sun, 29 Mar 2026 12:39:07 GMT
+      - Sun, 29 Mar 2026 12:53:06 GMT
       Content-Type:
       - application/json; charset=utf-8
       Cache-Control:
@@ -200,7 +202,7 @@ http_interactions:
       Vary:
       - Accept,Accept-Encoding, Accept, X-Requested-With
       Etag:
-      - W/"d8be39bdfce2c8de915db761771623bebc1d0313bf47c98472e83ffc54da0be1"
+      - W/"fa7b93a7b5cab046fa5e5c4c70d704b8bcc0ce08a9fdf4803e3870305f8706bd"
       X-Github-Media-Type:
       - github.v3; format=json
       Link:
@@ -234,9 +236,9 @@ http_interactions:
       X-Ratelimit-Limit:
       - '60'
       X-Ratelimit-Remaining:
-      - '51'
+      - '50'
       X-Ratelimit-Used:
-      - '9'
+      - '10'
       X-Ratelimit-Resource:
       - core
       X-Ratelimit-Reset:
@@ -244,7 +246,7 @@ http_interactions:
       Content-Length:
       - '3210'
       X-Github-Request-Id:
-      - 7000:2C8EDA:23E37C9:1D9ABCC:69C91D6A
+      - 71DC:353468:267036D:20045EA:69C920B2
     body:
       encoding: ASCII-8BIT
       base64_string: |
@@ -283,7 +285,7 @@ http_interactions:
         YWRtaW4iOmZhbHNlfSwibGFiZWxzIjpbXSwic3RhdGUiOiJvcGVuIiwibG9j
         a2VkIjpmYWxzZSwiYXNzaWduZWVzIjpbXSwibWlsZXN0b25lIjpudWxsLCJj
         b21tZW50cyI6MCwiY3JlYXRlZF9hdCI6IjIwMjYtMDMtMjlUMTI6Mjg6Mjda
-        IiwidXBkYXRlZF9hdCI6IjIwMjYtMDMtMjlUMTI6Mzg6MDdaIiwiY2xvc2Vk
+        IiwidXBkYXRlZF9hdCI6IjIwMjYtMDMtMjlUMTI6Mzk6MjFaIiwiY2xvc2Vk
         X2F0IjpudWxsLCJhc3NpZ25lZSI6bnVsbCwiYXV0aG9yX2Fzc29jaWF0aW9u
         IjoiT1dORVIiLCJhY3RpdmVfbG9ja19yZWFzb24iOm51bGwsImRyYWZ0Ijp0
         cnVlLCJwdWxsX3JlcXVlc3QiOnsidXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHVi
@@ -328,8 +330,8 @@ http_interactions:
       encoding: UTF-8
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Sun
         Mar 29 12:30\nWhat is the latest issue on hoblin/anima repo?"},{"role":"assistant","content":[{"type":"text","text":"I''ll
-        help you find the latest issue on the hoblin/anima repository. Let me fetch
-        that information for you."},{"type":"tool_use","id":"toolu_01VKwpN2XRCTEtpxoDtz3Xfe","name":"web_get","input":{"url":"https://api.github.com/repos/hoblin/anima/issues?state=all\u0026sort=created\u0026direction=desc\u0026per_page=1"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01VKwpN2XRCTEtpxoDtz3Xfe","content":"[Converted:
+        help you check the latest issue on the hoblin/anima repository. Let me use
+        the GitHub API to fetch this information."},{"type":"tool_use","id":"toolu_01Fif5MHx2Mt4XM4XG3PVdBW","name":"web_get","input":{"url":"https://api.github.com/repos/hoblin/anima/issues?state=all\u0026sort=created\u0026direction=desc\u0026per_page=1"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01Fif5MHx2Mt4XM4XG3PVdBW","content":"[Converted:
         JSON → TOON]\n\n[1]:\n  - url: \"https://api.github.com/repos/hoblin/anima/issues/376\"\n    repository_url:
         \"https://api.github.com/repos/hoblin/anima\"\n    labels_url: \"https://api.github.com/repos/hoblin/anima/issues/376/labels{/name}\"\n    comments_url:
         \"https://api.github.com/repos/hoblin/anima/issues/376/comments\"\n    events_url:
@@ -341,7 +343,8 @@ http_interactions:
         0\n      laugh: 0\n      hooray: 0\n      confused: 0\n      heart: 0\n      rocket:
         0\n      eyes: 0\n    timeline_url: \"https://api.github.com/repos/hoblin/anima/issues/376/timeline\"\n    performed_via_github_app:
         null\n    state_reason: null"}]}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
-        shell commands in /home/test/anima. Environment persists between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
+        shell commands in /home/test/anima. Working directory and environment persist
+        between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
         command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
         (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}}}},{"name":"read_file","description":"Read file. Relative
@@ -425,7 +428,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sun, 29 Mar 2026 12:39:09 GMT
+      - Sun, 29 Mar 2026 12:53:08 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -439,7 +442,7 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1774800000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.4'
+      - '0.43'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
@@ -471,11 +474,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1872'
+      - '1370'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=1877
+      - x-originResponse;dur=1372
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
       X-Robots-Tag:
@@ -490,20 +493,20 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxMzFiM282c1JaSmFMRm1rbndNeDlnRiIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxMmN5TFNDTXNjRmJZZXhRclBBUExxYSIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6IkxldCBtZSByZWFkIHRoZSBmdWxsIHJlc3BvbnNlIHRvIGdldCB0
-        aGUgY29tcGxldGUgZGV0YWlscyBvZiB0aGUgbGF0ZXN0IGlzc3VlOiJ9LHsi
-        dHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMU1yS1hKU1BETjhzZ0I0
-        Z203cGN3VUwiLCJuYW1lIjoicmVhZF9maWxlIiwiaW5wdXQiOnsicGF0aCI6
-        Ii90bXAvdG9vbF9yZXN1bHRfc3RhYmxlLnR4dCJ9LCJjYWxsZXIiOnsidHlw
-        ZSI6ImRpcmVjdCJ9fV0sInN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJzdG9w
-        X3NlcXVlbmNlIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjI2NTAs
-        ImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9p
-        bnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81
-        bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMi
-        OjB9LCJvdXRwdXRfdG9rZW5zIjo3OSwic2VydmljZV90aWVyIjoic3RhbmRh
-        cmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
+        dGV4dCI6IkxldCBtZSBnZXQgbW9yZSBkZXRhaWxzIGFib3V0IHRoaXMgbGF0
+        ZXN0IGlzc3VlIGJ5IHJlYWRpbmcgdGhlIGZ1bGwgcmVzcG9uc2U6In0seyJ0
+        eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxSFVkbVpNOVJXVDJXMWFj
+        dVBHN2NyVCIsIm5hbWUiOiJyZWFkX2ZpbGUiLCJpbnB1dCI6eyJwYXRoIjoi
+        L3RtcC90b29sX3Jlc3VsdF9zdGFibGUudHh0In0sImNhbGxlciI6eyJ0eXBl
+        IjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bf
+        c2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MjY1NSwi
+        Y2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lu
+        cHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVt
+        X2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6
+        MH0sIm91dHB1dF90b2tlbnMiOjc4LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFy
+        ZCIsImluZmVyZW5jZV9nZW8iOiJub3RfYXZhaWxhYmxlIn19
   recorded_at: Sun, 29 Mar 2026 12:30:00 GMT
 - request:
     method: post
@@ -512,8 +515,8 @@ http_interactions:
       encoding: UTF-8
       string: "{\"model\":\"claude-sonnet-4-20250514\",\"messages\":[{\"role\":\"user\",\"content\":\"Sun
         Mar 29 12:30\\nWhat is the latest issue on hoblin/anima repo?\"},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll
-        help you find the latest issue on the hoblin/anima repository. Let me fetch
-        that information for you.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01VKwpN2XRCTEtpxoDtz3Xfe\",\"name\":\"web_get\",\"input\":{\"url\":\"https://api.github.com/repos/hoblin/anima/issues?state=all\\u0026sort=created\\u0026direction=desc\\u0026per_page=1\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01VKwpN2XRCTEtpxoDtz3Xfe\",\"content\":\"[Converted:
+        help you check the latest issue on the hoblin/anima repository. Let me use
+        the GitHub API to fetch this information.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01Fif5MHx2Mt4XM4XG3PVdBW\",\"name\":\"web_get\",\"input\":{\"url\":\"https://api.github.com/repos/hoblin/anima/issues?state=all\\u0026sort=created\\u0026direction=desc\\u0026per_page=1\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01Fif5MHx2Mt4XM4XG3PVdBW\",\"content\":\"[Converted:
         JSON → TOON]\\n\\n[1]:\\n  - url: \\\"https://api.github.com/repos/hoblin/anima/issues/376\\\"\\n
         \   repository_url: \\\"https://api.github.com/repos/hoblin/anima\\\"\\n    labels_url:
         \\\"https://api.github.com/repos/hoblin/anima/issues/376/labels{/name}\\\"\\n
@@ -526,7 +529,7 @@ http_interactions:
         0\\n      laugh: 0\\n      hooray: 0\\n      confused: 0\\n      heart: 0\\n
         \     rocket: 0\\n      eyes: 0\\n    timeline_url: \\\"https://api.github.com/repos/hoblin/anima/issues/376/timeline\\\"\\n
         \   performed_via_github_app: null\\n    state_reason: null\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Let
-        me read the full response to get the complete details of the latest issue:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01MrKXJSPDN8sgB4gm7pcwUL\",\"name\":\"read_file\",\"input\":{\"path\":\"/tmp/tool_result_stable.txt\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01MrKXJSPDN8sgB4gm7pcwUL\",\"content\":\"[Converted:
+        me get more details about this latest issue by reading the full response:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01HUdmZM9RWT2W1acuPG7crT\",\"name\":\"read_file\",\"input\":{\"path\":\"/tmp/tool_result_stable.txt\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01HUdmZM9RWT2W1acuPG7crT\",\"content\":\"[Converted:
         JSON → TOON]\\n\\n[1]:\\n  - url: \\\"https://api.github.com/repos/hoblin/anima/issues/376\\\"\\n
         \   repository_url: \\\"https://api.github.com/repos/hoblin/anima\\\"\\n    labels_url:
         \\\"https://api.github.com/repos/hoblin/anima/issues/376/labels{/name}\\\"\\n
@@ -550,7 +553,7 @@ http_interactions:
         User\\n      user_view_type: public\\n      site_admin: false\\n    labels[0]:\\n
         \   state: open\\n    locked: false\\n    assignees[0]:\\n    milestone: null\\n
         \   comments: 0\\n    created_at: \\\"2026-03-29T12:28:27Z\\\"\\n    updated_at:
-        \\\"2026-03-29T12:38:07Z\\\"\\n    closed_at: null\\n    assignee: null\\n
+        \\\"2026-03-29T12:39:21Z\\\"\\n    closed_at: null\\n    assignee: null\\n
         \   author_association: OWNER\\n    active_lock_reason: null\\n    draft:
         true\\n    pull_request:\\n      url: \\\"https://api.github.com/repos/hoblin/anima/pulls/376\\\"\\n
         \     html_url: \\\"https://github.com/hoblin/anima/pull/376\\\"\\n      diff_url:
@@ -573,7 +576,8 @@ http_interactions:
         0\\n      hooray: 0\\n      confused: 0\\n      heart: 0\\n      rocket: 0\\n
         \     eyes: 0\\n    timeline_url: \\\"https://api.github.com/repos/hoblin/anima/issues/376/timeline\\\"\\n
         \   performed_via_github_app: null\\n    state_reason: null\"}]}],\"max_tokens\":8192,\"tools\":[{\"name\":\"bash\",\"description\":\"Execute
-        shell commands in /home/test/anima. Environment persists between calls.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"command\":{\"type\":\"string\"},\"commands\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Each
+        shell commands in /home/test/anima. Working directory and environment persist
+        between calls.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"command\":{\"type\":\"string\"},\"commands\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"description\":\"Each
         command gets its own timeout and result.\"},\"mode\":{\"type\":\"string\",\"enum\":[\"sequential\",\"parallel\"],\"description\":\"sequential
         (default) stops on first failure.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
         (default: 180).\"}}}},{\"name\":\"read_file\",\"description\":\"Read file.
@@ -658,7 +662,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sun, 29 Mar 2026 12:39:13 GMT
+      - Sun, 29 Mar 2026 12:53:13 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -672,7 +676,7 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1774800000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.4'
+      - '0.43'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
@@ -704,11 +708,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '4190'
+      - '4930'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=4191
+      - x-originResponse;dur=4932
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
       X-Robots-Tag:
@@ -723,36 +727,38 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxNEp4UEM2U25GZUJOcjJoVm5pdTJaZSIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxTkFBZU5DOUR2MmRONldma0NES0I5eSIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6IlRoZSBsYXRlc3QgaXNzdWUgb24gdGhlIGhvYmxpbi9hbmltYSBy
-        ZXBvc2l0b3J5IGlzOlxuXG4qKlB1bGwgUmVxdWVzdCAjMzc2OiBcIiMzMjYg
-        ZmVhdDogSW5jbHVkZSB3b3JraW5nIGRpcmVjdG9yeSBpbiBiYXNoIHRvb2wg
-        ZGVzY3JpcHRpb25cIioqXG5cbi0gKipTdGF0dXMqKjogT3BlbiAoRHJhZnQp
-        XG4tICoqQ3JlYXRlZCoqOiBNYXJjaCAyOSwgMjAyNiBhdCAxMjoyODoyN1pc
-        bi0gKipBdXRob3IqKjogaG9ibGluIChyZXBvc2l0b3J5IG93bmVyKVxuLSAq
-        KlVSTCoqOiBodHRwczovL2dpdGh1Yi5jb20vaG9ibGluL2FuaW1hL3B1bGwv
-        Mzc2XG5cbioqU3VtbWFyeSBvZiBjaGFuZ2VzKio6XG4tIFRoZSBiYXNoIHRv
-        b2wgZGVzY3JpcHRpb24gbm93IGluY2x1ZGVzIHRoZSBzaGVsbCdzIGN1cnJl
-        bnQgd29ya2luZyBkaXJlY3RvcnkgKGUuZy4sIFwiRXhlY3V0ZSBzaGVsbCBj
-        b21tYW5kcyBpbiAvaG9tZS9ob2JsaW4vV29yay9hbmltYS4gRW52aXJvbm1l
-        bnQgcGVyc2lzdHMgYmV0d2VlbiBjYWxscy5cIilcbi0gVGhpcyBoZWxwcyB0
-        aGUgYWdlbnQgc2VlIHRoZSBjdXJyZW50IHdvcmtpbmcgZGlyZWN0b3J5IGR1
-        cmluZyB0b29sIHNlbGVjdGlvbiwgZWxpbWluYXRpbmcgcmVkdW5kYW50IGBj
-        ZCAvcGF0aCAmJmAgcHJlZml4ZXNcbi0gR2VuZXJhbGl6ZWQgdGhlIHJlZ2lz
-        dHJ5J3Mgc2NoZW1hIHJlc29sdXRpb24gZnJvbSBUaGluay1zcGVjaWZpYyBg
-        c2NoZW1hX3dpdGhfYnVkZ2V0YCB0byBhIHJldXNhYmxlIGBkeW5hbWljX3Nj
-        aGVtYWAgaW5zdGFuY2UgbWV0aG9kIHRoYXQgYW55IGNvbnRleHQtYXdhcmUg
-        dG9vbCBjYW4gaW1wbGVtZW50XG5cblRoaXMgcHVsbCByZXF1ZXN0IGNsb3Nl
-        cyBpc3N1ZSAjMzI2IGFuZCBhaW1zIHRvIGltcHJvdmUgdGhlIHVzZXIgZXhw
-        ZXJpZW5jZSBieSBtYWtpbmcgdGhlIGJhc2ggdG9vbCBtb3JlIGNvbnRleHQt
-        YXdhcmUgYWJvdXQgdGhlIGN1cnJlbnQgd29ya2luZyBkaXJlY3RvcnkuIn1d
-        LCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVs
-        bCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjozOTQwLCJjYWNoZV9jcmVhdGlv
-        bl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjow
-        LCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5z
-        IjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rv
-        a2VucyI6MjQ1LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5j
-        ZV9nZW8iOiJub3RfYXZhaWxhYmxlIn19
+        dGV4dCI6IkJhc2VkIG9uIHRoZSBHaXRIdWIgQVBJIHJlc3BvbnNlLCB0aGUg
+        bGF0ZXN0IGlzc3VlIG9uIHRoZSBob2JsaW4vYW5pbWEgcmVwb3NpdG9yeSBp
+        czpcblxuKipQdWxsIFJlcXVlc3QgIzM3NjogXCIjMzI2IGZlYXQ6IEluY2x1
+        ZGUgd29ya2luZyBkaXJlY3RvcnkgaW4gYmFzaCB0b29sIGRlc2NyaXB0aW9u
+        XCIqKlxuXG4tICoqU3RhdHVzKio6IE9wZW4gKGRyYWZ0KVxuLSAqKkF1dGhv
+        cioqOiBob2JsaW5cbi0gKipDcmVhdGVkKio6IE1hcmNoIDI5LCAyMDI2IGF0
+        IDEyOjI4OjI3IFVUQ1xuLSAqKlVwZGF0ZWQqKjogTWFyY2ggMjksIDIwMjYg
+        YXQgMTI6Mzk6MjEgVVRDXG4tICoqVVJMKio6IGh0dHBzOi8vZ2l0aHViLmNv
+        bS9ob2JsaW4vYW5pbWEvcHVsbC8zNzZcblxuKipTdW1tYXJ5IG9mIGNoYW5n
+        ZXMqKjpcbi0gVGhlIGJhc2ggdG9vbCBkZXNjcmlwdGlvbiBub3cgaW5jbHVk
+        ZXMgdGhlIHNoZWxsJ3MgY3VycmVudCB3b3JraW5nIGRpcmVjdG9yeSAoZS5n
+        LiwgXCJFeGVjdXRlIHNoZWxsIGNvbW1hbmRzIGluIC9ob21lL2hvYmxpbi9X
+        b3JrL2FuaW1hLiBFbnZpcm9ubWVudCBwZXJzaXN0cyBiZXR3ZWVuIGNhbGxz
+        LlwiKVxuLSBUaGlzIGhlbHBzIGFnZW50cyBzZWUgdGhlIGN1cnJlbnQgd29y
+        a2luZyBkaXJlY3RvcnkgZHVyaW5nIHRvb2wgc2VsZWN0aW9uLCBlbGltaW5h
+        dGluZyB0aGUgbmVlZCBmb3IgcmVkdW5kYW50IGBjZCAvcGF0aCAmJmAgcHJl
+        Zml4ZXNcbi0gR2VuZXJhbGl6ZXMgdGhlIHJlZ2lzdHJ5J3Mgc2NoZW1hIHJl
+        c29sdXRpb24gZnJvbSBUaGluay1zcGVjaWZpYyBgc2NoZW1hX3dpdGhfYnVk
+        Z2V0YCB0byBhIHJldXNhYmxlIGBkeW5hbWljX3NjaGVtYWAgaW5zdGFuY2Ug
+        bWV0aG9kIHRoYXQgYW55IGNvbnRleHQtYXdhcmUgdG9vbCBjYW4gaW1wbGVt
+        ZW50XG4tIFRoaXMgUFIgY2xvc2VzIGlzc3VlICMzMjZcblxuVGhlIHB1bGwg
+        cmVxdWVzdCBpcyBjdXJyZW50bHkgaW4gZHJhZnQgc3RhdHVzIGFuZCBpbmNs
+        dWRlcyBhIHRlc3QgcGxhbiB3aXRoIHNldmVyYWwgdmVyaWZpY2F0aW9uIHN0
+        ZXBzIGZvciB0aGUgbmV3IGZ1bmN0aW9uYWxpdHkuIn1dLCJzdG9wX3JlYXNv
+        biI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsi
+        aW5wdXRfdG9rZW5zIjozOTQ0LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tl
+        bnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVh
+        dGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVy
+        YWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MjczLCJz
+        ZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJub3Rf
+        YXZhaWxhYmxlIn19
   recorded_at: Sun, 29 Mar 2026 12:30:00 GMT
 recorded_with: VCR 6.4.0
