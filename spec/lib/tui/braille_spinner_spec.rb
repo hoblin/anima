@@ -66,7 +66,6 @@ RSpec.describe TUI::BrailleSpinner do
 
       expect(frames.uniq.size).to be > 1
     end
-
   end
 
   describe "#current" do
