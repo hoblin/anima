@@ -21,7 +21,7 @@ module TUI
     }.freeze
 
     MENU_LABELS = (COMMAND_KEYS.map { |key, action| "[#{key}] #{action.to_s.tr("_", " ").capitalize}" } +
-      ["[\u2191] Scroll chat", "[\u2193] Return to input"]).freeze
+      ["[\u2191] Scroll chat", "[\u2193] Return to input", "[\u2192] Scroll HUD"]).freeze
 
     # HUD occupies 1/3 of screen width, clamped to a usable minimum.
     HUD_MIN_WIDTH = 24
@@ -78,10 +78,16 @@ module TUI
     # Grace period for watchdog thread to exit before force-killing it.
     WATCHDOG_SHUTDOWN_TIMEOUT = 1
 
+    # HUD scroll step sizes (lines per event).
+    HUD_SCROLL_STEP = 1
+    HUD_MOUSE_SCROLL_STEP = 2
+
     attr_reader :current_screen, :command_mode, :session_picker_active,
       :view_mode_picker_active
     # @return [Boolean] true when the HUD info panel is visible
     attr_reader :hud_visible
+    # @return [Boolean] true when the HUD pane has keyboard focus for scrolling
+    attr_reader :hud_focused
     # @return [Boolean] true when the token setup popup overlay is visible
     attr_reader :token_setup_active
     # @return [Boolean] true when graceful shutdown has been requested via signal
@@ -102,6 +108,11 @@ module TUI
       @session_picker_mode = :root
       @session_picker_parent_id = nil
       @hud_visible = true
+      @hud_focused = false
+      @hud_scroll_offset = 0
+      @hud_max_scroll = 0
+      @hud_visible_height = 0
+      @hud_content_area = nil
       @view_mode_picker_active = false
       @view_mode_picker_index = 0
       @token_setup_active = false
@@ -218,8 +229,10 @@ module TUI
     end
 
     # Renders the main HUD content: session name, goals, skills,
-    # workflow, and sub-agents.
+    # workflow, and sub-agents. Supports vertical scrolling with
+    # a scrollbar when content exceeds the visible area.
     def render_hud_content(frame, area, tui, session)
+      @hud_content_area = area
       session_label = session[:name] || "##{session[:id]}"
 
       lines = [
@@ -234,16 +247,52 @@ module TUI
         interaction_state_line(tui)
       ].flatten.compact
 
+      @hud_visible_height = [area.height - 2, 0].max
+      inner_width = [area.width - 2, 1].max
+      total_height = tui.paragraph(text: lines, wrap: true).line_count(inner_width)
+      @hud_max_scroll = [total_height - @hud_visible_height, 0].max
+      @hud_scroll_offset = @hud_scroll_offset.clamp(0, @hud_max_scroll)
+
+      border_color = @hud_focused ? "yellow" : "white"
+
       content = tui.paragraph(
         text: lines,
         wrap: true,
+        scroll: [@hud_scroll_offset, 0],
         block: tui.block(
           borders: [:left, :top, :right],
           border_type: :rounded,
-          border_style: {fg: "white"}
+          border_style: {fg: border_color},
+          titles: hud_scroll_indicators
         )
       )
       frame.render_widget(content, area)
+
+      render_hud_scrollbar(frame, area, tui)
+    end
+
+    # Builds block title indicators showing whether more content exists
+    # above or below the visible viewport.
+    def hud_scroll_indicators
+      titles = []
+      titles << {content: " \u25B2 more ", position: :top, alignment: :right} if @hud_scroll_offset > 0
+      titles << {content: " \u25BC more ", position: :bottom, alignment: :right} if @hud_scroll_offset < @hud_max_scroll
+      titles
+    end
+
+    # Renders a scrollbar on the right edge of the HUD when content overflows.
+    def render_hud_scrollbar(frame, area, tui)
+      return unless @hud_max_scroll > 0
+
+      scrollbar = tui.scrollbar(
+        content_length: @hud_max_scroll,
+        position: @hud_scroll_offset,
+        orientation: :vertical_right,
+        thumb_style: {fg: "cyan"},
+        track_symbol: "\u2502",
+        track_style: {fg: "dark_gray"}
+      )
+      frame.render_widget(scrollbar, area)
     end
 
     # Renders the bottom status bar: connection state and model name.
@@ -395,7 +444,11 @@ module TUI
 
     # Shows "Scrolling" when chat pane is focused, "Thinking..." during LLM processing.
     def interaction_state_line(tui)
-      if @screens[:chat].chat_focused
+      if @hud_focused
+        tui.line(spans: [
+          tui.span(content: "HUD Scroll", style: tui.style(fg: "yellow", modifiers: [:bold]))
+        ])
+      elsif @screens[:chat].chat_focused
         tui.line(spans: [
           tui.span(content: "Scrolling", style: tui.style(fg: "yellow", modifiers: [:bold]))
         ])
@@ -410,6 +463,28 @@ module TUI
       @screens[:chat].loading?
     end
 
+    # Switches keyboard focus to the HUD pane for scrolling.
+    # Unfocuses the chat pane if it was focused.
+    def focus_hud
+      @screens[:chat].unfocus_chat if @screens[:chat].chat_focused
+      @hud_focused = true
+    end
+
+    # Returns keyboard focus from the HUD pane.
+    def unfocus_hud
+      @hud_focused = false
+    end
+
+    # Scrolls the HUD viewport up, clamping at the top.
+    def scroll_hud_up(lines)
+      @hud_scroll_offset = [@hud_scroll_offset - lines, 0].max
+    end
+
+    # Scrolls the HUD viewport down, clamping at max_scroll.
+    def scroll_hud_down(lines)
+      @hud_scroll_offset = [@hud_scroll_offset + lines, @hud_max_scroll].min
+    end
+
     def handle_event(event)
       return nil if event.none?
       return :quit if event.ctrl_c?
@@ -422,6 +497,8 @@ module TUI
         handle_view_mode_picker(event)
       elsif @command_mode
         handle_command_mode(event)
+      elsif @hud_focused
+        handle_hud_focused_event(event)
       else
         handle_normal_mode(event)
       end
@@ -439,6 +516,11 @@ module TUI
 
       if event.down?
         @screens[:chat].unfocus_chat
+        return nil
+      end
+
+      if event.right? && @hud_visible
+        focus_hud
         return nil
       end
 
@@ -466,7 +548,13 @@ module TUI
     end
 
     def handle_normal_mode(event)
-      if event.mouse? || event.paste?
+      if event.paste?
+        delegate_to_screen(event)
+        return nil
+      end
+
+      if event.mouse?
+        return nil if route_mouse_to_hud(event)
         delegate_to_screen(event)
         return nil
       end
@@ -495,6 +583,59 @@ module TUI
 
       delegate_to_screen(event)
       nil
+    end
+
+    # Handles keyboard events when the HUD pane has focus.
+    # Arrow keys and Page Up/Down scroll the HUD; Escape and Ctrl+A exit.
+    def handle_hud_focused_event(event)
+      return nil if event.none?
+      return :quit if event.ctrl_c?
+
+      if event.mouse?
+        return nil if route_mouse_to_hud(event)
+        delegate_to_screen(event)
+        return nil
+      end
+
+      return nil unless event.key?
+
+      if event.esc? || ctrl_a?(event)
+        unfocus_hud
+        return nil
+      end
+
+      if event.up?
+        scroll_hud_up(HUD_SCROLL_STEP)
+      elsif event.down?
+        scroll_hud_down(HUD_SCROLL_STEP)
+      elsif event.page_up?
+        scroll_hud_up(@hud_visible_height)
+      elsif event.page_down?
+        scroll_hud_down(@hud_visible_height)
+      end
+      nil
+    end
+
+    # Routes mouse scroll events to the HUD when the cursor is over the HUD area.
+    # @return [Boolean] true if the event was handled by the HUD
+    def route_mouse_to_hud(event)
+      return false if !@hud_visible || !@hud_content_area
+      return false unless mouse_over_hud?(event)
+      return false unless event.scroll_up? || event.scroll_down?
+
+      if event.scroll_up?
+        scroll_hud_up(HUD_MOUSE_SCROLL_STEP)
+      else
+        scroll_hud_down(HUD_MOUSE_SCROLL_STEP)
+      end
+      true
+    end
+
+    # Checks whether a mouse event's coordinates fall within the HUD content area.
+    def mouse_over_hud?(event)
+      area = @hud_content_area
+      event.x >= area.x && event.x < area.x + area.width &&
+        event.y >= area.y && event.y < area.y + area.height
     end
 
     # Switches to the parent session when viewing a child (sub-agent) session.
