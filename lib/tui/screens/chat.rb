@@ -49,6 +49,11 @@ module TUI
       # independent of Rails. Must stay in sync when adding new modes.
       VIEW_MODES = %w[basic verbose debug].freeze
 
+      # @!attribute [r] session_loading
+      #   Whether the TUI is waiting for session history to arrive from the server.
+      #   Independent of cable_client.status (transport) and session_state (LLM processing).
+      #   Set on subscribing/session_changed/view_mode_changed; cleared on first content
+      #   message or connection failure. Drives the "Loading…" input title and yellow border.
       attr_reader :message_store, :scroll_offset, :session_info, :view_mode, :sessions_list,
         :authentication_required, :token_save_result, :parent_session_id,
         :chat_focused, :session_state, :spinner, :session_loading
@@ -425,7 +430,9 @@ module TUI
         new_id = msg["session_id"]
         @cable_client.update_session_id(new_id)
         @message_store.clear
-        @session_loading = true
+        # Only enter loading state when the session has messages to replay.
+        # Empty sessions send no history events, so the flag would never clear.
+        @session_loading = (msg["message_count"] || 0) > 0
         @view_mode = msg["view_mode"] if msg["view_mode"]
         @session_info = {id: new_id, name: msg["name"], agent_name: msg["agent_name"] || "Anima",
                          message_count: msg["message_count"] || 0,
@@ -541,7 +548,9 @@ module TUI
 
         @view_mode = new_mode
         @message_store.clear
-        @session_loading = true
+        # Only enter loading state when there are messages to re-decorate.
+        # Empty sessions send no viewport events after a mode change.
+        @session_loading = (@session_info[:message_count] || 0) > 0
         update_session_state("idle")
         @scroll_offset = 0
         @auto_scroll = true
@@ -1100,6 +1109,10 @@ module TUI
       # Returns the input field title reflecting the current transport and
       # session state. Only shows "Disconnected" when the WebSocket is
       # truly down — not during the subscribe handshake or session loading.
+      #
+      # :connected (pre-subscription) still shows "Connecting…" because
+      # the user can't interact until the Action Cable subscription handshake
+      # completes and the server starts streaming events.
       def input_title
         case @cable_client.status
         when :disconnected

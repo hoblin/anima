@@ -1353,11 +1353,36 @@ RSpec.describe TUI::Screens::Chat do
       expect(screen.session_loading).to be false
     end
 
-    it "sets session_loading on view_mode_changed" do
+    it "sets session_loading on view_mode_changed when session has messages" do
+      screen.instance_variable_get(:@session_info)[:message_count] = 5
       msg = {"action" => "view_mode_changed", "view_mode" => "verbose"}
       allow(cable_client).to receive(:drain_messages).and_return([msg])
       screen.send(:process_incoming_messages)
       expect(screen.session_loading).to be true
+    end
+
+    it "skips session_loading on view_mode_changed for empty sessions" do
+      screen.instance_variable_get(:@session_info)[:message_count] = 0
+      msg = {"action" => "view_mode_changed", "view_mode" => "verbose"}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_loading).to be false
+    end
+
+    it "skips session_loading for empty sessions on session_changed" do
+      msg = {"action" => "session_changed", "session_id" => 99, "message_count" => 0}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_loading).to be false
+    end
+
+    it "clears session_loading through full subscribing → message flow" do
+      subscribing = {"type" => "connection", "status" => "subscribing"}
+      session_changed = {"action" => "session_changed", "session_id" => 99, "message_count" => 2}
+      history_msg = {"type" => "user_message", "content" => "hello"}
+      allow(cable_client).to receive(:drain_messages).and_return([subscribing, session_changed, history_msg])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_loading).to be false
     end
 
     it "starts as false" do
