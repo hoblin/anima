@@ -44,7 +44,7 @@ module Tools
 
       # Per-tool character threshold for response truncation.
       # Override in subclasses to use a custom limit, or return +nil+
-      # to skip truncation entirely (e.g. ReadTool has its own pagination).
+      # to skip truncation entirely (e.g. read_file tool has its own pagination).
       #
       # @return [Integer, nil] character threshold, or nil to skip truncation
       def truncation_threshold

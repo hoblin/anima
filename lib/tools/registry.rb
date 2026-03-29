@@ -56,7 +56,7 @@ module Tools
     end
 
     # Returns the truncation threshold for a tool, or +nil+ if the tool
-    # opts out of truncation (e.g. ReadTool has its own pagination).
+    # opts out of truncation (e.g. read_file tool has its own pagination).
     # MCP tools and other duck-typed instances use the default threshold.
     #
     # @param name [String] registered tool name

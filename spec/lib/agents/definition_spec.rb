@@ -77,7 +77,7 @@ RSpec.describe Agents::Definition do
           name: array-tools
           description: Agent with array tools
           tools:
-            - read
+            - read_file
             - bash
           ---
 
@@ -87,7 +87,7 @@ RSpec.describe Agents::Definition do
 
       it "accepts YAML array syntax for tools" do
         definition = described_class.from_file(agent_path)
-        expect(definition.tools).to eq(%w[read bash])
+        expect(definition.tools).to eq(%w[read_file bash])
       end
     end
 
