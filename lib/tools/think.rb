@@ -28,7 +28,7 @@ module Tools
     def self.description = "Think out loud or silently."
 
     # Schema is static — maxLength is injected at runtime by the registry
-    # via {#schema_with_budget} when session context is available.
+    # via {#dynamic_schema} when session context is available.
     def self.input_schema
       {
         type: "object",
@@ -53,7 +53,7 @@ module Tools
     # on the thoughts property. Sub-agents get half the budget.
     #
     # @return [Hash] Anthropic tool schema with maxLength constraint
-    def schema_with_budget
+    def dynamic_schema
       schema = self.class.schema.deep_dup
       budget = Anima::Settings.thinking_budget
       budget /= 2 if @session&.sub_agent?

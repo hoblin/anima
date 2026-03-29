@@ -44,6 +44,17 @@ module Tools
       @session = session
     end
 
+    # Returns tool schema with the shell's current working directory
+    # embedded in the description so the agent sees it during tool
+    # selection — eliminating redundant +cd+ prefixes.
+    #
+    # @return [Hash] Anthropic tool schema with dynamic description
+    def dynamic_schema
+      schema = self.class.schema.deep_dup
+      schema[:description] = "Execute shell commands in #{@shell_session.pwd}. Environment persists between calls."
+      schema
+    end
+
     # @param input [Hash<String, Object>] string-keyed hash from the Anthropic API.
     #   Supports optional "timeout" key (seconds) to override the global
     #   command_timeout setting for long-running operations.

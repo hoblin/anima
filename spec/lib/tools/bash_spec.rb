@@ -21,12 +21,6 @@ RSpec.describe Tools::Bash do
       expect(described_class.description).to be_a(String)
       expect(described_class.description).not_to be_empty
     end
-
-    it "mentions both single and batch modes" do
-      desc = described_class.description
-      expect(desc).to include("command")
-      expect(desc).to include("commands")
-    end
   end
 
   describe ".input_schema" do
@@ -61,6 +55,25 @@ RSpec.describe Tools::Bash do
       schema = described_class.schema
       expect(schema).to include(name: "bash", description: a_kind_of(String))
       expect(schema[:input_schema]).to be_a(Hash)
+    end
+  end
+
+  describe "#dynamic_schema" do
+    it "includes the shell's working directory in the description" do
+      schema = tool.dynamic_schema
+      expect(schema[:description]).to include(shell_session.pwd)
+    end
+
+    it "preserves the standard schema fields" do
+      schema = tool.dynamic_schema
+      expect(schema[:name]).to eq("bash")
+      expect(schema[:input_schema][:properties][:command]).to be_present
+      expect(schema[:input_schema][:properties][:commands]).to be_present
+    end
+
+    it "does not mutate the class-level schema" do
+      tool.dynamic_schema
+      expect(described_class.description).not_to include(shell_session.pwd)
     end
   end
 

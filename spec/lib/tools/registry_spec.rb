@@ -51,10 +51,10 @@ RSpec.describe Tools::Registry do
       expect(tool_class.input_schema[:properties]).not_to have_key("timeout")
     end
 
-    context "with budget-aware tools" do
+    context "with dynamic schema tools" do
       before { allow(Anima::Settings).to receive(:thinking_budget).and_return(8_000) }
 
-      it "uses schema_with_budget for the Think tool" do
+      it "uses dynamic_schema for the Think tool" do
         session = Session.create!
         registry_with_ctx = described_class.new(context: {session: session})
         registry_with_ctx.register(Tools::Think)
@@ -75,6 +75,20 @@ RSpec.describe Tools::Registry do
         think_schema = schemas.find { |s| s[:name] == "think" }
 
         expect(think_schema[:input_schema][:properties][:thoughts][:maxLength]).to eq(4_000)
+      end
+
+      it "uses dynamic_schema for the Bash tool" do
+        session = Session.create!
+        shell = ShellSession.new(session_id: "registry-test-#{SecureRandom.hex(4)}")
+        registry_with_ctx = described_class.new(context: {shell_session: shell, session: session})
+        registry_with_ctx.register(Tools::Bash)
+
+        schemas = registry_with_ctx.schemas
+        bash_schema = schemas.find { |s| s[:name] == "bash" }
+
+        expect(bash_schema[:description]).to include(shell.pwd)
+      ensure
+        shell&.finalize
       end
     end
   end
