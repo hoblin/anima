@@ -15,7 +15,7 @@ RSpec.describe Agents::Definition do
           ---
           name: test-agent
           description: A test agent for specs
-          tools: read, bash, web_get
+          tools: read_file, bash, web_get
           model: claude-sonnet-4-5
           color: blue
           maxTurns: 10
@@ -40,7 +40,7 @@ RSpec.describe Agents::Definition do
 
       it "parses comma-separated tools into a normalized array" do
         definition = described_class.from_file(agent_path)
-        expect(definition.tools).to eq(%w[read bash web_get])
+        expect(definition.tools).to eq(%w[read_file bash web_get])
       end
 
       it "extracts the Markdown body as the system prompt" do
@@ -197,7 +197,7 @@ RSpec.describe Agents::Definition do
           ---
           name: empty-body
           description: Agent with empty body
-          tools: read
+          tools: read_file
           ---
         MD
       end

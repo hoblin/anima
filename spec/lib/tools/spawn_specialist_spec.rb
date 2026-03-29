@@ -24,7 +24,7 @@ RSpec.describe Tools::SpawnSpecialist do
       ---
       name: analyzer
       description: Analyzes code
-      tools: read, bash
+      tools: read_file, bash
       ---
 
       You are a code analysis specialist. Examine implementation details carefully.
@@ -103,7 +103,7 @@ RSpec.describe Tools::SpawnSpecialist do
       tool.execute(input)
 
       child = Session.last
-      expect(child.granted_tools).to eq(%w[read bash])
+      expect(child.granted_tools).to eq(%w[read_file bash])
     end
 
     it "prepends identity context to the specialist prompt" do
