@@ -18,6 +18,11 @@ RSpec.configure do |config|
   config.include ActiveJob::TestHelper
   config.include ActiveSupport::Testing::TimeHelpers
 
+  # Pin version so cassettes don't break on every release.
+  config.before do
+    stub_const("Anima::VERSION", "0.0.0-test")
+  end
+
   # Stub Settings for all specs so tests never touch the real config file.
   config.before do
     allow(Anima::Settings).to receive(:config).and_return(
@@ -33,7 +38,7 @@ RSpec.configure do |config|
       "timeouts" => {"api" => 300, "command" => 30, "mcp_response" => 60, "web_request" => 10, "tool" => 180, "interrupt_check" => 2},
       "shell" => {"max_output_bytes" => 100_000},
       "tools" => {"max_file_size" => 10_485_760, "max_read_lines" => 2_000, "max_read_bytes" => 50_000, "max_web_response_bytes" => 100_000, "min_web_content_chars" => 100, "max_tool_response_chars" => 3_000, "max_subagent_response_chars" => 24_000},
-      "paths" => {"soul" => Rails.root.join("templates/soul.md").to_s},
+      "paths" => {"soul" => Rails.root.join("spec/fixtures/soul.md").to_s},
       "session" => {"default_view_mode" => "basic", "name_generation_interval" => 30},
       "goals" => {"completed_decay_messages" => 5},
       "analytical_brain" => {"max_tokens" => 4096, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "message_window" => 20},
