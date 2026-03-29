@@ -279,8 +279,10 @@ module TUI
             handle_children_updated(msg)
           when "sessions_list"
             @sessions_list = msg["sessions"]
-          when "user_message_recalled"
-            @message_store.remove_by_id(msg["message_id"]) if msg["message_id"]
+          when "pending_message_created"
+            @message_store.add_pending(msg["pending_message_id"], msg["content"]) if msg["pending_message_id"]
+          when "pending_message_removed"
+            @message_store.remove_pending(msg["pending_message_id"]) if msg["pending_message_id"]
           when "authentication_required"
             @authentication_required = true
           when "token_saved"
@@ -1105,17 +1107,17 @@ module TUI
 
       # Recalls the last pending user message for editing. Removes it from
       # the message store, puts its content back in the input buffer, and
-      # tells the server to delete the message.
+      # tells the server to delete the {PendingMessage}.
       #
       # @return [Boolean] true if a message was recalled
       def recall_pending_message
         pending = @message_store.last_pending_user_message
         return false unless pending
 
-        @message_store.remove_by_id(pending[:id])
+        @message_store.remove_pending(pending[:pending_message_id])
         @input_buffer.clear
         @input_buffer.insert(pending[:content])
-        @cable_client.recall_pending(pending[:id])
+        @cable_client.recall_pending(pending[:pending_message_id])
         true
       end
 

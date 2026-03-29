@@ -23,25 +23,5 @@ RSpec.describe Events::UserMessage do
       )
       expect(hash[:timestamp]).to be_a(Integer)
     end
-
-    it "excludes status when nil" do
-      expect(event.to_h).not_to have_key(:status)
-    end
-
-    it "includes status when pending" do
-      pending_event = described_class.new(content: "queued", session_id: "s1", status: "pending")
-      expect(pending_event.to_h[:status]).to eq("pending")
-    end
-  end
-
-  describe "#status" do
-    it "defaults to nil" do
-      expect(event.status).to be_nil
-    end
-
-    it "accepts pending status" do
-      pending_event = described_class.new(content: "queued", status: "pending")
-      expect(pending_event.status).to eq("pending")
-    end
   end
 end

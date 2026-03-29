@@ -431,15 +431,23 @@ RSpec.describe TUI::MessageStore do
     end
   end
 
-  describe "#last_pending_user_message" do
-    it "returns the last pending user message" do
+  describe "#add_pending / #remove_pending / #last_pending_user_message" do
+    it "adds a pending entry that appears after real messages" do
       store.process_event({"type" => "user_message", "id" => 1,
                            "rendered" => {"basic" => {"role" => "user", "content" => "first"}}})
-      store.process_event({"type" => "user_message", "id" => 2,
-                           "rendered" => {"basic" => {"role" => "user", "content" => "pending msg", "status" => "pending"}}})
+      store.add_pending(42, "waiting")
+
+      msgs = store.messages
+      expect(msgs.size).to eq(2)
+      expect(msgs.last.dig(:data, "status")).to eq("pending")
+      expect(msgs.last.dig(:data, "content")).to eq("waiting")
+    end
+
+    it "returns the last pending user message" do
+      store.add_pending(42, "pending msg")
 
       result = store.last_pending_user_message
-      expect(result).to eq({id: 2, content: "pending msg"})
+      expect(result).to eq({pending_message_id: 42, content: "pending msg"})
     end
 
     it "returns nil when no pending messages exist" do
@@ -453,14 +461,19 @@ RSpec.describe TUI::MessageStore do
       expect(store.last_pending_user_message).to be_nil
     end
 
-    it "only checks the most recent user message" do
-      store.process_event({"type" => "user_message", "id" => 1,
-                           "rendered" => {"basic" => {"role" => "user", "content" => "old pending", "status" => "pending"}}})
-      store.process_event({"type" => "agent_message", "id" => 2,
-                           "rendered" => {"basic" => {"role" => "assistant", "content" => "reply"}}})
-      store.process_event({"type" => "user_message", "id" => 3,
-                           "rendered" => {"basic" => {"role" => "user", "content" => "delivered"}}})
+    it "removes a pending entry by pending_message_id" do
+      store.add_pending(42, "will remove")
+      expect(store.remove_pending(42)).to be true
+      expect(store.messages.size).to eq(0)
+    end
 
+    it "returns false when pending_message_id not found" do
+      expect(store.remove_pending(999)).to be false
+    end
+
+    it "clears pending entries on clear" do
+      store.add_pending(42, "pending")
+      store.clear
       expect(store.last_pending_user_message).to be_nil
     end
   end

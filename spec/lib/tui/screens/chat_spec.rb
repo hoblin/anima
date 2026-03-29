@@ -287,12 +287,20 @@ RSpec.describe TUI::Screens::Chat do
         expect(screen.session_info[:message_count]).to eq(1)
       end
 
-      it "removes entry on user_message_recalled" do
-        message_store.process_event({"type" => "user_message", "id" => 42,
-                                     "rendered" => {"basic" => {"role" => "user", "content" => "pending", "status" => "pending"}}})
+      it "adds pending entry on pending_message_created" do
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "pending_message_created", "pending_message_id" => 42, "content" => "waiting"}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.messages.last.dig(:data, "status")).to eq("pending")
+      end
+
+      it "removes pending entry on pending_message_removed" do
+        message_store.add_pending(42, "waiting")
 
         allow(cable_client).to receive(:drain_messages).and_return([
-          {"action" => "user_message_recalled", "message_id" => 42}
+          {"action" => "pending_message_removed", "pending_message_id" => 42}
         ])
         screen.send(:process_incoming_messages)
 
@@ -724,8 +732,7 @@ RSpec.describe TUI::Screens::Chat do
       end
 
       it "recalls last pending message into input buffer" do
-        message_store.process_event({"type" => "user_message", "id" => 42,
-                                     "rendered" => {"basic" => {"role" => "user", "content" => "pending msg", "status" => "pending"}}})
+        message_store.add_pending(42, "pending msg")
 
         expect(screen.handle_event(key_event(code: "up"))).to be true
         expect(screen.input).to eq("pending msg")
@@ -733,8 +740,7 @@ RSpec.describe TUI::Screens::Chat do
       end
 
       it "removes recalled message from message store" do
-        message_store.process_event({"type" => "user_message", "id" => 42,
-                                     "rendered" => {"basic" => {"role" => "user", "content" => "pending msg", "status" => "pending"}}})
+        message_store.add_pending(42, "pending msg")
 
         screen.handle_event(key_event(code: "up"))
         expect(screen.messages).to be_empty
@@ -996,8 +1002,7 @@ RSpec.describe TUI::Screens::Chat do
         set_input("sent")
         screen.handle_event(key_event(code: "enter"))
 
-        message_store.process_event({"type" => "user_message", "id" => 42,
-                                     "rendered" => {"basic" => {"role" => "user", "content" => "pending msg", "status" => "pending"}}})
+        message_store.add_pending(42, "pending msg")
 
         screen.handle_event(key_event(code: "up"))
         expect(screen.input).to eq("pending msg")

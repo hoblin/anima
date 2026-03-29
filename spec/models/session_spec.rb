@@ -1831,24 +1831,20 @@ RSpec.describe Session do
   describe "#promote_pending_messages!" do
     let(:session) { Session.create! }
 
-    it "promotes pending user messages to delivered (nil status)" do
-      event = session.messages.create!(
-        message_type: "user_message",
-        payload: {"content" => "queued", "status" => "pending"},
-        timestamp: 1,
-        status: "pending"
-      )
+    it "creates a real message from a pending message and deletes the pending record" do
+      pm = session.pending_messages.create!(content: "queued")
 
       session.promote_pending_messages!
 
-      event.reload
-      expect(event.status).to be_nil
-      expect(event.payload).not_to have_key("status")
+      expect(PendingMessage.find_by(id: pm.id)).to be_nil
+      msg = session.messages.last
+      expect(msg.message_type).to eq("user_message")
+      expect(msg.payload["content"]).to eq("queued")
     end
 
     it "returns the count of promoted messages" do
-      session.messages.create!(message_type: "user_message", payload: {"content" => "q1", "status" => "pending"}, timestamp: 1, status: "pending")
-      session.messages.create!(message_type: "user_message", payload: {"content" => "q2", "status" => "pending"}, timestamp: 2, status: "pending")
+      session.pending_messages.create!(content: "q1")
+      session.pending_messages.create!(content: "q2")
 
       expect(session.promote_pending_messages!).to eq(2)
     end
@@ -1859,94 +1855,8 @@ RSpec.describe Session do
       expect(session.promote_pending_messages!).to eq(0)
     end
 
-    it "does not affect non-pending events" do
-      delivered = session.messages.create!(message_type: "user_message", payload: {"content" => "done"}, timestamp: 1)
-      session.messages.create!(message_type: "user_message", payload: {"content" => "q", "status" => "pending"}, timestamp: 2, status: "pending")
-
-      session.promote_pending_messages!
-
-      expect(delivered.reload.status).to be_nil
-    end
-  end
-
-  describe "#messages_for_llm with pending messages" do
-    let(:session) { Session.create! }
-
-    it "excludes pending messages from LLM context" do
-      session.messages.create!(message_type: "user_message", payload: {"content" => "delivered"}, timestamp: 1)
-      session.messages.create!(message_type: "user_message", payload: {"content" => "queued", "status" => "pending"}, timestamp: 2, status: "pending")
-
-      result = session.messages_for_llm
-      expect(result).to eq([{role: "user", content: timestamped("delivered", 1)}])
-    end
-  end
-
-  describe "#messages_for_llm deinterleaving tool pairs" do
-    let(:session) { Session.create! }
-
-    before do
-      allow(Anima::Settings).to receive(:mneme_l1_budget_fraction).and_return(0.0)
-      allow(Anima::Settings).to receive(:mneme_l2_budget_fraction).and_return(0.0)
-      allow(Anima::Settings).to receive(:mneme_pinned_budget_fraction).and_return(0.0)
-      allow(Anima::Settings).to receive(:recall_budget_fraction).and_return(0.0)
-    end
-
-    it "moves a promoted user message from between a tool_call and its tool_response to after the pair" do
-      session.messages.create!(message_type: "user_message", payload: {"content" => "run bash"}, timestamp: 1, token_count: 10)
-      session.messages.create!(
-        message_type: "tool_call",
-        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "tool_input" => {}},
-        tool_use_id: "toolu_A", timestamp: 2, token_count: 10
-      )
-      # Promoted pending message — its ID falls between tool_call and tool_response
-      session.messages.create!(message_type: "user_message", payload: {"content" => "hey"}, timestamp: 3, token_count: 10)
-      session.messages.create!(
-        message_type: "tool_response",
-        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "content" => "ok"},
-        tool_use_id: "toolu_A", timestamp: 4, token_count: 10
-      )
-
-      result = session.messages_for_llm(token_budget: 1000)
-
-      roles = result.map { |m| m[:role] }
-      # tool_use (assistant) → tool_result (user) → promoted user message
-      expect(roles).to eq(%w[user assistant user user])
-      expect(result.last[:content]).to include("hey")
-    end
-
-    it "handles multiple sequential tool pairs with interleaving" do
-      session.messages.create!(message_type: "user_message", payload: {"content" => "go"}, timestamp: 1, token_count: 10)
-      session.messages.create!(
-        message_type: "tool_call",
-        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "tool_input" => {}},
-        tool_use_id: "toolu_A", timestamp: 2, token_count: 10
-      )
-      session.messages.create!(message_type: "user_message", payload: {"content" => "wait"}, timestamp: 3, token_count: 10)
-      session.messages.create!(
-        message_type: "tool_response",
-        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "content" => "done"},
-        tool_use_id: "toolu_A", timestamp: 4, token_count: 10
-      )
-      session.messages.create!(
-        message_type: "tool_call",
-        payload: {"tool_name" => "ls", "tool_use_id" => "toolu_B", "tool_input" => {}},
-        tool_use_id: "toolu_B", timestamp: 5, token_count: 10
-      )
-      session.messages.create!(
-        message_type: "tool_response",
-        payload: {"tool_name" => "ls", "tool_use_id" => "toolu_B", "content" => "files"},
-        tool_use_id: "toolu_B", timestamp: 6, token_count: 10
-      )
-
-      result = session.messages_for_llm(token_budget: 1000)
-
-      roles = result.map { |m| m[:role] }
-      # Initial user, tool_A call, tool_A result, promoted msg, tool_B call, tool_B result
-      expect(roles).to eq(%w[user assistant user user assistant user])
-    end
-
-    it "is a no-op when no messages interleave tool pairs" do
-      session.messages.create!(message_type: "user_message", payload: {"content" => "go"}, timestamp: 1, token_count: 10)
+    it "promoted message gets an ID after existing messages" do
+      session.messages.create!(message_type: "user_message", payload: {"content" => "first"}, timestamp: 1, token_count: 10)
       session.messages.create!(
         message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "tool_input" => {}},
@@ -1957,32 +1867,48 @@ RSpec.describe Session do
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "content" => "ok"},
         tool_use_id: "toolu_A", timestamp: 3, token_count: 10
       )
-      session.messages.create!(message_type: "agent_message", payload: {"content" => "done"}, timestamp: 4, token_count: 10)
+      session.pending_messages.create!(content: "hey")
+
+      session.promote_pending_messages!
+
+      promoted = session.messages.reload.last
+      tool_response = session.messages.where(message_type: "tool_response").first
+      expect(promoted.id).to be > tool_response.id
+      expect(promoted.payload["content"]).to eq("hey")
+    end
+  end
+
+  describe "#pending_messages never interleave tool pairs" do
+    let(:session) { Session.create! }
+
+    before do
+      allow(Anima::Settings).to receive(:mneme_l1_budget_fraction).and_return(0.0)
+      allow(Anima::Settings).to receive(:mneme_l2_budget_fraction).and_return(0.0)
+      allow(Anima::Settings).to receive(:mneme_pinned_budget_fraction).and_return(0.0)
+      allow(Anima::Settings).to receive(:recall_budget_fraction).and_return(0.0)
+    end
+
+    it "promoted messages appear after tool pairs in the LLM context" do
+      session.messages.create!(message_type: "user_message", payload: {"content" => "run bash"}, timestamp: 1, token_count: 10)
+      session.messages.create!(
+        message_type: "tool_call",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "tool_input" => {}},
+        tool_use_id: "toolu_A", timestamp: 2, token_count: 10
+      )
+      session.messages.create!(
+        message_type: "tool_response",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "content" => "ok"},
+        tool_use_id: "toolu_A", timestamp: 3, token_count: 10
+      )
+      # Simulate promotion: pending message becomes real message AFTER tool pair
+      session.pending_messages.create!(content: "hey")
+      session.promote_pending_messages!
 
       result = session.messages_for_llm(token_budget: 1000)
 
       roles = result.map { |m| m[:role] }
-      expect(roles).to eq(%w[user assistant user assistant])
-    end
-  end
-
-  describe "#viewport_messages with pending messages" do
-    let(:session) { Session.create! }
-
-    it "includes pending messages by default (for display)" do
-      session.messages.create!(message_type: "user_message", payload: {"content" => "delivered"}, timestamp: 1, token_count: 10)
-      session.messages.create!(message_type: "user_message", payload: {"content" => "queued"}, timestamp: 2, status: "pending", token_count: 10)
-
-      events = session.viewport_messages
-      expect(events.map { |e| e.payload["content"] }).to eq(%w[delivered queued])
-    end
-
-    it "excludes pending messages when include_pending is false" do
-      session.messages.create!(message_type: "user_message", payload: {"content" => "delivered"}, timestamp: 1, token_count: 10)
-      session.messages.create!(message_type: "user_message", payload: {"content" => "queued"}, timestamp: 2, status: "pending", token_count: 10)
-
-      events = session.viewport_messages(include_pending: false)
-      expect(events.map { |e| e.payload["content"] }).to eq(%w[delivered])
+      expect(roles).to eq(%w[user assistant user user])
+      expect(result.last[:content]).to include("hey")
     end
   end
 
@@ -2361,21 +2287,12 @@ RSpec.describe Session do
     context "when session is processing" do
       before { session.update!(processing: true) }
 
-      it "emits a pending user_message via EventBus" do
-        emitted = []
-        subscriber = double("subscriber")
-        allow(subscriber).to receive(:emit) { |event| emitted << event }
-        Events::Bus.subscribe(subscriber)
+      it "creates a PendingMessage" do
+        expect { session.enqueue_user_message("hello") }
+          .to change(PendingMessage, :count).by(1)
 
-        session.enqueue_user_message("hello")
-
-        user_event = emitted.find { |e| e.dig(:payload, :type) == "user_message" }
-        expect(user_event).to be_present
-        expect(user_event.dig(:payload, :status)).to eq(Message::PENDING_STATUS)
-        expect(user_event.dig(:payload, :session_id)).to eq(session.id)
-        expect(user_event.dig(:payload, :content)).to eq("hello")
-      ensure
-        Events::Bus.unsubscribe(subscriber)
+        pm = session.pending_messages.last
+        expect(pm.content).to eq("hello")
       end
 
       it "does not enqueue AgentRequestJob" do

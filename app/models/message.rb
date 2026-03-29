@@ -29,7 +29,6 @@ class Message < ApplicationRecord
   CONVERSATION_TYPES = %w[user_message agent_message system_message].freeze
   THINK_TOOL = "think"
   SPAWN_TOOLS = %w[spawn_subagent spawn_specialist].freeze
-  PENDING_STATUS = "pending"
 
   # Message types that require a tool_use_id to pair call with response.
   TOOL_TYPES = %w[tool_call tool_response].freeze
@@ -72,17 +71,6 @@ class Message < ApplicationRecord
   #   @return [ActiveRecord::Relation]
   scope :context_messages, -> { where(message_type: CONTEXT_TYPES) }
 
-  # @!method self.pending
-  #   User messages queued during active agent processing, not yet sent to LLM.
-  #   @return [ActiveRecord::Relation]
-  scope :pending, -> { where(status: PENDING_STATUS) }
-
-  # @!method self.deliverable
-  #   Messages eligible for LLM context (excludes pending messages).
-  #   NULL status means delivered/processed — the only excluded value is "pending".
-  #   @return [ActiveRecord::Relation]
-  scope :deliverable, -> { where(status: nil) }
-
   # @!method self.excluding_spawn_messages
   #   Excludes spawn_subagent/spawn_specialist tool_call and tool_response messages.
   #   Used when building parent context for sub-agents — spawn messages cause role
@@ -108,11 +96,6 @@ class Message < ApplicationRecord
   # @return [Boolean] true if this message is part of the LLM context window
   def context_message?
     message_type.in?(CONTEXT_TYPES)
-  end
-
-  # @return [Boolean] true if this is a pending message not yet sent to the LLM
-  def pending?
-    status == PENDING_STATUS
   end
 
   # @return [Boolean] true if this is a conversation message (user/agent/system)
