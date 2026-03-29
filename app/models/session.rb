@@ -255,6 +255,13 @@ class Session < ApplicationRecord
   # Each layer has a fixed token budget fraction — snapshots, pins, and recall
   # consume viewport space, reducing the sliding window size.
   #
+  # The sliding window is post-processed in two safety passes:
+  #   1. {#deinterleave_tool_pairs} — moves promoted pending messages that
+  #      received a database ID between a tool_call and its tool_response
+  #      to after the completed pair, preserving API conversation structure.
+  #   2. {#ensure_atomic_tool_pairs} — removes orphaned tool messages whose
+  #      partner was cut off by the token budget.
+  #
   # Sub-agent sessions skip snapshot/pin/recall injection (they inherit parent messages directly).
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
@@ -284,7 +291,7 @@ class Session < ApplicationRecord
       recall_messages = assemble_recall_messages(budget: recall_budget)
     end
 
-    snapshot_messages + pinned_messages + recall_messages + assemble_messages(ensure_atomic_tool_pairs(window))
+    snapshot_messages + pinned_messages + recall_messages + assemble_messages(ensure_atomic_tool_pairs(deinterleave_tool_pairs(window)))
   end
 
   # Detects orphaned tool_call messages (those without a matching tool_response
@@ -687,6 +694,58 @@ class Session < ApplicationRecord
   def trim_trailing_tool_calls(message_list)
     message_list.pop while message_list.last&.message_type == "tool_call"
     message_list
+  end
+
+  # Moves non-tool messages that fall between a tool_call and its matching
+  # tool_response to after the completed pair. Pending user messages get
+  # database IDs at creation time — when a user sends a message while a
+  # tool is executing, the promoted message's ID can land between the
+  # tool_call and tool_response, splitting the pair and corrupting the
+  # Anthropic API conversation structure.
+  #
+  # @param message_list [Array<Message>] ID-ordered messages
+  # @return [Array<Message>] messages with tool pairs uninterrupted
+  # @see #ensure_atomic_tool_pairs
+  def deinterleave_tool_pairs(message_list)
+    return message_list if message_list.empty?
+
+    paired_ids = message_list
+      .select { |m| m.tool_use_id.present? }
+      .group_by(&:tool_use_id)
+      .each_with_object(Set.new) do |(uid, msgs), set|
+        has_call = msgs.any? { |m| m.message_type == "tool_call" }
+        has_response = msgs.any? { |m| m.message_type == "tool_response" }
+        set << uid if has_call && has_response
+      end
+
+    return message_list if paired_ids.empty?
+
+    result = []
+    deferred = []
+    open_calls = Set.new
+
+    message_list.each do |msg|
+      case msg.message_type
+      when "tool_call"
+        open_calls << msg.tool_use_id if paired_ids.include?(msg.tool_use_id)
+        result << msg
+      when "tool_response"
+        open_calls.delete(msg.tool_use_id)
+        result << msg
+        if open_calls.empty?
+          result.concat(deferred)
+          deferred.clear
+        end
+      else
+        if open_calls.any?
+          deferred << msg
+        else
+          result << msg
+        end
+      end
+    end
+
+    result.concat(deferred)
   end
 
   # Ensures every tool_call in the message list has a matching tool_response

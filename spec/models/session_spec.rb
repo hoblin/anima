@@ -1881,6 +1881,91 @@ RSpec.describe Session do
     end
   end
 
+  describe "#messages_for_llm deinterleaving tool pairs" do
+    let(:session) { Session.create! }
+
+    before do
+      allow(Anima::Settings).to receive(:mneme_l1_budget_fraction).and_return(0.0)
+      allow(Anima::Settings).to receive(:mneme_l2_budget_fraction).and_return(0.0)
+      allow(Anima::Settings).to receive(:mneme_pinned_budget_fraction).and_return(0.0)
+      allow(Anima::Settings).to receive(:recall_budget_fraction).and_return(0.0)
+    end
+
+    it "moves a promoted user message from between a tool_call and its tool_response to after the pair" do
+      session.messages.create!(message_type: "user_message", payload: {"content" => "run bash"}, timestamp: 1, token_count: 10)
+      session.messages.create!(
+        message_type: "tool_call",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "tool_input" => {}},
+        tool_use_id: "toolu_A", timestamp: 2, token_count: 10
+      )
+      # Promoted pending message — its ID falls between tool_call and tool_response
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hey"}, timestamp: 3, token_count: 10)
+      session.messages.create!(
+        message_type: "tool_response",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "content" => "ok"},
+        tool_use_id: "toolu_A", timestamp: 4, token_count: 10
+      )
+
+      result = session.messages_for_llm(token_budget: 1000)
+
+      roles = result.map { |m| m[:role] }
+      # tool_use (assistant) → tool_result (user) → promoted user message
+      expect(roles).to eq(%w[user assistant user user])
+      expect(result.last[:content]).to include("hey")
+    end
+
+    it "handles multiple sequential tool pairs with interleaving" do
+      session.messages.create!(message_type: "user_message", payload: {"content" => "go"}, timestamp: 1, token_count: 10)
+      session.messages.create!(
+        message_type: "tool_call",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "tool_input" => {}},
+        tool_use_id: "toolu_A", timestamp: 2, token_count: 10
+      )
+      session.messages.create!(message_type: "user_message", payload: {"content" => "wait"}, timestamp: 3, token_count: 10)
+      session.messages.create!(
+        message_type: "tool_response",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "content" => "done"},
+        tool_use_id: "toolu_A", timestamp: 4, token_count: 10
+      )
+      session.messages.create!(
+        message_type: "tool_call",
+        payload: {"tool_name" => "ls", "tool_use_id" => "toolu_B", "tool_input" => {}},
+        tool_use_id: "toolu_B", timestamp: 5, token_count: 10
+      )
+      session.messages.create!(
+        message_type: "tool_response",
+        payload: {"tool_name" => "ls", "tool_use_id" => "toolu_B", "content" => "files"},
+        tool_use_id: "toolu_B", timestamp: 6, token_count: 10
+      )
+
+      result = session.messages_for_llm(token_budget: 1000)
+
+      roles = result.map { |m| m[:role] }
+      # Initial user, tool_A call, tool_A result, promoted msg, tool_B call, tool_B result
+      expect(roles).to eq(%w[user assistant user user assistant user])
+    end
+
+    it "is a no-op when no messages interleave tool pairs" do
+      session.messages.create!(message_type: "user_message", payload: {"content" => "go"}, timestamp: 1, token_count: 10)
+      session.messages.create!(
+        message_type: "tool_call",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "tool_input" => {}},
+        tool_use_id: "toolu_A", timestamp: 2, token_count: 10
+      )
+      session.messages.create!(
+        message_type: "tool_response",
+        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "content" => "ok"},
+        tool_use_id: "toolu_A", timestamp: 3, token_count: 10
+      )
+      session.messages.create!(message_type: "agent_message", payload: {"content" => "done"}, timestamp: 4, token_count: 10)
+
+      result = session.messages_for_llm(token_budget: 1000)
+
+      roles = result.map { |m| m[:role] }
+      expect(roles).to eq(%w[user assistant user assistant])
+    end
+  end
+
   describe "#viewport_messages with pending messages" do
     let(:session) { Session.create! }
 
