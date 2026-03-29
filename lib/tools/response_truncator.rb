@@ -8,7 +8,7 @@ module Tools
   # When a tool returns more characters than the configured threshold,
   # saves the full output to a temp file and returns a truncated version:
   # first 10 lines + notice + last 10 lines. The agent can use the
-  # +read+ tool with offset/limit to inspect the full output.
+  # +read_file+ tool with offset/limit to inspect the full output.
   #
   # Two thresholds exist:
   # - **Tool threshold** (~3000 chars) — for raw tool output (bash, web, etc.)
@@ -29,7 +29,7 @@ module Tools
     NOTICE = <<~NOTICE.strip
       ---
       ⚠️ Response truncated (%<total>d lines total%<reason>s). Full output saved to: %<path>s
-      Use `read` tool with offset/limit to inspect specific sections.
+      Use `read_file` tool with offset/limit to inspect specific sections.
       ---
     NOTICE
 

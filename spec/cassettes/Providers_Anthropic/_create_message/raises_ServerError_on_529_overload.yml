@@ -10,13 +10,13 @@ http_interactions:
         shell commands in /home/test/anima. Environment persists between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
         command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
         (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}}}},{"name":"read","description":"Read file. Relative paths
+        (default: 180)."}}}},{"name":"read_file","description":"Read file. Relative paths
         resolve against working directory.","input_schema":{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"integer","description":"1-indexed
         line number (default: 1)."},"limit":{"type":"integer","description":"Max lines
         to return."},"timeout":{"type":"integer","description":"Seconds (default:
-        180)."}},"required":["path"]}},{"name":"write","description":"Write file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
+        180)."}},"required":["path"]}},{"name":"write_file","description":"Write file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
         paths resolve against working directory. Creates intermediate directories."},"content":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["path","content"]}},{"name":"edit","description":"Replace
+        (default: 180)."}},"required":["path","content"]}},{"name":"edit_file","description":"Replace
         text in a file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
         paths resolve against working directory."},"old_text":{"type":"string","description":"Must
         match exactly one location. Include surrounding lines for uniqueness."},"new_text":{"type":"string","description":"Empty

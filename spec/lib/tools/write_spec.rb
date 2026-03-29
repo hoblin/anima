@@ -10,8 +10,8 @@ RSpec.describe Tools::Write do
   after { FileUtils.remove_entry(tmpdir) }
 
   describe ".tool_name" do
-    it "returns write" do
-      expect(described_class.tool_name).to eq("write")
+    it "returns write_file" do
+      expect(described_class.tool_name).to eq("write_file")
     end
   end
 
@@ -35,7 +35,7 @@ RSpec.describe Tools::Write do
   describe ".schema" do
     it "builds valid Anthropic tool schema" do
       schema = described_class.schema
-      expect(schema).to include(name: "write", description: a_kind_of(String))
+      expect(schema).to include(name: "write_file", description: a_kind_of(String))
       expect(schema[:input_schema]).to be_a(Hash)
     end
   end

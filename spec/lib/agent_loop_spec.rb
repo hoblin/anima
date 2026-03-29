@@ -243,17 +243,17 @@ RSpec.describe AgentLoop do
     context "with tool restriction" do
       it "registers only granted tools plus always-granted tools for restricted sub-agents" do
         parent = Session.create!
-        child = Session.create!(parent_session: parent, prompt: "reader agent", granted_tools: ["read", "web_get"])
+        child = Session.create!(parent_session: parent, prompt: "reader agent", granted_tools: ["read_file", "web_get"])
         child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
 
         sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
         allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
-          expect(registry.registered?("read")).to be true
+          expect(registry.registered?("read_file")).to be true
           expect(registry.registered?("web_get")).to be true
           expect(registry.registered?("think")).to be true
           expect(registry.registered?("bash")).to be false
-          expect(registry.registered?("write")).to be false
-          expect(registry.registered?("edit")).to be false
+          expect(registry.registered?("write_file")).to be false
+          expect(registry.registered?("edit_file")).to be false
           "done"
         end
 
@@ -342,7 +342,7 @@ RSpec.describe AgentLoop do
           "rendered" => {"debug" => a_hash_including(
             "tools" => a_collection_including(
               a_hash_including(name: "bash"),
-              a_hash_including(name: "read"),
+              a_hash_including(name: "read_file"),
               a_hash_including(name: "spawn_subagent")
             )
           )}

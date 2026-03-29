@@ -27,20 +27,20 @@ RSpec.describe TUI::Decorators::BaseDecorator do
       expect(described_class.for(data)).to be_a(TUI::Decorators::BashDecorator)
     end
 
-    it "returns ReadDecorator for read tool calls" do
-      data = {"role" => "tool_call", "tool" => "read", "input" => "/app/models/user.rb"}
+    it "returns ReadDecorator for read_file tool calls" do
+      data = {"role" => "tool_call", "tool" => "read_file", "input" => "/app/models/user.rb"}
 
       expect(described_class.for(data)).to be_a(TUI::Decorators::ReadDecorator)
     end
 
-    it "returns EditDecorator for edit tool calls" do
-      data = {"role" => "tool_call", "tool" => "edit", "input" => "/app/models/user.rb"}
+    it "returns EditDecorator for edit_file tool calls" do
+      data = {"role" => "tool_call", "tool" => "edit_file", "input" => "/app/models/user.rb"}
 
       expect(described_class.for(data)).to be_a(TUI::Decorators::EditDecorator)
     end
 
-    it "returns WriteDecorator for write tool calls" do
-      data = {"role" => "tool_call", "tool" => "write", "input" => "/tmp/output.txt"}
+    it "returns WriteDecorator for write_file tool calls" do
+      data = {"role" => "tool_call", "tool" => "write_file", "input" => "/tmp/output.txt"}
 
       expect(described_class.for(data)).to be_a(TUI::Decorators::WriteDecorator)
     end

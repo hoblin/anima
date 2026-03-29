@@ -138,11 +138,11 @@ module Anima
       # @return [Integer]
       def max_file_size = get("tools", "max_file_size")
 
-      # Maximum lines returned by the read tool.
+      # Maximum lines returned by the read_file tool.
       # @return [Integer]
       def max_read_lines = get("tools", "max_read_lines")
 
-      # Maximum bytes returned by the read tool.
+      # Maximum bytes returned by the read_file tool.
       # @return [Integer]
       def max_read_bytes = get("tools", "max_read_bytes")
 

@@ -235,7 +235,7 @@ RSpec.describe Message do
     it "preserves non-spawn tool events" do
       bash_call = session.messages.create!(message_type: "tool_call", payload: {"tool_name" => "bash", "content" => "running"}, tool_use_id: "toolu_bash1", timestamp: 1)
       bash_response = session.messages.create!(message_type: "tool_response", payload: {"tool_name" => "bash", "content" => "output"}, tool_use_id: "toolu_bash1", timestamp: 2)
-      read_call = session.messages.create!(message_type: "tool_call", payload: {"tool_name" => "read", "content" => "reading"}, tool_use_id: "toolu_read1", timestamp: 3)
+      read_call = session.messages.create!(message_type: "tool_call", payload: {"tool_name" => "read_file", "content" => "reading"}, tool_use_id: "toolu_read1", timestamp: 3)
 
       expect(session.messages.excluding_spawn_messages).to eq([bash_call, bash_response, read_call])
     end
