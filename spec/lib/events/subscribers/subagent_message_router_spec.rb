@@ -99,7 +99,7 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
     let!(:child_a) { Session.create!(parent_session: parent, prompt: "sub-agent", name: "loop-sleuth") }
     let!(:child_b) { Session.create!(parent_session: parent, prompt: "sub-agent", name: "api-scout") }
 
-    it "routes @mention to the matching child session" do
+    it "routes @mention to the matching child session with parent attribution" do
       event = Events::AgentMessage.new(
         content: "@loop-sleuth Check the edit tool next.",
         session_id: parent.id
@@ -108,7 +108,8 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
 
       child_msg = child_a.messages.find_by(message_type: "user_message")
       expect(child_msg).to be_present
-      expect(child_msg.payload["content"]).to include("Check the edit tool next.")
+      expect(child_msg.payload["content"])
+        .to eq("[from parent]: @loop-sleuth Check the edit tool next.")
     end
 
     it "routes to multiple mentioned children" do
@@ -169,7 +170,7 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
     context "when child is processing" do
       before { child_a.update!(processing: true) }
 
-      it "creates a PendingMessage on the child session" do
+      it "creates a PendingMessage with parent attribution" do
         event = Events::AgentMessage.new(
           content: "@loop-sleuth Check the edit tool next.",
           session_id: parent.id
@@ -178,7 +179,7 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
 
         pm = child_a.pending_messages.last
         expect(pm).to be_present
-        expect(pm.content).to include("Check the edit tool next.")
+        expect(pm.content).to eq("[from parent]: @loop-sleuth Check the edit tool next.")
       end
 
       it "does not enqueue AgentRequestJob" do

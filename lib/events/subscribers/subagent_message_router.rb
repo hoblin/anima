@@ -14,7 +14,8 @@ module Events
     #
     # **Parent → Child:** When a parent agent emits an {Events::AgentMessage}
     # containing `@name` mentions, the router persists the message in each
-    # matching child session and wakes them via {AgentRequestJob}.
+    # matching child session with a +[from parent]:+ origin label and wakes
+    # them via {AgentRequestJob}.
     #
     # Both directions delegate to {Session#enqueue_user_message}, which
     # respects the target session's processing state — persisting directly
@@ -27,6 +28,10 @@ module Events
 
       # @see Tools::ResponseTruncator::ATTRIBUTION_FORMAT
       ATTRIBUTION_FORMAT = Tools::ResponseTruncator::ATTRIBUTION_FORMAT
+
+      # Origin label for messages routed from parent agent to sub-agent.
+      # Lets the sub-agent distinguish delegated work from direct user input.
+      PARENT_ATTRIBUTION_FORMAT = "[from parent]: %s"
 
       # Regex to extract @mention names from parent agent messages.
       MENTION_PATTERN = /@(\w[\w-]*)/
@@ -82,7 +87,7 @@ module Events
       end
 
       # Scans a parent agent's message for @mentions and routes the message
-      # to each mentioned child session.
+      # to each mentioned child session with origin attribution.
       #
       # @param parent [Session] the parent session
       # @param content [String] the parent agent's message text
@@ -93,11 +98,13 @@ module Events
         active_children = parent.child_sessions.where.not(name: nil).index_by(&:name)
         return if active_children.empty?
 
+        attributed = format(PARENT_ATTRIBUTION_FORMAT, content)
+
         mentioned_names.each do |name|
           child = active_children[name]
           next unless child
 
-          child.enqueue_user_message(content)
+          child.enqueue_user_message(attributed)
         end
       end
     end
