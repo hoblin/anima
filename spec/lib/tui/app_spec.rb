@@ -565,6 +565,16 @@ RSpec.describe TUI::App do
           expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(20)
         end
 
+        it "scrolls to top on Home" do
+          app.send(:handle_event, key_event(code: "home"))
+          expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(0)
+        end
+
+        it "scrolls to bottom on End" do
+          app.send(:handle_event, key_event(code: "end"))
+          expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(20)
+        end
+
         it "clamps scroll at top" do
           app.instance_variable_set(:@hud_scroll_offset, 0)
           app.send(:handle_event, key_event(code: "up"))
@@ -666,7 +676,6 @@ RSpec.describe TUI::App do
           expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(12)
         end
       end
-
     end
 
     describe "Escape routing" do

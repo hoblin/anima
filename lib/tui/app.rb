@@ -602,6 +602,10 @@ module TUI
         scroll_hud_up(@hud_visible_height)
       elsif event.page_down?
         scroll_hud_down(@hud_visible_height)
+      elsif event.home?
+        scroll_hud_up(@hud_max_scroll)
+      elsif event.end?
+        scroll_hud_down(@hud_max_scroll)
       end
       nil
     end
