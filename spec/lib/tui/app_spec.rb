@@ -667,35 +667,6 @@ RSpec.describe TUI::App do
         end
       end
 
-      describe "#hud_scroll_indicators" do
-        it "shows both indicators when scrolled to middle" do
-          indicators = app.send(:hud_scroll_indicators)
-          expect(indicators.size).to eq(2)
-          expect(indicators[0][:position]).to eq(:top)
-          expect(indicators[1][:position]).to eq(:bottom)
-        end
-
-        it "shows only bottom indicator when at top" do
-          app.instance_variable_set(:@hud_scroll_offset, 0)
-          indicators = app.send(:hud_scroll_indicators)
-          expect(indicators.size).to eq(1)
-          expect(indicators[0][:position]).to eq(:bottom)
-        end
-
-        it "shows only top indicator when at bottom" do
-          app.instance_variable_set(:@hud_scroll_offset, 20)
-          indicators = app.send(:hud_scroll_indicators)
-          expect(indicators.size).to eq(1)
-          expect(indicators[0][:position]).to eq(:top)
-        end
-
-        it "shows no indicators when content fits" do
-          app.instance_variable_set(:@hud_max_scroll, 0)
-          app.instance_variable_set(:@hud_scroll_offset, 0)
-          indicators = app.send(:hud_scroll_indicators)
-          expect(indicators).to be_empty
-        end
-      end
     end
 
     describe "Escape routing" do

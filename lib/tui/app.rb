@@ -262,22 +262,12 @@ module TUI
         block: tui.block(
           borders: [:left, :top, :right],
           border_type: :rounded,
-          border_style: {fg: border_color},
-          titles: hud_scroll_indicators
+          border_style: {fg: border_color}
         )
       )
       frame.render_widget(content, area)
 
       render_hud_scrollbar(frame, area, tui)
-    end
-
-    # Builds block title indicators showing whether more content exists
-    # above or below the visible viewport.
-    def hud_scroll_indicators
-      titles = []
-      titles << {content: " \u25B2 more ", position: :top, alignment: :right} if @hud_scroll_offset > 0
-      titles << {content: " \u25BC more ", position: :bottom, alignment: :right} if @hud_scroll_offset < @hud_max_scroll
-      titles
     end
 
     # Renders a scrollbar on the right edge of the HUD when content overflows.
