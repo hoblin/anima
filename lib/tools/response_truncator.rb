@@ -28,7 +28,7 @@ module Tools
 
     NOTICE = <<~NOTICE.strip
       ---
-      ⚠️ Response truncated (%<total>d lines total). Full output saved to: %<path>s
+      ⚠️ Response truncated (%<total>d lines total%<reason>s). Full output saved to: %<path>s
       Use `read_file` tool with offset/limit to inspect specific sections.
       ---
     NOTICE
@@ -37,8 +37,9 @@ module Tools
     #
     # @param content [Object] the tool result to (maybe) truncate; non-strings pass through unchanged
     # @param threshold [Integer] character limit before truncation kicks in
+    # @param reason [String, nil] why truncation occurred (e.g. "bash output displays first/last 10 lines")
     # @return [Object] original value if non-String/under threshold/few lines, truncated String otherwise
-    def self.truncate(content, threshold:)
+    def self.truncate(content, threshold:, reason: nil)
       return content unless content.is_a?(String)
       return content if content.length <= threshold
 
@@ -49,7 +50,8 @@ module Tools
       path = save_full_output(content)
       head = lines.first(HEAD_LINES).join
       tail = lines.last(TAIL_LINES).join
-      notice = format(NOTICE, total: total, path: path)
+      reason_text = reason ? " — #{reason}" : ""
+      notice = format(NOTICE, total: total, path: path, reason: reason_text)
 
       "#{head}\n#{notice}\n\n#{tail}"
     end
