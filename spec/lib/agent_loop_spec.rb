@@ -433,6 +433,11 @@ RSpec.describe AgentLoop do
         File.write(path, content)
         path
       end
+
+      allow(EnvironmentProbe).to receive(:to_prompt).and_return(
+        "## Environment\n\nOS: Linux\n\nCWD: /home/test/anima\n" \
+        "Git: hoblin/anima (https://github.com/hoblin/anima)\nBranch: main"
+      )
     end
 
     it "processes a message with the full production tool set and system prompt" do
