@@ -27,7 +27,7 @@ RSpec.describe "Mneme terminal event trigger integration" do
       message_type: type,
       payload: payload,
       tool_use_id: payload["tool_use_id"],
-      timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
+      timestamp: Time.current.to_ns,
       token_count: token_count
     )
   end

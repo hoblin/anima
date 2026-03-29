@@ -9,7 +9,7 @@ RSpec.describe Message::Broadcasting do
     session.messages.create!({
       message_type: "user_message",
       payload: {"type" => "user_message", "content" => "hello", "session_id" => session.id},
-      timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+      timestamp: Time.current.to_ns
     }.merge(attrs))
   end
 

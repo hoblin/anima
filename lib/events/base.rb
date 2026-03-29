@@ -16,7 +16,7 @@ module Events
     def initialize(content:, session_id: nil)
       @content = content
       @session_id = session_id
-      @timestamp = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+      @timestamp = Time.current.to_ns
     end
 
     # @return [String] event type identifier

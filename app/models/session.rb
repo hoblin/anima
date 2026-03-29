@@ -356,7 +356,7 @@ class Session < ApplicationRecord
 
   # Persists a user message directly, bypassing the pending queue.
   #
-  # Used by {#enqueue_user_message} (idle path), {AgentLoop#process},
+  # Used by {#enqueue_user_message} (idle path), {AgentLoop#run},
   # and sub-agent spawn tools ({Tools::SpawnSubagent}, {Tools::SpawnSpecialist})
   # because the global {Events::Subscribers::Persister} skips non-pending user
   # messages — these callers own the persistence lifecycle.
@@ -1030,7 +1030,7 @@ class Session < ApplicationRecord
   # @example
   #   format_message_time(1_710_406_260_000_000_000) #=> "Thu Mar 14 09:51"
   def format_message_time(timestamp_ns)
-    Time.at(timestamp_ns / 1_000_000_000.0).strftime("%a %b %-d %H:%M")
+    Time.at(timestamp_ns / 1_000_000_000.0).utc.strftime("%a %b %-d %H:%M")
   end
 
   # Current time as nanoseconds since epoch. Uses Time.current so
@@ -1038,7 +1038,7 @@ class Session < ApplicationRecord
   #
   # @return [Integer] nanoseconds since epoch
   def now_ns
-    (Time.current.to_r * 1_000_000_000).to_i
+    Time.current.to_ns
   end
 
   # Delegates to {Message#estimate_tokens} for messages not yet counted

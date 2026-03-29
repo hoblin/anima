@@ -52,7 +52,7 @@ module Events
             payload: payload,
             status: payload[:status],
             tool_use_id: payload[:tool_use_id],
-            timestamp: payload[:timestamp] || Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+            timestamp: payload[:timestamp] || Time.current.to_ns
           )
         end
       end
@@ -64,7 +64,7 @@ module Events
       private
 
       # Non-pending user messages are persisted by their callers
-      # ({SessionChannel#speak}, {AgentLoop#process}) so the message ID
+      # ({SessionChannel#speak}, {AgentLoop#run}) so the message ID
       # is available for bounce-back cleanup if LLM delivery fails.
       # Pending messages are still auto-persisted here because they
       # queue while the session is busy.
