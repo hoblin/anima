@@ -6,22 +6,17 @@
 # Extracted from {TUI::Screens::Chat} so the same agent logic can run from
 # the TUI, a background job, or an Action Cable channel.
 #
-# @note Not thread-safe. Callers must serialize concurrent calls to {#process}
-#   (e.g. TUI uses a loading flag, future callers should use session-level locks).
+# @note Not thread-safe. Callers must serialize concurrent access
+#   (e.g. {AgentRequestJob} uses session-level processing locks).
 #
 # @example Basic usage
 #   loop = AgentLoop.new(session: session)
-#   loop.process("What files are in the current directory?")
+#   loop.run
 #   loop.finalize
 #
 # @example With dependency injection (testing)
 #   loop = AgentLoop.new(session: session, client: mock_client, registry: mock_registry)
-#   loop.process("hello")
-#
-# @example Background job usage (retry-safe)
-#   loop = AgentLoop.new(session: session)
-#   loop.run  # processes persisted session messages without emitting UserMessage
-#   loop.finalize
+#   loop.run
 class AgentLoop
   # @return [Session] the conversation session this loop operates on
   attr_reader :session
@@ -38,28 +33,6 @@ class AgentLoop
     @shell_session = shell_session || ShellSession.new(session_id: session.id)
     @client = client
     @registry = registry
-  end
-
-  # Runs the agent loop for a single user input.
-  #
-  # Persists the user message directly (the global Persister skips
-  # non-pending user messages because {AgentRequestJob} owns their
-  # lifecycle). Then emits a bus notification and delegates to {#run}.
-  # On error emits {Events::AgentMessage} with the error text.
-  #
-  # @param input [String] raw user input
-  # @return [String, nil] the agent's response text, or nil for blank input
-  def process(input)
-    text = input.to_s.strip
-    return if text.empty?
-
-    persist_user_message(text)
-    Events::Bus.emit(Events::UserMessage.new(content: text, session_id: @session.id))
-    run
-  rescue => error
-    error_message = "#{error.class}: #{error.message}"
-    Events::Bus.emit(Events::AgentMessage.new(content: error_message, session_id: @session.id))
-    error_message
   end
 
   # Makes the first LLM API call to verify delivery. Called inside the
@@ -140,10 +113,6 @@ class AgentLoop
 
   private
 
-  # @see Session#create_user_message
-  def persist_user_message(content)
-    @session.create_user_message(content)
-  end
 
   # Assembles LLM options (system prompt, environment context).
   # Broadcasts the full debug context (system prompt + tool schemas)
