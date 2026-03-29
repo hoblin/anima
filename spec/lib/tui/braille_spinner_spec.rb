@@ -18,7 +18,7 @@ RSpec.describe TUI::BrailleSpinner do
 
       # First tick after state change should be from the start of the tool frames
       char = spinner.current
-      expect(char).to eq([TUI::BrailleSpinner::BRAILLE_BASE + TUI::BrailleSpinner::TOOL_FRAMES[0]].pack("U"))
+      expect(char).to eq((TUI::BrailleSpinner::BRAILLE_BASE + TUI::BrailleSpinner::TOOL_FRAMES[0]).chr(Encoding::UTF_8))
     end
 
     it "does not reset frame index when state stays the same" do
@@ -67,12 +67,6 @@ RSpec.describe TUI::BrailleSpinner do
       expect(frames.uniq.size).to be > 1
     end
 
-    it "advances through frames for connecting" do
-      spinner.state = "connecting"
-      frames = 30.times.map { spinner.tick }
-
-      expect(frames.uniq.size).to be > 1
-    end
   end
 
   describe "#current" do
@@ -124,8 +118,7 @@ RSpec.describe TUI::BrailleSpinner do
         TUI::BrailleSpinner::SNAKE_FRAMES,
         TUI::BrailleSpinner::SNAKE_TRAIL_FRAMES,
         TUI::BrailleSpinner::TOOL_FRAMES,
-        TUI::BrailleSpinner::INTERRUPT_FRAMES,
-        TUI::BrailleSpinner::CONNECT_FRAMES
+        TUI::BrailleSpinner::INTERRUPT_FRAMES
       ].each do |frames|
         frames.each do |frame|
           expect(frame).to be_between(0x00, 0xFF),

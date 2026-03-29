@@ -106,6 +106,18 @@ RSpec.describe AgentRequestJob do
         described_class.perform_now(session.id)
       end
 
+      it "broadcasts session_state llm_generating when claiming processing" do
+        session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+
+        expect(ActionCable.server).to receive(:broadcast).with(
+          "session_#{session.id}",
+          hash_including("action" => "session_state", "state" => "llm_generating")
+        )
+        allow(ActionCable.server).to receive(:broadcast)
+
+        described_class.perform_now(session.id)
+      end
+
       it "broadcasts session_state idle when releasing processing" do
         session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 

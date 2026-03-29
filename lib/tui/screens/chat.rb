@@ -258,6 +258,30 @@ module TUI
         @chat_focused = false
       end
 
+      # Short label describing the current session state for HUD display.
+      #
+      # @return [String]
+      def spinner_label
+        case @session_state
+        when "llm_generating" then "Thinking..."
+        when "tool_executing" then "Executing..."
+        when "interrupting" then "Stopping..."
+        else "Working..."
+        end
+      end
+
+      # Color name for the spinner and HUD label based on session state.
+      #
+      # @return [String]
+      def spinner_color
+        case @session_state
+        when "llm_generating" then "yellow"
+        when "tool_executing" then "cyan"
+        when "interrupting" then "red"
+        else "yellow"
+        end
+      end
+
       private
 
       # Drains the WebSocket message queue and feeds events to the message store
@@ -300,8 +324,6 @@ module TUI
             @token_save_result = {success: false, message: msg["message"]}
           when "interrupt_acknowledged"
             @flash.info("Interrupting...")
-          when "processing_stopped"
-            update_session_state("idle")
           when "error"
             @flash.error(msg["message"]) if msg["message"]
           else
@@ -446,8 +468,11 @@ module TUI
       end
 
       # Handles explicit session state transitions from the server.
-      # Drives the braille spinner animation and replaces the old
-      # @loading boolean.
+      # Drives the braille spinner animation. Only processes broadcasts
+      # matching the current session.
+      #
+      # @param msg [Hash] ActionCable payload with "session_id" and "state" keys
+      # @return [void]
       def handle_session_state(msg)
         return unless msg["session_id"] == @session_info[:id]
 
@@ -457,6 +482,9 @@ module TUI
       # Handles a child session's state change broadcast from the
       # parent stream. Merges the state into the children list so
       # HUD icons update without a full children_updated query.
+      #
+      # @param msg [Hash] ActionCable payload with "child_id" and "state" keys
+      # @return [void]
       def handle_child_state(msg)
         child_id = msg["child_id"]
         return unless child_id
@@ -489,24 +517,6 @@ module TUI
           tui.span(content: "#{char} ", style: tui.style(fg: color, modifiers: [:bold])),
           tui.span(content: label, style: tui.style(fg: color))
         ])
-      end
-
-      def spinner_label
-        case @session_state
-        when "llm_generating" then "Thinking..."
-        when "tool_executing" then "Executing..."
-        when "interrupting" then "Stopping..."
-        else "Working..."
-        end
-      end
-
-      def spinner_color
-        case @session_state
-        when "llm_generating" then "yellow"
-        when "tool_executing" then "cyan"
-        when "interrupting" then "red"
-        else "yellow"
-        end
       end
 
       # Handles server broadcast of view mode change. Clears the message store

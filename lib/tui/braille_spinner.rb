@@ -67,18 +67,6 @@ module TUI
       0xFF  # ⣿ all dots
     ].freeze
 
-    # Connecting: sparse dots filling in progressively.
-    CONNECT_FRAMES = [
-      0x01, # ⠁
-      0x09, # ⠉
-      0x49, # ⡉
-      0xC9, # ⣉
-      0xDB, # ⣛
-      0xFF, # ⣿
-      0xDB, # ⣛
-      0xC9  # ⣉
-    ].freeze
-
     # Braille Unicode block base codepoint.
     BRAILLE_BASE = 0x2800
 
@@ -87,8 +75,7 @@ module TUI
     SPEED = {
       "llm_generating" => 2,
       "tool_executing" => 1,
-      "interrupting" => 1,
-      "connecting" => 3
+      "interrupting" => 1
     }.freeze
 
     # @return [String] current session state
@@ -104,7 +91,7 @@ module TUI
     # Resets frame position on state change for a clean transition.
     #
     # @param new_state [String] one of "idle", "llm_generating",
-    #   "tool_executing", "interrupting", "connecting"
+    #   "tool_executing", "interrupting"
     def state=(new_state)
       if @state != new_state
         @frame_index = 0
@@ -159,7 +146,6 @@ module TUI
       when "llm_generating" then SNAKE_TRAIL_FRAMES
       when "tool_executing" then TOOL_FRAMES
       when "interrupting" then INTERRUPT_FRAMES
-      when "connecting" then CONNECT_FRAMES
       end
     end
   end

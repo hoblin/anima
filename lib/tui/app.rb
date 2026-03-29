@@ -459,8 +459,8 @@ module TUI
       elsif chat_loading?
         chat = @screens[:chat]
         char = chat.spinner.tick || "\u2800"
-        color = chat.send(:spinner_color)
-        label = chat.send(:spinner_label)
+        color = chat.spinner_color
+        label = chat.spinner_label
         tui.line(spans: [
           tui.span(content: "#{char} ", style: tui.style(fg: color, modifiers: [:bold])),
           tui.span(content: label, style: tui.style(fg: color))

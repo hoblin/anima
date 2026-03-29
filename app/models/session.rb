@@ -414,6 +414,13 @@ class Session < ApplicationRecord
   # clients. Stateless — no storage, pure broadcast. The TUI uses this to
   # drive the braille spinner animation and sub-agent HUD icons.
   #
+  # Payload broadcast to +session_{id}+:
+  #   {"action" => "session_state", "state" => state, "session_id" => id}
+  #   # plus "tool" key when state is "tool_executing"
+  #
+  # For sub-agents, also broadcasts +child_state+ to the parent stream:
+  #   {"action" => "child_state", "state" => state, "session_id" => id, "child_id" => id}
+  #
   # @param state [String] one of "idle", "llm_generating", "tool_executing", "interrupting"
   # @param tool [String, nil] tool name when state is "tool_executing"
   # @return [void]
