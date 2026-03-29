@@ -57,7 +57,7 @@ RSpec.describe Tools::Base do
     end
 
     context "when set to nil to opt out" do
-      it "returns nil for ReadTool" do
+      it "returns nil for read_file tool" do
         expect(Tools::Read.truncation_threshold).to be_nil
       end
     end

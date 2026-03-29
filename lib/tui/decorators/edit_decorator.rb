@@ -2,7 +2,7 @@
 
 module TUI
   module Decorators
-    # Renders edit tool calls and responses.
+    # Renders edit_file tool calls and responses.
     # Calls show the file path with a pencil icon in the unified tool color.
     # Responses use the CRUD Update color (light_yellow) to flag modifications.
     class EditDecorator < BaseDecorator

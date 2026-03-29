@@ -16,8 +16,8 @@ RSpec.describe Tools::Edit do
   end
 
   describe ".tool_name" do
-    it "returns edit" do
-      expect(described_class.tool_name).to eq("edit")
+    it "returns edit_file" do
+      expect(described_class.tool_name).to eq("edit_file")
     end
   end
 
@@ -42,7 +42,7 @@ RSpec.describe Tools::Edit do
   describe ".schema" do
     it "builds valid Anthropic tool schema" do
       schema = described_class.schema
-      expect(schema).to include(name: "edit", description: a_kind_of(String))
+      expect(schema).to include(name: "edit_file", description: a_kind_of(String))
       expect(schema[:input_schema]).to be_a(Hash)
     end
   end
@@ -92,7 +92,7 @@ RSpec.describe Tools::Edit do
 
         expect(result).to be_a(Hash)
         expect(result[:error]).to include("Could not find old_text")
-        expect(result[:error]).to include("read tool")
+        expect(result[:error]).to include("read_file tool")
       end
 
       it "returns error with line numbers when old_text matches multiple locations" do

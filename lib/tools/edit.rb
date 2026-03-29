@@ -16,7 +16,7 @@ module Tools
   #                "new_text" => "def greet\n  'hello'\nend")
   #   # => "--- app.rb\n+++ app.rb\n@@ -1,3 +1,3 @@\n ..."
   class Edit < Base
-    def self.tool_name = "edit"
+    def self.tool_name = "edit_file"
 
     def self.description = "Replace text in a file."
 
@@ -132,7 +132,7 @@ module Tools
 
       {error: "Could not find old_text in #{path}. " \
               "Verify the text exists and matches exactly (including whitespace). " \
-              "Use the read tool to check current file contents."}
+              "Use the read_file tool to check current file contents."}
     end
 
     def ambiguity_error(positions, content, path, fuzzy: false)

@@ -10,8 +10,8 @@ RSpec.describe Tools::Read do
   after { FileUtils.remove_entry(tmpdir) }
 
   describe ".tool_name" do
-    it "returns read" do
-      expect(described_class.tool_name).to eq("read")
+    it "returns read_file" do
+      expect(described_class.tool_name).to eq("read_file")
     end
   end
 
@@ -41,7 +41,7 @@ RSpec.describe Tools::Read do
   describe ".schema" do
     it "builds valid Anthropic tool schema" do
       schema = described_class.schema
-      expect(schema).to include(name: "read", description: a_kind_of(String))
+      expect(schema).to include(name: "read_file", description: a_kind_of(String))
       expect(schema[:input_schema]).to be_a(Hash)
     end
   end

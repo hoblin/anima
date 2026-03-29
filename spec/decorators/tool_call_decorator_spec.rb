@@ -109,10 +109,10 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       })
     end
 
-    it "returns file path for read tool" do
+    it "returns file path for read_file tool" do
       event = session.messages.create!(
         message_type: "tool_call",
-        payload: {"content" => "reading", "tool_name" => "read",
+        payload: {"content" => "reading", "tool_name" => "read_file",
                   "tool_input" => {"file_path" => "/app/models/user.rb"}},
         tool_use_id: "toolu_verbose3",
         timestamp: 1
@@ -120,14 +120,14 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       decorator = MessageDecorator.for(event)
 
       expect(decorator.render_verbose).to eq({
-        role: :tool_call, tool: "read", input: "/app/models/user.rb", timestamp: 1
+        role: :tool_call, tool: "read_file", input: "/app/models/user.rb", timestamp: 1
       })
     end
 
-    it "returns file path for edit tool" do
+    it "returns file path for edit_file tool" do
       event = session.messages.create!(
         message_type: "tool_call",
-        payload: {"content" => "editing", "tool_name" => "edit",
+        payload: {"content" => "editing", "tool_name" => "edit_file",
                   "tool_input" => {"file_path" => "/app/models/user.rb", "changes" => "..."}},
         tool_use_id: "toolu_verbose4",
         timestamp: 1
@@ -135,14 +135,14 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       decorator = MessageDecorator.for(event)
 
       expect(decorator.render_verbose).to eq({
-        role: :tool_call, tool: "edit", input: "/app/models/user.rb", timestamp: 1
+        role: :tool_call, tool: "edit_file", input: "/app/models/user.rb", timestamp: 1
       })
     end
 
-    it "returns file path for write tool" do
+    it "returns file path for write_file tool" do
       event = session.messages.create!(
         message_type: "tool_call",
-        payload: {"content" => "writing", "tool_name" => "write",
+        payload: {"content" => "writing", "tool_name" => "write_file",
                   "tool_input" => {"file_path" => "/tmp/output.txt", "content" => "data"}},
         tool_use_id: "toolu_verbose5",
         timestamp: 1
@@ -150,7 +150,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       decorator = MessageDecorator.for(event)
 
       expect(decorator.render_verbose).to eq({
-        role: :tool_call, tool: "write", input: "/tmp/output.txt", timestamp: 1
+        role: :tool_call, tool: "write_file", input: "/tmp/output.txt", timestamp: 1
       })
     end
 
@@ -344,13 +344,13 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       expect(result[:input]).to eq(Toon.encode({"command" => "ls"}))
     end
 
-    context "write tool" do
+    context "write_file tool" do
       it "preserves newlines in multi-line content" do
         input = {"file_path" => "/tmp/soul.md", "content" => "line1\nline2\nline3"}
         event = session.messages.create!(
           message_type: "tool_call",
           payload: {
-            "content" => "writing", "tool_name" => "write",
+            "content" => "writing", "tool_name" => "write_file",
             "tool_input" => input, "tool_use_id" => "toolu_write1"
           },
           timestamp: 1,
@@ -367,7 +367,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
         event = session.messages.create!(
           message_type: "tool_call",
           payload: {
-            "content" => "writing", "tool_name" => "write",
+            "content" => "writing", "tool_name" => "write_file",
             "tool_input" => input, "tool_use_id" => "toolu_write2"
           },
           timestamp: 1,

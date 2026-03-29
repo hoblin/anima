@@ -77,8 +77,8 @@ RSpec.describe Tools::ResponseTruncator do
         expect(result).to match(%r{Full output saved to: .+/tool_result_.+\.txt})
       end
 
-      it "includes read tool hint" do
-        expect(result).to include("Use `read` tool with offset/limit")
+      it "includes read_file tool hint" do
+        expect(result).to include("Use `read_file` tool with offset/limit")
       end
 
       it "saves full content to the temp file" do

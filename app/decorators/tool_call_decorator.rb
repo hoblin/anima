@@ -7,7 +7,7 @@ require "toon"
 # aggregated tool counter instead. Verbose mode returns tool name
 # and a formatted preview of the input arguments. Debug mode shows
 # full untruncated input with tool_use_id — TOON format for most
-# tools, but write tool content preserves actual newlines.
+# tools, but write_file tool content preserves actual newlines.
 #
 # Think tool calls are special: "aloud" thoughts are shown in all
 # view modes (with a thought bubble), while "inner" thoughts are
@@ -97,14 +97,14 @@ class ToolCallDecorator < MessageDecorator
   def format_debug_input
     input = tool_input
     case payload["tool_name"]
-    when "write" then format_write_content(input)
+    when "write_file" then format_write_content(input)
     else Toon.encode(input)
     end
   end
 
   # Formats write tool input with file path header and content body.
   # Content newlines are preserved so the TUI can render them as
-  # separate lines, matching how read tool responses display file content.
+  # separate lines, matching how read_file tool responses display file content.
   # @param input [Hash] tool input hash with "file_path" and "content" keys
   # @return [String] path + content with real newlines, or TOON-encoded hash when content is empty
   def format_write_content(input)
@@ -125,7 +125,7 @@ class ToolCallDecorator < MessageDecorator
       "$ #{input&.dig("command")}"
     when "web_get"
       "GET #{input&.dig("url")}"
-    when "read", "edit", "write"
+    when "read_file", "edit_file", "write_file"
       input&.dig("file_path").to_s
     else
       truncate_lines(Toon.encode(input), max_lines: 2)

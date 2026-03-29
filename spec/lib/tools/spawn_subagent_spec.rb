@@ -218,10 +218,10 @@ RSpec.describe Tools::SpawnSubagent do
       end
 
       it "stores granted_tools when tools parameter is provided" do
-        tool.execute(input.merge("tools" => ["read", "web_get"]))
+        tool.execute(input.merge("tools" => ["read_file", "web_get"]))
 
         child = Session.last
-        expect(child.granted_tools).to eq(["read", "web_get"])
+        expect(child.granted_tools).to eq(["read_file", "web_get"])
       end
 
       it "stores empty granted_tools for pure reasoning tasks" do
@@ -232,7 +232,7 @@ RSpec.describe Tools::SpawnSubagent do
       end
 
       it "returns error for unknown tool names" do
-        result = tool.execute(input.merge("tools" => ["read", "teleport"]))
+        result = tool.execute(input.merge("tools" => ["read_file", "teleport"]))
 
         expect(result).to eq({error: "Unknown tool: teleport"})
       end
@@ -243,29 +243,29 @@ RSpec.describe Tools::SpawnSubagent do
       end
 
       it "returns error when tools is not an array (string)" do
-        result = tool.execute(input.merge("tools" => "read"))
+        result = tool.execute(input.merge("tools" => "read_file"))
 
         expect(result).to eq({error: "tools must be an array"})
       end
 
       it "returns error when tools is not an array (hash)" do
-        result = tool.execute(input.merge("tools" => {"read" => true}))
+        result = tool.execute(input.merge("tools" => {"read_file" => true}))
 
         expect(result).to eq({error: "tools must be an array"})
       end
 
       it "normalizes tool names to lowercase" do
-        tool.execute(input.merge("tools" => ["Read", "WEB_GET"]))
+        tool.execute(input.merge("tools" => ["Read_File", "WEB_GET"]))
 
         child = Session.last
-        expect(child.granted_tools).to eq(["read", "web_get"])
+        expect(child.granted_tools).to eq(["read_file", "web_get"])
       end
 
       it "deduplicates tool names" do
-        tool.execute(input.merge("tools" => ["read", "read", "bash"]))
+        tool.execute(input.merge("tools" => ["read_file", "read_file", "bash"]))
 
         child = Session.last
-        expect(child.granted_tools).to eq(["read", "bash"])
+        expect(child.granted_tools).to eq(["read_file", "bash"])
       end
 
       it "accepts all valid standard tool names" do

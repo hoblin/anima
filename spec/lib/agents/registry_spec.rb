@@ -9,7 +9,7 @@ RSpec.describe Agents::Registry do
 
   after { FileUtils.remove_entry(tmp_dir) }
 
-  def write_agent(dir, filename, name:, description:, tools: "read", prompt: "System prompt.")
+  def write_agent(dir, filename, name:, description:, tools: "read_file", prompt: "System prompt.")
     File.write(File.join(dir, filename), <<~MD)
       ---
       name: #{name}
@@ -58,7 +58,7 @@ RSpec.describe Agents::Registry do
     end
 
     it "skips agents with unknown tool names" do
-      write_agent(tmp_dir, "bad.md", name: "bad", description: "Bad agent", tools: "read, teleport")
+      write_agent(tmp_dir, "bad.md", name: "bad", description: "Bad agent", tools: "read_file, teleport")
       write_agent(tmp_dir, "good.md", name: "good", description: "Valid agent")
 
       expect { registry.load_directory(tmp_dir) }

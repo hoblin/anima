@@ -15,7 +15,7 @@ module Tools
   #   tool.execute("path" => "README.md", "content" => "# Title\n")
   #   # => "Wrote 9 bytes to /home/user/project/README.md"
   class Write < Base
-    def self.tool_name = "write"
+    def self.tool_name = "write_file"
 
     def self.description = "Write file."
 

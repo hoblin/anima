@@ -161,7 +161,7 @@ RSpec.describe Tools::Registry do
 
     it "returns nil when the tool opts out" do
       registry.register(Tools::Read)
-      expect(registry.truncation_threshold("read")).to be_nil
+      expect(registry.truncation_threshold("read_file")).to be_nil
     end
 
     it "returns default threshold for unknown tools" do

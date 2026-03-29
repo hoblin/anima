@@ -1,7 +1,7 @@
 ---
 name: documentation-researcher
 description: Fetches official docs. Returns ready-to-use code examples.
-tools: web_get, read
+tools: web_get, read_file
 color: cyan
 ---
 

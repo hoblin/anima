@@ -162,9 +162,9 @@ The agent has access to these built-in tools:
 | Tool | Description |
 |------|-------------|
 | `bash` | Execute shell commands with persistent working directory |
-| `read` | Read files with smart truncation and offset/limit paging |
-| `write` | Create or overwrite files |
-| `edit` | Surgical text replacement with uniqueness constraint |
+| `read_file` | Read files with smart truncation and offset/limit paging |
+| `write_file` | Create or overwrite files |
+| `edit_file` | Surgical text replacement with uniqueness constraint |
 | `web_get` | Fetch content from HTTP/HTTPS URLs (HTML → Markdown, JSON → TOON) |
 | `spawn_specialist` | Spawn a named specialist sub-agent from the registry |
 | `spawn_subagent` | Spawn a generic child session with custom tool grants |

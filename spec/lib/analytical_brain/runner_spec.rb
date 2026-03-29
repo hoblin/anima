@@ -228,7 +228,7 @@ RSpec.describe AnalyticalBrain::Runner do
         runner.call
 
         expect(captured_registry.registered?("bash")).to be false
-        expect(captured_registry.registered?("read")).to be false
+        expect(captured_registry.registered?("read_file")).to be false
       end
     end
 

@@ -344,9 +344,9 @@ RSpec.describe Session do
 
     it "round-trips an array of tool names through JSON serialization" do
       parent = Session.create!
-      child = Session.create!(parent_session: parent, prompt: "agent", granted_tools: ["read", "web_get"])
+      child = Session.create!(parent_session: parent, prompt: "agent", granted_tools: ["read_file", "web_get"])
 
-      expect(child.reload.granted_tools).to eq(["read", "web_get"])
+      expect(child.reload.granted_tools).to eq(["read_file", "web_get"])
     end
 
     it "round-trips an empty array (pure reasoning)" do
@@ -1167,18 +1167,18 @@ RSpec.describe Session do
       schemas = session.tool_schemas
       names = schemas.map { |s| s[:name] }
 
-      expect(names).to include("bash", "read", "write", "edit", "web_get", "think", "remember")
+      expect(names).to include("bash", "read_file", "write_file", "edit_file", "web_get", "think", "remember")
       expect(names).to include("spawn_subagent", "spawn_specialist", "open_issue")
       expect(names).not_to include("mark_goal_completed")
     end
 
     it "returns granted tools + mark_goal_completed for sub-agents" do
       parent = Session.create!
-      child = Session.create!(parent_session: parent, prompt: "sub", granted_tools: ["read", "web_get"])
+      child = Session.create!(parent_session: parent, prompt: "sub", granted_tools: ["read_file", "web_get"])
       schemas = child.tool_schemas
       names = schemas.map { |s| s[:name] }
 
-      expect(names).to include("think", "read", "web_get", "mark_goal_completed")
+      expect(names).to include("think", "read_file", "web_get", "mark_goal_completed")
       expect(names).not_to include("bash", "spawn_subagent")
     end
 
@@ -1189,7 +1189,7 @@ RSpec.describe Session do
       names = schemas.map { |s| s[:name] }
 
       expect(names).to include("think", "mark_goal_completed")
-      expect(names).not_to include("bash", "read", "write", "spawn_subagent")
+      expect(names).not_to include("bash", "read_file", "write_file", "spawn_subagent")
     end
 
     it "returns all standard tools when granted_tools is nil" do

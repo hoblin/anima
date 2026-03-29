@@ -12,7 +12,7 @@ module Agents
   #   ---
   #   name: codebase-analyzer
   #   description: Analyzes codebase implementation details.
-  #   tools: read, bash
+  #   tools: read_file, bash
   #   model: claude-sonnet-4-5
   #   ---
   #

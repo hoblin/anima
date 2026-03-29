@@ -76,8 +76,8 @@ RSpec.describe Mneme::CompressedViewport do
       create_message(type: "user_message", content: "Run some commands", token_count: 100)
       create_message(type: "tool_call", tool_name: "bash", token_count: 50)
       create_message(type: "tool_response", tool_name: "bash", token_count: 50)
-      create_message(type: "tool_call", tool_name: "read", token_count: 50)
-      create_message(type: "tool_response", tool_name: "read", token_count: 50)
+      create_message(type: "tool_call", tool_name: "read_file", token_count: 50)
+      create_message(type: "tool_response", tool_name: "read_file", token_count: 50)
       create_message(type: "agent_message", content: "Done", token_count: 100)
 
       viewport = described_class.new(session, token_budget: 10_000)
@@ -85,7 +85,7 @@ RSpec.describe Mneme::CompressedViewport do
 
       expect(result).to include("[2 tools called]")
       expect(result).not_to include("bash")
-      expect(result).not_to include("read")
+      expect(result).not_to include("read_file")
     end
 
     it "uses singular 'tool' for single tool call" do
