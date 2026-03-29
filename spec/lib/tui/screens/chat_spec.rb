@@ -1185,18 +1185,33 @@ RSpec.describe TUI::Screens::Chat do
   end
 
   describe "#input_title" do
-    it "returns 'Input' by default" do
+    it "returns 'Input' when subscribed and not loading" do
       expect(screen.send(:input_title)).to eq("Input")
     end
 
-    it "returns 'Input' even when hud_hint is true" do
-      screen.hud_hint = true
-      expect(screen.send(:input_title)).to eq("Input")
-    end
-
-    it "returns 'Disconnected' when not connected" do
+    it "returns 'Disconnected' only when truly disconnected" do
       allow(cable_client).to receive(:status).and_return(:disconnected)
       expect(screen.send(:input_title)).to eq("Disconnected")
+    end
+
+    it "returns 'Connecting…' when WebSocket is opening" do
+      allow(cable_client).to receive(:status).and_return(:connecting)
+      expect(screen.send(:input_title)).to eq("Connecting\u2026")
+    end
+
+    it "returns 'Connecting…' when connected but not yet subscribed" do
+      allow(cable_client).to receive(:status).and_return(:connected)
+      expect(screen.send(:input_title)).to eq("Connecting\u2026")
+    end
+
+    it "returns 'Reconnecting…' during reconnection" do
+      allow(cable_client).to receive(:status).and_return(:reconnecting)
+      expect(screen.send(:input_title)).to eq("Reconnecting\u2026")
+    end
+
+    it "returns 'Loading…' when subscribed and session is loading" do
+      screen.instance_variable_set(:@session_loading, true)
+      expect(screen.send(:input_title)).to eq("Loading\u2026")
     end
   end
 
@@ -1281,6 +1296,72 @@ RSpec.describe TUI::Screens::Chat do
       screen.send(:process_incoming_messages)
       expect(screen.scroll_offset).to eq(0)
       expect(screen.instance_variable_get(:@auto_scroll)).to be true
+    end
+
+    it "sets session_loading flag" do
+      allow(cable_client).to receive(:drain_messages).and_return([session_changed_msg])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_loading).to be true
+    end
+  end
+
+  describe "session_loading lifecycle" do
+    it "sets session_loading on subscribing status" do
+      msg = {"type" => "connection", "status" => "subscribing"}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_loading).to be true
+    end
+
+    it "clears session_loading when user_message arrives" do
+      screen.instance_variable_set(:@session_loading, true)
+      msg = {"type" => "user_message", "content" => "hello"}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_loading).to be false
+    end
+
+    it "clears session_loading when agent_message arrives" do
+      screen.instance_variable_set(:@session_loading, true)
+      msg = {"type" => "agent_message", "content" => "hi there"}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_loading).to be false
+    end
+
+    it "clears session_loading when tool events arrive" do
+      screen.instance_variable_set(:@session_loading, true)
+      msg = {"type" => "tool_call", "content" => "running bash"}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_loading).to be false
+    end
+
+    it "clears session_loading on disconnected status" do
+      screen.instance_variable_set(:@session_loading, true)
+      msg = {"type" => "connection", "status" => "disconnected"}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_loading).to be false
+    end
+
+    it "clears session_loading on failed status" do
+      screen.instance_variable_set(:@session_loading, true)
+      msg = {"type" => "connection", "status" => "failed"}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_loading).to be false
+    end
+
+    it "sets session_loading on view_mode_changed" do
+      msg = {"action" => "view_mode_changed", "view_mode" => "verbose"}
+      allow(cable_client).to receive(:drain_messages).and_return([msg])
+      screen.send(:process_incoming_messages)
+      expect(screen.session_loading).to be true
+    end
+
+    it "starts as false" do
+      expect(screen.session_loading).to be false
     end
   end
 
