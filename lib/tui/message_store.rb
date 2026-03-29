@@ -118,6 +118,8 @@ module TUI
           message_type: "user_message",
           pending_message_id: pending_message_id
         }
+        old = @pending_by_id[pending_message_id]
+        @pending_entries.delete(old) if old
         @pending_entries << entry
         @pending_by_id[pending_message_id] = entry
         @version += 1

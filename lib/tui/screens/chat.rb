@@ -29,7 +29,6 @@ module TUI
       MOUSE_SCROLL_STEP = 2
 
       TOOL_ICON = "\u{1F527}"
-      CLOCK_ICON = "\u{1F552}"
       CHECKMARK = "\u2713"
 
       # Viewport virtualization tuning
@@ -790,8 +789,8 @@ module TUI
       end
 
       # Renders a user or assistant message with optional timestamp and token count.
-      # Pending messages are dimmed with a clock icon to indicate they haven't
-      # been sent to the LLM yet.
+      # Pending messages are dimmed to indicate they haven't been sent to the
+      # LLM yet.
       # @param tui [RatatuiRuby] TUI rendering API
       # @param data [Hash] structured data with "role", "content", and optional
       # Display label for a conversation role. Uses the agent name from

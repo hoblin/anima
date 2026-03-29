@@ -23,7 +23,7 @@ class PendingMessage < ApplicationRecord
   private
 
   # Broadcasts a pending message appearance so TUI clients render the
-  # clock-icon indicator immediately.
+  # dimmed indicator immediately.
   def broadcast_created
     ActionCable.server.broadcast("session_#{session_id}", {
       "action" => "pending_message_created",
