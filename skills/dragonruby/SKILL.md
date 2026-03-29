@@ -1,6 +1,6 @@
 ---
 name: dragonruby
-description: "2D game development — game loops, sprites, input, collisions, scenes. Activate when building games with DRGTK, working with args.outputs/state/inputs, or editing game files."
+description: "2D game development — game loops, sprites, input, collisions, scenes, DRGTK, args.outputs/state/inputs."
 ---
 
 # DragonRuby Game Toolkit

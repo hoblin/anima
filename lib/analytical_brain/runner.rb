@@ -53,7 +53,8 @@ module AnalyticalBrain
           ──────────────────────────────
           SKILL MANAGEMENT
           ──────────────────────────────
-          Activate skills when the conversation enters their domain.
+          Activate skills when the conversation signals intent — before the agent acts on it.
+          Late activation means the agent works without domain knowledge.
           Deactivate when the agent moves to a different domain.
           Multiple skills can be active at once.
         PROMPT
