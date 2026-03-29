@@ -16,7 +16,7 @@ module Tools
   #   tool.execute("path" => "large.log", "offset" => 2001, "limit" => 500)
   #   # => "line 2001 content\n..."
   class Read < Base
-    def self.tool_name = "read"
+    def self.tool_name = "read_file"
     def self.truncation_threshold = nil
 
     def self.description = "Read file. Relative paths resolve against working directory."

@@ -122,7 +122,7 @@ RSpec.describe Agents::Definition do
           ---
           name: normalize-test
           description: Tests normalization
-          tools: Read, BASH, Web_Get, read
+          tools: Read_File, BASH, Web_Get, read_file
           ---
 
           Prompt.
@@ -131,12 +131,12 @@ RSpec.describe Agents::Definition do
 
       it "lowercases tool names" do
         definition = described_class.from_file(agent_path)
-        expect(definition.tools).to include("read", "bash", "web_get")
+        expect(definition.tools).to include("read_file", "bash", "web_get")
       end
 
       it "deduplicates tool names" do
         definition = described_class.from_file(agent_path)
-        expect(definition.tools.count("read")).to eq(1)
+        expect(definition.tools.count("read_file")).to eq(1)
       end
     end
 
