@@ -814,8 +814,7 @@ module TUI
         label = role_label(role)
 
         if pending
-          style = tui.style(fg: "dark_gray")
-          label = "#{CLOCK_ICON} #{label}"
+          style = tui.style(fg: "gray")
         else
           role_cfg = ROLE_STYLES.fetch(role, {fg: "white"})
           style = tui.style(**role_cfg)
