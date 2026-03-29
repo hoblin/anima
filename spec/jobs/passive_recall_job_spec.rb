@@ -9,7 +9,7 @@ RSpec.describe PassiveRecallJob do
     sess.messages.create!(
       message_type: type,
       payload: {"content" => content},
-      timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+      timestamp: Time.current.to_ns
     )
   end
 

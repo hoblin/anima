@@ -20,7 +20,7 @@ RSpec.describe Tools::Remember do
       message_type: type,
       payload: payload,
       tool_use_id: payload["tool_use_id"],
-      timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+      timestamp: Time.current.to_ns
     )
   end
 
@@ -84,7 +84,7 @@ RSpec.describe Tools::Remember do
         message_type: "tool_response",
         payload: {"content" => "file1.rb\nfile2.rb", "tool_use_id" => tc.payload["tool_use_id"]},
         tool_use_id: tc.tool_use_id,
-        timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+        timestamp: Time.current.to_ns
       )
       target = create_message(session, type: "user_message", content: "Next step")
 

@@ -10,7 +10,7 @@ module Events
     # looked up from the event's session_id payload field.
     #
     # User messages are NOT persisted here — they are created directly by
-    # their callers ({SessionChannel#speak}, {AgentLoop#process}) so the
+    # their callers ({SessionChannel#speak}, {AgentLoop#run}) so the
     # message ID is available for bounce-back cleanup. Pending user
     # messages live in the {PendingMessage} table, outside the event bus.
     #
@@ -34,7 +34,7 @@ module Events
       # Receives a Rails.event notification hash and persists it.
       #
       # Skips user messages — those are persisted by their callers
-      # ({SessionChannel#speak}, {AgentLoop#process}). Also skips event
+      # ({SessionChannel#speak}, {AgentLoop#run}). Also skips event
       # types not in {Message::TYPES} (transient events like
       # {Events::BounceBack}).
       #
@@ -56,7 +56,7 @@ module Events
             message_type: event_type,
             payload: payload,
             tool_use_id: payload[:tool_use_id],
-            timestamp: payload[:timestamp] || Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+            timestamp: payload[:timestamp] || Time.current.to_ns
           )
         end
       end

@@ -30,7 +30,7 @@ RSpec.describe Mneme::Runner do
       message_type: type,
       payload: payload,
       tool_use_id: payload["tool_use_id"],
-      timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
+      timestamp: Time.current.to_ns,
       token_count: token_count
     )
   end
@@ -259,7 +259,7 @@ RSpec.describe Mneme::Runner do
       session.messages.create!(
         message_type: "user_message",
         payload: {"content" => "Help me set up OAuth with PKCE for our mobile app"},
-        timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
+        timestamp: Time.current.to_ns,
         token_count: 20
       )
       session.messages.create!(
@@ -267,13 +267,13 @@ RSpec.describe Mneme::Runner do
         payload: {"content" => "I'll implement OAuth 2.0 with PKCE. First, we need a code verifier and challenge. " \
           "The verifier is a random string, and the challenge is its SHA-256 hash. " \
           "Then we redirect to the authorization server with the challenge."},
-        timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
+        timestamp: Time.current.to_ns,
         token_count: 60
       )
       session.messages.create!(
         message_type: "user_message",
         payload: {"content" => "Use the AppAuth library for iOS and handle token refresh"},
-        timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
+        timestamp: Time.current.to_ns,
         token_count: 15
       )
 

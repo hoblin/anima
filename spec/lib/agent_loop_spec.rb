@@ -26,91 +26,21 @@ RSpec.describe AgentLoop do
     end
   end
 
-  describe "#process" do
+  describe "#run" do
     before do
       allow(client).to receive(:chat_with_tools).and_return("Hello back!")
     end
 
-    it "emits a user_message event" do
-      collector = Events::Subscribers::MessageCollector.new
-      Events::Bus.subscribe(collector)
-
-      agent_loop.process("hi")
-
-      expect(collector.messages.first).to eq({role: "user", content: "hi"})
-      Events::Bus.unsubscribe(collector)
-    end
-
-    it "emits an agent_message event with the LLM response" do
-      collector = Events::Subscribers::MessageCollector.new
-      Events::Bus.subscribe(collector)
-
-      agent_loop.process("hi")
-
-      expect(collector.messages.last).to eq({role: "assistant", content: "Hello back!"})
-      Events::Bus.unsubscribe(collector)
-    end
-
     it "returns the response text" do
-      expect(agent_loop.process("hi")).to eq("Hello back!")
+      session.create_user_message("hi")
+      expect(agent_loop.run).to eq("Hello back!")
     end
 
-    it "returns nil for empty input" do
-      expect(agent_loop.process("")).to be_nil
-    end
+    it "lets errors propagate" do
+      allow(client).to receive(:chat_with_tools).and_raise(StandardError, "Connection failed")
+      session.create_user_message("hi")
 
-    it "returns nil for whitespace-only input" do
-      expect(agent_loop.process("   ")).to be_nil
-    end
-
-    it "does not emit events for empty input" do
-      collector = Events::Subscribers::MessageCollector.new
-      Events::Bus.subscribe(collector)
-
-      agent_loop.process("")
-
-      expect(collector.messages).to be_empty
-      Events::Bus.unsubscribe(collector)
-    end
-
-    it "strips whitespace from input before emitting" do
-      collector = Events::Subscribers::MessageCollector.new
-      Events::Bus.subscribe(collector)
-
-      agent_loop.process("  hello  ")
-
-      expect(collector.messages.first).to eq({role: "user", content: "hello"})
-      Events::Bus.unsubscribe(collector)
-    end
-
-    context "error handling" do
-      before do
-        allow(client).to receive(:chat_with_tools).and_raise(StandardError, "Connection failed")
-      end
-
-      it "emits error as agent_message event" do
-        collector = Events::Subscribers::MessageCollector.new
-        Events::Bus.subscribe(collector)
-
-        agent_loop.process("hi")
-
-        expect(collector.messages.last).to eq({role: "assistant", content: "StandardError: Connection failed"})
-        Events::Bus.unsubscribe(collector)
-      end
-
-      it "returns the error message" do
-        expect(agent_loop.process("hi")).to eq("StandardError: Connection failed")
-      end
-
-      it "still emits user_message before the error" do
-        collector = Events::Subscribers::MessageCollector.new
-        Events::Bus.subscribe(collector)
-
-        agent_loop.process("hi")
-
-        expect(collector.messages.first).to eq({role: "user", content: "hi"})
-        Events::Bus.unsubscribe(collector)
-      end
+      expect { agent_loop.run }.to raise_error(StandardError, "Connection failed")
     end
 
     context "multi-turn conversation" do
@@ -121,14 +51,16 @@ RSpec.describe AgentLoop do
 
       it "includes full conversation history in subsequent LLM calls" do
         allow(client).to receive(:chat_with_tools).and_return("First response")
-        agent_loop.process("first message")
+        session.create_user_message("first message")
+        agent_loop.run
 
         received_messages = nil
         allow(client).to receive(:chat_with_tools) { |msgs, **_|
           received_messages = msgs.dup
           "Second response"
         }
-        agent_loop.process("second message")
+        session.create_user_message("second message")
+        agent_loop.run
 
         expect(received_messages.length).to eq(3)
         expect(received_messages[0][:role]).to eq("user")
@@ -501,15 +433,21 @@ RSpec.describe AgentLoop do
         File.write(path, content)
         path
       end
+
+      allow(EnvironmentProbe).to receive(:to_prompt).and_return(
+        "## Environment\n\nOS: Linux\n\nCWD: /home/test/anima\n" \
+        "Git: hoblin/anima (https://github.com/hoblin/anima)\nBranch: main"
+      )
     end
 
     it "processes a message with the full production tool set and system prompt" do
+      session.create_user_message("What is the latest issue on hoblin/anima repo?")
       loop = described_class.new(session: session)
-      result = loop.process("What is the latest issue on hoblin/anima repo?")
+      result = loop.run
       loop.finalize
 
       expect(result).to be_a(String)
-      expect(result).to be_present
+      expect(result).to include("hoblin/anima")
     end
   end
 end

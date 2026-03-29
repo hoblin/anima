@@ -21,7 +21,7 @@ RSpec.describe Mneme::CompressedViewport do
       message_type: type,
       payload: payload,
       tool_use_id: payload["tool_use_id"],
-      timestamp: timestamp || Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond),
+      timestamp: timestamp || Time.current.to_ns,
       token_count: token_count
     )
   end

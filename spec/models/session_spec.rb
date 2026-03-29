@@ -6,7 +6,7 @@ RSpec.describe Session do
   # Computes the expected LLM content for a user message with timestamp prefix.
   # Must stay in sync with Session#format_event_time.
   def timestamped(content, timestamp_ns)
-    time = Time.at(timestamp_ns / 1_000_000_000.0)
+    time = Time.at(timestamp_ns / 1_000_000_000.0).utc
     "#{time.strftime("%a %b %-d %H:%M")}\n#{content}"
   end
 
@@ -1671,7 +1671,7 @@ RSpec.describe Session do
     let(:session) { Session.create! }
 
     it "creates synthetic responses for expired tool_calls without matching tool_response" do
-      expired_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (200 * 1_000_000_000)
+      expired_ts = Time.current.to_ns - (200 * 1_000_000_000)
       session.messages.create!(
         message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_orphan", "timeout" => 180},
@@ -1688,7 +1688,7 @@ RSpec.describe Session do
     end
 
     it "does not heal tool_calls still within their timeout window" do
-      recent_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (10 * 1_000_000_000)
+      recent_ts = Time.current.to_ns - (10 * 1_000_000_000)
       session.messages.create!(
         message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_fresh", "timeout" => 180},
@@ -1700,7 +1700,7 @@ RSpec.describe Session do
     end
 
     it "respects per-call timeout override from the agent" do
-      called_5_min_ago = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (300 * 1_000_000_000)
+      called_5_min_ago = Time.current.to_ns - (300 * 1_000_000_000)
       session.messages.create!(
         message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_long", "timeout" => 600},
@@ -1741,7 +1741,7 @@ RSpec.describe Session do
     end
 
     it "heals multiple orphaned tool_calls in a single pass" do
-      expired_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (200 * 1_000_000_000)
+      expired_ts = Time.current.to_ns - (200 * 1_000_000_000)
       session.messages.create!(
         message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_a", "timeout" => 180},
@@ -1763,7 +1763,7 @@ RSpec.describe Session do
 
     it "falls back to Settings.tool_timeout when payload has no timeout key" do
       allow(Anima::Settings).to receive(:tool_timeout).and_return(60)
-      expired_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (90 * 1_000_000_000)
+      expired_ts = Time.current.to_ns - (90 * 1_000_000_000)
       session.messages.create!(
         message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_no_timeout"},
@@ -1778,7 +1778,7 @@ RSpec.describe Session do
     end
 
     it "is idempotent — second call creates no duplicates" do
-      expired_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (200 * 1_000_000_000)
+      expired_ts = Time.current.to_ns - (200 * 1_000_000_000)
       session.messages.create!(
         message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_orphan", "timeout" => 180},
@@ -1853,8 +1853,8 @@ RSpec.describe Session do
     end
 
     it "heals expired orphaned tool_calls before assembling messages" do
-      expired_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond) - (200 * 1_000_000_000)
-      now_ts = Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+      expired_ts = Time.current.to_ns - (200 * 1_000_000_000)
+      now_ts = Time.current.to_ns
       session.messages.create!(
         message_type: "tool_call",
         payload: {"tool_name" => "bash", "tool_use_id" => "toolu_dead", "tool_input" => {}, "timeout" => 180},
@@ -2199,7 +2199,7 @@ RSpec.describe Session do
       sess.messages.create!(
         message_type: type,
         payload: {"content" => content},
-        timestamp: Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+        timestamp: Time.current.to_ns
       )
     end
 

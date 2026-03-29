@@ -21,9 +21,9 @@ module Tools
 
     # Builds description dynamically to include available specialists.
     def self.description
-      base = "Spawn a specialist to work on a task. " \
-        "Its messages are forwarded to you. " \
-        "Address it via @name to send follow-up instructions."
+      base = "Need a specific skill set for the job? Bring in a specialist. " \
+        "Its messages appear in yours; any message containing " \
+        "@nickname is forwarded — even casual mentions will wake it."
 
       registry = Agents::Registry.instance
       return base unless registry.any?
@@ -85,7 +85,8 @@ module Tools
       nickname = child.name
       "Specialist @#{nickname} spawned (session #{child.id}). " \
         "Its messages will appear in your conversation. " \
-        "Reply with @#{nickname} to send it instructions."
+        "Reply with @#{nickname} to send it instructions — " \
+        "any message mentioning @#{nickname} is forwarded, even in narration."
     end
 
     private

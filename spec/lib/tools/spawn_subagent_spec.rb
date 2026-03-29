@@ -30,6 +30,14 @@ RSpec.describe Tools::SpawnSubagent do
     it "does not mention specialists" do
       expect(described_class.description).not_to include("specialist")
     end
+
+    it "leads with hook and call-to-action" do
+      expect(described_class.description).to include("sidequest")
+    end
+
+    it "warns about @mention forwarding" do
+      expect(described_class.description).to include("forwarded")
+    end
   end
 
   describe ".input_schema" do
@@ -141,13 +149,14 @@ RSpec.describe Tools::SpawnSubagent do
       )
     end
 
-    it "returns confirmation with @nickname and session ID" do
+    it "returns confirmation with @nickname, session ID, and forwarding warning" do
       result = tool.execute(input)
 
       child = Session.last
       expect(result).to include("Sub-agent @loop-sleuth spawned")
       expect(result).to include("session #{child.id}")
       expect(result).to include("@loop-sleuth")
+      expect(result).to include("forwarded")
     end
 
     it "assigns nickname via the analytical brain" do

@@ -19,9 +19,10 @@ module Tools
     def self.tool_name = "spawn_subagent"
 
     def self.description
-      "Spawn a sub-agent to work on a task. " \
-        "It inherits your conversation context and its messages are forwarded to you. " \
-        "Address it via @nickname to send follow-up instructions."
+      "Task feels like a sidequest or a context-switch? Hand it off. " \
+        "Inherits your context; its messages appear in yours. " \
+        "Any message containing @nickname is forwarded — " \
+        "even casual mentions will wake the sub-agent."
     end
 
     def self.input_schema
@@ -67,7 +68,8 @@ module Tools
       nickname = child.name
       "Sub-agent @#{nickname} spawned (session #{child.id}). " \
         "Its messages will appear in your conversation. " \
-        "Reply with @#{nickname} to send it instructions."
+        "Reply with @#{nickname} to send it instructions — " \
+        "any message mentioning @#{nickname} is forwarded, even in narration."
     end
 
     private
