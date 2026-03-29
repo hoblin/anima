@@ -129,9 +129,9 @@ module TUI
     # Requests the brain to recall (delete) a pending message so the user
     # can edit it before the LLM sees it.
     #
-    # @param message_id [Integer] database ID of the pending user_message
-    def recall_pending(message_id)
-      send_action("recall_pending", {"message_id" => message_id})
+    # @param pending_message_id [Integer] database ID of the {PendingMessage}
+    def recall_pending(pending_message_id)
+      send_action("recall_pending", {"pending_message_id" => pending_message_id})
     end
 
     # Requests interruption of the current tool execution. The server sets

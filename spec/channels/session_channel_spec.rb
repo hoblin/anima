@@ -319,19 +319,12 @@ RSpec.describe SessionChannel, type: :channel do
     context "when session is processing" do
       before { session.update!(processing: true) }
 
-      it "emits a pending user_message event via EventBus" do
-        emitted = []
-        subscriber = double("subscriber")
-        allow(subscriber).to receive(:emit) { |event| emitted << event }
-        Events::Bus.subscribe(subscriber)
+      it "creates a PendingMessage" do
+        expect { perform(:speak, {"content" => "queued message"}) }
+          .to change(PendingMessage, :count).by(1)
 
-        perform(:speak, {"content" => "queued message"})
-
-        user_event = emitted.find { |e| e.dig(:payload, :type) == "user_message" }
-        expect(user_event.dig(:payload, :status)).to eq("pending")
-        expect(user_event.dig(:payload, :session_id)).to eq(session.id)
-      ensure
-        Events::Bus.unsubscribe(subscriber)
+        pm = session.pending_messages.last
+        expect(pm.content).to eq("queued message")
       end
 
       it "does not enqueue AgentRequestJob" do
@@ -346,51 +339,27 @@ RSpec.describe SessionChannel, type: :channel do
 
     before { subscribe(session_id: session_id) }
 
-    it "deletes the pending message and broadcasts recall" do
-      event = session.messages.create!(
-        message_type: "user_message",
-        payload: {"type" => "user_message", "content" => "pending", "status" => "pending"},
-        timestamp: 1,
-        status: "pending"
-      )
+    it "deletes the PendingMessage" do
+      pm = session.pending_messages.create!(content: "queued")
 
       expect {
-        perform(:recall_pending, {"message_id" => event.id})
-      }.to change(Message, :count).by(-1)
-        .and have_broadcasted_to(stream_name)
-        .with(a_hash_including("action" => "user_message_recalled", "message_id" => event.id))
+        perform(:recall_pending, {"pending_message_id" => pm.id})
+      }.to change(PendingMessage, :count).by(-1)
     end
 
-    it "ignores non-pending messages" do
-      event = session.messages.create!(
-        message_type: "user_message",
-        payload: {"type" => "user_message", "content" => "delivered"},
-        timestamp: 1
-      )
-
-      expect {
-        perform(:recall_pending, {"message_id" => event.id})
-      }.not_to change(Message, :count)
-    end
-
-    it "ignores messages from other sessions" do
+    it "ignores pending messages from other sessions" do
       other_session = Session.create!
-      event = other_session.messages.create!(
-        message_type: "user_message",
-        payload: {"type" => "user_message", "content" => "pending", "status" => "pending"},
-        timestamp: 1,
-        status: "pending"
-      )
+      pm = other_session.pending_messages.create!(content: "queued")
 
       expect {
-        perform(:recall_pending, {"message_id" => event.id})
-      }.not_to change(Message, :count)
+        perform(:recall_pending, {"pending_message_id" => pm.id})
+      }.not_to change(PendingMessage, :count)
     end
 
-    it "ignores invalid message_id" do
+    it "ignores invalid pending_message_id" do
       expect {
-        perform(:recall_pending, {"message_id" => 0})
-      }.not_to change(Message, :count)
+        perform(:recall_pending, {"pending_message_id" => 0})
+      }.not_to change(PendingMessage, :count)
     end
   end
 

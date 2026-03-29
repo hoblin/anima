@@ -30,7 +30,6 @@ module TUI
       MOUSE_SCROLL_STEP = 2
 
       TOOL_ICON = "\u{1F527}"
-      CLOCK_ICON = "\u{1F552}"
       CHECKMARK = "\u2713"
 
       # Viewport virtualization tuning
@@ -314,8 +313,10 @@ module TUI
             handle_children_updated(msg)
           when "sessions_list"
             @sessions_list = msg["sessions"]
-          when "user_message_recalled"
-            @message_store.remove_by_id(msg["message_id"]) if msg["message_id"]
+          when "pending_message_created"
+            @message_store.add_pending(msg["pending_message_id"], msg["content"]) if msg["pending_message_id"]
+          when "pending_message_removed"
+            @message_store.remove_pending(msg["pending_message_id"]) if msg["pending_message_id"]
           when "authentication_required"
             @authentication_required = true
           when "token_saved"
@@ -882,8 +883,8 @@ module TUI
       end
 
       # Renders a user or assistant message with optional timestamp and token count.
-      # Pending messages are dimmed with a clock icon to indicate they haven't
-      # been sent to the LLM yet.
+      # Pending messages are dimmed to indicate they haven't been sent to the
+      # LLM yet.
       # @param tui [RatatuiRuby] TUI rendering API
       # @param data [Hash] structured data with "role", "content", and optional
       # Display label for a conversation role. Uses the agent name from
@@ -906,8 +907,7 @@ module TUI
         label = role_label(role)
 
         if pending
-          style = tui.style(fg: "dark_gray")
-          label = "#{CLOCK_ICON} #{label}"
+          style = tui.style(fg: "gray")
         else
           role_cfg = ROLE_STYLES.fetch(role, {fg: "white"})
           style = tui.style(**role_cfg)
@@ -1199,17 +1199,17 @@ module TUI
 
       # Recalls the last pending user message for editing. Removes it from
       # the message store, puts its content back in the input buffer, and
-      # tells the server to delete the message.
+      # tells the server to delete the {PendingMessage}.
       #
       # @return [Boolean] true if a message was recalled
       def recall_pending_message
         pending = @message_store.last_pending_user_message
         return false unless pending
 
-        @message_store.remove_by_id(pending[:id])
+        @message_store.remove_pending(pending[:pending_message_id])
         @input_buffer.clear
         @input_buffer.insert(pending[:content])
-        @cable_client.recall_pending(pending[:id])
+        @cable_client.recall_pending(pending[:pending_message_id])
         true
       end
 

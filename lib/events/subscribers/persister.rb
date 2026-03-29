@@ -9,6 +9,11 @@ module Events
     # session. When initialized without one (global mode), the session is
     # looked up from the event's session_id payload field.
     #
+    # User messages are NOT persisted here — they are created directly by
+    # their callers ({SessionChannel#speak}, {AgentLoop#process}) so the
+    # message ID is available for bounce-back cleanup. Pending user
+    # messages live in the {PendingMessage} table, outside the event bus.
+    #
     # @example Session-scoped
     #   persister = Events::Subscribers::Persister.new(session)
     #   Events::Bus.subscribe(persister)
@@ -28,10 +33,10 @@ module Events
 
       # Receives a Rails.event notification hash and persists it.
       #
-      # Skips non-pending user messages — those are persisted by their
-      # callers ({SessionChannel#speak} for idle sessions,
-      # {AgentLoop#process} for direct usage). Also skips event types
-      # not in {Message::TYPES} (transient events like {Events::BounceBack}).
+      # Skips user messages — those are persisted by their callers
+      # ({SessionChannel#speak}, {AgentLoop#process}). Also skips event
+      # types not in {Message::TYPES} (transient events like
+      # {Events::BounceBack}).
       #
       # @param event [Hash] with :payload containing event data
       def emit(event)
@@ -41,7 +46,7 @@ module Events
         event_type = payload[:type]
         return if event_type.nil?
         return unless Message::TYPES.include?(event_type)
-        return if persisted_by_job?(event_type, payload)
+        return if event_type == "user_message"
 
         target_session = @session || Session.find_by(id: payload[:session_id])
         return unless target_session
@@ -50,7 +55,6 @@ module Events
           target_session.messages.create!(
             message_type: event_type,
             payload: payload,
-            status: payload[:status],
             tool_use_id: payload[:tool_use_id],
             timestamp: payload[:timestamp] || Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
           )
@@ -59,17 +63,6 @@ module Events
 
       def session=(new_session)
         @mutex.synchronize { @session = new_session }
-      end
-
-      private
-
-      # Non-pending user messages are persisted by their callers
-      # ({SessionChannel#speak}, {AgentLoop#process}) so the message ID
-      # is available for bounce-back cleanup if LLM delivery fails.
-      # Pending messages are still auto-persisted here because they
-      # queue while the session is busy.
-      def persisted_by_job?(event_type, payload)
-        event_type == "user_message" && payload[:status] != Message::PENDING_STATUS
       end
     end
   end

@@ -36,6 +36,8 @@ module TUI
     def initialize
       @entries = []
       @entries_by_id = {}
+      @pending_entries = []
+      @pending_by_id = {}
       @mutex = Mutex.new
       @version = 0
     end
@@ -48,14 +50,14 @@ module TUI
       @mutex.synchronize { @version }
     end
 
-    # @return [Array<Hash>] thread-safe copy of stored entries
+    # @return [Array<Hash>] thread-safe copy of stored entries (pending messages at the end)
     def messages
-      @mutex.synchronize { @entries.dup }
+      @mutex.synchronize { @entries.dup + @pending_entries.dup }
     end
 
-    # @return [Integer] number of stored entries (no array copy)
+    # @return [Integer] number of stored entries including pending (no array copy)
     def size
-      @mutex.synchronize { @entries.size }
+      @mutex.synchronize { @entries.size + @pending_entries.size }
     end
 
     # Processes a raw event payload from the WebSocket channel.
@@ -96,27 +98,58 @@ module TUI
       @mutex.synchronize do
         @entries = []
         @entries_by_id = {}
+        @pending_entries = []
+        @pending_by_id = {}
         @version += 1
       end
     end
 
-    # Returns the last pending user message for recall editing.
-    # Walks entries backwards and returns the first pending user_message found.
+    # Adds a pending message to the separate pending list.
+    # Pending messages always render after real messages.
     #
-    # @return [Hash, nil] `{id: Integer, content: String}` or nil if none pending
+    # @param pending_message_id [Integer] PendingMessage database ID
+    # @param content [String] message text
+    # @return [void]
+    def add_pending(pending_message_id, content)
+      @mutex.synchronize do
+        entry = {
+          type: :rendered,
+          data: {"role" => "user", "content" => content, "status" => "pending"},
+          message_type: "user_message",
+          pending_message_id: pending_message_id
+        }
+        old = @pending_by_id[pending_message_id]
+        @pending_entries.delete(old) if old
+        @pending_entries << entry
+        @pending_by_id[pending_message_id] = entry
+        @version += 1
+      end
+    end
+
+    # Removes a pending message by its PendingMessage ID.
+    #
+    # @param pending_message_id [Integer] PendingMessage database ID
+    # @return [Boolean] true if found and removed
+    def remove_pending(pending_message_id)
+      @mutex.synchronize do
+        entry = @pending_by_id.delete(pending_message_id)
+        return false unless entry
+
+        @pending_entries.delete(entry)
+        @version += 1
+        true
+      end
+    end
+
+    # Returns the last pending user message for recall editing.
+    #
+    # @return [Hash, nil] `{pending_message_id: Integer, content: String}` or nil
     def last_pending_user_message
       @mutex.synchronize do
-        @entries.reverse_each do |entry|
-          next unless entry[:message_type] == "user_message"
+        entry = @pending_entries.last
+        return nil unless entry
 
-          if entry[:type] == :rendered && entry.dig(:data, "status") == "pending"
-            return {id: entry[:id], content: entry.dig(:data, "content")}
-          end
-
-          # Only check the most recent user message
-          break
-        end
-        nil
+        {pending_message_id: entry[:pending_message_id], content: entry.dig(:data, "content")}
       end
     end
 
