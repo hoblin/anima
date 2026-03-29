@@ -49,9 +49,14 @@ module TUI
       # independent of Rails. Must stay in sync when adding new modes.
       VIEW_MODES = %w[basic verbose debug].freeze
 
+      # @!attribute [r] session_loading
+      #   Whether the TUI is waiting for session history to arrive from the server.
+      #   Independent of cable_client.status (transport) and session_state (LLM processing).
+      #   Set on subscribing/session_changed/view_mode_changed; cleared on first content
+      #   message or connection failure. Drives the "Loading…" input title and yellow border.
       attr_reader :message_store, :scroll_offset, :session_info, :view_mode, :sessions_list,
         :authentication_required, :token_save_result, :parent_session_id,
-        :chat_focused, :session_state, :spinner
+        :chat_focused, :session_state, :spinner, :session_loading
       attr_accessor :hud_hint
 
       # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
@@ -64,6 +69,7 @@ module TUI
         @input_buffer = InputBuffer.new
         @flash = Flash.new
         @session_state = "idle"
+        @session_loading = false
         @spinner = BrailleSpinner.new
         @scroll_offset = 0
         @auto_scroll = true
@@ -284,7 +290,12 @@ module TUI
 
       private
 
-      # Drains the WebSocket message queue and feeds events to the message store
+      # Drains the WebSocket message queue and feeds events to the message store.
+      #
+      # Called once per render frame. All operations here MUST be non-blocking:
+      # drain_messages uses Thread::Queue#pop(true), and every handler performs
+      # only in-memory state updates. Network I/O (WebSocket sends, reconnection)
+      # happens in CableClient's background thread via Thread::Queue.
       def process_incoming_messages
         @cable_client.drain_messages.each do |msg|
           action = msg["action"]
@@ -335,16 +346,19 @@ module TUI
             when "connection"
               handle_connection_status(msg)
             when "user_message"
+              @session_loading = false
               @message_store.process_event(msg)
               unless action == "update"
                 @session_info[:message_count] += 1
               end
             when "agent_message"
+              @session_loading = false
               @message_store.process_event(msg)
               unless action == "update"
                 @session_info[:message_count] += 1
               end
             else # tool_call, tool_response, and other event types
+              @session_loading = false
               @message_store.process_event(msg)
             end
           end
@@ -384,9 +398,11 @@ module TUI
         case msg["status"]
         when "subscribing"
           @message_store.clear
+          @session_loading = true
           update_session_state("idle")
           @session_info[:message_count] = 0
         when "disconnected", "failed"
+          @session_loading = false
           update_session_state("idle")
         end
       end
@@ -414,6 +430,9 @@ module TUI
         new_id = msg["session_id"]
         @cable_client.update_session_id(new_id)
         @message_store.clear
+        # Only enter loading state when the session has messages to replay.
+        # Empty sessions send no history events, so the flag would never clear.
+        @session_loading = (msg["message_count"] || 0) > 0
         @view_mode = msg["view_mode"] if msg["view_mode"]
         @session_info = {id: new_id, name: msg["name"], agent_name: msg["agent_name"] || "Anima",
                          message_count: msg["message_count"] || 0,
@@ -529,6 +548,9 @@ module TUI
 
         @view_mode = new_mode
         @message_store.clear
+        # Only enter loading state when there are messages to re-decorate.
+        # Empty sessions send no viewport events after a mode change.
+        @session_loading = (@session_info[:message_count] || 0) > 0
         update_session_state("idle")
         @scroll_offset = 0
         @auto_scroll = true
@@ -643,6 +665,8 @@ module TUI
       end
 
       # Renders the empty or loading state placeholder when no messages exist.
+      # Three states: active processing (spinner), session loading (loading
+      # indicator), and truly empty (start chatting prompt).
       # Resets scroll state since there is no scrollable content.
       #
       # @param frame [RatatuiRuby::Frame] current render frame
@@ -652,6 +676,10 @@ module TUI
       def render_empty_or_loading(frame, area, tui)
         lines = if loading?
           [spinner_line(tui)]
+        elsif @session_loading
+          [tui.line(spans: [
+            tui.span(content: "Loading session\u2026", style: tui.style(fg: "yellow"))
+          ])]
         else
           [tui.line(spans: [
             tui.span(content: "Type a message to start chatting.", style: tui.style(fg: "dark_gray"))
@@ -1066,6 +1094,8 @@ module TUI
       def input_styles(tui, disabled)
         border_color = if disabled || @chat_focused
           "dark_gray"
+        elsif @session_loading
+          "yellow"
         else
           "green"
         end
@@ -1076,11 +1106,25 @@ module TUI
         }
       end
 
+      # Returns the input field title reflecting the current transport and
+      # session state. Only shows "Disconnected" when the WebSocket is
+      # truly down — not during the subscribe handshake or session loading.
+      #
+      # :connected (pre-subscription) still shows "Connecting…" because
+      # the user can't interact until the Action Cable subscription handshake
+      # completes and the server starts streaming events.
       def input_title
-        if !connected?
+        case @cable_client.status
+        when :disconnected
           "Disconnected"
+        when :reconnecting
+          "Reconnecting\u2026"
+        when :connecting, :connected
+          "Connecting\u2026"
+        when :subscribed
+          @session_loading ? "Loading\u2026" : "Input"
         else
-          "Input"
+          "Disconnected"
         end
       end
 
