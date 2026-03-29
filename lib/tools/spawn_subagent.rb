@@ -14,7 +14,7 @@ module Tools
   class SpawnSubagent < Base
     include SubagentPrompts
 
-    GENERIC_PROMPT = "You are a focused sub-agent. #{COMMUNICATION_INSTRUCTION}\n"
+    GENERIC_PROMPT = "#{COMMUNICATION_INSTRUCTION}\n"
 
     def self.tool_name = "spawn_subagent"
 

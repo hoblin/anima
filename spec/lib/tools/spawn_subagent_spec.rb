@@ -94,11 +94,12 @@ RSpec.describe Tools::SpawnSubagent do
       expect(child.parent_session).to eq(parent_session)
     end
 
-    it "sets the child session's generic system prompt" do
+    it "sets the child session's prompt with identity context" do
       tool.execute(input)
 
       child = Session.last
-      expect(child.prompt).to include("focused sub-agent")
+      expect(child.prompt).to start_with("You are @loop-sleuth, a sub-agent")
+      expect(child.prompt).to include("messages reach the parent automatically")
       expect(child.prompt).not_to include("Expected deliverable")
     end
 
@@ -180,7 +181,7 @@ RSpec.describe Tools::SpawnSubagent do
       expect(Session.last.name).to eq("brain-named")
     end
 
-    it "falls back to agent-N on brain failure" do
+    it "falls back to agent-N on brain failure and still injects identity" do
       allow_any_instance_of(AnalyticalBrain::Runner).to receive(:call)
         .and_raise(Providers::Anthropic::RateLimitError, "rate limited")
 
@@ -188,6 +189,7 @@ RSpec.describe Tools::SpawnSubagent do
 
       child = Session.last
       expect(child.name).to match(/\Aagent-\d+\z/)
+      expect(child.prompt).to include("You are @#{child.name}, a sub-agent")
     end
 
     it "returns immediately (non-blocking)" do

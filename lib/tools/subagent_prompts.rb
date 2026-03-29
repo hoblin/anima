@@ -4,8 +4,11 @@ module Tools
   # Shared prompt fragments and spawn logic for tools that create sub-agent sessions.
   # Included by {SpawnSubagent} and {SpawnSpecialist} to avoid duplication.
   module SubagentPrompts
-    COMMUNICATION_INSTRUCTION = "You are a sub-agent collaborating with a parent agent. " \
-      "Your messages reach the parent automatically. " \
+    # Prepended to every sub-agent's stored prompt after nickname assignment.
+    # Establishes identity before any other instruction.
+    IDENTITY_TEMPLATE = "You are @%s, a sub-agent of the primary agent."
+
+    COMMUNICATION_INSTRUCTION = "Your messages reach the parent automatically. " \
       "Ask if you need clarification — the parent can reply."
 
     # Framing message inserted as the sub-agent's first user message.
@@ -29,14 +32,30 @@ module Tools
       child.create_user_message(FORK_FRAMING_MESSAGE)
     end
 
-    # Runs the analytical brain synchronously to assign a nickname.
+    # Runs the analytical brain synchronously to assign a nickname,
+    # then prepends identity context to the stored prompt.
     # Falls back to a sequential "agent-N" name on any failure.
+    # Identity injection runs in +ensure+ so it applies to both
+    # brain-assigned and fallback nicknames.
     def assign_nickname_via_brain(child)
       AnalyticalBrain::Runner.new(child).call
       child.reload
     rescue => error
       Rails.logger.warn("Sub-agent nickname assignment failed: #{error.message}")
       child.update!(name: fallback_nickname)
+    ensure
+      inject_identity_context(child)
+    end
+
+    # Prepends identity context (nickname + sub-agent status) to the child's
+    # stored prompt. Called after nickname assignment so the sub-agent knows
+    # who it is from first token.
+    #
+    # @param child [Session] the child session with a nickname already set
+    # @return [void]
+    def inject_identity_context(child)
+      identity = format(IDENTITY_TEMPLATE, child.name)
+      child.update!(prompt: "#{identity}\n#{child.prompt}")
     end
 
     def fallback_nickname

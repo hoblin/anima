@@ -106,7 +106,14 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(child.granted_tools).to eq(%w[read bash])
     end
 
-    it "uses the agent's system prompt" do
+    it "prepends identity context to the specialist prompt" do
+      tool.execute(input)
+
+      child = Session.last
+      expect(child.prompt).to start_with("You are @code-scout, a sub-agent")
+    end
+
+    it "preserves the agent's system prompt after identity context" do
       tool.execute(input)
 
       child = Session.last
@@ -117,7 +124,7 @@ RSpec.describe Tools::SpawnSpecialist do
       tool.execute(input)
 
       child = Session.last
-      expect(child.prompt).to include("sub-agent collaborating with a parent")
+      expect(child.prompt).to include("messages reach the parent automatically")
     end
 
     it "does not append an expected deliverable to the prompt" do
@@ -197,7 +204,7 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(result).to include("forwarded")
     end
 
-    it "falls back to agent-N on brain failure" do
+    it "falls back to agent-N on brain failure and still injects identity" do
       allow_any_instance_of(AnalyticalBrain::Runner).to receive(:call)
         .and_raise(Providers::Anthropic::RateLimitError, "rate limited")
 
@@ -205,6 +212,7 @@ RSpec.describe Tools::SpawnSpecialist do
 
       child = Session.last
       expect(child.name).to match(/\Aagent-\d+\z/)
+      expect(child.prompt).to include("You are @#{child.name}, a sub-agent")
     end
 
     context "with blank name" do
