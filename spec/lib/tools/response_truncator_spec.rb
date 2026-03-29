@@ -69,6 +69,10 @@ RSpec.describe Tools::ResponseTruncator do
         expect(result).to include("⚠️ Response truncated (100 lines total)")
       end
 
+      it "omits reason dash when no reason given" do
+        expect(result).not_to include("—")
+      end
+
       it "includes the temp file path" do
         expect(result).to match(%r{Full output saved to: .+/tool_result_.+\.txt})
       end
@@ -80,6 +84,18 @@ RSpec.describe Tools::ResponseTruncator do
       it "saves full content to the temp file" do
         path = result.match(%r{saved to: (.+\.txt)})[1]
         expect(File.read(path)).to eq(content)
+      end
+    end
+
+    context "when a reason is provided" do
+      let(:content) { (1..100).map { |n| "Line #{n}: some content here\n" }.join }
+
+      subject(:result) do
+        described_class.truncate(content, threshold: 50, reason: "bash output displays first/last 10 lines")
+      end
+
+      it "includes the reason in the truncation notice" do
+        expect(result).to include("100 lines total — bash output displays first/last 10 lines")
       end
     end
 

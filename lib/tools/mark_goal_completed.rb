@@ -75,7 +75,9 @@ module Tools
 
       name = @session.name || "agent-#{@session.id}"
       truncated = Tools::ResponseTruncator.truncate(
-        result, threshold: Anima::Settings.max_subagent_response_chars
+        result,
+        threshold: Anima::Settings.max_subagent_response_chars,
+        reason: "sub-agent output displays first/last #{Tools::ResponseTruncator::HEAD_LINES} lines"
       )
       attributed = format(Tools::ResponseTruncator::ATTRIBUTION_FORMAT, name, truncated)
       parent.enqueue_user_message(attributed)

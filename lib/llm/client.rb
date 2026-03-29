@@ -307,7 +307,9 @@ module LLM
       threshold = registry.truncation_threshold(tool_name)
       return content unless threshold
 
-      Tools::ResponseTruncator.truncate(content, threshold: threshold)
+      lines = Tools::ResponseTruncator::HEAD_LINES
+      reason = "#{tool_name} output displays first/last #{lines} lines"
+      Tools::ResponseTruncator.truncate(content, threshold: threshold, reason: reason)
     end
   end
 end
