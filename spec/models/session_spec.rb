@@ -651,6 +651,27 @@ RSpec.describe Session do
       summary = session.goals_summary
       expect(summary.map { |g| g["id"] }).to eq([first.id, second.id])
     end
+
+    it "excludes evicted root goals" do
+      Goal.create!(session: session, description: "visible")
+      Goal.create!(session: session, description: "evicted", status: "completed",
+        completed_at: 2.hours.ago, evicted_at: 1.hour.ago)
+
+      summary = session.goals_summary
+      expect(summary.size).to eq(1)
+      expect(summary.first["description"]).to eq("visible")
+    end
+
+    it "excludes sub-goals of evicted root goals" do
+      evicted_root = Goal.create!(session: session, description: "evicted root",
+        status: "completed", completed_at: 2.hours.ago, evicted_at: 1.hour.ago)
+      Goal.create!(session: session, parent_goal: evicted_root, description: "orphaned child")
+      Goal.create!(session: session, description: "visible root")
+
+      summary = session.goals_summary
+      expect(summary.size).to eq(1)
+      expect(summary.first["description"]).to eq("visible root")
+    end
   end
 
   describe "#assemble_task_section" do

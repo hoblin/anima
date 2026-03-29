@@ -239,7 +239,7 @@ class Session < ApplicationRecord
   #
   # @return [Array<Hash>] each with :id, :description, :status, and :sub_goals
   def goals_summary
-    goals.root.includes(:sub_goals).order(:created_at).map(&:as_summary)
+    goals.root.not_evicted.includes(:sub_goals).order(:created_at).map(&:as_summary)
   end
 
   # Builds the message array expected by the Anthropic Messages API.
