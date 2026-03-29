@@ -56,25 +56,17 @@ http_interactions:
         STATE\\n──────────────────────────────\\nSession name: \U0001F527 Existing
         Name\\nActive skills: None\\nActive workflow: None\\n\\n──────────────────────────────\\nAVAILABLE
         SKILLS\\n──────────────────────────────\\n- activerecord — Associations, validations,
-        queries, migrations, eager loading. Activate when working with models, database
-        schema, N+1 queries, scopes, includes/preload/eager_load, callbacks, or editing
-        app/models/ or db/migrate/.\\n- dragonruby — 2D game development — game loops,
-        sprites, input, collisions, scenes. Activate when building games with DRGTK,
-        working with args.outputs/state/inputs, or editing game files.\\n- draper-decorators
-        — Decorator patterns for Rails views — presentation logic separated from models.
-        Activate when creating or testing decorators, moving formatting logic out
-        of models/views, editing *_decorator.rb files, or working in app/decorators/.\\n-
-        gh-issue — Issue writing with WHAT/WHY/HOW framework. Activate when creating
-        issues, writing tickets, drafting issue descriptions, or when issues lack
-        clear rationale.\\n- mcp-server — Ruby server development — tools, prompts,
-        resources, transport. Activate when building Model Context Protocol servers,
-        defining MCP tools/prompts/resources, working with the mcp gem, or discussing
-        LLM tool integrations.\\n- ratatui-ruby — Terminal UI development — widgets,
-        layouts, events, Tea MVU. Activate when building TUI apps, working with terminal
-        rendering, or editing TUI application files.\\n- rspec — Testing with FactoryBot
-        — matchers, test doubles, shared examples. Activate when writing specs, fixing
-        failing tests, working with describe/it/expect blocks, editing *_spec.rb files,
-        planning test strategy, or discussing unit/integration tests.\\n\\n──────────────────────────────\\nAVAILABLE
+        queries, migrations, eager loading, N+1 queries, scopes, callbacks, app/models/,
+        db/migrate/.\\n- dragonruby — 2D game development — game loops, sprites, input,
+        collisions, scenes, DRGTK, args.outputs/state/inputs.\\n- draper-decorators
+        — Decorator patterns for Rails views — presentation logic separated from models,
+        *_decorator.rb, app/decorators/.\\n- gh-issue — Issue writing with WHAT/WHY/HOW
+        framework — tickets, bug reports, feature requests, issue descriptions, unclear
+        rationale in existing issues.\\n- mcp-server — Ruby MCP server development
+        — tools, prompts, resources, transport, the mcp gem, LLM tool integrations.\\n-
+        ratatui-ruby — Terminal UI development — widgets, layouts, events, Tea MVU,
+        terminal rendering.\\n- rspec — Testing with FactoryBot — matchers, test doubles,
+        shared examples, describe/it/expect blocks, *_spec.rb files, test strategy.\\n\\n──────────────────────────────\\nAVAILABLE
         WORKFLOWS\\n──────────────────────────────\\n- commit — Create focused git
         commits with user approval.\\n- create_handoff — Preserve current session's
         context, decisions, and next steps so another session can continue the work.\\n-
@@ -116,7 +108,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sun, 29 Mar 2026 08:47:46 GMT
+      - Sun, 29 Mar 2026 08:58:12 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -130,13 +122,13 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1774782000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.53'
+      - '0.55'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1775196000'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.44'
+      - '0.45'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
@@ -158,57 +150,255 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '3340'
+      - '3552'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=3342
-      Cf-Cache-Status:
-      - DYNAMIC
+      - x-originResponse;dur=3557
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
       X-Robots-Tag:
       - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
       Cf-Ray:
       - "<CF_RAY>"
     body:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMVc5NHh2d1AyYThKRGZEYnFUanJiQkwiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMVlZMUhGcG1xajhIWnZ0WjRWNHJyZ20iLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
-        InRleHQiOiJJIGRvbid0IGhhdmUgZW5vdWdoIGNvbnRleHQgdG8gZGV0ZXJt
-        aW5lIHdoYXQgd29yayBuZWVkcyB0byBiZSByZXN1bWVkIG9yIHdoYXQgYWN0
-        aW9ucyBhcmUgcmVxdWlyZWQuIFRoZSBtZXNzYWdlIFwiQ29udGludWUgd2l0
-        aCB0aGUgZml4XCIgaXMgdmFndWUgYW5kIGNvdWxkIHJlZmVyIHRvOlxuXG4t
-        IEEgcHJldmlvdXMgc2Vzc2lvbidzIHdvcmsgKHdoaWNoIHdvdWxkIHJlcXVp
-        cmUgcmVhZGluZyBhIGhhbmRvZmYpXG4tIEFuIGV4aXN0aW5nIGFjdGl2ZSBn
-        b2FsIG9yIHdvcmtmbG93XG4tIEEgY29kZSBmaXggdGhhdCdzIGFscmVhZHkg
-        aW4gcHJvZ3Jlc3NcblxuRnJvbSB0aGUgY3VycmVudCBzdGF0ZSwgSSBjYW4g
-        c2VlOlxuLSAqKlNlc3Npb24gbmFtZSoqOiDwn5SnIEV4aXN0aW5nIE5hbWUg
-        KGdlbmVyaWMsIG5vdCB0YXNrLXNwZWNpZmljKVxuLSAqKkFjdGl2ZSBza2ls
-        bHMqKjogTm9uZVxuLSAqKkFjdGl2ZSB3b3JrZmxvdyoqOiBOb25lXG5cblRv
-        IHByb2NlZWQgYXBwcm9wcmlhdGVseSwgSSBuZWVkIHRvIGtub3c6XG5cbjEu
-        ICoqV2hhdCBzcGVjaWZpYyBmaXggaXMgYmVpbmcgd29ya2VkIG9uPyoqIChl
-        LmcuLCBhIGJ1ZywgZmVhdHVyZSwgdGVzdCBmYWlsdXJlKVxuMi4gKipJcyB0
-        aGVyZSBhIGhhbmRvZmYgZnJvbSBhIHByZXZpb3VzIHNlc3Npb24qKiBJIHNo
-        b3VsZCByZXN1bWU/XG4zLiAqKldoYXQncyB0aGUgY3VycmVudCBzdGF0dXMq
-        KiDigJQgd2hhdCdzIGJlZW4gZG9uZSBhbmQgd2hhdCdzIG5leHQ/XG5cblBs
-        ZWFzZSBwcm92aWRlIGVpdGhlcjpcbi0gVGhlIHRpY2tldC9pc3N1ZSBkZXRh
-        aWxzIGFuZCBjdXJyZW50IHByb2dyZXNzLCBvclxuLSBDb25maXJtYXRpb24g
-        dGhhdCBJIHNob3VsZCByZWFkIGEgaGFuZG9mZiB3b3JrZmxvdywgb3Jcbi0g
-        Q29udGV4dCBhYm91dCB3aGF0IFwidGhlIGZpeFwiIHJlZmVycyB0b1xuXG5P
-        bmNlIEkgaGF2ZSB0aGF0LCBJIGNhbiBhY3RpdmF0ZSB0aGUgcmlnaHQgc2tp
-        bGxzL3dvcmtmbG93LCBzZXQgdXAgZ29hbHMsIGFuZCBnZXQgdGhlIHNlc3Np
-        b24gcHJvcGVybHkgb3JnYW5pemVkLiJ9XSwic3RvcF9yZWFzb24iOiJlbmRf
-        dHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rv
-        a2VucyI6MjU2NiwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJj
-        YWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsi
-        ZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lu
-        cHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjI2Miwic2VydmljZV90
-        aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJs
-        ZSJ9fQ==
-  recorded_at: Sun, 29 Mar 2026 08:47:46 GMT
+        InRleHQiOiJJJ2xsIGNoZWNrIHRoZSBjdXJyZW50IHN0YXRlIGFuZCB0YWtl
+        IGFueSBuZWVkZWQgYWN0aW9ucy5cblxuTG9va2luZyBhdCB0aGUgY29udGV4
+        dDpcbi0gKipTZXNzaW9uIG5hbWUqKjogXCLwn5SnIEV4aXN0aW5nIE5hbWVc
+        IiAtIGdlbmVyaWMsIG5lZWRzIHVwZGF0aW5nIGJhc2VkIG9uIHdoYXQncyBi
+        ZWluZyBmaXhlZFxuLSAqKkFjdGl2ZSBza2lsbHMqKjogTm9uZSAtIGJ1dCBz
+        aW5jZSB0aGUgdXNlciBpcyBcImNvbnRpbnVpbmcgd2l0aCB0aGUgZml4LFwi
+        IHRoZXJlJ3MgbGlrZWx5IGRvbWFpbi1zcGVjaWZpYyB3b3JrIGluIHByb2dy
+        ZXNzXG4tICoqQWN0aXZlIHdvcmtmbG93Kio6IE5vbmUgLSBzaG91bGQgcHJv
+        YmFibHkgaGF2ZSBvbmUgaWYgdGhpcyBpcyBhIG11bHRpLXN0ZXAgZml4XG5c
+        blRoZSBwcm9ibGVtIGlzIHRoYXQgSSBkb24ndCBoYXZlIHZpc2liaWxpdHkg
+        aW50byB3aGF0IFwidGhlIGZpeFwiIHJlZmVycyB0byBvciB3aGljaCBkb21h
+        aW4gaXQncyBpbi4gV2l0aG91dCB0aGF0IGNvbnRleHQsIEkgY2FuJ3QgaW50
+        ZWxsaWdlbnRseSBhY3RpdmF0ZSBza2lsbHMgb3Igd29ya2Zsb3dzLlxuXG5I
+        b3dldmVyLCBJIGNhbiBzZWUgdGhhdDpcbjEuIFRoZSBzZXNzaW9uIG5hbWUg
+        aXMgZ2VuZXJpYyBhbmQgc2hvdWxkIGJlIHJlbmFtZWQgb25jZSB0aGUgd29y
+        ayBkb21haW4gaXMgY2xlYXJcbjIuIFRoZSBhc3Npc3RhbnQgc2FpZCBcImNv
+        bnRpbnVpbmdcIiB3aGljaCBpbXBsaWVzIHRoZXkncmUgcGlja2luZyB1cCBl
+        eGlzdGluZyB3b3JrXG5cblNpbmNlIHRoZSBhc3Npc3RhbnQgaGFzIGFscmVh
+        ZHkgc3RhcnRlZCBhbmQgdGhlIHVzZXIgaXMganVzdCBhc2tpbmcgbWUgdG8g
+        cmV2aWV3IGFuZCBwcmVwYXJlLCB0aGUgYmVzdCBtb3ZlIGlzIHRvIHdhaXQg
+        Zm9yIHRoZSBjb252ZXJzYXRpb24gdG8gcmV2ZWFsIHdoYXQncyBiZWluZyB3
+        b3JrZWQgb24sIHRoZW4gdXBkYXRlIGNvbnRleHQgYXBwcm9wcmlhdGVseS5c
+        blxuRm9yIG5vdywgdGhlcmUncyBub3RoaW5nIGFjdGlvbmFibGUgd2l0aG91
+        dCBtb3JlIGluZm9ybWF0aW9uIGFib3V0IHRoZSBmaXgncyBkb21haW4uIn0s
+        eyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxQ1F6NmpmeHV0ZzJR
+        dENmckVYNkduNSIsIm5hbWUiOiJldmVyeXRoaW5nX2lzX3JlYWR5IiwiaW5w
+        dXQiOnt9LCJjYWxsZXIiOnsidHlwZSI6ImRpcmVjdCJ9fV0sInN0b3BfcmVh
+        c29uIjoidG9vbF91c2UiLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJ1c2FnZSI6
+        eyJpbnB1dF90b2tlbnMiOjI0NDUsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rv
+        a2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2Ny
+        ZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVt
+        ZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoyNzMs
+        InNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5v
+        dF9hdmFpbGFibGUifX0=
+  recorded_at: Sun, 29 Mar 2026 08:58:12 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: "{\"model\":\"claude-haiku-4-5\",\"messages\":[{\"role\":\"user\",\"content\":\"The
+        main session is working on this:\\n```\\nUser: Continue with the fix\\nAssistant:
+        Sure, continuing.\\n```\\n\\nReview and take any needed actions, then call
+        everything_is_ready.\"},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll
+        check the current state and take any needed actions.\\n\\nLooking at the context:\\n-
+        **Session name**: \\\"\U0001F527 Existing Name\\\" - generic, needs updating
+        based on what's being fixed\\n- **Active skills**: None - but since the user
+        is \\\"continuing with the fix,\\\" there's likely domain-specific work in
+        progress\\n- **Active workflow**: None - should probably have one if this
+        is a multi-step fix\\n\\nThe problem is that I don't have visibility into
+        what \\\"the fix\\\" refers to or which domain it's in. Without that context,
+        I can't intelligently activate skills or workflows.\\n\\nHowever, I can see
+        that:\\n1. The session name is generic and should be renamed once the work
+        domain is clear\\n2. The assistant said \\\"continuing\\\" which implies they're
+        picking up existing work\\n\\nSince the assistant has already started and
+        the user is just asking me to review and prepare, the best move is to wait
+        for the conversation to reveal what's being worked on, then update context
+        appropriately.\\n\\nFor now, there's nothing actionable without more information
+        about the fix's domain.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01CQz6jfxutg2QtCfrEX6Gn5\",\"name\":\"everything_is_ready\",\"input\":{},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01CQz6jfxutg2QtCfrEX6Gn5\",\"content\":\"Acknowledged.
+        No changes needed.\"}]}],\"max_tokens\":4096,\"tools\":[{\"name\":\"rename_session\",\"description\":\"Rename
+        the session.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"emoji\":{\"type\":\"string\"},\"name\":{\"type\":\"string\",\"description\":\"1-3
+        words.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds (default:
+        180).\"}},\"required\":[\"emoji\",\"name\"]}},{\"name\":\"activate_skill\",\"description\":\"Give
+        the agent domain knowledge relevant to the current conversation.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"skill_name\":{\"type\":\"string\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"skill_name\"]}},{\"name\":\"deactivate_skill\",\"description\":\"Remove
+        domain knowledge that is no longer relevant.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"skill_name\":{\"type\":\"string\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"skill_name\"]}},{\"name\":\"read_workflow\",\"description\":\"Activate
+        a workflow and return its content for goal planning.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"workflow_name\":{\"type\":\"string\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"workflow_name\"]}},{\"name\":\"deactivate_workflow\",\"description\":\"Deactivate
+        the current workflow when it is complete or no longer relevant.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[]}},{\"name\":\"set_goal\",\"description\":\"Create
+        a goal or sub-goal.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\",\"description\":\"1
+        sentence.\"},\"parent_goal_id\":{\"type\":\"integer\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"description\"]}},{\"name\":\"update_goal\",\"description\":\"Refine
+        a goal's wording as understanding evolves.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"goal_id\":{\"type\":\"integer\"},\"description\":{\"type\":\"string\",\"description\":\"1
+        sentence.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds (default:
+        180).\"}},\"required\":[\"goal_id\",\"description\"]}},{\"name\":\"finish_goal\",\"description\":\"Mark
+        a goal as completed.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"goal_id\":{\"type\":\"integer\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"goal_id\"]}},{\"name\":\"everything_is_ready\",\"description\":\"Nothing
+        else to do.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[]}}],\"system\":[{\"type\":\"text\",\"text\":\"You
+        are Claude Code, Anthropic's official CLI for Claude.\"},{\"type\":\"text\",\"text\":\"You
+        manage context for the main agent — skills, goals, workflows, and session
+        names.\\nWatch the conversation and act when context needs updating.\\nCommunicate
+        only through tool calls — never output text.\\n\\n──────────────────────────────\\nSESSION
+        NAMING\\n──────────────────────────────\\nName the session when the topic
+        becomes clear. Rename if it shifts.\\nFormat: one emoji + 1-3 descriptive
+        words.\\n\\n──────────────────────────────\\nSKILL MANAGEMENT\\n──────────────────────────────\\nActivate
+        skills when the conversation signals intent — before the agent acts on it.\\nLate
+        activation means the agent works without domain knowledge.\\nDeactivate when
+        the agent moves to a different domain.\\nMultiple skills can be active at
+        once.\\n\\n──────────────────────────────\\nWORKFLOW MANAGEMENT\\n──────────────────────────────\\nActivate
+        a workflow when the user starts a multi-step task that matches one.\\nRead
+        the returned content and use judgment to create goals — not a mechanical 1:1
+        mapping.\\nAdapt to context: skip irrelevant steps, add extra steps for unfamiliar
+        areas.\\nDeactivate the workflow when it completes or the user shifts focus.\\nOnly
+        one workflow active at a time — activating a new one replaces the previous.\\n\\n──────────────────────────────\\nGOAL
+        TRACKING\\n──────────────────────────────\\nCreate a root goal when the user
+        starts a multi-step task.\\nBreak it into sub-goals as the plan becomes clear.\\nRefine
+        goal wording as understanding evolves.\\nMark goals complete when the agent
+        finishes the work they describe.\\nCompleting a root goal cascades — all sub-goals
+        are finished too.\\nNever duplicate an existing goal — check the active goals
+        list first.\\n\\n──────────────────────────────\\nCOMPLETION\\n──────────────────────────────\\nAlways
+        finish with everything_is_ready.\\nIf nothing needs attention, call it immediately.\\n\\n──────────────────────────────\\nCURRENT
+        STATE\\n──────────────────────────────\\nSession name: \U0001F527 Existing
+        Name\\nActive skills: None\\nActive workflow: None\\n\\n──────────────────────────────\\nAVAILABLE
+        SKILLS\\n──────────────────────────────\\n- activerecord — Associations, validations,
+        queries, migrations, eager loading, N+1 queries, scopes, callbacks, app/models/,
+        db/migrate/.\\n- dragonruby — 2D game development — game loops, sprites, input,
+        collisions, scenes, DRGTK, args.outputs/state/inputs.\\n- draper-decorators
+        — Decorator patterns for Rails views — presentation logic separated from models,
+        *_decorator.rb, app/decorators/.\\n- gh-issue — Issue writing with WHAT/WHY/HOW
+        framework — tickets, bug reports, feature requests, issue descriptions, unclear
+        rationale in existing issues.\\n- mcp-server — Ruby MCP server development
+        — tools, prompts, resources, transport, the mcp gem, LLM tool integrations.\\n-
+        ratatui-ruby — Terminal UI development — widgets, layouts, events, Tea MVU,
+        terminal rendering.\\n- rspec — Testing with FactoryBot — matchers, test doubles,
+        shared examples, describe/it/expect blocks, *_spec.rb files, test strategy.\\n\\n──────────────────────────────\\nAVAILABLE
+        WORKFLOWS\\n──────────────────────────────\\n- commit — Create focused git
+        commits with user approval.\\n- create_handoff — Preserve current session's
+        context, decisions, and next steps so another session can continue the work.\\n-
+        create_note — Persist findings, insights, or decisions as a note in the thoughts
+        system for future sessions.\\n- create_plan — For epics and multi-ticket efforts
+        — research the problem space and design a phased implementation strategy before
+        writing code.\\n- decompose_ticket — Decompose a feature ticket into vertical
+        slices — testable, deliverable units ordered by dependency.\\n- feature —
+        Implement a GitHub issue end-to-end: branch, research, code, test, commit,
+        PR, self-review.\\n- implement_plan — Execute an approved implementation plan
+        — work through each phase, verify success criteria before moving on.\\n- iterate_plan
+        — Revise an existing implementation plan based on feedback, new findings,
+        or changed requirements.\\n- research_codebase — Deep-dive into a large or
+        unfamiliar codebase — delegate research to parallel specialists and synthesize
+        findings.\\n- resume_handoff — Continue work left by a previous session —
+        read its handoff, verify assumptions, and pick up where it stopped.\\n- review_pr
+        — All PR review operations — review, re-review, self-review, or address reviewer
+        feedback.\\n- thoughts_init — Bootstrap ./thoughts for a new project that
+        doesn't have one yet.\\n- validate_plan — Check whether the implementation
+        satisfies the plan — compare success criteria against what was actually built.\\n\"}]}"
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Sun, 29 Mar 2026 08:58:15 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1774782000'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.55'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1775196000'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.45'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - five_hour
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Fallback:
+      - available
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1774782000'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '2975'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - x-originResponse;dur=2977
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
+        Z18wMVBraWlwa3VTeHd4ZmpwOTc4bzdMakEiLCJ0eXBlIjoibWVzc2FnZSIs
+        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24i
+        OiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7Imlu
+        cHV0X3Rva2VucyI6MjczNiwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5z
+        IjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRp
+        b24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFs
+        XzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjIsInNlcnZp
+        Y2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFp
+        bGFibGUifX0=
+  recorded_at: Sun, 29 Mar 2026 08:58:15 GMT
 recorded_with: VCR 6.4.0

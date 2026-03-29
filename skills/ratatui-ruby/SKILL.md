@@ -1,6 +1,6 @@
 ---
 name: ratatui-ruby
-description: "Terminal UI development — widgets, layouts, events, Tea MVU. Activate when building TUI apps, working with terminal rendering, or editing TUI application files."
+description: "Terminal UI development — widgets, layouts, events, Tea MVU, terminal rendering."
 ---
 
 # RatatuiRuby
