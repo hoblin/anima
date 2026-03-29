@@ -455,22 +455,32 @@ module TUI
 
     # Switches keyboard focus to the HUD pane for scrolling.
     # Unfocuses the chat pane if it was focused.
+    #
+    # @return [void]
     def focus_hud
       @screens[:chat].unfocus_chat if @screens[:chat].chat_focused
       @hud_focused = true
     end
 
     # Returns keyboard focus from the HUD pane.
+    #
+    # @return [void]
     def unfocus_hud
       @hud_focused = false
     end
 
     # Scrolls the HUD viewport up, clamping at the top.
+    #
+    # @param lines [Integer] number of lines to scroll
+    # @return [void]
     def scroll_hud_up(lines)
       @hud_scroll_offset = [@hud_scroll_offset - lines, 0].max
     end
 
     # Scrolls the HUD viewport down, clamping at max_scroll.
+    #
+    # @param lines [Integer] number of lines to scroll
+    # @return [void]
     def scroll_hud_down(lines)
       @hud_scroll_offset = [@hud_scroll_offset + lines, @hud_max_scroll].min
     end
@@ -523,6 +533,7 @@ module TUI
         nil
       when :toggle_hud
         @hud_visible = !@hud_visible
+        unfocus_hud if !@hud_visible
         nil
       when :new_session
         @screens[:chat].new_session

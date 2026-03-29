@@ -141,6 +141,17 @@ RSpec.describe TUI::App do
         expect(app.command_mode).to be false
       end
 
+      it "unfocuses HUD when hiding it" do
+        app.send(:focus_hud)
+        expect(app.hud_focused).to be true
+
+        event = key_event(code: "h")
+        app.send(:handle_event, event)
+
+        expect(app.hud_visible).to be false
+        expect(app.hud_focused).to be false
+      end
+
       it "toggles HUD back on when hidden" do
         app.instance_variable_set(:@hud_visible, false)
 
