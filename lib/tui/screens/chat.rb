@@ -271,14 +271,15 @@ module TUI
       end
 
       # Color name for the spinner and HUD label based on session state.
+      # Follows the two-channel design: color = status (green = working,
+      # red = stopping). The braille animation pattern communicates type.
       #
       # @return [String]
       def spinner_color
         case @session_state
-        when "llm_generating" then "yellow"
-        when "tool_executing" then "cyan"
+        when "llm_generating", "tool_executing" then "green"
         when "interrupting" then "red"
-        else "yellow"
+        else "dark_gray"
         end
       end
 
