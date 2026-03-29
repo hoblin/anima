@@ -47,8 +47,8 @@ class SessionChannel < ApplicationCable::Channel
   # schedules {AgentRequestJob} for LLM delivery. If delivery fails, the
   # job deletes the message and emits a {Events::BounceBack}.
   #
-  # For busy sessions, emits a pending {Events::UserMessage} that queues
-  # until the current agent loop completes.
+  # For busy sessions, stages the message as a {PendingMessage} in a
+  # separate table until the current agent loop completes.
   #
   # @param data [Hash] must include "content" with the user's message text
   # @see Session#enqueue_user_message
@@ -63,23 +63,16 @@ class SessionChannel < ApplicationCable::Channel
   end
 
   # Recalls the most recent pending message for editing. Deletes the
-  # pending message and broadcasts the recall so all clients remove it.
+  # {PendingMessage} — its +after_destroy_commit+ broadcasts removal
+  # so all clients remove the pending indicator.
   #
-  # @param data [Hash] must include "message_id" (positive integer)
+  # @param data [Hash] must include "pending_message_id" (positive integer)
   def recall_pending(data)
-    message_id = data["message_id"].to_i
-    return if message_id <= 0
+    pm_id = data["pending_message_id"].to_i
+    return if pm_id <= 0
 
-    message = Message.find_by(
-      id: message_id,
-      session_id: @current_session_id,
-      message_type: "user_message",
-      status: Message::PENDING_STATUS
-    )
-    return unless message
-
-    message.destroy!
-    ActionCable.server.broadcast(stream_name, {"action" => "user_message_recalled", "message_id" => message_id})
+    pm = PendingMessage.find_by(id: pm_id, session_id: @current_session_id)
+    pm&.destroy!
   end
 
   # Requests interruption of the current tool execution. Sets a flag on the
@@ -265,6 +258,7 @@ class SessionChannel < ApplicationCable::Channel
   # the transmitted payload. Tool messages are included so the TUI can
   # reconstruct tool call counters on reconnect.
   # In debug mode, prepends the assembled system prompt as a special block.
+  # Pending messages are sent last so the TUI shows them at the bottom.
   #
   # Snapshots the viewport so subsequent message broadcasts can compute
   # eviction diffs accurately.
@@ -276,11 +270,16 @@ class SessionChannel < ApplicationCable::Channel
     each_viewport_message(session) do |_msg, msg_payload|
       transmit(msg_payload)
     end
+
+    session.pending_messages.find_each do |pm|
+      transmit({"action" => "pending_message_created", "pending_message_id" => pm.id, "content" => pm.content})
+    end
   end
 
   # Broadcasts the re-decorated viewport to all clients on the session stream.
   # Used after a view mode change to refresh all connected clients.
   # In debug mode, prepends the assembled system prompt as a special block.
+  # Pending messages are sent last so the TUI shows them at the bottom.
   #
   # Snapshots the viewport so subsequent message broadcasts can compute
   # eviction diffs accurately.
@@ -292,6 +291,10 @@ class SessionChannel < ApplicationCable::Channel
 
     each_viewport_message(session) do |_msg, msg_payload|
       ActionCable.server.broadcast(stream_name, msg_payload)
+    end
+
+    session.pending_messages.find_each do |pm|
+      ActionCable.server.broadcast(stream_name, {"action" => "pending_message_created", "pending_message_id" => pm.id, "content" => pm.content})
     end
   end
 

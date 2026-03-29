@@ -16,6 +16,7 @@ class Session < ApplicationRecord
   serialize :granted_tools, coder: JSON
 
   has_many :messages, -> { order(:id) }, dependent: :destroy
+  has_many :pending_messages, dependent: :destroy
   has_many :goals, dependent: :destroy
   has_many :snapshots, dependent: :destroy
   has_many :pinned_messages, through: :messages
@@ -60,10 +61,10 @@ class Session < ApplicationRecord
 
     # Initialize boundary on first conversation message
     if mneme_boundary_message_id.nil?
-      first_conversation = messages.deliverable
+      first_conversation = messages
         .where(message_type: Message::CONVERSATION_TYPES)
         .order(:id).first
-      first_conversation ||= messages.deliverable
+      first_conversation ||= messages
         .where(message_type: "tool_call")
         .detect { |msg| msg.payload["tool_name"] == Message::THINK_TOOL }
 
@@ -107,16 +108,18 @@ class Session < ApplicationRecord
   # then parent messages from before the fork point fill the remaining budget.
   # The final array is chronological: parent messages first, then child messages.
   #
+  # Pending messages live in a separate table ({PendingMessage}) and never
+  # appear in this viewport — they are promoted to real messages before
+  # the agent processes them.
+  #
   # @param token_budget [Integer] maximum tokens to include (positive)
-  # @param include_pending [Boolean] whether to include pending messages (true for
-  #   display, false for LLM context assembly)
   # @return [Array<Message>] chronologically ordered
-  def viewport_messages(token_budget: Anima::Settings.token_budget, include_pending: true)
-    own = select_messages(own_message_scope(include_pending), budget: token_budget)
+  def viewport_messages(token_budget: Anima::Settings.token_budget)
+    own = select_messages(own_message_scope, budget: token_budget)
     remaining = token_budget - own.sum { |msg| message_token_cost(msg) }
 
     if sub_agent? && remaining > 0
-      parent = select_messages(parent_message_scope(include_pending), budget: remaining)
+      parent = select_messages(parent_message_scope, budget: remaining)
       trim_trailing_tool_calls(parent) + own
     else
       own
@@ -255,6 +258,10 @@ class Session < ApplicationRecord
   # Each layer has a fixed token budget fraction — snapshots, pins, and recall
   # consume viewport space, reducing the sliding window size.
   #
+  # The sliding window is post-processed by {#ensure_atomic_tool_pairs}
+  # which removes orphaned tool messages whose partner was cut off by the
+  # token budget.
+  #
   # Sub-agent sessions skip snapshot/pin/recall injection (they inherit parent messages directly).
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
@@ -275,7 +282,7 @@ class Session < ApplicationRecord
       sliding_budget = token_budget - l2_budget - l1_budget - pinned_budget - recall_budget
     end
 
-    window = viewport_messages(token_budget: sliding_budget, include_pending: false)
+    window = viewport_messages(token_budget: sliding_budget)
 
     unless sub_agent?
       first_message_id = window.first&.id
@@ -331,10 +338,9 @@ class Session < ApplicationRecord
   # Delivers a user message respecting the session's processing state.
   #
   # When idle, persists the message directly and enqueues {AgentRequestJob}
-  # to process it. When mid-turn ({#processing?}), emits a pending
-  # {Events::UserMessage} via {Events::Bus} so it queues until the
-  # current agent loop completes — preventing interleaving between
-  # tool_use/tool_result pairs.
+  # to process it. When mid-turn ({#processing?}), stages the message as
+  # a {PendingMessage} in a separate table — it gets no message ID until
+  # promoted, so it can never interleave with tool_call/tool_response pairs.
   #
   # @param content [String] user message text
   # @param bounce_back [Boolean] when true, passes +message_id+ to the job
@@ -343,10 +349,7 @@ class Session < ApplicationRecord
   # @return [void]
   def enqueue_user_message(content, bounce_back: false)
     if processing?
-      Events::Bus.emit(Events::UserMessage.new(
-        content: content, session_id: id,
-        status: Message::PENDING_STATUS
-      ))
+      pending_messages.create!(content: content)
     else
       msg = create_user_message(content)
       job_args = bounce_back ? {message_id: msg.id} : {}
@@ -372,15 +375,20 @@ class Session < ApplicationRecord
     )
   end
 
-  # Promotes all pending user messages to delivered status so they
-  # appear in the next LLM context. Triggers broadcast_update for
-  # each message so connected clients refresh the pending indicator.
+  # Promotes all pending messages into the conversation history.
+  # Each {PendingMessage} is atomically deleted and replaced with a real
+  # {Message} — the new message gets the next auto-increment ID,
+  # naturally placing it after any tool_call/tool_response pairs that
+  # were persisted while the message was waiting.
   #
   # @return [Integer] number of promoted messages
   def promote_pending_messages!
     promoted = 0
-    messages.where(message_type: "user_message", status: Message::PENDING_STATUS).find_each do |msg|
-      msg.update!(status: nil, payload: msg.payload.except("status"))
+    pending_messages.find_each do |pm|
+      transaction do
+        create_user_message(pm.content)
+        pm.destroy!
+      end
       promoted += 1
     end
     promoted
@@ -667,9 +675,8 @@ class Session < ApplicationRecord
 
   # Scopes own messages for viewport assembly.
   # @return [ActiveRecord::Relation]
-  def own_message_scope(include_pending)
-    scope = messages.context_messages
-    include_pending ? scope : scope.deliverable
+  def own_message_scope
+    messages.context_messages
   end
 
   # Scopes parent messages created before this session's fork point.
@@ -677,11 +684,10 @@ class Session < ApplicationRecord
   # spawn pairs, which cause role confusion (the sub-agent mistakes
   # itself for the parent when it sees "Specialist @sibling spawned...").
   # @return [ActiveRecord::Relation]
-  def parent_message_scope(include_pending)
-    scope = parent_session.messages.context_messages
+  def parent_message_scope
+    parent_session.messages.context_messages
       .excluding_spawn_messages
       .where(created_at: ...created_at)
-    include_pending ? scope : scope.deliverable
   end
 
   # Walks messages newest-first, selecting until the token budget is exhausted.

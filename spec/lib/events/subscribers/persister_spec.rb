@@ -10,7 +10,7 @@ RSpec.describe Events::Subscribers::Persister do
   after { Events::Bus.unsubscribe(persister) }
 
   describe "#emit" do
-    it "skips non-pending user_message events (job handles persistence)" do
+    it "skips user_message events (callers handle persistence)" do
       Events::Bus.subscribe(persister)
       Events::Bus.emit(Events::UserMessage.new(content: "hello", session_id: session.id))
 
@@ -70,15 +70,6 @@ RSpec.describe Events::Subscribers::Persister do
 
       contents = session.messages.reload.pluck(:payload).map { |p| p["content"] }
       expect(contents).to eq(%w[first second third])
-    end
-
-    it "persists status field for pending user messages" do
-      Events::Bus.subscribe(persister)
-      Events::Bus.emit(Events::UserMessage.new(content: "queued", session_id: session.id, status: "pending"))
-
-      event = session.messages.first
-      expect(event.status).to eq("pending")
-      expect(event.payload["status"]).to eq("pending")
     end
 
     it "preserves nanosecond timestamps" do

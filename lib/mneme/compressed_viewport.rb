@@ -57,7 +57,7 @@ module Mneme
     #
     # @return [Array<Message>]
     def fetch_messages
-      scope = @session.messages.context_messages.deliverable
+      scope = @session.messages.context_messages
 
       if @from_message_id
         scope = scope.where("id >= ?", @from_message_id)

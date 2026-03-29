@@ -1,6 +1,6 @@
 ---
 name: activerecord
-description: "Associations, validations, queries, migrations, eager loading. Activate when working with models, database schema, N+1 queries, scopes, includes/preload/eager_load, callbacks, or editing app/models/ or db/migrate/."
+description: "Associations, validations, queries, migrations, eager loading, N+1 queries, scopes, callbacks, app/models/, db/migrate/."
 ---
 
 # ActiveRecord

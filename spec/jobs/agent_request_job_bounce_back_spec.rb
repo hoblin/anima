@@ -36,16 +36,13 @@ RSpec.describe AgentRequestJob, "bounce back" do
       end
 
       it "processes pending messages after the main loop" do
-        session.messages.create!(
-          message_type: "user_message",
-          payload: {"type" => "user_message", "content" => "pending msg", "status" => "pending"},
-          status: Message::PENDING_STATUS,
-          timestamp: 1
-        )
+        session.pending_messages.create!(content: "pending msg")
 
         described_class.perform_now(session.id, message_id: message.id)
 
-        expect(session.messages.pending.count).to eq(0)
+        expect(session.pending_messages.count).to eq(0)
+        expect(session.messages.where(message_type: "user_message").pluck(:payload))
+          .to include(a_hash_including("content" => "pending msg"))
       end
     end
 

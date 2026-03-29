@@ -180,15 +180,9 @@ RSpec.describe Mneme::CompressedViewport do
       expect(viewport.messages.size).to eq(2)
     end
 
-    it "excludes pending events" do
+    it "does not include pending messages (they live in a separate table)" do
       create_message(type: "user_message", content: "delivered", token_count: 100)
-      session.messages.create!(
-        message_type: "user_message",
-        payload: {"content" => "pending"},
-        timestamp: Time.current.to_ns,
-        token_count: 100,
-        status: "pending"
-      )
+      session.pending_messages.create!(content: "waiting")
 
       viewport = described_class.new(session, token_budget: 10_000)
       expect(viewport.messages.size).to eq(1)
