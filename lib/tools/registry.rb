@@ -34,8 +34,10 @@ module Tools
     #   Each schema includes an optional `timeout` parameter (seconds) injected
     #   by the registry. The agent can override the default per call for
     #   long-running operations. Tools with session-dependent schemas (e.g.
-    #   {Think} with budget-based maxLength) are instantiated with context
-    #   to generate their schema.
+    #   {Think} with budget-based maxLength, {Bash} with CWD in description)
+    #   are instantiated with context to generate their schema:
+    #   - {Think}: budget-based maxLength
+    #   - {Bash}: CWD embedded in description
     def schemas
       default = Anima::Settings.tool_timeout
       @tools.values.map { |tool| inject_timeout(resolve_schema(tool), default) }
@@ -81,16 +83,16 @@ module Tools
 
     private
 
-    # Returns a tool's schema, preferring the instance-level budget-aware
+    # Returns a tool's schema, preferring the instance-level dynamic
     # variant when available. Only instantiates the tool when needed.
     def resolve_schema(tool)
-      return tool.schema unless budget_aware?(tool)
+      return tool.schema unless dynamic_schema?(tool)
 
-      tool.new(**@context).schema_with_budget
+      tool.new(**@context).dynamic_schema
     end
 
-    def budget_aware?(tool)
-      tool.is_a?(Class) && tool.method_defined?(:schema_with_budget)
+    def dynamic_schema?(tool)
+      tool.is_a?(Class) && tool.method_defined?(:dynamic_schema)
     end
 
     # Injects an optional `timeout` parameter into the tool's input schema.
