@@ -41,6 +41,10 @@ RSpec.describe TUI::App do
       expect(app.hud_visible).to be true
     end
 
+    it "starts with HUD unfocused" do
+      expect(app.hud_focused).to be false
+    end
+
     it "starts with token setup inactive" do
       expect(app.token_setup_active).to be false
     end
@@ -73,6 +77,19 @@ RSpec.describe TUI::App do
       defaults[:home?] = true if code == "home"
       defaults[:end?] = true if code == "end"
       double("Event", **defaults, code: code, modifiers: modifiers, **overrides)
+    end
+
+    def mouse_event(kind:, x: 0, y: 0, **overrides)
+      defaults = {
+        key?: false, mouse?: true, paste?: false, none?: false, ctrl_c?: false,
+        esc?: false, enter?: false, backspace?: false, delete?: false,
+        up?: false, down?: false, page_up?: false, page_down?: false,
+        left?: false, right?: false, home?: false, end?: false,
+        scroll_up?: false, scroll_down?: false
+      }
+      defaults[:scroll_up?] = true if kind == "scroll_up"
+      defaults[:scroll_down?] = true if kind == "scroll_down"
+      double("MouseEvent", **defaults, kind: kind, x: x, y: y, **overrides)
     end
 
     describe "Ctrl+C exits" do
@@ -122,6 +139,17 @@ RSpec.describe TUI::App do
 
         expect(app.hud_visible).to be false
         expect(app.command_mode).to be false
+      end
+
+      it "unfocuses HUD when hiding it" do
+        app.send(:focus_hud)
+        expect(app.hud_focused).to be true
+
+        event = key_event(code: "h")
+        app.send(:handle_event, event)
+
+        expect(app.hud_visible).to be false
+        expect(app.hud_focused).to be false
       end
 
       it "toggles HUD back on when hidden" do
@@ -175,6 +203,34 @@ RSpec.describe TUI::App do
 
         expect(chat.chat_focused).to be false
         expect(app.command_mode).to be false
+      end
+
+      it "focuses HUD pane on right arrow when HUD is visible" do
+        event = key_event(code: "right")
+        app.send(:handle_event, event)
+
+        expect(app.hud_focused).to be true
+        expect(app.command_mode).to be false
+      end
+
+      it "does not focus HUD on right arrow when HUD is hidden" do
+        app.instance_variable_set(:@hud_visible, false)
+
+        event = key_event(code: "right")
+        app.send(:handle_event, event)
+
+        expect(app.hud_focused).to be false
+      end
+
+      it "unfocuses chat when focusing HUD" do
+        chat = app.instance_variable_get(:@screens)[:chat]
+        chat.focus_chat
+
+        event = key_event(code: "right")
+        app.send(:handle_event, event)
+
+        expect(chat.chat_focused).to be false
+        expect(app.hud_focused).to be true
       end
 
       it "exits command mode on any unrecognized key" do
@@ -486,6 +542,149 @@ RSpec.describe TUI::App do
           visible = app.send(:session_picker_visible_items)
           expect(visible.size).to eq(3) # remaining children
           expect(visible.first[:data]["id"]).to eq(110)
+        end
+      end
+    end
+
+    describe "HUD scrolling" do
+      before do
+        app.instance_variable_set(:@hud_max_scroll, 20)
+        app.instance_variable_set(:@hud_visible_height, 10)
+        app.instance_variable_set(:@hud_scroll_offset, 10)
+      end
+
+      describe "keyboard scrolling in HUD focus mode" do
+        before { app.send(:focus_hud) }
+
+        it "scrolls up by one line on arrow up" do
+          app.send(:handle_event, key_event(code: "up"))
+          expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(9)
+        end
+
+        it "scrolls down by one line on arrow down" do
+          app.send(:handle_event, key_event(code: "down"))
+          expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(11)
+        end
+
+        it "scrolls up by visible height on page up" do
+          app.send(:handle_event, key_event(code: "page_up"))
+          expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(0)
+        end
+
+        it "scrolls down by visible height on page down" do
+          app.send(:handle_event, key_event(code: "page_down"))
+          expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(20)
+        end
+
+        it "scrolls to top on Home" do
+          app.send(:handle_event, key_event(code: "home"))
+          expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(0)
+        end
+
+        it "scrolls to bottom on End" do
+          app.send(:handle_event, key_event(code: "end"))
+          expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(20)
+        end
+
+        it "clamps scroll at top" do
+          app.instance_variable_set(:@hud_scroll_offset, 0)
+          app.send(:handle_event, key_event(code: "up"))
+          expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(0)
+        end
+
+        it "clamps scroll at bottom" do
+          app.instance_variable_set(:@hud_scroll_offset, 20)
+          app.send(:handle_event, key_event(code: "down"))
+          expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(20)
+        end
+
+        it "unfocuses HUD on Escape" do
+          app.send(:handle_event, key_event(code: "esc", esc?: true))
+          expect(app.hud_focused).to be false
+        end
+
+        it "unfocuses HUD on Ctrl+A" do
+          app.send(:handle_event, key_event(code: "a", modifiers: ["ctrl"]))
+          expect(app.hud_focused).to be false
+        end
+
+        it "returns :quit on Ctrl+C" do
+          event = double("Event", none?: false, ctrl_c?: true)
+          result = app.send(:handle_event, event)
+          expect(result).to eq(:quit)
+        end
+
+        it "does not delegate scroll keys to chat screen" do
+          chat = app.instance_variable_get(:@screens)[:chat]
+          allow(chat).to receive(:handle_event)
+
+          app.send(:handle_event, key_event(code: "page_up"))
+
+          expect(chat).not_to have_received(:handle_event)
+        end
+      end
+
+      describe "mouse wheel scrolling over HUD" do
+        let(:hud_area) do
+          double("Rect", x: 80, y: 0, width: 40, height: 30)
+        end
+
+        before do
+          app.instance_variable_set(:@hud_content_area, hud_area)
+        end
+
+        it "scrolls HUD up on mouse scroll up over HUD area" do
+          event = mouse_event(kind: "scroll_up", x: 100, y: 15)
+          app.send(:handle_event, event)
+          expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(8)
+        end
+
+        it "scrolls HUD down on mouse scroll down over HUD area" do
+          event = mouse_event(kind: "scroll_down", x: 100, y: 15)
+          app.send(:handle_event, event)
+          expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(12)
+        end
+
+        it "delegates to chat screen when mouse is outside HUD area" do
+          chat = app.instance_variable_get(:@screens)[:chat]
+          allow(chat).to receive(:handle_event)
+
+          event = mouse_event(kind: "scroll_up", x: 10, y: 15)
+          app.send(:handle_event, event)
+
+          expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(10)
+          expect(chat).to have_received(:handle_event)
+        end
+
+        it "delegates non-scroll mouse events to chat screen" do
+          chat = app.instance_variable_get(:@screens)[:chat]
+          allow(chat).to receive(:handle_event)
+
+          event = mouse_event(kind: "down", x: 100, y: 15)
+          app.send(:handle_event, event)
+
+          expect(chat).to have_received(:handle_event)
+        end
+
+        it "ignores mouse scroll over HUD when HUD is hidden" do
+          app.instance_variable_set(:@hud_visible, false)
+          chat = app.instance_variable_get(:@screens)[:chat]
+          allow(chat).to receive(:handle_event)
+
+          event = mouse_event(kind: "scroll_up", x: 100, y: 15)
+          app.send(:handle_event, event)
+
+          expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(10)
+          expect(chat).to have_received(:handle_event)
+        end
+
+        it "routes mouse scroll to HUD during HUD focus mode" do
+          app.send(:focus_hud)
+
+          event = mouse_event(kind: "scroll_down", x: 100, y: 15)
+          app.send(:handle_event, event)
+
+          expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(12)
         end
       end
     end
@@ -892,7 +1091,7 @@ RSpec.describe TUI::App do
       end
 
       it "delegates mouse events to the current screen" do
-        event = double("MouseEvent", none?: false, ctrl_c?: false, key?: false, mouse?: true)
+        event = mouse_event(kind: "down", x: 10, y: 10)
         chat = app.instance_variable_get(:@screens)[:chat]
         allow(chat).to receive(:handle_event)
 

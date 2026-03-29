@@ -789,6 +789,16 @@ RSpec.describe TUI::Screens::Chat do
         expect(screen.input).to eq("")
       end
 
+      it "scrolls to top on Home" do
+        screen.handle_event(key_event(code: "home"))
+        expect(screen.scroll_offset).to eq(0)
+      end
+
+      it "scrolls to bottom on End" do
+        screen.handle_event(key_event(code: "end"))
+        expect(screen.scroll_offset).to eq(20)
+      end
+
       it "page up/down still scrolls chat" do
         screen.handle_event(key_event(code: "page_up"))
         expect(screen.scroll_offset).to eq(0)

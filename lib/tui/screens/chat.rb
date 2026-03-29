@@ -1130,6 +1130,12 @@ module TUI
         elsif event.down?
           scroll_down(SCROLL_STEP)
           true
+        elsif event.home?
+          scroll_up(@max_scroll)
+          true
+        elsif event.end?
+          scroll_down(@max_scroll)
+          true
         else
           false
         end
