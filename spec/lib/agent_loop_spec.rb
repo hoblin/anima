@@ -199,7 +199,8 @@ RSpec.describe AgentLoop do
       session.pending_messages.create!(content: "queued msg")
       result = captured_callback.call
 
-      expect(result).to eq(["queued msg"])
+      expect(result[:texts]).to eq(["queued msg"])
+      expect(result[:pairs]).to eq([])
       expect(session.pending_messages.count).to eq(0)
       expect(session.messages.last.payload["content"]).to eq("queued msg")
     end

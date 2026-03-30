@@ -22,9 +22,8 @@ module Tools
     def self.description
       "Task feels like a sidequest or a context-switch? Hand it off. " \
         "Starts clean with just the task — include all relevant context in the task description. " \
-        "Its messages appear in yours. " \
-        "Any message containing @nickname is forwarded — " \
-        "even casual mentions will wake the sub-agent."
+        "Its messages appear as tool responses in your conversation. " \
+        "Prefix its nickname with @ to send instructions."
     end
 
     def self.input_schema
@@ -69,10 +68,9 @@ module Tools
 
       child = spawn_child(task, tools)
       nickname = child.name
-      "Sub-agent @#{nickname} spawned (session #{child.id}). " \
+      "Sub-agent #{nickname} spawned (session #{child.id}). " \
         "Its messages will appear in your conversation. " \
-        "Reply with @#{nickname} to send it instructions — " \
-        "any message mentioning @#{nickname} is forwarded, even in narration."
+        "To address it, prefix its name with @ in your message."
     end
 
     private

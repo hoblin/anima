@@ -26,9 +26,6 @@ module Events
     class SubagentMessageRouter
       include Events::Subscriber
 
-      # @see Tools::ResponseTruncator::ATTRIBUTION_FORMAT
-      ATTRIBUTION_FORMAT = Tools::ResponseTruncator::ATTRIBUTION_FORMAT
-
       # Origin label for messages routed from parent agent to sub-agent.
       # Lets the sub-agent distinguish delegated work from direct user input.
       PARENT_ATTRIBUTION_FORMAT = "[from parent]: %s"
@@ -68,8 +65,9 @@ module Events
       private
 
       # Forwards a sub-agent's text message to its parent session
-      # via {Session#enqueue_user_message}. Truncates oversized messages
-      # to protect the parent's context window.
+      # via {Session#enqueue_user_message} with source metadata.
+      # The parent's {PendingMessage} (or idle-path message) owns the
+      # attribution formatting — the router passes raw content.
       #
       # @param child [Session] the sub-agent session
       # @param content [String] the sub-agent's message text
@@ -83,9 +81,8 @@ module Events
           threshold: Anima::Settings.max_subagent_response_chars,
           reason: "sub-agent output displays first/last #{Tools::ResponseTruncator::HEAD_LINES} lines"
         )
-        attributed = format(ATTRIBUTION_FORMAT, name, truncated)
 
-        parent.enqueue_user_message(attributed)
+        parent.enqueue_user_message(truncated, source_type: "subagent", source_name: name)
       end
 
       # Scans a parent agent's message for @mentions and routes the message

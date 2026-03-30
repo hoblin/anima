@@ -24,7 +24,7 @@ module Tools
     # Attribution prefix for messages routed from sub-agent to parent.
     # Shared by {Events::Subscribers::SubagentMessageRouter} and
     # {Tools::MarkGoalCompleted} to keep formatting consistent.
-    ATTRIBUTION_FORMAT = "[sub-agent @%s]: %s"
+    ATTRIBUTION_FORMAT = "[sub-agent %s]: %s"
 
     NOTICE = <<~NOTICE.strip
       ---

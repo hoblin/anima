@@ -6,7 +6,7 @@ module Tools
   module SubagentPrompts
     # Prepended to every sub-agent's stored prompt after nickname assignment.
     # Establishes identity before any other instruction.
-    IDENTITY_TEMPLATE = "You are @%s, a sub-agent of the primary agent."
+    IDENTITY_TEMPLATE = "You are %s, a sub-agent of the primary agent."
 
     COMMUNICATION_INSTRUCTION = "Your messages reach the parent automatically. " \
       "Ask if you need clarification — the parent can reply."

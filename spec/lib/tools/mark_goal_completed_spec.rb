@@ -68,7 +68,7 @@ RSpec.describe Tools::MarkGoalCompleted do
 
       parent_msg = parent_session.messages.order(:id).last
       expect(parent_msg.message_type).to eq("user_message")
-      expect(parent_msg.payload["content"]).to include("[sub-agent @code-scout]")
+      expect(parent_msg.payload["content"]).to include("[sub-agent code-scout]")
       expect(parent_msg.payload["content"]).to include("Found 3 N+1 queries")
     end
 
@@ -89,7 +89,7 @@ RSpec.describe Tools::MarkGoalCompleted do
       tool.execute(input)
 
       parent_msg = parent_session.messages.order(:id).last
-      expect(parent_msg.payload["content"]).to include("[sub-agent @agent-#{child_session.id}]")
+      expect(parent_msg.payload["content"]).to include("[sub-agent agent-#{child_session.id}]")
     end
 
     context "with blank result" do

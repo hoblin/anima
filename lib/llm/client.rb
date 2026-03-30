@@ -109,12 +109,19 @@ module LLM
 
         if response["stop_reason"] == "tool_use"
           tool_results = execute_tools(response, registry, session_id)
-          inject_promoted_messages!(tool_results, between_rounds)
+          promoted = promote_between_rounds(between_rounds)
+
+          # Dual injection: user messages go as text blocks within the current
+          # tool_results turn (same speaker); sub-agent messages append as
+          # separate assistant→user turn pairs (distinct tool invocations).
+          promoted[:texts].each { |text| tool_results << {type: "text", text: text} }
 
           messages += [
             {role: "assistant", content: response["content"]},
             {role: "user", content: tool_results}
           ]
+
+          messages.concat(promoted[:pairs])
 
           return nil if handle_interrupt!(session_id)
         else
@@ -131,20 +138,17 @@ module LLM
 
     private
 
-    # Calls the between_rounds callback and appends any promoted message
-    # contents as +text+ blocks to the tool_results array. The Anthropic
-    # API allows mixing +tool_result+ and +text+ blocks in a single user
-    # message, so the LLM sees promoted messages in the same turn.
+    # Invokes the between_rounds callback and returns promoted messages
+    # split by injection strategy.
     #
-    # @param tool_results [Array<Hash>] mutable array of tool_result blocks
-    # @param between_rounds [#call, nil] callback returning +Array<String>+
-    def inject_promoted_messages!(tool_results, between_rounds)
-      return unless between_rounds
-
-      promoted = between_rounds.call
-      promoted.each do |content|
-        tool_results << {type: "text", text: content}
-      end
+    # @param between_rounds [#call, nil] callback returning
+    #   +{texts: Array<String>, pairs: Array<Hash>}+
+    # @return [Hash{Symbol => Array}] +:texts+ for user messages (text blocks
+    #   in current tool_results), +:pairs+ for sub-agent messages (separate
+    #   conversation turns)
+    def promote_between_rounds(between_rounds)
+      return {texts: [], pairs: []} unless between_rounds
+      between_rounds.call
     end
 
     def build_provider(provider)

@@ -20,6 +20,88 @@ RSpec.describe PendingMessage, type: :model do
       pm = PendingMessage.new(session: session, content: "hello")
       expect(pm).to be_valid
     end
+
+    it "rejects invalid source_type" do
+      pm = PendingMessage.new(session: session, content: "hi", source_type: "unknown")
+      expect(pm).not_to be_valid
+      expect(pm.errors[:source_type]).to be_present
+    end
+
+    it "requires source_name when source_type is subagent" do
+      pm = PendingMessage.new(session: session, content: "hi", source_type: "subagent")
+      expect(pm).not_to be_valid
+      expect(pm.errors[:source_name]).to be_present
+    end
+
+    it "is valid as subagent with source_name" do
+      pm = PendingMessage.new(session: session, content: "hi", source_type: "subagent", source_name: "scout")
+      expect(pm).to be_valid
+    end
+  end
+
+  describe "#subagent?" do
+    it "returns true when source_type is subagent" do
+      pm = PendingMessage.new(session: session, content: "hi", source_type: "subagent")
+      expect(pm).to be_subagent
+    end
+
+    it "returns false when source_type is user" do
+      pm = PendingMessage.new(session: session, content: "hi", source_type: "user")
+      expect(pm).not_to be_subagent
+    end
+
+    it "defaults to user" do
+      pm = PendingMessage.new(session: session, content: "hi")
+      expect(pm).not_to be_subagent
+    end
+  end
+
+  describe "#display_content" do
+    it "returns raw content for user messages" do
+      pm = PendingMessage.new(session: session, content: "hello")
+      expect(pm.display_content).to eq("hello")
+    end
+
+    it "returns attributed content for sub-agent messages" do
+      pm = PendingMessage.new(session: session, content: "Found 3 bugs",
+        source_type: "subagent", source_name: "loop-sleuth")
+      expect(pm.display_content).to eq("[sub-agent loop-sleuth]: Found 3 bugs")
+    end
+  end
+
+  describe "#to_llm_messages" do
+    it "returns plain content string for user messages" do
+      pm = session.pending_messages.create!(content: "hey there")
+      expect(pm.to_llm_messages).to eq("hey there")
+    end
+
+    it "returns synthetic tool_use/tool_result pair for sub-agent messages" do
+      pm = session.pending_messages.create!(
+        content: "Here's my analysis",
+        source_type: "subagent",
+        source_name: "loop-sleuth"
+      )
+
+      messages = pm.to_llm_messages
+
+      expect(messages).to be_an(Array)
+      expect(messages.length).to eq(2)
+
+      assistant_msg = messages[0]
+      expect(assistant_msg[:role]).to eq("assistant")
+      tool_use = assistant_msg[:content].first
+      expect(tool_use[:type]).to eq("tool_use")
+      expect(tool_use[:name]).to eq(PendingMessage::SYNTHETIC_TOOL_NAME)
+      expect(tool_use[:input]).to eq({from: "loop-sleuth"})
+      expect(tool_use[:id]).to eq("subagent_msg_#{pm.id}")
+
+      user_msg = messages[1]
+      expect(user_msg[:role]).to eq("user")
+      tool_result = user_msg[:content].first
+      expect(tool_result[:type]).to eq("tool_result")
+      expect(tool_result[:tool_use_id]).to eq("subagent_msg_#{pm.id}")
+      expect(tool_result[:content]).to eq("Here's my analysis")
+    end
   end
 
   describe "broadcasts" do

@@ -333,16 +333,23 @@ class Session < ApplicationRecord
   # a {PendingMessage} in a separate table — it gets no message ID until
   # promoted, so it can never interleave with tool_call/tool_response pairs.
   #
-  # @param content [String] user message text
+  # @param content [String] message text (raw, without attribution)
+  # @param source_type [String] origin type: "user" (default) or "subagent"
+  # @param source_name [String, nil] sub-agent nickname (required when source_type is "subagent")
   # @param bounce_back [Boolean] when true, passes +message_id+ to the job
   #   so failed LLM delivery triggers a {Events::BounceBack} (used by
   #   {SessionChannel#speak} for immediate-display messages)
   # @return [void]
-  def enqueue_user_message(content, bounce_back: false)
+  def enqueue_user_message(content, source_type: "user", source_name: nil, bounce_back: false)
     if processing?
-      pending_messages.create!(content: content)
+      pending_messages.create!(content: content, source_type: source_type, source_name: source_name)
     else
-      msg = create_user_message(content)
+      display = if source_type == "subagent"
+        format(Tools::ResponseTruncator::ATTRIBUTION_FORMAT, source_name, content)
+      else
+        content
+      end
+      msg = create_user_message(display)
       job_args = bounce_back ? {message_id: msg.id} : {}
       AgentRequestJob.perform_later(id, **job_args)
     end
@@ -372,18 +379,28 @@ class Session < ApplicationRecord
   # naturally placing it after any tool_call/tool_response pairs that
   # were persisted while the message was waiting.
   #
-  # @return [Array<String>] content strings of promoted messages (empty when none)
+  # Returns a hash with two keys:
+  # - +:texts+ — plain content strings for user messages (injected as text blocks
+  #   within the current tool_results turn)
+  # - +:pairs+ — synthetic tool_use/tool_result message hashes for sub-agent
+  #   messages (appended as new conversation turns)
+  #
+  # @return [Hash{Symbol => Array}] promoted messages split by injection strategy
   def promote_pending_messages!
-    promoted = []
+    texts = []
+    pairs = []
     pending_messages.find_each do |pm|
-      content = pm.content
       transaction do
-        create_user_message(content)
+        create_user_message(pm.display_content)
         pm.destroy!
       end
-      promoted << content
+      if pm.subagent?
+        pairs.concat(pm.to_llm_messages)
+      else
+        texts << pm.content
+      end
     end
-    promoted
+    {texts: texts, pairs: pairs}
   end
 
   # Broadcasts child session list to all clients subscribed to the parent

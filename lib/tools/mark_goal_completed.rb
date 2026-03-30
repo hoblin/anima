@@ -63,9 +63,9 @@ module Tools
       end
     end
 
-    # Delivers the sub-agent's result to the parent session as an
-    # attributed user message. Truncates oversized results to protect
-    # the parent's context window. No-op when the parent session is absent.
+    # Delivers the sub-agent's result to the parent session with source
+    # metadata. Truncates oversized results to protect the parent's
+    # context window. No-op when the parent session is absent.
     #
     # @param result [String] the sub-agent's findings to forward
     # @return [void]
@@ -79,8 +79,7 @@ module Tools
         threshold: Anima::Settings.max_subagent_response_chars,
         reason: "sub-agent output displays first/last #{Tools::ResponseTruncator::HEAD_LINES} lines"
       )
-      attributed = format(Tools::ResponseTruncator::ATTRIBUTION_FORMAT, name, truncated)
-      parent.enqueue_user_message(attributed)
+      parent.enqueue_user_message(truncated, source_type: "subagent", source_name: name)
     end
   end
 end

@@ -69,7 +69,7 @@ class AgentRequestJob < ApplicationJob
     # Process any pending messages that arrived after the last tool round.
     loop do
       promoted = session.promote_pending_messages!
-      break if promoted.empty?
+      break if promoted[:texts].empty? && promoted[:pairs].empty?
       agent_loop.run
     end
 
