@@ -400,24 +400,18 @@ RSpec.describe LLM::Client do
 
       it "calls the callback after tool execution and injects content as text blocks" do
         call_count = 0
-        allow(provider).to receive(:create_message) do
-          call_count += 1
-          (call_count == 1) ? tool_use_response : text_response
-        end
-
+        captured_messages = nil
         callback_called = false
         between_rounds = -> {
           callback_called = true
           ["Sub-agent update: task completed"]
         }
 
-        captured_messages = nil
-        allow(provider).to receive(:create_message).and_wrap_original do |_method, **kwargs|
+        allow(provider).to receive(:create_message) do |**kwargs|
           captured_messages = kwargs[:messages]
           call_count += 1
           (call_count == 1) ? tool_use_response : text_response
         end
-        call_count = 0
 
         client.chat_with_tools(
           [{role: "user", content: "Fetch example.com"}],
@@ -430,7 +424,7 @@ RSpec.describe LLM::Client do
         user_msg = captured_messages.last
         expect(user_msg[:role]).to eq("user")
         text_blocks = user_msg[:content].select { |b| b[:type] == "text" }
-        expect(text_blocks.map { |b| b[:text] }).to include("Sub-agent update: task completed")
+        expect(text_blocks.map { |b| b[:text] }).to eq(["Sub-agent update: task completed"])
       end
 
       it "does not inject anything when callback returns empty array" do
@@ -450,7 +444,9 @@ RSpec.describe LLM::Client do
 
         user_msg = captured_messages.last
         text_blocks = user_msg[:content].select { |b| b[:type] == "text" }
+        tool_result_blocks = user_msg[:content].select { |b| b[:type] == "tool_result" }
         expect(text_blocks).to be_empty
+        expect(tool_result_blocks).not_to be_empty
       end
 
       it "skips callback when between_rounds is nil" do
