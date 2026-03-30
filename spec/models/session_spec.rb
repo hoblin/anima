@@ -1649,7 +1649,7 @@ RSpec.describe Session do
         expect(pinned_content).to match(/message #{old_event.id}\n|message #{old_event.id}$/)
       end
 
-      it "skips pinned messages for sub-agent sessions" do
+      it "does not leak parent pinned messages into sub-agent viewport" do
         parent = Session.create!
         child = Session.create!(parent_session: parent, prompt: "sub-agent")
         old_event = parent.messages.create!(message_type: "user_message", payload: {"content" => "pinned"}, timestamp: 1, token_count: 10)
@@ -1663,6 +1663,25 @@ RSpec.describe Session do
 
         contents = result.map { |m| m[:content] }
         expect(contents.none? { |c| c.include?("[pinned messages]") }).to be true
+      end
+
+      it "surfaces sub-agent's own pinned task message when evicted from viewport" do
+        parent = Session.create!
+        child = Session.create!(parent_session: parent, prompt: "sub-agent")
+        task_msg = child.messages.create!(message_type: "user_message", payload: {"content" => "analyze this code"}, timestamp: 1, token_count: 50)
+        child.messages.create!(message_type: "agent_message", payload: {"content" => "working on it"}, timestamp: 2, token_count: 50)
+
+        goal = child.goals.create!(description: "analyze this code")
+        pin = PinnedMessage.create!(message: task_msg, display_text: "analyze this code")
+        GoalPinnedMessage.create!(goal: goal, pinned_message: pin)
+
+        # Sliding budget (80 - 5% pinned = 76) fits only the agent_message (50 tokens),
+        # evicting task_msg — the pinned section should resurface it.
+        result = child.messages_for_llm(token_budget: 80)
+
+        pinned_content = result.find { |m| m[:content].to_s.include?("[pinned messages]") }&.dig(:content)
+        expect(pinned_content).to be_present
+        expect(pinned_content).to include("analyze this code")
       end
     end
   end
@@ -1960,60 +1979,43 @@ RSpec.describe Session do
     end
   end
 
-  describe "virtual viewport inheritance" do
+  describe "sub-agent context isolation" do
     let(:parent) { Session.create! }
     let(:child) do
-      # Ensure parent events have earlier created_at
       Session.create!(parent_session: parent, prompt: "sub-agent prompt")
     end
 
     before do
-      # Parent conversation history (created before child session)
       parent.messages.create!(message_type: "user_message", payload: {"content" => "parent msg 1"}, timestamp: 1, token_count: 10)
       parent.messages.create!(message_type: "agent_message", payload: {"content" => "parent reply 1"}, timestamp: 2, token_count: 10)
     end
 
-    it "includes parent events before child events for sub-agent sessions" do
+    it "does not include parent messages in sub-agent viewport" do
       child.messages.create!(message_type: "user_message", payload: {"content" => "child task"}, timestamp: 3, token_count: 10)
 
       events = child.viewport_messages
       contents = events.map { |e| e.payload["content"] }
 
-      expect(contents).to eq(["parent msg 1", "parent reply 1", "child task"])
+      expect(contents).to eq(["child task"])
     end
 
-    it "shows parent events first chronologically, then child events" do
+    it "shows only the sub-agent's own messages" do
       child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 10)
       child.messages.create!(message_type: "agent_message", payload: {"content" => "working..."}, timestamp: 4, token_count: 10)
 
       events = child.viewport_messages
-      sessions = events.map(&:session_id)
-
-      # Parent events come first, then child events
-      parent_indices = sessions.each_index.select { |i| sessions[i] == parent.id }
-      child_indices = sessions.each_index.select { |i| sessions[i] == child.id }
-      expect(parent_indices.max).to be < child_indices.min
+      expect(events.map(&:session_id)).to all(eq(child.id))
     end
 
-    it "respects token budget for combined viewport" do
+    it "respects token budget for sub-agent viewport" do
       child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 50)
+      child.messages.create!(message_type: "agent_message", payload: {"content" => "done"}, timestamp: 4, token_count: 50)
 
-      # Budget of 60: child event (50) + one parent event (10), but not both parent events (20)
-      events = child.viewport_messages(token_budget: 60)
-      contents = events.map { |e| e.payload["content"] }
-
-      expect(contents).to include("task")
-      expect(contents.length).to eq(2) # child + 1 parent event
-    end
-
-    it "prioritizes child events over parent events" do
-      child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 50)
-
-      # Budget only fits the child event
+      # Budget only fits one message
       events = child.viewport_messages(token_budget: 50)
       contents = events.map { |e| e.payload["content"] }
 
-      expect(contents).to eq(["task"])
+      expect(contents).to eq(["done"])
     end
 
     it "does not inherit events from parent for main sessions" do
@@ -2023,119 +2025,6 @@ RSpec.describe Session do
       events = main.viewport_messages
       expect(events.length).to eq(1)
       expect(events.first.payload["content"]).to eq("only mine")
-    end
-
-    it "excludes parent events created after the child session" do
-      child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 3, token_count: 10)
-
-      # Parent event with created_at well after child — should not be inherited
-      parent.messages.create!(
-        message_type: "agent_message",
-        payload: {"content" => "parent continues"},
-        timestamp: 4, token_count: 10,
-        created_at: child.created_at + 1.second
-      )
-
-      events = child.viewport_messages
-      contents = events.map { |e| e.payload["content"] }
-
-      expect(contents).not_to include("parent continues")
-    end
-
-    it "excludes spawn tool events from parent context" do
-      # Sibling spawn events should not appear in sub-agent's viewport
-      parent.messages.create!(
-        message_type: "tool_call",
-        payload: {"content" => "Calling spawn_specialist", "tool_name" => "spawn_specialist",
-                  "tool_input" => {"name" => "codebase-analyzer"}, "tool_use_id" => "toolu_sibling"},
-        tool_use_id: "toolu_sibling",
-        timestamp: 3, token_count: 10
-      )
-      parent.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => "Specialist @sibling spawned", "tool_name" => "spawn_specialist",
-                  "tool_use_id" => "toolu_sibling"},
-        tool_use_id: "toolu_sibling",
-        timestamp: 4, token_count: 10
-      )
-
-      child.messages.create!(message_type: "user_message", payload: {"content" => "my task"}, timestamp: 5, token_count: 10)
-
-      events = child.viewport_messages
-      tool_names = events.select { |e| e.message_type.in?(%w[tool_call tool_response]) }
-        .map { |e| e.payload["tool_name"] }
-
-      expect(tool_names).not_to include("spawn_specialist")
-      expect(events.map { |e| e.payload["content"] }).to include("parent msg 1", "parent reply 1", "my task")
-    end
-
-    it "excludes own spawn events from parent context" do
-      # The sub-agent's own spawn pair is also noise — the task is already its first user_message
-      parent.messages.create!(
-        message_type: "tool_call",
-        payload: {"content" => "Calling spawn_subagent", "tool_name" => "spawn_subagent",
-                  "tool_input" => {"task" => "research"}, "tool_use_id" => "toolu_self"},
-        tool_use_id: "toolu_self",
-        timestamp: 3, token_count: 10
-      )
-      parent.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => "Sub-agent spawned", "tool_name" => "spawn_subagent",
-                  "tool_use_id" => "toolu_self"},
-        tool_use_id: "toolu_self",
-        timestamp: 4, token_count: 10
-      )
-
-      child.messages.create!(message_type: "user_message", payload: {"content" => "my task"}, timestamp: 5, token_count: 10)
-
-      events = child.viewport_messages
-      tool_names = events.select { |e| e.message_type.in?(%w[tool_call tool_response]) }
-        .map { |e| e.payload["tool_name"] }
-
-      expect(tool_names).not_to include("spawn_subagent")
-    end
-
-    it "preserves non-spawn tool events in parent context" do
-      parent.messages.create!(
-        message_type: "tool_call",
-        payload: {"content" => "Calling bash", "tool_name" => "bash",
-                  "tool_input" => {"command" => "ls"}, "tool_use_id" => "toolu_bash"},
-        tool_use_id: "toolu_bash",
-        timestamp: 3, token_count: 10
-      )
-      parent.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => "file1.rb", "tool_name" => "bash",
-                  "tool_use_id" => "toolu_bash"},
-        tool_use_id: "toolu_bash",
-        timestamp: 4, token_count: 10
-      )
-
-      child.messages.create!(message_type: "user_message", payload: {"content" => "my task"}, timestamp: 5, token_count: 10)
-
-      events = child.viewport_messages
-      tool_names = events.select { |e| e.message_type.in?(%w[tool_call tool_response]) }
-        .map { |e| e.payload["tool_name"] }
-
-      expect(tool_names).to eq(%w[bash bash])
-    end
-
-    it "trims trailing tool_call events from parent viewport" do
-      parent.messages.create!(
-        message_type: "tool_call",
-        payload: {"content" => "Calling spawn_subagent", "tool_name" => "spawn_subagent",
-                  "tool_input" => {"task" => "research"}, "tool_use_id" => "toolu_orphan"},
-        tool_use_id: "toolu_orphan",
-        timestamp: 3, token_count: 10
-      )
-
-      child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 4, token_count: 10)
-
-      events = child.viewport_messages
-      types = events.map(&:message_type)
-
-      # The orphaned tool_call at the end of parent events should be trimmed
-      expect(types).not_to include("tool_call")
     end
   end
 

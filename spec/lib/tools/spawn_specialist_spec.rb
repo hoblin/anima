@@ -170,22 +170,26 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(goal).to be_root
     end
 
-    it "persists the fork framing message as the child's first user message" do
+    it "persists the task as the child's first user message" do
       tool.execute(input)
 
       child = Session.last
       user_event = child.messages.find_by(message_type: "user_message")
       expect(user_event).to be_present
-      expect(user_event.payload["content"]).to include("parent agent's context")
-      expect(user_event.payload["content"]).to include("Your sole task")
+      expect(user_event.payload["content"]).to eq(input["task"])
     end
 
-    it "does not persist the task text as a user message" do
+    it "auto-pins the task message to the Goal" do
       tool.execute(input)
 
       child = Session.last
-      contents = child.messages.where(message_type: "user_message").pluck(:payload).map { |p| p["content"] }
-      expect(contents).not_to include("Read lib/agent_loop.rb and summarize the tool execution flow")
+      goal = child.goals.first
+      pin = child.pinned_messages.first
+
+      expect(pin).to be_present
+      expect(pin.goals).to include(goal)
+      expect(pin.message).to eq(child.messages.find_by(message_type: "user_message"))
+      expect(pin.display_text).to eq(input["task"].truncate(PinnedMessage::MAX_DISPLAY_TEXT_LENGTH))
     end
 
     it "enqueues AgentRequestJob for the child session" do
