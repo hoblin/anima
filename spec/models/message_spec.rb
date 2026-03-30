@@ -200,47 +200,6 @@ RSpec.describe Message do
     end
   end
 
-  describe ".excluding_spawn_messages" do
-    it "excludes spawn_subagent tool_call events" do
-      session.messages.create!(message_type: "tool_call", payload: {"tool_name" => "spawn_subagent", "content" => "spawning"}, tool_use_id: "toolu_spawn1", timestamp: 1)
-      kept = session.messages.create!(message_type: "tool_call", payload: {"tool_name" => "bash", "content" => "running"}, tool_use_id: "toolu_bash1", timestamp: 2)
-
-      expect(session.messages.excluding_spawn_messages).to eq([kept])
-    end
-
-    it "excludes spawn_specialist tool_call events" do
-      session.messages.create!(message_type: "tool_call", payload: {"tool_name" => "spawn_specialist", "content" => "spawning"}, tool_use_id: "toolu_spawn1", timestamp: 1)
-      kept = session.messages.create!(message_type: "user_message", payload: {"content" => "hello"}, timestamp: 2)
-
-      expect(session.messages.excluding_spawn_messages).to eq([kept])
-    end
-
-    it "excludes spawn tool_response events" do
-      session.messages.create!(message_type: "tool_response", payload: {"tool_name" => "spawn_subagent", "content" => "spawned"}, tool_use_id: "toolu_spawn1", timestamp: 1)
-      session.messages.create!(message_type: "tool_response", payload: {"tool_name" => "spawn_specialist", "content" => "spawned"}, tool_use_id: "toolu_spawn2", timestamp: 2)
-      kept = session.messages.create!(message_type: "tool_response", payload: {"tool_name" => "bash", "content" => "output"}, tool_use_id: "toolu_bash1", timestamp: 3)
-
-      expect(session.messages.excluding_spawn_messages).to eq([kept])
-    end
-
-    it "preserves non-tool events" do
-      user_msg = session.messages.create!(message_type: "user_message", payload: {"content" => "hello"}, timestamp: 1)
-      agent_msg = session.messages.create!(message_type: "agent_message", payload: {"content" => "hi"}, timestamp: 2)
-      sys_msg = session.messages.create!(message_type: "system_message", payload: {"content" => "boot"}, timestamp: 3)
-      session.messages.create!(message_type: "tool_call", payload: {"tool_name" => "spawn_specialist", "content" => "spawning"}, tool_use_id: "toolu_spawn1", timestamp: 4)
-
-      expect(session.messages.excluding_spawn_messages).to eq([user_msg, agent_msg, sys_msg])
-    end
-
-    it "preserves non-spawn tool events" do
-      bash_call = session.messages.create!(message_type: "tool_call", payload: {"tool_name" => "bash", "content" => "running"}, tool_use_id: "toolu_bash1", timestamp: 1)
-      bash_response = session.messages.create!(message_type: "tool_response", payload: {"tool_name" => "bash", "content" => "output"}, tool_use_id: "toolu_bash1", timestamp: 2)
-      read_call = session.messages.create!(message_type: "tool_call", payload: {"tool_name" => "read_file", "content" => "reading"}, tool_use_id: "toolu_read1", timestamp: 3)
-
-      expect(session.messages.excluding_spawn_messages).to eq([bash_call, bash_response, read_call])
-    end
-  end
-
   describe "#conversation_or_think?" do
     it "returns true for user_message" do
       expect(Message.new(message_type: "user_message", payload: {})).to be_conversation_or_think

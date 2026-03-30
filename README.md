@@ -14,7 +14,7 @@ Anima is different. It's built on the premise that if you want an agent — a re
 
 **Memory that works like memory.** Other systems bolt on memory as an afterthought — filing cabinets the agent has to consciously open mid-task. It never does; the truck is already moving. Anima's memory department ([Mneme](#semantic-memory-mneme)) runs as a third brain process on the event bus. It summarizes what's about to leave the viewport. It compresses short-term into long-term, like biological memory consolidating during sleep. It pins critical moments to active goals so exact instructions survive where summaries would lose nuance. And it recalls — automatically, passively — surfacing relevant older memories right after the soul, right before the present. The agent doesn't decide to remember. It just remembers.
 
-**Sub-agents that already know everything.** When Anima spawns a sub-agent, it inherits the parent's full event stream — every file read, every decision, every user message. No "let me summarize what I know." Lossless context. Zero wasted tool calls on rediscovery.
+**Sub-agents that know who they are.** When Anima spawns a sub-agent, it starts clean — identity, task, and nothing else. No inherited conversation history means the sub-agent works on its task, not the parent's trajectory. Context flows through explicit messages, not leaked assistant turns.
 
 **A soul the agent writes itself.** Anima's first session is birth. The agent wakes up, explores its world, meets its human, and writes its own identity. Not a personality description in a config file — a living document the agent authors and evolves. Always in context, always its own.
 
@@ -63,7 +63,7 @@ Anima (Ruby, Rails 8.1 headless)
 ├── Skills       — domain knowledge bundles (Markdown, user-extensible)
 ├── Workflows    — operational recipes for multi-step tasks
 ├── MCP          — external tool integration (Model Context Protocol)
-├── Sub-agents   — autonomous child sessions with lossless context inheritance
+├── Sub-agents   — autonomous child sessions with isolated context
 ├── Mneme        — memory department (summarization, compression, pinning, recall)
 │
 │ Designed:
@@ -178,7 +178,7 @@ Plus dynamic tools from configured MCP servers, namespaced as `server_name__tool
 
 ### Sub-Agents
 
-Sub-agents aren't processes — they're sessions on the same event bus. When a sub-agent spawns, its viewport assembles from two scopes: its own events (prioritized) and the parent's events (filling remaining budget). No context serialization, no summary prompts — the sub-agent sees the parent's raw event stream and already knows everything the parent knows. Lossless inheritance by architecture, not by prompting.
+Sub-agents aren't processes — they're sessions on the same event bus. When a sub-agent spawns, it starts with a clean context: a system prompt (identity + communication instructions), a Goal from the task description, and a single user message containing the task — auto-pinned so it survives viewport eviction. No parent conversation history.
 
 Two types:
 
@@ -194,7 +194,7 @@ Two types:
 
 **Generic Sub-agents** — child sessions with custom tool grants for ad-hoc tasks. Each generic sub-agent gets a Haiku-generated nickname (e.g. `@loop-sleuth`, `@api-scout`) for @mention addressing.
 
-Each sub-agent is spawned with a single **Goal** pinned from its task description and a framing message that redirects attention away from inherited parent goals. When done, the sub-agent calls `mark_goal_completed` to deliver results to the parent — this is the explicit finish line that prevents runaway agents. Sub-agents also get half the main agent's thinking budget to limit scope creep.
+Each sub-agent is spawned with a single **Goal** from its task description and a pinned user message containing the task text. When done, the sub-agent calls `mark_goal_completed` to deliver results to the parent — this is the explicit finish line that prevents runaway agents. Sub-agents also get half the main agent's thinking budget to limit scope creep.
 
 Between spawn and completion, sub-agents communicate through natural text — their `agent_message` events route to the parent session automatically, and the parent replies via `@name` mentions. Workers become colleagues.
 
@@ -351,7 +351,7 @@ The viewport is a live query, not a log. It walks events newest-first until the 
 
 This means sessions are endless. No compaction. No lossy rewriting. The model always operates in fresh, high-quality context. The [dumb zone](https://github.com/humanlayer/advanced-context-engineering-for-coding-agents/blob/main/ace-fca.md) never arrives. Meanwhile, Mneme runs as a background department — summarizing evicted events into persistent snapshots so past context is preserved, not destroyed.
 
-Sub-agent viewports compose from two event scopes — their own events (prioritized) and parent events (filling remaining budget). Same mechanism, no special handling. The bus is the architecture.
+Sub-agent viewports use the same mechanism — their own events only, no parent context inheritance. The parent provides context through the task description, and the sub-agent builds its own conversation from a clean slate.
 
 ### Brain as Microservices on a Shared Event Bus
 
@@ -609,7 +609,7 @@ This single example demonstrates every core principle:
 - Mneme memory department (eviction-triggered summarization, persistent snapshots, goal-scoped event pinning, associative recall)
 - 12 built-in tools + MCP integration (HTTP + stdio transports)
 - 7 built-in skills + 13 built-in workflows (user-extensible)
-- Sub-agents with lossless context inheritance (5 specialists + generic)
+- Sub-agents with isolated context (5 specialists + generic)
 - Client-server architecture with WebSocket transport + graceful reconnection
 - Collapsible HUD panel with goals, skills, workflow, and sub-agent tracking
 - Three TUI view modes (Basic / Verbose / Debug)

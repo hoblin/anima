@@ -28,8 +28,6 @@ class Message < ApplicationRecord
   CONTEXT_TYPES = %w[system_message user_message agent_message tool_call tool_response].freeze
   CONVERSATION_TYPES = %w[user_message agent_message system_message].freeze
   THINK_TOOL = "think"
-  SPAWN_TOOLS = %w[spawn_subagent spawn_specialist].freeze
-
   # Message types that require a tool_use_id to pair call with response.
   TOOL_TYPES = %w[tool_call tool_response].freeze
 
@@ -70,17 +68,6 @@ class Message < ApplicationRecord
   #   Messages included in the LLM context window (conversation + tool interactions).
   #   @return [ActiveRecord::Relation]
   scope :context_messages, -> { where(message_type: CONTEXT_TYPES) }
-
-  # @!method self.excluding_spawn_messages
-  #   Excludes spawn_subagent/spawn_specialist tool_call and tool_response messages.
-  #   Used when building parent context for sub-agents — spawn messages cause role
-  #   confusion because the sub-agent sees sibling spawn results and mistakes
-  #   itself for the parent.
-  #   @return [ActiveRecord::Relation]
-  scope :excluding_spawn_messages, -> {
-    where.not("message_type IN (?) AND json_extract(payload, '$.tool_name') IN (?)",
-      TOOL_TYPES, SPAWN_TOOLS)
-  }
 
   # Maps message_type to the Anthropic Messages API role.
   # @return [String] "user" or "assistant"

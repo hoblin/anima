@@ -2,8 +2,9 @@
 
 module Tools
   # Spawns a generic child session that works on a task autonomously.
-  # The sub-agent inherits the parent's viewport context at fork time,
-  # runs via {AgentRequestJob}, and communicates with the parent through
+  # The sub-agent starts clean — no parent conversation history — with
+  # only a system prompt, a Goal, and the task as its first user message.
+  # Runs via {AgentRequestJob} and communicates with the parent through
   # natural text messages routed by {Events::Subscribers::SubagentMessageRouter}.
   #
   # Nickname assignment is handled by the {AnalyticalBrain::Runner} which
@@ -20,7 +21,8 @@ module Tools
 
     def self.description
       "Task feels like a sidequest or a context-switch? Hand it off. " \
-        "Inherits your context; its messages appear in yours. " \
+        "Starts clean with just the task — include all relevant context in the task description. " \
+        "Its messages appear in yours. " \
         "Any message containing @nickname is forwarded — " \
         "even casual mentions will wake the sub-agent."
     end
@@ -47,8 +49,9 @@ module Tools
       @session = session
     end
 
-    # Creates a child session, runs the analytical brain to assign a nickname,
-    # persists the task as a user message, and queues background processing.
+    # Creates a child session with a clean context (no parent history),
+    # runs the analytical brain to assign a nickname, persists the task
+    # as a pinned user message, and queues background processing.
     # Returns immediately after brain completes (blocking for ~200ms).
     #
     # @param input [Hash<String, Object>] with "task" and optional "tools"

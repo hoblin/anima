@@ -103,11 +103,6 @@ class Session < ApplicationRecord
   # Walks messages newest-first and includes them until the token budget
   # is exhausted. Messages are full-size or excluded entirely.
   #
-  # Sub-agent sessions inherit parent context via virtual viewport:
-  # child messages are prioritized and fill the budget first (newest-first),
-  # then parent messages from before the fork point fill the remaining budget.
-  # The final array is chronological: parent messages first, then child messages.
-  #
   # Pending messages live in a separate table ({PendingMessage}) and never
   # appear in this viewport — they are promoted to real messages before
   # the agent processes them.
@@ -115,15 +110,7 @@ class Session < ApplicationRecord
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @return [Array<Message>] chronologically ordered
   def viewport_messages(token_budget: Anima::Settings.token_budget)
-    own = select_messages(own_message_scope, budget: token_budget)
-    remaining = token_budget - own.sum { |msg| message_token_cost(msg) }
-
-    if sub_agent? && remaining > 0
-      parent = select_messages(parent_message_scope, budget: remaining)
-      trim_trailing_tool_calls(parent) + own
-    else
-      own
-    end
+    select_messages(own_message_scope, budget: token_budget)
   end
 
   # Recalculates the viewport and returns IDs of messages evicted since the
@@ -262,7 +249,8 @@ class Session < ApplicationRecord
   # which removes orphaned tool messages whose partner was cut off by the
   # token budget.
   #
-  # Sub-agent sessions skip snapshot/pin/recall injection (they inherit parent messages directly).
+  # Sub-agent sessions skip snapshot and recall layers but use pinned messages
+  # to keep the auto-pinned task message visible as the conveyor advances.
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @return [Array<Hash>] Anthropic Messages API format
@@ -271,23 +259,25 @@ class Session < ApplicationRecord
 
     sliding_budget = token_budget
     snapshot_messages = []
-    pinned_messages = []
     recall_messages = []
+
+    pinned_budget = (token_budget * Anima::Settings.mneme_pinned_budget_fraction).to_i
+    sliding_budget -= pinned_budget
 
     unless sub_agent?
       l2_budget = (token_budget * Anima::Settings.mneme_l2_budget_fraction).to_i
       l1_budget = (token_budget * Anima::Settings.mneme_l1_budget_fraction).to_i
-      pinned_budget = (token_budget * Anima::Settings.mneme_pinned_budget_fraction).to_i
       recall_budget = (token_budget * Anima::Settings.recall_budget_fraction).to_i
-      sliding_budget = token_budget - l2_budget - l1_budget - pinned_budget - recall_budget
+      sliding_budget -= l2_budget + l1_budget + recall_budget
     end
 
     window = viewport_messages(token_budget: sliding_budget)
+    first_message_id = window.first&.id
+
+    pinned_messages = assemble_pinned_section_messages(first_message_id, budget: pinned_budget)
 
     unless sub_agent?
-      first_message_id = window.first&.id
       snapshot_messages = assemble_snapshot_messages(first_message_id, l2_budget: l2_budget, l1_budget: l1_budget)
-      pinned_messages = assemble_pinned_section_messages(first_message_id, budget: pinned_budget)
       recall_messages = assemble_recall_messages(budget: recall_budget)
     end
 
@@ -679,17 +669,6 @@ class Session < ApplicationRecord
     messages.context_messages
   end
 
-  # Scopes parent messages created before this session's fork point.
-  # Excludes spawn tool messages — sub-agents don't need to see sibling
-  # spawn pairs, which cause role confusion (the sub-agent mistakes
-  # itself for the parent when it sees "Specialist @sibling spawned...").
-  # @return [ActiveRecord::Relation]
-  def parent_message_scope
-    parent_session.messages.context_messages
-      .excluding_spawn_messages
-      .where(created_at: ...created_at)
-  end
-
   # Walks messages newest-first, selecting until the token budget is exhausted.
   # Always includes at least the newest message even if it exceeds budget.
   #
@@ -714,15 +693,6 @@ class Session < ApplicationRecord
   # @return [Integer] token cost, using cached count or heuristic estimate
   def message_token_cost(msg)
     (msg.token_count > 0) ? msg.token_count : estimate_tokens(msg)
-  end
-
-  # Removes trailing tool_call messages that lack matching tool_response.
-  # Prevents orphaned tool_use blocks at the parent/child viewport boundary
-  # (the spawn_subagent/spawn_specialist tool_call is emitted before the child exists,
-  # but its tool_response comes after — so the cutoff can split them).
-  def trim_trailing_tool_calls(message_list)
-    message_list.pop while message_list.last&.message_type == "tool_call"
-    message_list
   end
 
   # Ensures every tool_call in the message list has a matching tool_response

@@ -11,25 +11,23 @@ module Tools
     COMMUNICATION_INSTRUCTION = "Your messages reach the parent automatically. " \
       "Ask if you need clarification — the parent can reply."
 
-    # Framing message inserted as the sub-agent's first user message.
-    # This is the "brake" between inherited parent context and the sub-agent's
-    # own task — without it, the model continues the parent's trajectory.
-    FORK_FRAMING_MESSAGE = "You were spawned to help with a single task. " \
-      "The messages above are the parent agent's context — background for your work, " \
-      "but the parent's goals are not yours. " \
-      "Your sole task is described in your Goal."
-
     private
 
     # Creates the sub-agent's Goal from the task description and inserts
-    # the framing message as the first user message.
+    # the task as the first user message, pinned to the Goal so it survives
+    # viewport eviction for as long as the Goal is active.
     #
     # @param child [Session] the newly created child session
-    # @param task [String] the task description to pin as the sole Goal
+    # @param task [String] the task description
     # @return [void]
     def pin_goal_and_frame(child, task)
-      child.goals.create!(description: task)
-      child.create_user_message(FORK_FRAMING_MESSAGE)
+      goal = child.goals.create!(description: task)
+      message = child.create_user_message(task)
+      pin = PinnedMessage.create!(
+        message: message,
+        display_text: task.truncate(PinnedMessage::MAX_DISPLAY_TEXT_LENGTH)
+      )
+      GoalPinnedMessage.create!(goal: goal, pinned_message: pin)
     end
 
     # Runs the analytical brain synchronously to assign a nickname,
