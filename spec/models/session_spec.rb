@@ -1890,17 +1890,17 @@ RSpec.describe Session do
       expect(msg.payload["content"]).to eq("queued")
     end
 
-    it "returns the count of promoted messages" do
+    it "returns the content strings of promoted messages" do
       session.pending_messages.create!(content: "q1")
       session.pending_messages.create!(content: "q2")
 
-      expect(session.promote_pending_messages!).to eq(2)
+      expect(session.promote_pending_messages!).to eq(["q1", "q2"])
     end
 
-    it "returns zero when no pending messages exist" do
+    it "returns an empty array when no pending messages exist" do
       session.messages.create!(message_type: "user_message", payload: {"content" => "done"}, timestamp: 1)
 
-      expect(session.promote_pending_messages!).to eq(0)
+      expect(session.promote_pending_messages!).to eq([])
     end
 
     it "promoted message gets an ID after existing messages" do

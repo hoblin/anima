@@ -381,15 +381,16 @@ class Session < ApplicationRecord
   # naturally placing it after any tool_call/tool_response pairs that
   # were persisted while the message was waiting.
   #
-  # @return [Integer] number of promoted messages
+  # @return [Array<String>] content strings of promoted messages (empty when none)
   def promote_pending_messages!
-    promoted = 0
+    promoted = []
     pending_messages.find_each do |pm|
+      content = pm.content
       transaction do
-        create_user_message(pm.content)
+        create_user_message(content)
         pm.destroy!
       end
-      promoted += 1
+      promoted << content
     end
     promoted
   end

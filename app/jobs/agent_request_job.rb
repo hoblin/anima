@@ -66,10 +66,10 @@ class AgentRequestJob < ApplicationJob
       agent_loop.run
     end
 
-    # Process any pending messages queued while we were busy.
+    # Process any pending messages that arrived after the last tool round.
     loop do
       promoted = session.promote_pending_messages!
-      break if promoted == 0
+      break if promoted.empty?
       agent_loop.run
     end
 

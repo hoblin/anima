@@ -73,10 +73,15 @@ module LLM
     # @param first_response [Hash, nil] pre-fetched first API response from
     #   {AgentLoop#deliver!}. Skips the first API call when provided so
     #   the Bounce Back transaction doesn't duplicate work.
+    # @param between_rounds [#call, nil] callback invoked after each tool
+    #   round completes, before the next LLM request. Must return an
+    #   +Array<String>+ of message contents to inject (e.g. promoted
+    #   pending messages). Injected as +text+ blocks alongside
+    #   +tool_result+ blocks so the LLM sees them in the next round.
     # @param options [Hash] additional API parameters (e.g. +system:+)
     # @return [String, nil] the assistant's final text response, or nil when interrupted
     # @raise [Providers::Anthropic::Error] on API errors
-    def chat_with_tools(messages, registry:, session_id:, first_response: nil, **options)
+    def chat_with_tools(messages, registry:, session_id:, first_response: nil, between_rounds: nil, **options)
       messages = messages.dup
       rounds = 0
 
@@ -104,6 +109,7 @@ module LLM
 
         if response["stop_reason"] == "tool_use"
           tool_results = execute_tools(response, registry, session_id)
+          inject_promoted_messages!(tool_results, between_rounds)
 
           messages += [
             {role: "assistant", content: response["content"]},
@@ -124,6 +130,22 @@ module LLM
     end
 
     private
+
+    # Calls the between_rounds callback and appends any promoted message
+    # contents as +text+ blocks to the tool_results array. The Anthropic
+    # API allows mixing +tool_result+ and +text+ blocks in a single user
+    # message, so the LLM sees promoted messages in the same turn.
+    #
+    # @param tool_results [Array<Hash>] mutable array of tool_result blocks
+    # @param between_rounds [#call, nil] callback returning +Array<String>+
+    def inject_promoted_messages!(tool_results, between_rounds)
+      return unless between_rounds
+
+      promoted = between_rounds.call
+      promoted.each do |content|
+        tool_results << {type: "text", text: content}
+      end
+    end
 
     def build_provider(provider)
       provider || Providers::Anthropic.new
