@@ -186,6 +186,23 @@ RSpec.describe AgentLoop do
 
       agent_loop.run
     end
+
+    it "passes a between_rounds callback that promotes pending messages" do
+      captured_callback = nil
+      allow(client).to receive(:chat_with_tools) do |_msgs, between_rounds:, **_|
+        captured_callback = between_rounds
+        "ok"
+      end
+
+      agent_loop.run
+
+      session.pending_messages.create!(content: "queued msg")
+      result = captured_callback.call
+
+      expect(result).to eq(["queued msg"])
+      expect(session.pending_messages.count).to eq(0)
+      expect(session.messages.last.payload["content"]).to eq("queued msg")
+    end
   end
 
   describe "#finalize" do
