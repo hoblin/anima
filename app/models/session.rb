@@ -249,8 +249,9 @@ class Session < ApplicationRecord
   # which removes orphaned tool messages whose partner was cut off by the
   # token budget.
   #
-  # Sub-agent sessions skip snapshot and recall layers but use pinned messages
-  # to keep the auto-pinned task message visible as the conveyor advances.
+  # Sub-agent sessions skip snapshot and recall layers (they start clean with
+  # no prior context to compress) but use pinned messages to keep the
+  # auto-pinned task message visible as the conveyor advances.
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @return [Array<Hash>] Anthropic Messages API format

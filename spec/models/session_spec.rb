@@ -1649,7 +1649,7 @@ RSpec.describe Session do
         expect(pinned_content).to match(/message #{old_event.id}\n|message #{old_event.id}$/)
       end
 
-      it "skips pinned messages for sub-agent sessions" do
+      it "does not leak parent pinned messages into sub-agent viewport" do
         parent = Session.create!
         child = Session.create!(parent_session: parent, prompt: "sub-agent")
         old_event = parent.messages.create!(message_type: "user_message", payload: {"content" => "pinned"}, timestamp: 1, token_count: 10)
@@ -1663,6 +1663,25 @@ RSpec.describe Session do
 
         contents = result.map { |m| m[:content] }
         expect(contents.none? { |c| c.include?("[pinned messages]") }).to be true
+      end
+
+      it "surfaces sub-agent's own pinned task message when evicted from viewport" do
+        parent = Session.create!
+        child = Session.create!(parent_session: parent, prompt: "sub-agent")
+        task_msg = child.messages.create!(message_type: "user_message", payload: {"content" => "analyze this code"}, timestamp: 1, token_count: 50)
+        child.messages.create!(message_type: "agent_message", payload: {"content" => "working on it"}, timestamp: 2, token_count: 50)
+
+        goal = child.goals.create!(description: "analyze this code")
+        pin = PinnedMessage.create!(message: task_msg, display_text: "analyze this code")
+        GoalPinnedMessage.create!(goal: goal, pinned_message: pin)
+
+        # Sliding budget (80 - 5% pinned = 76) fits only the agent_message (50 tokens),
+        # evicting task_msg — the pinned section should resurface it.
+        result = child.messages_for_llm(token_budget: 80)
+
+        pinned_content = result.find { |m| m[:content].to_s.include?("[pinned messages]") }&.dig(:content)
+        expect(pinned_content).to be_present
+        expect(pinned_content).to include("analyze this code")
       end
     end
   end

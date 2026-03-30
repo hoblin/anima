@@ -83,7 +83,7 @@ module Tools
         prompt: GENERIC_PROMPT,
         granted_tools: granted_tools
       )
-      pin_goal_and_frame(child, task)
+      create_goal_with_pinned_task(child, task)
       assign_nickname_via_brain(child)
       child.broadcast_children_update_to_parent
       AgentRequestJob.perform_later(child.id)

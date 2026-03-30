@@ -120,7 +120,7 @@ RSpec.describe Tools::SpawnSubagent do
       child = Session.last
       user_event = child.messages.find_by(message_type: "user_message")
       expect(user_event).to be_present
-      expect(user_event.payload["content"]).to eq("Read lib/agent_loop.rb and summarize the tool execution flow")
+      expect(user_event.payload["content"]).to eq(input["task"])
     end
 
     it "auto-pins the task message to the Goal" do
@@ -133,6 +133,7 @@ RSpec.describe Tools::SpawnSubagent do
       expect(pin).to be_present
       expect(pin.goals).to include(goal)
       expect(pin.message).to eq(child.messages.find_by(message_type: "user_message"))
+      expect(pin.display_text).to eq(input["task"].truncate(PinnedMessage::MAX_DISPLAY_TEXT_LENGTH))
     end
 
     it "enqueues AgentRequestJob for the child session" do

@@ -13,14 +13,14 @@ module Tools
 
     private
 
-    # Creates the sub-agent's Goal from the task description and inserts
-    # the task as the first user message, pinned to the Goal so it survives
+    # Creates the sub-agent's Goal from the task description, inserts the
+    # task as the first user message, and pins it to the Goal so it survives
     # viewport eviction for as long as the Goal is active.
     #
     # @param child [Session] the newly created child session
     # @param task [String] the task description
     # @return [void]
-    def pin_goal_and_frame(child, task)
+    def create_goal_with_pinned_task(child, task)
       goal = child.goals.create!(description: task)
       message = child.create_user_message(task)
       pin = PinnedMessage.create!(
