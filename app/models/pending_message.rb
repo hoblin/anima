@@ -18,9 +18,15 @@
 # @see Session#enqueue_user_message
 # @see Session#promote_pending_messages!
 class PendingMessage < ApplicationRecord
+  # Synthetic tool name used in tool_use/tool_result pairs injected into
+  # the parent LLM conversation when a sub-agent message is promoted.
+  SYNTHETIC_TOOL_NAME = "subagent_message"
+
   belongs_to :session
 
   validates :content, presence: true
+  validates :source_type, inclusion: {in: %w[user subagent]}
+  validates :source_name, presence: true, if: :subagent?
 
   after_create_commit :broadcast_created
   after_destroy_commit :broadcast_removed
@@ -47,15 +53,17 @@ class PendingMessage < ApplicationRecord
   #
   # Sub-agent messages become synthetic tool_use/tool_result pairs so the
   # parent LLM associates them with tool invocation semantics.
-  # User messages remain plain text content strings.
+  # User messages return plain content — they are injected as text blocks
+  # within the current tool_results turn, not as separate conversation turns.
   #
-  # @return [Array<Hash>] message hashes for the LLM conversation
+  # @return [Array<Hash>] synthetic tool pair for sub-agent messages
+  # @return [String] raw content for user messages
   def to_llm_messages
     if subagent?
       tool_use_id = "subagent_msg_#{id}"
       [
         {role: "assistant", content: [
-          {type: "tool_use", id: tool_use_id, name: "subagent_message",
+          {type: "tool_use", id: tool_use_id, name: SYNTHETIC_TOOL_NAME,
            input: {from: source_name}}
         ]},
         {role: "user", content: [

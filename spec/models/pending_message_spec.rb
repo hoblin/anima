@@ -20,6 +20,23 @@ RSpec.describe PendingMessage, type: :model do
       pm = PendingMessage.new(session: session, content: "hello")
       expect(pm).to be_valid
     end
+
+    it "rejects invalid source_type" do
+      pm = PendingMessage.new(session: session, content: "hi", source_type: "unknown")
+      expect(pm).not_to be_valid
+      expect(pm.errors[:source_type]).to be_present
+    end
+
+    it "requires source_name when source_type is subagent" do
+      pm = PendingMessage.new(session: session, content: "hi", source_type: "subagent")
+      expect(pm).not_to be_valid
+      expect(pm.errors[:source_name]).to be_present
+    end
+
+    it "is valid as subagent with source_name" do
+      pm = PendingMessage.new(session: session, content: "hi", source_type: "subagent", source_name: "scout")
+      expect(pm).to be_valid
+    end
   end
 
   describe "#subagent?" do
@@ -74,7 +91,7 @@ RSpec.describe PendingMessage, type: :model do
       expect(assistant_msg[:role]).to eq("assistant")
       tool_use = assistant_msg[:content].first
       expect(tool_use[:type]).to eq("tool_use")
-      expect(tool_use[:name]).to eq("subagent_message")
+      expect(tool_use[:name]).to eq(PendingMessage::SYNTHETIC_TOOL_NAME)
       expect(tool_use[:input]).to eq({from: "loop-sleuth"})
       expect(tool_use[:id]).to eq("subagent_msg_#{pm.id}")
 

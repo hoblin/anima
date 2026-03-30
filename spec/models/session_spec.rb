@@ -1941,6 +1941,38 @@ RSpec.describe Session do
       expect(msg.payload["content"]).to eq("[sub-agent sleuth]: Done!")
     end
 
+    it "splits mixed user and sub-agent messages into texts and pairs" do
+      session.pending_messages.create!(content: "user says hi")
+      session.pending_messages.create!(
+        content: "Found a bug", source_type: "subagent", source_name: "sleuth"
+      )
+      session.pending_messages.create!(content: "user follows up")
+
+      result = session.promote_pending_messages!
+      expect(result[:texts]).to eq(["user says hi", "user follows up"])
+      expect(result[:pairs].length).to eq(2)
+      expect(result[:pairs][0][:role]).to eq("assistant")
+      expect(result[:pairs][1][:role]).to eq("user")
+    end
+
+    it "generates unique tool_use_ids for multiple sub-agent messages" do
+      session.pending_messages.create!(
+        content: "Result A", source_type: "subagent", source_name: "scout"
+      )
+      session.pending_messages.create!(
+        content: "Result B", source_type: "subagent", source_name: "sleuth"
+      )
+
+      result = session.promote_pending_messages!
+      # Two subagent messages → 4 pair entries (2 turns each)
+      expect(result[:pairs].length).to eq(4)
+
+      ids = result[:pairs]
+        .select { |m| m[:role] == "assistant" }
+        .map { |m| m[:content].first[:id] }
+      expect(ids.uniq.length).to eq(2)
+    end
+
     it "returns empty texts and pairs when no pending messages exist" do
       session.messages.create!(message_type: "user_message", payload: {"content" => "done"}, timestamp: 1)
 

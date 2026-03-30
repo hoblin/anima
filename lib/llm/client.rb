@@ -111,6 +111,9 @@ module LLM
           tool_results = execute_tools(response, registry, session_id)
           promoted = promote_between_rounds(between_rounds)
 
+          # Dual injection: user messages go as text blocks within the current
+          # tool_results turn (same speaker); sub-agent messages append as
+          # separate assistant→user turn pairs (distinct tool invocations).
           promoted[:texts].each { |text| tool_results << {type: "text", text: text} }
 
           messages += [
