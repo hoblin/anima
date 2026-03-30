@@ -47,7 +47,7 @@ module AnalyticalBrain
         return error if error
 
         @session.update!(name: nickname)
-        "Nickname set to @#{nickname}"
+        "Nickname set to #{nickname}"
       end
 
       private

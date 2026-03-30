@@ -1909,17 +1909,43 @@ RSpec.describe Session do
       expect(msg.payload["content"]).to eq("queued")
     end
 
-    it "returns the content strings of promoted messages" do
+    it "returns user texts in :texts key" do
       session.pending_messages.create!(content: "q1")
       session.pending_messages.create!(content: "q2")
 
-      expect(session.promote_pending_messages!).to eq(["q1", "q2"])
+      result = session.promote_pending_messages!
+      expect(result[:texts]).to eq(["q1", "q2"])
+      expect(result[:pairs]).to eq([])
     end
 
-    it "returns an empty array when no pending messages exist" do
+    it "returns sub-agent messages as synthetic tool pairs in :pairs key" do
+      session.pending_messages.create!(
+        content: "Found the bug", source_type: "subagent", source_name: "sleuth"
+      )
+
+      result = session.promote_pending_messages!
+      expect(result[:texts]).to eq([])
+      expect(result[:pairs].length).to eq(2)
+      expect(result[:pairs][0][:role]).to eq("assistant")
+      expect(result[:pairs][1][:role]).to eq("user")
+    end
+
+    it "persists sub-agent messages with attribution in display content" do
+      session.pending_messages.create!(
+        content: "Done!", source_type: "subagent", source_name: "sleuth"
+      )
+
+      session.promote_pending_messages!
+
+      msg = session.messages.last
+      expect(msg.payload["content"]).to eq("[sub-agent sleuth]: Done!")
+    end
+
+    it "returns empty texts and pairs when no pending messages exist" do
       session.messages.create!(message_type: "user_message", payload: {"content" => "done"}, timestamp: 1)
 
-      expect(session.promote_pending_messages!).to eq([])
+      result = session.promote_pending_messages!
+      expect(result).to eq({texts: [], pairs: []})
     end
 
     it "promoted message gets an ID after existing messages" do
@@ -2219,6 +2245,13 @@ RSpec.describe Session do
         event = session.messages.last
         expect(AgentRequestJob).to have_been_enqueued.with(session.id, message_id: event.id)
       end
+
+      it "formats sub-agent messages with attribution" do
+        session.enqueue_user_message("Found a bug", source_type: "subagent", source_name: "sleuth")
+
+        msg = session.messages.last
+        expect(msg.payload["content"]).to eq("[sub-agent sleuth]: Found a bug")
+      end
     end
 
     context "when session is processing" do
@@ -2230,6 +2263,14 @@ RSpec.describe Session do
 
         pm = session.pending_messages.last
         expect(pm.content).to eq("hello")
+      end
+
+      it "stores source metadata on PendingMessage" do
+        session.enqueue_user_message("result", source_type: "subagent", source_name: "scout")
+
+        pm = session.pending_messages.last
+        expect(pm.source_type).to eq("subagent")
+        expect(pm.source_name).to eq("scout")
       end
 
       it "does not enqueue AgentRequestJob" do

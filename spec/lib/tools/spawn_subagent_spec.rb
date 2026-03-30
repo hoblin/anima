@@ -35,8 +35,9 @@ RSpec.describe Tools::SpawnSubagent do
       expect(described_class.description).to include("sidequest")
     end
 
-    it "warns about @mention forwarding" do
-      expect(described_class.description).to include("forwarded")
+    it "explains @mention syntax without using @ in the text" do
+      expect(described_class.description).to include("Prefix")
+      expect(described_class.description).not_to match(/@\w/)
     end
   end
 
@@ -98,7 +99,7 @@ RSpec.describe Tools::SpawnSubagent do
       tool.execute(input)
 
       child = Session.last
-      expect(child.prompt).to start_with("You are @loop-sleuth, a sub-agent")
+      expect(child.prompt).to start_with("You are loop-sleuth, a sub-agent")
       expect(child.prompt).to include("messages reach the parent automatically")
       expect(child.prompt).not_to include("Expected deliverable")
     end
@@ -154,14 +155,14 @@ RSpec.describe Tools::SpawnSubagent do
       )
     end
 
-    it "returns confirmation with @nickname, session ID, and forwarding warning" do
+    it "returns confirmation with nickname (no @ prefix) and session ID" do
       result = tool.execute(input)
 
       child = Session.last
-      expect(result).to include("Sub-agent @loop-sleuth spawned")
+      expect(result).to include("Sub-agent loop-sleuth spawned")
       expect(result).to include("session #{child.id}")
-      expect(result).to include("@loop-sleuth")
-      expect(result).to include("forwarded")
+      expect(result).to include("prefix its name with @")
+      expect(result).not_to match(/@loop-sleuth/)
     end
 
     it "assigns nickname via the analytical brain" do
@@ -193,7 +194,7 @@ RSpec.describe Tools::SpawnSubagent do
 
       child = Session.last
       expect(child.name).to match(/\Aagent-\d+\z/)
-      expect(child.prompt).to include("You are @#{child.name}, a sub-agent")
+      expect(child.prompt).to include("You are #{child.name}, a sub-agent")
     end
 
     it "returns immediately (non-blocking)" do
@@ -277,7 +278,7 @@ RSpec.describe Tools::SpawnSubagent do
         result = tool.execute(input.merge("tools" => valid_names))
 
         expect(result).to be_a(String)
-        expect(result).to include("Sub-agent @loop-sleuth spawned")
+        expect(result).to include("Sub-agent loop-sleuth spawned")
       end
     end
   end

@@ -55,8 +55,9 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(described_class.description).to include("Need a specific skill set")
     end
 
-    it "warns about @mention forwarding" do
-      expect(described_class.description).to include("forwarded")
+    it "explains @mention syntax without using @ in the text" do
+      expect(described_class.description).to include("Prefix")
+      expect(described_class.description).not_to match(/@\w/)
     end
   end
 
@@ -110,7 +111,7 @@ RSpec.describe Tools::SpawnSpecialist do
       tool.execute(input)
 
       child = Session.last
-      expect(child.prompt).to start_with("You are @code-scout, a sub-agent")
+      expect(child.prompt).to start_with("You are code-scout, a sub-agent")
     end
 
     it "preserves the agent's system prompt after identity context" do
@@ -199,13 +200,13 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(AgentRequestJob).to have_been_enqueued.with(child.id)
     end
 
-    it "returns confirmation including the nickname and forwarding warning" do
+    it "returns confirmation with nickname (no @ prefix) and session ID" do
       result = tool.execute(input)
 
-      expect(result).to include("Specialist @code-scout spawned")
+      expect(result).to include("Specialist code-scout spawned")
       expect(result).to include("session #{Session.last.id}")
-      expect(result).to include("@code-scout")
-      expect(result).to include("forwarded")
+      expect(result).to include("prefix its name with @")
+      expect(result).not_to match(/@code-scout/)
     end
 
     it "falls back to agent-N on brain failure and still injects identity" do
@@ -216,7 +217,7 @@ RSpec.describe Tools::SpawnSpecialist do
 
       child = Session.last
       expect(child.name).to match(/\Aagent-\d+\z/)
-      expect(child.prompt).to include("You are @#{child.name}, a sub-agent")
+      expect(child.prompt).to include("You are #{child.name}, a sub-agent")
     end
 
     context "with blank name" do

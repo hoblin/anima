@@ -398,14 +398,10 @@ RSpec.describe LLM::Client do
         {"stop_reason" => "end_turn", "content" => [{"type" => "text", "text" => "Here is the result."}]}
       end
 
-      it "calls the callback after tool execution and injects content as text blocks" do
+      it "injects user text promotions as text blocks in tool_results" do
         call_count = 0
         captured_messages = nil
-        callback_called = false
-        between_rounds = -> {
-          callback_called = true
-          ["Sub-agent update: task completed"]
-        }
+        between_rounds = -> { {texts: ["User typed something"], pairs: []} }
 
         allow(provider).to receive(:create_message) do |**kwargs|
           captured_messages = kwargs[:messages]
@@ -419,15 +415,41 @@ RSpec.describe LLM::Client do
           between_rounds: between_rounds
         )
 
-        expect(callback_called).to be true
-
-        user_msg = captured_messages.last
-        expect(user_msg[:role]).to eq("user")
+        user_msg = captured_messages.find { |m| m[:role] == "user" && m[:content].is_a?(Array) }
         text_blocks = user_msg[:content].select { |b| b[:type] == "text" }
-        expect(text_blocks.map { |b| b[:text] }).to eq(["Sub-agent update: task completed"])
+        expect(text_blocks.map { |b| b[:text] }).to eq(["User typed something"])
       end
 
-      it "does not inject anything when callback returns empty array" do
+      it "appends sub-agent pairs as separate conversation turns" do
+        call_count = 0
+        captured_messages = nil
+        subagent_pair = [
+          {role: "assistant", content: [{type: "tool_use", id: "subagent_msg_1", name: "subagent_message", input: {from: "sleuth"}}]},
+          {role: "user", content: [{type: "tool_result", tool_use_id: "subagent_msg_1", content: "Found the bug"}]}
+        ]
+        between_rounds = -> { {texts: [], pairs: subagent_pair} }
+
+        allow(provider).to receive(:create_message) do |**kwargs|
+          captured_messages = kwargs[:messages]
+          call_count += 1
+          (call_count == 1) ? tool_use_response : text_response
+        end
+
+        client.chat_with_tools(
+          [{role: "user", content: "Fetch example.com"}],
+          registry: registry, session_id: session.id,
+          between_rounds: between_rounds
+        )
+
+        # Sub-agent pair should appear after the tool_results message
+        last_two = captured_messages.last(2)
+        expect(last_two[0][:role]).to eq("assistant")
+        expect(last_two[0][:content].first[:name]).to eq("subagent_message")
+        expect(last_two[1][:role]).to eq("user")
+        expect(last_two[1][:content].first[:content]).to eq("Found the bug")
+      end
+
+      it "does not inject anything when callback returns empty arrays" do
         call_count = 0
         captured_messages = nil
         allow(provider).to receive(:create_message) do |**kwargs|
@@ -439,7 +461,7 @@ RSpec.describe LLM::Client do
         client.chat_with_tools(
           [{role: "user", content: "Fetch example.com"}],
           registry: registry, session_id: session.id,
-          between_rounds: -> { [] }
+          between_rounds: -> { {texts: [], pairs: []} }
         )
 
         user_msg = captured_messages.last

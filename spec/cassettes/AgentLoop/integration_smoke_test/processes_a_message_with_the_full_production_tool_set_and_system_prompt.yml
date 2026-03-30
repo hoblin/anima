@@ -35,15 +35,15 @@ http_interactions:
         180)."}},"required":["query"]}},{"name":"spawn_subagent","description":"Task
         feels like a sidequest or a context-switch? Hand it off. Starts clean with
         just the task — include all relevant context in the task description. Its
-        messages appear in yours. Any message containing @nickname is forwarded —
-        even casual mentions will wake the sub-agent.","input_schema":{"type":"object","properties":{"task":{"type":"string"},"tools":{"type":"array","items":{"type":"string"},"description":"Tool
+        messages appear as tool responses in your conversation. Prefix its nickname
+        with @ to send instructions.","input_schema":{"type":"object","properties":{"task":{"type":"string"},"tools":{"type":"array","items":{"type":"string"},"description":"Tool
         names to grant the sub-agent. Omit for all standard tools. Empty array for
         pure reasoning. Valid tools: bash, read_file, write_file, edit_file, web_get,
         think, remember, recall"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["task"]}},{"name":"spawn_specialist","description":"Need
         a specific skill set for the job? Bring in a specialist. Its messages appear
-        in yours; any message containing @nickname is forwarded — even casual mentions
-        will wake it.\n\nAvailable specialists:\n- codebase-analyzer: Traces data
+        as tool responses in your conversation. Prefix its nickname with @ to send
+        instructions.\n\nAvailable specialists:\n- codebase-analyzer: Traces data
         flow and explains how code works. Returns file:line references.\n- codebase-pattern-finder:
         Finds similar implementations, usage examples, and existing patterns to model
         after. Returns concrete code examples.\n- documentation-researcher: Fetches
@@ -6722,15 +6722,15 @@ http_interactions:
         180)."}},"required":["query"]}},{"name":"spawn_subagent","description":"Task
         feels like a sidequest or a context-switch? Hand it off. Starts clean with
         just the task — include all relevant context in the task description. Its
-        messages appear in yours. Any message containing @nickname is forwarded —
-        even casual mentions will wake the sub-agent.","input_schema":{"type":"object","properties":{"task":{"type":"string"},"tools":{"type":"array","items":{"type":"string"},"description":"Tool
+        messages appear as tool responses in your conversation. Prefix its nickname
+        with @ to send instructions.","input_schema":{"type":"object","properties":{"task":{"type":"string"},"tools":{"type":"array","items":{"type":"string"},"description":"Tool
         names to grant the sub-agent. Omit for all standard tools. Empty array for
         pure reasoning. Valid tools: bash, read_file, write_file, edit_file, web_get,
         think, remember, recall"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["task"]}},{"name":"spawn_specialist","description":"Need
         a specific skill set for the job? Bring in a specialist. Its messages appear
-        in yours; any message containing @nickname is forwarded — even casual mentions
-        will wake it.\n\nAvailable specialists:\n- codebase-analyzer: Traces data
+        as tool responses in your conversation. Prefix its nickname with @ to send
+        instructions.\n\nAvailable specialists:\n- codebase-analyzer: Traces data
         flow and explains how code works. Returns file:line references.\n- codebase-pattern-finder:
         Finds similar implementations, usage examples, and existing patterns to model
         after. Returns concrete code examples.\n- documentation-researcher: Fetches
@@ -6947,15 +6947,15 @@ http_interactions:
         180)."}},"required":["query"]}},{"name":"spawn_subagent","description":"Task
         feels like a sidequest or a context-switch? Hand it off. Starts clean with
         just the task — include all relevant context in the task description. Its
-        messages appear in yours. Any message containing @nickname is forwarded —
-        even casual mentions will wake the sub-agent.","input_schema":{"type":"object","properties":{"task":{"type":"string"},"tools":{"type":"array","items":{"type":"string"},"description":"Tool
+        messages appear as tool responses in your conversation. Prefix its nickname
+        with @ to send instructions.","input_schema":{"type":"object","properties":{"task":{"type":"string"},"tools":{"type":"array","items":{"type":"string"},"description":"Tool
         names to grant the sub-agent. Omit for all standard tools. Empty array for
         pure reasoning. Valid tools: bash, read_file, write_file, edit_file, web_get,
         think, remember, recall"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["task"]}},{"name":"spawn_specialist","description":"Need
         a specific skill set for the job? Bring in a specialist. Its messages appear
-        in yours; any message containing @nickname is forwarded — even casual mentions
-        will wake it.\n\nAvailable specialists:\n- codebase-analyzer: Traces data
+        as tool responses in your conversation. Prefix its nickname with @ to send
+        instructions.\n\nAvailable specialists:\n- codebase-analyzer: Traces data
         flow and explains how code works. Returns file:line references.\n- codebase-pattern-finder:
         Finds similar implementations, usage examples, and existing patterns to model
         after. Returns concrete code examples.\n- documentation-researcher: Fetches

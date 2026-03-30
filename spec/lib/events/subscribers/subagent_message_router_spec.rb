@@ -20,12 +20,12 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
         expect(parent_msg.payload["content"]).to include("Here's my analysis.")
       end
 
-      it "uses attribution format with @name prefix" do
+      it "uses attribution format without @ prefix" do
         event = Events::AgentMessage.new(content: "Done!", session_id: child.id)
         router.emit(name: event.event_name, payload: event.to_h)
 
         parent_msg = parent.messages.find_by(message_type: "user_message")
-        expect(parent_msg.payload["content"]).to eq("[sub-agent @loop-sleuth]: Done!")
+        expect(parent_msg.payload["content"]).to eq("[sub-agent loop-sleuth]: Done!")
       end
 
       it "enqueues AgentRequestJob for the parent session" do
@@ -42,21 +42,22 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
         router.emit(name: event.event_name, payload: event.to_h)
 
         parent_msg = parent.messages.find_by(message_type: "user_message")
-        expect(parent_msg.payload["content"]).to start_with("[sub-agent @agent-#{unnamed.id}]:")
+        expect(parent_msg.payload["content"]).to start_with("[sub-agent agent-#{unnamed.id}]:")
       end
     end
 
     context "when parent is processing" do
       before { parent.update!(processing: true) }
 
-      it "creates a PendingMessage on the parent session" do
+      it "creates a PendingMessage with subagent source metadata" do
         event = Events::AgentMessage.new(content: "Here's my analysis.", session_id: child.id)
         router.emit(name: event.event_name, payload: event.to_h)
 
         pm = parent.pending_messages.last
         expect(pm).to be_present
-        expect(pm.content).to include("[sub-agent @loop-sleuth]:")
-        expect(pm.content).to include("Here's my analysis.")
+        expect(pm.content).to eq("Here's my analysis.")
+        expect(pm.source_type).to eq("subagent")
+        expect(pm.source_name).to eq("loop-sleuth")
       end
 
       it "does not enqueue AgentRequestJob" do

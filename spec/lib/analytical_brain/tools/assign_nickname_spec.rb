@@ -26,7 +26,7 @@ RSpec.describe AnalyticalBrain::Tools::AssignNickname do
     it "assigns the nickname to the session" do
       result = tool.execute({"nickname" => "loop-sleuth"})
 
-      expect(result).to eq("Nickname set to @loop-sleuth")
+      expect(result).to eq("Nickname set to loop-sleuth")
       expect(child.reload.name).to eq("loop-sleuth")
     end
 
@@ -76,7 +76,7 @@ RSpec.describe AnalyticalBrain::Tools::AssignNickname do
         result = tool.execute({"nickname" => "LOUD"})
 
         # Input is downcased, so "LOUD" → "loud" which is valid
-        expect(result).to eq("Nickname set to @loud")
+        expect(result).to eq("Nickname set to loud")
       end
 
       it "returns error for invalid format (special characters)" do
@@ -101,13 +101,13 @@ RSpec.describe AnalyticalBrain::Tools::AssignNickname do
       it "accepts single-word nicknames" do
         result = tool.execute({"nickname" => "scout"})
 
-        expect(result).to eq("Nickname set to @scout")
+        expect(result).to eq("Nickname set to scout")
       end
 
       it "accepts three-word hyphenated nicknames" do
         result = tool.execute({"nickname" => "fast-code-reader"})
 
-        expect(result).to eq("Nickname set to @fast-code-reader")
+        expect(result).to eq("Nickname set to fast-code-reader")
       end
     end
 
@@ -126,7 +126,7 @@ RSpec.describe AnalyticalBrain::Tools::AssignNickname do
 
         result = tool.execute({"nickname" => "loop-sleuth"})
 
-        expect(result).to eq("Nickname set to @loop-sleuth")
+        expect(result).to eq("Nickname set to loop-sleuth")
       end
 
       it "does not conflict with own name" do
@@ -134,7 +134,7 @@ RSpec.describe AnalyticalBrain::Tools::AssignNickname do
 
         result = tool.execute({"nickname" => "loop-sleuth"})
 
-        expect(result).to eq("Nickname set to @loop-sleuth")
+        expect(result).to eq("Nickname set to loop-sleuth")
       end
 
       it "does not conflict with children of other parents" do
@@ -143,7 +143,7 @@ RSpec.describe AnalyticalBrain::Tools::AssignNickname do
 
         result = tool.execute({"nickname" => "loop-sleuth"})
 
-        expect(result).to eq("Nickname set to @loop-sleuth")
+        expect(result).to eq("Nickname set to loop-sleuth")
       end
     end
 
@@ -151,7 +151,7 @@ RSpec.describe AnalyticalBrain::Tools::AssignNickname do
       tool = described_class.new(main_session: child, extra_stuff: "ignored")
       result = tool.execute({"nickname" => "scout"})
 
-      expect(result).to eq("Nickname set to @scout")
+      expect(result).to eq("Nickname set to scout")
     end
   end
 end
