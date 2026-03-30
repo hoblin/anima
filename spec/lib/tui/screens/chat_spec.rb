@@ -2002,9 +2002,16 @@ RSpec.describe TUI::Screens::Chat do
     end
 
     it "does not add tools height when tools key is absent" do
-      entry = {type: :rendered, message_type: "assistant", data: {"content" => "hello"}}
+      entry = {type: :rendered, message_type: "system_prompt", data: {"content" => "You are an agent."}}
       height = screen.send(:estimate_entry_height, entry, 80)
       # 1 line content + 1 header + 1 separator = 3
+      expect(height).to eq(3)
+    end
+
+    it "does not add tools height when tools value is nil" do
+      entry = {type: :rendered, message_type: "system_prompt", data: {"content" => "You are an agent.", "tools" => nil}}
+      height = screen.send(:estimate_entry_height, entry, 80)
+      # 1 line content + 1 header + 1 separator = 3 (nil tools ignored)
       expect(height).to eq(3)
     end
 
