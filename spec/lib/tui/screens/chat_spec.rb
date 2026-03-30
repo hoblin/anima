@@ -1980,6 +1980,34 @@ RSpec.describe TUI::Screens::Chat do
       expect(height).to eq(2)
     end
 
+    it "includes tools TOON height in rendered system prompt entries" do
+      tools = [
+        {"name" => "bash", "description" => "Run shell commands", "input_schema" => {"type" => "object", "properties" => {"command" => {"type" => "string"}}}},
+        {"name" => "read_file", "description" => "Read a file", "input_schema" => {"type" => "object", "properties" => {"path" => {"type" => "string"}}}}
+      ]
+      entry = {type: :rendered, message_type: "system_prompt", data: {"content" => "You are an agent.", "tools" => tools}}
+      height = screen.send(:estimate_entry_height, entry, 80)
+      # Without tools: 1 line content + 1 header + 1 separator = 3
+      # With tools: + 2 (blank + "## Tools" header) + TOON lines
+      expect(height).to be > 3
+      toon_lines = screen.send(:tools_toon, entry[:data]).split("\n").size
+      expect(height).to eq(3 + 2 + toon_lines)
+    end
+
+    it "does not add tools height when tools array is empty" do
+      entry = {type: :rendered, message_type: "system_prompt", data: {"content" => "You are an agent.", "tools" => []}}
+      height = screen.send(:estimate_entry_height, entry, 80)
+      # 1 line content + 1 header + 1 separator = 3 (no tools added)
+      expect(height).to eq(3)
+    end
+
+    it "does not add tools height when tools key is absent" do
+      entry = {type: :rendered, message_type: "assistant", data: {"content" => "hello"}}
+      height = screen.send(:estimate_entry_height, entry, 80)
+      # 1 line content + 1 header + 1 separator = 3
+      expect(height).to eq(3)
+    end
+
     it "returns 1 for unknown entry types" do
       entry = {type: :unknown}
       expect(screen.send(:estimate_entry_height, entry, 80)).to eq(1)

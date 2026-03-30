@@ -815,6 +815,10 @@ module TUI
           lines = estimate_text_height(text, effective_width)
           lines += 1 # header/label line
           lines += 1 unless entry[:message_type] == "tool_call" # separator
+          if data["tools"].is_a?(Array) && data["tools"].any?
+            lines += 2 # blank line + "## Tools (N)" header
+            lines += estimate_text_height(tools_toon(data), effective_width)
+          end
           lines
         when :message
           lines = estimate_text_height(entry[:content].to_s, effective_width)
