@@ -90,5 +90,9 @@ RSpec.describe TUI::Formatting do
     it "only replaces leading spaces, not mid-line spaces" do
       expect(formatter.preserve_indentation("  hello world")).to eq("\u00a0\u00a0hello world")
     end
+
+    it "converts spaces-only lines to NBSP" do
+      expect(formatter.preserve_indentation("    ")).to eq("\u00a0\u00a0\u00a0\u00a0")
+    end
   end
 end
