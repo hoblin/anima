@@ -564,12 +564,10 @@ module TUI
       history = stats[:cache_history]
       if history && history.size > 1
         sparkline = build_braille_sparkline(history)
-        avg = (history.sum / history.size * 100).round
-        avg_color = cache_hit_color(avg)
+        color = cache_hit_color(hit_rate)
         lines << tui.line(spans: [
           tui.span(content: "     ", style: tui.style(fg: "dark_gray")),
-          tui.span(content: sparkline, style: tui.style(fg: avg_color)),
-          tui.span(content: " avg #{avg}%", style: tui.style(fg: "dark_gray"))
+          tui.span(content: sparkline, style: tui.style(fg: color))
         ])
       end
 
