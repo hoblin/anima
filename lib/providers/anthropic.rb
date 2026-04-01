@@ -252,8 +252,9 @@ module Providers
       return {} unless headers
 
       RATE_LIMIT_HEADERS.transform_values do |header_name|
-        # HTTParty headers are arrays; take first value
-        value = headers[header_name]&.first
+        # HTTParty headers are strings; VCR replays them as arrays
+        raw = headers[header_name]
+        value = raw.is_a?(Array) ? raw.first : raw
         # Parse numeric values (utilization, reset timestamps)
         case value
         when /\A\d+\z/ then value.to_i

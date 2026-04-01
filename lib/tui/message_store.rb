@@ -47,7 +47,8 @@ module TUI
         cache_read_input_tokens: 0,
         cache_creation_input_tokens: 0,
         call_count: 0,
-        rate_limits: nil # Most recent rate limit snapshot
+        rate_limits: nil, # Most recent rate limit snapshot
+        cache_history: [] # Per-call cache hit rates (0.0-1.0) for sparkline
       }
     end
 
@@ -147,7 +148,8 @@ module TUI
           cache_read_input_tokens: 0,
           cache_creation_input_tokens: 0,
           call_count: 0,
-          rate_limits: nil
+          rate_limits: nil,
+          cache_history: []
         }
         @version += 1
       end
@@ -407,11 +409,20 @@ module TUI
       @mutex.synchronize do
         usage = api_metrics["usage"]
         if usage.is_a?(Hash)
-          @token_economy[:input_tokens] += usage["input_tokens"].to_i
+          input = usage["input_tokens"].to_i
+          cache_read = usage["cache_read_input_tokens"].to_i
+          cache_create = usage["cache_creation_input_tokens"].to_i
+
+          @token_economy[:input_tokens] += input
           @token_economy[:output_tokens] += usage["output_tokens"].to_i
-          @token_economy[:cache_read_input_tokens] += usage["cache_read_input_tokens"].to_i
-          @token_economy[:cache_creation_input_tokens] += usage["cache_creation_input_tokens"].to_i
+          @token_economy[:cache_read_input_tokens] += cache_read
+          @token_economy[:cache_creation_input_tokens] += cache_create
           @token_economy[:call_count] += 1
+
+          # Per-call cache hit rate for sparkline graph
+          total = input + cache_read + cache_create
+          hit_rate = (total > 0) ? cache_read.to_f / total : 0.0
+          @token_economy[:cache_history] << hit_rate
         end
 
         rate_limits = api_metrics["rate_limits"]
