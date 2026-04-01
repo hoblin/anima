@@ -26,7 +26,7 @@ module TUI
 
         content_lines = data["content"].to_s.split("\n", -1)
         lines = [tui.line(spans: [tui.span(content: "#{header} #{content_lines.first}", style: style)])]
-        content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)]) }
+        content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: preserve_indentation("  #{line}"), style: style)]) }
         lines
       end
     end

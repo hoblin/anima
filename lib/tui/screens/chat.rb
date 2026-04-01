@@ -966,7 +966,7 @@ module TUI
         end
 
         lines = [tui.line(spans: first_spans)]
-        content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: line, style: style)]) }
+        content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: preserve_indentation(line), style: style)]) }
         lines
       end
 
@@ -981,7 +981,7 @@ module TUI
 
         content_lines = data["content"].to_s.split("\n", -1)
         lines = [tui.line(spans: [tui.span(content: "#{header} #{content_lines.first}", style: style)])]
-        content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)]) }
+        content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: preserve_indentation("  #{line}"), style: style)]) }
         lines
       end
 
@@ -1005,14 +1005,14 @@ module TUI
 
         lines = [tui.line(spans: header_spans)]
         data["content"].to_s.split("\n").each do |line|
-          lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)])
+          lines << tui.line(spans: [tui.span(content: preserve_indentation("  #{line}"), style: style)])
         end
 
         if data["tools"].is_a?(Array) && data["tools"].any?
           lines << tui.line(spans: [tui.span(content: "", style: style)])
-          lines << tui.line(spans: [tui.span(content: "\u00a0\u00a0## Tools (#{data["tools"].size})", style: bold_style)])
+          lines << tui.line(spans: [tui.span(content: preserve_indentation("  ## Tools (#{data["tools"].size})"), style: bold_style)])
           tools_toon(data).split("\n").each do |line|
-            lines << tui.line(spans: [tui.span(content: line, style: tool_style)])
+            lines << tui.line(spans: [tui.span(content: preserve_indentation(line), style: tool_style)])
           end
         end
 
@@ -1021,13 +1021,12 @@ module TUI
 
       # Converts tool schemas to TOON format for display. Caches the result
       # on the data hash so the conversion runs once per broadcast, not per
-      # frame. Uses non-breaking spaces for indentation because ratatui's
-      # Paragraph widget with wrap:true trims regular leading spaces.
+      # frame. NBSP substitution is applied at the span level via
+      # preserve_indentation, not here.
       # @param data [Hash] entry data containing "tools" array
       # @return [String] TOON-formatted tool schemas
       def tools_toon(data)
         data["tools_toon"] ||= Toon.encode(data["tools"])
-          .gsub(/^( +)/) { "\u00a0" * _1.length }
       end
 
       def build_chat_message_lines(tui, msg)
@@ -1040,9 +1039,9 @@ module TUI
 
         lines = [tui.line(spans: [
           tui.span(content: "#{label}: ", style: role_style),
-          tui.span(content: content_lines.first.to_s)
+          tui.span(content: preserve_indentation(content_lines.first.to_s))
         ])]
-        content_lines.drop(1).each { |text| lines << tui.line(spans: [tui.span(content: text)]) }
+        content_lines.drop(1).each { |text| lines << tui.line(spans: [tui.span(content: preserve_indentation(text))]) }
         lines << tui.line(spans: [tui.span(content: "")])
       end
 
