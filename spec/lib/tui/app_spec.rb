@@ -1598,5 +1598,177 @@ RSpec.describe TUI::App do
         expect(result[2][:spans][1][:content]).to eq("@sub-agent")
       end
     end
+
+    describe "#build_braille_sparkline" do
+      it "encodes two values per braille character" do
+        result = app.send(:build_braille_sparkline, [1.0, 1.0])
+        expect(result.length).to eq(1)
+      end
+
+      it "returns empty string for empty array" do
+        result = app.send(:build_braille_sparkline, [])
+        expect(result).to eq("")
+      end
+
+      it "handles a single value by repeating it for the right column" do
+        result = app.send(:build_braille_sparkline, [0.5])
+        expect(result.length).to eq(1)
+      end
+
+      it "handles odd-length arrays" do
+        result = app.send(:build_braille_sparkline, [1.0, 0.5, 0.75])
+        expect(result.length).to eq(2)
+      end
+
+      it "clamps values outside 0.0-1.0" do
+        result = app.send(:build_braille_sparkline, [-0.5, 1.5])
+        expect(result.length).to eq(1)
+        expect(result.bytes).to all(be >= 0)
+      end
+
+      it "produces all-empty braille for zero values" do
+        result = app.send(:build_braille_sparkline, [0.0, 0.0])
+        expect(result).to eq("\u2800")
+      end
+
+      it "produces fully-filled braille for 1.0 values" do
+        result = app.send(:build_braille_sparkline, [1.0, 1.0])
+        expect(result).to eq("\u28FF")
+      end
+    end
+
+    describe "#build_progress_bar" do
+      it "returns all filled at 100%" do
+        result = app.send(:build_progress_bar, 100, 8)
+        expect(result).to eq("\u2593" * 8)
+      end
+
+      it "returns all empty at 0%" do
+        result = app.send(:build_progress_bar, 0, 8)
+        expect(result).to eq("\u2591" * 8)
+      end
+
+      it "clamps above 100%" do
+        result = app.send(:build_progress_bar, 150, 8)
+        expect(result).to eq("\u2593" * 8)
+      end
+
+      it "clamps below 0%" do
+        result = app.send(:build_progress_bar, -10, 8)
+        expect(result).to eq("\u2591" * 8)
+      end
+
+      it "renders half-filled at 50%" do
+        result = app.send(:build_progress_bar, 50, 8)
+        expect(result).to eq(("\u2593" * 4) + ("\u2591" * 4))
+      end
+    end
+
+    describe "#rate_limit_color" do
+      it "returns green below warning threshold" do
+        expect(app.send(:rate_limit_color, 50)).to eq("green")
+      end
+
+      it "returns yellow at warning threshold" do
+        expect(app.send(:rate_limit_color, 70)).to eq("yellow")
+      end
+
+      it "returns yellow between warning and critical" do
+        expect(app.send(:rate_limit_color, 89)).to eq("yellow")
+      end
+
+      it "returns red at critical threshold" do
+        expect(app.send(:rate_limit_color, 90)).to eq("red")
+      end
+
+      it "returns red above critical threshold" do
+        expect(app.send(:rate_limit_color, 100)).to eq("red")
+      end
+    end
+
+    describe "#cache_hit_color" do
+      it "returns green at good threshold" do
+        expect(app.send(:cache_hit_color, 70)).to eq("green")
+      end
+
+      it "returns green above good threshold" do
+        expect(app.send(:cache_hit_color, 95)).to eq("green")
+      end
+
+      it "returns yellow between poor and good" do
+        expect(app.send(:cache_hit_color, 50)).to eq("yellow")
+      end
+
+      it "returns yellow at poor threshold" do
+        expect(app.send(:cache_hit_color, 30)).to eq("yellow")
+      end
+
+      it "returns red below poor threshold" do
+        expect(app.send(:cache_hit_color, 10)).to eq("red")
+      end
+    end
+
+    describe "#format_reset_time" do
+      it "returns 'soon' when reset is in the past" do
+        expect(app.send(:format_reset_time, Time.now.to_i - 10)).to eq("soon")
+      end
+
+      it "formats minutes-only when under an hour" do
+        result = app.send(:format_reset_time, Time.now.to_i + 1800)
+        expect(result).to match(/\A\u279E\d+m\z/)
+      end
+
+      it "formats hours and minutes when over an hour" do
+        result = app.send(:format_reset_time, Time.now.to_i + 7200)
+        expect(result).to match(/\A\u279E\d+h\d{2}m\z/)
+      end
+    end
+
+    describe "#format_token_count" do
+      it "returns '0' for zero" do
+        expect(app.send(:format_token_count, 0)).to eq("0")
+      end
+
+      it "returns raw count for small values" do
+        expect(app.send(:format_token_count, 500)).to eq("500")
+      end
+
+      it "returns count without suffix below 1000" do
+        expect(app.send(:format_token_count, 999)).to eq("999")
+      end
+
+      it "formats with K suffix at 1000" do
+        expect(app.send(:format_token_count, 1000)).to eq("1.0K tokens")
+      end
+
+      it "formats with K suffix and one decimal" do
+        expect(app.send(:format_token_count, 47200)).to eq("47.2K tokens")
+      end
+    end
+
+    describe "#token_economy_line_count" do
+      it "returns 0 when no data" do
+        stats = {rate_limits: nil, call_count: 0, cache_history: []}
+        expect(app.send(:token_economy_line_count, stats)).to eq(0)
+      end
+
+      it "counts rate limit lines" do
+        stats = {
+          rate_limits: {"5h_utilization" => 0.5, "7d_utilization" => 0.3},
+          call_count: 0, cache_history: []
+        }
+        expect(app.send(:token_economy_line_count, stats)).to eq(2)
+      end
+
+      it "counts cache metric lines (hit bar + saved)" do
+        stats = {rate_limits: nil, call_count: 1, cache_history: [0.5]}
+        expect(app.send(:token_economy_line_count, stats)).to eq(2)
+      end
+
+      it "adds sparkline line when cache_history has 2+ entries" do
+        stats = {rate_limits: nil, call_count: 2, cache_history: [0.5, 0.8]}
+        expect(app.send(:token_economy_line_count, stats)).to eq(3)
+      end
+    end
   end
 end

@@ -236,7 +236,7 @@ module Providers
     # Extracts rate limit headers and usage data from an HTTParty response.
     #
     # @param response [HTTParty::Response] raw API response
-    # @return [Hash] with :rate_limits and :usage keys
+    # @return [Hash] with "rate_limits" and "usage" string keys
     def extract_api_metrics(response)
       {
         "rate_limits" => extract_rate_limits(response.headers),

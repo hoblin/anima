@@ -33,6 +33,11 @@ module TUI
       "agent_message" => "assistant"
     }.freeze
 
+    # Maximum cache history entries kept for sparkline rendering.
+    # Each braille character encodes 2 data points, so 200 entries
+    # render as ~100 characters — plenty for a TUI panel width.
+    MAX_CACHE_HISTORY = 200
+
     def initialize
       @entries = []
       @entries_by_id = {}
@@ -40,16 +45,7 @@ module TUI
       @pending_by_id = {}
       @mutex = Mutex.new
       @version = 0
-      # Token economy tracking: running totals and most recent rate limits
-      @token_economy = {
-        input_tokens: 0,
-        output_tokens: 0,
-        cache_read_input_tokens: 0,
-        cache_creation_input_tokens: 0,
-        call_count: 0,
-        rate_limits: nil, # Most recent rate limit snapshot
-        cache_history: [] # Per-call cache hit rates (0.0-1.0) for sparkline
-      }
+      @token_economy = default_token_economy
     end
 
     # Monotonically increasing counter that bumps on every mutation.
@@ -142,15 +138,7 @@ module TUI
         @entries_by_id = {}
         @pending_entries = []
         @pending_by_id = {}
-        @token_economy = {
-          input_tokens: 0,
-          output_tokens: 0,
-          cache_read_input_tokens: 0,
-          cache_creation_input_tokens: 0,
-          call_count: 0,
-          rate_limits: nil,
-          cache_history: []
-        }
+        @token_economy = default_token_economy
         @version += 1
       end
     end
@@ -398,6 +386,20 @@ module TUI
       last if last&.dig(:type) == :tool_counter
     end
 
+    # Default token economy state for initialization and reset.
+    # @return [Hash]
+    def default_token_economy
+      {
+        input_tokens: 0,
+        output_tokens: 0,
+        cache_read_input_tokens: 0,
+        cache_creation_input_tokens: 0,
+        call_count: 0,
+        rate_limits: nil,
+        cache_history: []
+      }
+    end
+
     # Accumulates API metrics from a message into running totals.
     # Updates rate limits with the latest snapshot (most recent wins).
     #
@@ -422,7 +424,9 @@ module TUI
           # Per-call cache hit rate for sparkline graph
           total = input + cache_read + cache_create
           hit_rate = (total > 0) ? cache_read.to_f / total : 0.0
-          @token_economy[:cache_history] << hit_rate
+          history = @token_economy[:cache_history]
+          history.shift if history.size >= MAX_CACHE_HISTORY
+          history << hit_rate
         end
 
         rate_limits = api_metrics["rate_limits"]

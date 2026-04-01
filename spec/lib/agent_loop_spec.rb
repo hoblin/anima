@@ -187,6 +187,23 @@ RSpec.describe AgentLoop do
       agent_loop.run
     end
 
+    it "propagates api_metrics through the agent_message event" do
+      metrics = {"rate_limits" => {"5h_utilization" => 0.42}, "usage" => {"input_tokens" => 100}}
+      allow(client).to receive(:chat_with_tools).and_return({text: "response", api_metrics: metrics})
+
+      emitted_events = []
+      subscriber = spy("sub")
+      allow(subscriber).to receive(:emit) { |e| emitted_events << e }
+      Events::Bus.subscribe(subscriber)
+
+      agent_loop.run
+
+      agent_event = emitted_events.find { |e| e[:payload][:type] == "agent_message" }
+      expect(agent_event[:payload][:api_metrics]).to eq(metrics)
+    ensure
+      Events::Bus.unsubscribe(subscriber)
+    end
+
     it "passes a between_rounds callback that promotes pending messages" do
       captured_callback = nil
       allow(client).to receive(:chat_with_tools) do |_msgs, between_rounds:, **_|
