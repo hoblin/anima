@@ -165,7 +165,7 @@ RSpec.describe "Mneme terminal event trigger integration" do
       allow(Anima::Settings).to receive(:mneme_l2_budget_fraction).and_return(0.05)
     end
 
-    it "snapshot appears in messages_for_llm after source events evict" do
+    it "snapshot appears in system prompt after source events are below boundary" do
       # Create events and a snapshot covering them
       e1 = create_message(type: "user_message", content: "old conversation", token_count: 100)
       e2 = create_message(type: "agent_message", content: "old reply", token_count: 100)
@@ -174,19 +174,17 @@ RSpec.describe "Mneme terminal event trigger integration" do
         text: "Discussed old topic", from_message_id: e1.id, to_message_id: e2.id, level: 1, token_count: 50
       )
 
-      # While source events are in viewport — snapshot should NOT appear
-      messages_with_source = session.messages_for_llm(token_budget: 10_000)
-      snapshot_messages = messages_with_source.select { |m| m[:content].to_s.include?("[recent memory]") }
-      expect(snapshot_messages).to be_empty
+      # While boundary is not set — snapshot not visible (source events still accessible)
+      section = session.send(:assemble_snapshots_section)
+      expect(section).to be_nil
 
-      # Add events that push old ones out (reduce budget so old events evict)
-      3.times { |i| create_message(type: "user_message", content: "new #{i}", token_count: 3000) }
+      # Boundary advances past the snapshot's source events
+      recent = create_message(type: "user_message", content: "recent", token_count: 100)
+      session.update_column(:mneme_boundary_message_id, recent.id)
 
-      # Now snapshot should appear (source events evicted)
-      messages_after_eviction = session.messages_for_llm(token_budget: 10_000)
-      snapshot_messages = messages_after_eviction.select { |m| m[:content].to_s.include?("[recent memory]") }
-      expect(snapshot_messages.size).to eq(1)
-      expect(snapshot_messages.first[:content]).to include("Discussed old topic")
+      # Now snapshot should appear in system prompt
+      section = session.send(:assemble_snapshots_section)
+      expect(section).to include("Discussed old topic")
     end
   end
 
@@ -200,26 +198,27 @@ RSpec.describe "Mneme terminal event trigger integration" do
       allow(Anima::Settings).to receive(:mneme_l2_snapshot_threshold).and_return(3)
     end
 
-    it "L2 compression replaces L1 snapshots in viewport" do
-      # Create old events (will evict) then a recent one that fills the sliding window
+    it "L2 compression replaces L1 snapshots in system prompt" do
       e1 = create_message(type: "user_message", content: "old 1", token_count: 500)
       e2 = create_message(type: "agent_message", content: "old 2", token_count: 500)
       e3 = create_message(type: "user_message", content: "old 3", token_count: 500)
       e4 = create_message(type: "agent_message", content: "old 4", token_count: 500)
       e5 = create_message(type: "user_message", content: "old 5", token_count: 500)
       e6 = create_message(type: "agent_message", content: "old 6", token_count: 500)
-      # Recent event large enough to fill the entire sliding window (800 tokens after fractions)
-      create_message(type: "user_message", content: "recent", token_count: 750)
+      recent = create_message(type: "user_message", content: "recent", token_count: 750)
+
+      # Boundary past all old events
+      session.update_column(:mneme_boundary_message_id, recent.id)
 
       # L1 snapshots with contiguous ranges covering old events
       session.snapshots.create!(text: "L1 first", from_message_id: e1.id, to_message_id: e2.id, level: 1, token_count: 50)
       session.snapshots.create!(text: "L1 second", from_message_id: e3.id, to_message_id: e4.id, level: 1, token_count: 50)
       session.snapshots.create!(text: "L1 third", from_message_id: e5.id, to_message_id: e6.id, level: 1, token_count: 50)
 
-      # Budget tight so old events evict, making snapshots visible
-      messages_before = session.messages_for_llm(token_budget: 1000)
-      l1_messages = messages_before.select { |m| m[:content].to_s.include?("[recent memory]") }
-      expect(l1_messages.size).to eq(3)
+      section_before = session.send(:assemble_snapshots_section)
+      expect(section_before).to include("L1 first")
+      expect(section_before).to include("L1 second")
+      expect(section_before).to include("L1 third")
 
       # Run L2 compression
       allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
@@ -228,14 +227,10 @@ RSpec.describe "Mneme terminal event trigger integration" do
       }
       Mneme::L2Runner.new(session, client: client).call
 
-      # After L2: L1s replaced by one L2
-      messages_after = session.messages_for_llm(token_budget: 1000)
-      l1_messages = messages_after.select { |m| m[:content].to_s.include?("[recent memory]") }
-      l2_messages = messages_after.select { |m| m[:content].to_s.include?("[long-term memory]") }
-
-      expect(l1_messages).to be_empty
-      expect(l2_messages.size).to eq(1)
-      expect(l2_messages.first[:content]).to include("L2 meta-summary of all three")
+      # After L2: L1s replaced by one L2 in system prompt
+      section_after = session.send(:assemble_snapshots_section)
+      expect(section_after).not_to include("L1 first")
+      expect(section_after).to include("L2 meta-summary of all three")
     end
   end
 end

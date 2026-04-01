@@ -220,7 +220,8 @@ class Session < ApplicationRecord
   # @param environment_context [String, nil] pre-assembled environment block
   # @return [String] composed system prompt
   def assemble_system_prompt(environment_context: nil)
-    [assemble_version_preamble, assemble_soul_section, environment_context, assemble_expertise_section, assemble_goals_section].compact.join("\n\n")
+    [assemble_version_preamble, assemble_soul_section, assemble_snapshots_section,
+      environment_context, assemble_expertise_section, assemble_goals_section].compact.join("\n\n")
   end
 
   # Serializes non-evicted goals as a lightweight summary for ActionCable
@@ -235,23 +236,18 @@ class Session < ApplicationRecord
 
   # Builds the message array expected by the Anthropic Messages API.
   # Viewport layout (top to bottom):
-  #   [L2 snapshots] [L1 snapshots] [pinned messages] [recalled memories] [sliding window messages]
+  #   [pinned messages] [sliding window messages]
   #
-  # Snapshots appear ONLY after their source messages have evicted from
-  # the sliding window. L1 snapshots drop once covered by an L2 snapshot.
+  # Snapshots live in the system prompt (stable between Mneme runs).
+  # Recalled memories are phantom tool_call/tool_response pairs injected
+  # by {Mneme::PassiveRecall} — they ride the conveyor belt as regular
+  # messages and are included in the sliding window automatically.
   # Pinned messages are critical context attached to active Goals — they
   # survive eviction intact until their Goals complete.
-  # Recalled memories surface relevant older messages (passive recall via goals).
-  # Each layer has a fixed token budget fraction — snapshots, pins, and recall
-  # consume viewport space, reducing the sliding window size.
   #
   # The sliding window is post-processed by {#ensure_atomic_tool_pairs}
   # which removes orphaned tool messages whose partner was cut off by the
   # token budget.
-  #
-  # Sub-agent sessions skip snapshot and recall layers (they start clean with
-  # no prior context to compress) but use pinned messages to keep the
-  # auto-pinned task message visible as the conveyor advances.
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @return [Array<Hash>] Anthropic Messages API format
@@ -259,30 +255,16 @@ class Session < ApplicationRecord
     heal_orphaned_tool_calls!
 
     sliding_budget = token_budget
-    snapshot_messages = []
-    recall_messages = []
 
     pinned_budget = (token_budget * Anima::Settings.mneme_pinned_budget_fraction).to_i
     sliding_budget -= pinned_budget
-
-    unless sub_agent?
-      l2_budget = (token_budget * Anima::Settings.mneme_l2_budget_fraction).to_i
-      l1_budget = (token_budget * Anima::Settings.mneme_l1_budget_fraction).to_i
-      recall_budget = (token_budget * Anima::Settings.recall_budget_fraction).to_i
-      sliding_budget -= l2_budget + l1_budget + recall_budget
-    end
 
     window = viewport_messages(token_budget: sliding_budget)
     first_message_id = window.first&.id
 
     pinned_messages = assemble_pinned_section_messages(first_message_id, budget: pinned_budget)
 
-    unless sub_agent?
-      snapshot_messages = assemble_snapshot_messages(first_message_id, l2_budget: l2_budget, l1_budget: l1_budget)
-      recall_messages = assemble_recall_messages(budget: recall_budget)
-    end
-
-    snapshot_messages + pinned_messages + recall_messages + assemble_messages(ensure_atomic_tool_pairs(window))
+    pinned_messages + assemble_messages(ensure_atomic_tool_pairs(window))
   end
 
   # Detects orphaned tool_call messages (those without a matching tool_response
@@ -355,6 +337,35 @@ class Session < ApplicationRecord
     end
   end
 
+  # Promotes a recall pending message into a phantom tool_call/tool_response pair.
+  # These persist as real Message records and ride the conveyor belt.
+  #
+  # @param pm [PendingMessage] recall pending message (source_name = recalled message ID)
+  # @return [void]
+  def promote_recall_message!(pm)
+    uid = "recall_#{pm.source_name}"
+    now = now_ns
+
+    messages.create!(
+      message_type: "tool_call",
+      tool_use_id: uid,
+      payload: {"tool_name" => PendingMessage::RECALL_TOOL_NAME, "tool_use_id" => uid,
+                "tool_input" => {"message_id" => pm.source_name.to_i},
+                "content" => "Recalling message #{pm.source_name}"},
+      timestamp: now,
+      token_count: 50
+    )
+
+    messages.create!(
+      message_type: "tool_response",
+      tool_use_id: uid,
+      payload: {"tool_name" => PendingMessage::RECALL_TOOL_NAME, "tool_use_id" => uid,
+                "content" => pm.content, "success" => true},
+      timestamp: now,
+      token_count: Message.estimate_token_count(pm.content.bytesize)
+    )
+  end
+
   # Persists a user message directly, bypassing the pending queue.
   #
   # Used by {#enqueue_user_message} (idle path), {AgentLoop#run},
@@ -391,10 +402,14 @@ class Session < ApplicationRecord
     pairs = []
     pending_messages.find_each do |pm|
       transaction do
-        create_user_message(pm.display_content)
+        if pm.recall?
+          promote_recall_message!(pm)
+        else
+          create_user_message(pm.display_content)
+        end
         pm.destroy!
       end
-      if pm.subagent?
+      if pm.subagent? || pm.recall?
         pairs.concat(pm.to_llm_messages)
       else
         texts << pm.content
@@ -683,9 +698,13 @@ class Session < ApplicationRecord
   end
 
   # Scopes own messages for viewport assembly.
+  # Excludes messages below the Mneme boundary — once Mneme compresses a zone,
+  # those messages leave the viewport and their context lives on as snapshots.
   # @return [ActiveRecord::Relation]
   def own_message_scope
-    messages.context_messages
+    scope = messages.context_messages
+    scope = scope.where("messages.id >= ?", mneme_boundary_message_id) if mneme_boundary_message_id
+    scope
   end
 
   # Walks messages newest-first, selecting until the token budget is exhausted.
@@ -736,28 +755,32 @@ class Session < ApplicationRecord
     message_list.reject { |m| m.tool_use_id.present? && !complete_ids.include?(m.tool_use_id) }
   end
 
-  # Selects visible snapshots and formats them as Anthropic messages.
-  # Snapshots are visible when their source messages have fully evicted.
-  # L1 snapshots are excluded when covered by an L2 snapshot.
+  # Assembles L1/L2 snapshots as a system prompt section.
+  # Snapshots are visible when their source messages precede the Mneme boundary
+  # (compressed in a previous run). Between Mneme runs this section is frozen,
+  # making it cache-friendly.
   #
-  # @param first_message_id [Integer, nil] first message ID in the sliding window
-  # @param l2_budget [Integer] token budget for L2 snapshots
-  # @param l1_budget [Integer] token budget for L1 snapshots
-  # @return [Array<Hash>] Anthropic Messages API format
-  def assemble_snapshot_messages(first_message_id, l2_budget:, l1_budget:)
-    return [] unless first_message_id
+  # @return [String, nil] formatted snapshot text for the system prompt, or nil
+  def assemble_snapshots_section
+    reference_id = mneme_boundary_message_id || viewport_message_ids.first
+    return unless reference_id
 
-    l2_messages = select_snapshots_within_budget(
-      snapshots.for_level(2).source_messages_evicted(first_message_id).chronological,
+    l2_budget = (Anima::Settings.token_budget * Anima::Settings.mneme_l2_budget_fraction).to_i
+    l1_budget = (Anima::Settings.token_budget * Anima::Settings.mneme_l1_budget_fraction).to_i
+
+    l2 = select_snapshots_within_budget(
+      snapshots.for_level(2).source_messages_evicted(reference_id).chronological,
       budget: l2_budget
-    ).map { |snapshot| format_snapshot_message(snapshot, label: "long-term memory") }
-
-    l1_messages = select_snapshots_within_budget(
-      snapshots.for_level(1).not_covered_by_l2.source_messages_evicted(first_message_id).chronological,
+    )
+    l1 = select_snapshots_within_budget(
+      snapshots.for_level(1).not_covered_by_l2.source_messages_evicted(reference_id).chronological,
       budget: l1_budget
-    ).map { |snapshot| format_snapshot_message(snapshot, label: "recent memory") }
+    )
 
-    l2_messages + l1_messages
+    sections = []
+    sections << format_snapshots_text(l2, label: "Long-term Memory") if l2.any?
+    sections << format_snapshots_text(l1, label: "Recent Memory") if l1.any?
+    sections.join("\n\n").presence
   end
 
   # Walks snapshots chronologically, selecting until the token budget is exhausted.
@@ -782,13 +805,14 @@ class Session < ApplicationRecord
     selected
   end
 
-  # Formats a snapshot as an Anthropic user message with a memory label prefix.
+  # Formats a list of snapshots as a labeled section for the system prompt.
   #
-  # @param snapshot [Snapshot]
-  # @param label [String] human-readable label (e.g. "recent memory", "long-term memory")
-  # @return [Hash] Anthropic message format
-  def format_snapshot_message(snapshot, label:)
-    {role: "user", content: "[#{label}]\n#{snapshot.text}"}
+  # @param snapshots_list [Array<Snapshot>]
+  # @param label [String] section heading
+  # @return [String]
+  def format_snapshots_text(snapshots_list, label:)
+    texts = snapshots_list.map(&:text)
+    "## #{label}\n\n#{texts.join("\n\n")}"
   end
 
   # Assembles pinned messages as a Goals section message for the viewport.
@@ -897,70 +921,6 @@ class Session < ApplicationRecord
       "  message #{mid}: #{pin.display_text}"
     else
       "  message #{mid}"
-    end
-  end
-
-  # Assembles recalled memory messages from passive recall results.
-  # Recalled messages are fetched by ID and formatted as compact snippets
-  # with session and message context for drill-down via the remember tool.
-  #
-  # @param budget [Integer] token budget for recall messages
-  # @return [Array<Hash>] Anthropic Messages API format
-  def assemble_recall_messages(budget:)
-    return [] if recalled_message_ids.blank?
-
-    recalled = Message.where(id: recalled_message_ids)
-      .includes(:session)
-      .index_by(&:id)
-
-    snippets = []
-    remaining = budget
-
-    recalled_message_ids.each do |mid|
-      msg = recalled[mid]
-      next unless msg
-
-      text = format_recall_snippet(msg)
-      cost = Message.estimate_token_count(text.bytesize)
-      break if cost > remaining && snippets.any?
-
-      snippets << text
-      remaining -= cost
-    end
-
-    return [] if snippets.empty?
-
-    [{role: "user", content: "[associative recall]\n#{snippets.join("\n\n")}"}]
-  end
-
-  # Formats a recalled message as a compact snippet with enough context
-  # for the agent to decide whether to drill down with the remember tool.
-  #
-  # @param msg [Message] the recalled message
-  # @return [String] formatted snippet
-  def format_recall_snippet(msg)
-    session_label = msg.session.name || "session ##{msg.session_id}"
-    content = extract_message_content(msg).to_s.truncate(Anima::Settings.recall_max_snippet_tokens * Message::BYTES_PER_TOKEN)
-    "message #{msg.id} (#{session_label}): #{content}"
-  end
-
-  # Extracts readable content from a message's payload.
-  #
-  # @param msg [Message]
-  # @return [String]
-  def extract_message_content(msg)
-    data = msg.payload
-    case msg.message_type
-    when "user_message", "agent_message", "system_message"
-      data["content"]
-    when "tool_call"
-      if data["tool_name"] == Message::THINK_TOOL
-        data.dig("tool_input", "thoughts")
-      else
-        "#{data["tool_name"]}(…)"
-      end
-    else
-      data["content"]
     end
   end
 
