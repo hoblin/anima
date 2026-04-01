@@ -297,4 +297,88 @@ RSpec.describe Providers::Anthropic do
       expect(Providers::Anthropic::ServerError).to be < Providers::Anthropic::TransientError
     end
   end
+
+  describe "ApiResponse" do
+    let(:body) { {"content" => [{"type" => "text", "text" => "Hello"}], "usage" => {"input_tokens" => 10}} }
+    let(:api_metrics) { {"rate_limits" => {"5h_utilization" => 0.25}, "usage" => body["usage"]} }
+    let(:response) { Providers::Anthropic::ApiResponse.new(body: body, api_metrics: api_metrics) }
+
+    it "delegates [] to body" do
+      expect(response["content"]).to eq(body["content"])
+    end
+
+    it "delegates dig to body" do
+      expect(response.dig("content", 0, "text")).to eq("Hello")
+    end
+
+    it "delegates fetch to body" do
+      expect(response.fetch("usage")).to eq(body["usage"])
+    end
+
+    it "delegates key? to body" do
+      expect(response.key?("content")).to be true
+      expect(response.key?("missing")).to be false
+    end
+
+    it "provides api_metrics accessor" do
+      expect(response.api_metrics).to eq(api_metrics)
+    end
+
+    it "returns body from to_h" do
+      expect(response.to_h).to eq(body)
+    end
+  end
+
+  describe "#extract_rate_limits" do
+    let(:headers) do
+      {
+        "Anthropic-Ratelimit-Unified-5h-Status" => ["allowed"],
+        "Anthropic-Ratelimit-Unified-5h-Reset" => ["1773954000"],
+        "Anthropic-Ratelimit-Unified-5h-Utilization" => ["0.19"],
+        "Anthropic-Ratelimit-Unified-7d-Status" => ["allowed_warning"],
+        "Anthropic-Ratelimit-Unified-7d-Reset" => ["1773986400"],
+        "Anthropic-Ratelimit-Unified-7d-Utilization" => ["0.92"]
+      }
+    end
+
+    it "extracts and normalizes rate limit headers" do
+      result = provider.send(:extract_rate_limits, headers)
+
+      expect(result["5h_status"]).to eq("allowed")
+      expect(result["5h_reset"]).to eq(1773954000)
+      expect(result["5h_utilization"]).to eq(0.19)
+      expect(result["7d_status"]).to eq("allowed_warning")
+      expect(result["7d_reset"]).to eq(1773986400)
+      expect(result["7d_utilization"]).to eq(0.92)
+    end
+
+    it "returns empty hash when headers are nil" do
+      expect(provider.send(:extract_rate_limits, nil)).to eq({})
+    end
+
+    it "handles missing headers gracefully" do
+      partial_headers = {"Anthropic-Ratelimit-Unified-5h-Status" => ["allowed"]}
+      result = provider.send(:extract_rate_limits, partial_headers)
+
+      expect(result["5h_status"]).to eq("allowed")
+      expect(result["5h_utilization"]).to be_nil
+    end
+  end
+
+  describe "#create_message with include_metrics: true", :vcr do
+    it "returns ApiResponse wrapper with metrics" do
+      response = real_provider.create_message(
+        model: "claude-sonnet-4-20250514",
+        messages: [{role: "user", content: "Say OK"}],
+        max_tokens: 10,
+        include_metrics: true
+      )
+
+      expect(response).to be_a(Providers::Anthropic::ApiResponse)
+      expect(response["content"]).to be_an(Array)
+      expect(response.api_metrics).to be_a(Hash)
+      expect(response.api_metrics["usage"]).to include("input_tokens", "output_tokens")
+      expect(response.api_metrics["rate_limits"]).to be_a(Hash)
+    end
+  end
 end

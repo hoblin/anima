@@ -40,6 +40,15 @@ module TUI
       @pending_by_id = {}
       @mutex = Mutex.new
       @version = 0
+      # Token economy tracking: running totals and most recent rate limits
+      @token_economy = {
+        input_tokens: 0,
+        output_tokens: 0,
+        cache_read_input_tokens: 0,
+        cache_creation_input_tokens: 0,
+        call_count: 0,
+        rate_limits: nil # Most recent rate limit snapshot
+      }
     end
 
     # Monotonically increasing counter that bumps on every mutation.
@@ -60,6 +69,30 @@ module TUI
       @mutex.synchronize { @entries.size + @pending_entries.size }
     end
 
+    # Returns aggregated token economy data for HUD display.
+    # Includes running totals, cache hit rate, and latest rate limit snapshot.
+    #
+    # @return [Hash] token economy stats:
+    #   - :input_tokens [Integer] total input tokens across all calls
+    #   - :output_tokens [Integer] total output tokens
+    #   - :cache_read_input_tokens [Integer] total cached token reads
+    #   - :cache_creation_input_tokens [Integer] total cache writes
+    #   - :call_count [Integer] number of API calls tracked
+    #   - :cache_hit_rate [Float] percentage of input served from cache (0.0-1.0)
+    #   - :rate_limits [Hash, nil] latest rate limit values from API
+    def token_economy
+      @mutex.synchronize do
+        stats = @token_economy.dup
+        total_input = stats[:input_tokens] + stats[:cache_read_input_tokens] + stats[:cache_creation_input_tokens]
+        stats[:cache_hit_rate] = if total_input > 0
+          stats[:cache_read_input_tokens].to_f / total_input
+        else
+          0.0
+        end
+        stats
+      end
+    end
+
     # Processes a raw event payload from the WebSocket channel.
     # Uses structured decorator data when available; falls back to
     # role/content extraction for messages and tool counter aggregation.
@@ -67,11 +100,18 @@ module TUI
     # Events with `"action" => "update"` and a matching `"id"` replace
     # the existing entry's data in-place rather than appending.
     #
+    # Extracts api_metrics when present and accumulates token economy data.
+    #
     # @param event_data [Hash] Action Cable event payload with "type", "content",
-    #   and optionally "rendered" (hash of mode => lines), "id", "action"
+    #   and optionally "rendered" (hash of mode => lines), "id", "action", "api_metrics"
     # @return [Boolean] true if the event type was recognized and handled
     def process_event(event_data)
       message_id = event_data["id"]
+
+      # Track API metrics for token economy HUD (only on create, not update)
+      if event_data["action"] != "update"
+        accumulate_api_metrics(event_data["api_metrics"])
+      end
 
       if event_data["action"] == "update" && message_id
         return update_existing(event_data, message_id)
@@ -93,6 +133,7 @@ module TUI
 
     # Removes all entries. Called on view mode change and session switch
     # to prepare for re-decorated viewport messages from the server.
+    # Resets token economy totals since we're starting fresh.
     # @return [void]
     def clear
       @mutex.synchronize do
@@ -100,6 +141,14 @@ module TUI
         @entries_by_id = {}
         @pending_entries = []
         @pending_by_id = {}
+        @token_economy = {
+          input_tokens: 0,
+          output_tokens: 0,
+          cache_read_input_tokens: 0,
+          cache_creation_input_tokens: 0,
+          call_count: 0,
+          rate_limits: nil
+        }
         @version += 1
       end
     end
@@ -345,6 +394,33 @@ module TUI
     def current_tool_counter
       last = @entries.last
       last if last&.dig(:type) == :tool_counter
+    end
+
+    # Accumulates API metrics from a message into running totals.
+    # Updates rate limits with the latest snapshot (most recent wins).
+    #
+    # @param api_metrics [Hash, nil] metrics from API response with "usage" and "rate_limits"
+    # @return [void]
+    def accumulate_api_metrics(api_metrics)
+      return unless api_metrics.is_a?(Hash)
+
+      @mutex.synchronize do
+        usage = api_metrics["usage"]
+        if usage.is_a?(Hash)
+          @token_economy[:input_tokens] += usage["input_tokens"].to_i
+          @token_economy[:output_tokens] += usage["output_tokens"].to_i
+          @token_economy[:cache_read_input_tokens] += usage["cache_read_input_tokens"].to_i
+          @token_economy[:cache_creation_input_tokens] += usage["cache_creation_input_tokens"].to_i
+          @token_economy[:call_count] += 1
+        end
+
+        rate_limits = api_metrics["rate_limits"]
+        if rate_limits.is_a?(Hash)
+          @token_economy[:rate_limits] = rate_limits
+        end
+
+        @version += 1
+      end
     end
   end
 end

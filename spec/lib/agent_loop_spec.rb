@@ -28,7 +28,7 @@ RSpec.describe AgentLoop do
 
   describe "#run" do
     before do
-      allow(client).to receive(:chat_with_tools).and_return("Hello back!")
+      allow(client).to receive(:chat_with_tools).and_return({text: "Hello back!", api_metrics: nil})
     end
 
     it "returns the response text" do
@@ -50,14 +50,14 @@ RSpec.describe AgentLoop do
       after { Events::Bus.unsubscribe(persister) }
 
       it "includes full conversation history in subsequent LLM calls" do
-        allow(client).to receive(:chat_with_tools).and_return("First response")
+        allow(client).to receive(:chat_with_tools).and_return({text: "First response", api_metrics: nil})
         session.create_user_message("first message")
         agent_loop.run
 
         received_messages = nil
         allow(client).to receive(:chat_with_tools) { |msgs, **_|
           received_messages = msgs.dup
-          "Second response"
+          {text: "Second response", api_metrics: nil}
         }
         session.create_user_message("second message")
         agent_loop.run
@@ -75,14 +75,14 @@ RSpec.describe AgentLoop do
   describe "#run" do
     before do
       session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      allow(client).to receive(:chat_with_tools).and_return("Hello back!")
+      allow(client).to receive(:chat_with_tools).and_return({text: "Hello back!", api_metrics: nil})
     end
 
     it "runs the LLM tool-use loop on persisted session messages" do
       received_messages = nil
       allow(client).to receive(:chat_with_tools) { |msgs, **_|
         received_messages = msgs.dup
-        "response"
+        {text: "response", api_metrics: nil}
       }
 
       agent_loop.run
@@ -172,7 +172,7 @@ RSpec.describe AgentLoop do
         expect(registry).to be_a(Tools::Registry)
         expect(registry.registered?("bash")).to be true
         expect(registry.registered?("web_get")).to be true
-        "ok"
+        {text: "ok", api_metrics: nil}
       end
 
       agent_loop.run
@@ -181,7 +181,7 @@ RSpec.describe AgentLoop do
     it "passes the session_id to the LLM client" do
       allow(client).to receive(:chat_with_tools) do |_msgs, session_id:, **_|
         expect(session_id).to eq(session.id)
-        "ok"
+        {text: "ok", api_metrics: nil}
       end
 
       agent_loop.run
@@ -191,7 +191,7 @@ RSpec.describe AgentLoop do
       captured_callback = nil
       allow(client).to receive(:chat_with_tools) do |_msgs, between_rounds:, **_|
         captured_callback = between_rounds
-        "ok"
+        {text: "ok", api_metrics: nil}
       end
 
       agent_loop.run
@@ -234,7 +234,7 @@ RSpec.describe AgentLoop do
         expect(registry.registered?("spawn_subagent")).to be true
         expect(registry.registered?("spawn_specialist")).to be true
         expect(registry.registered?("open_issue")).to be true
-        "ok"
+        {text: "ok", api_metrics: nil}
       end
 
       agent_loop.run
@@ -251,7 +251,7 @@ RSpec.describe AgentLoop do
         expect(registry.registered?("spawn_subagent")).to be false
         expect(registry.registered?("spawn_specialist")).to be false
         expect(registry.registered?("open_issue")).to be false
-        "done"
+        {text: "done", api_metrics: nil}
       end
 
       sub_loop.run
@@ -272,7 +272,7 @@ RSpec.describe AgentLoop do
           expect(registry.registered?("bash")).to be false
           expect(registry.registered?("write_file")).to be false
           expect(registry.registered?("edit_file")).to be false
-          "done"
+          {text: "done", api_metrics: nil}
         end
 
         sub_loop.run
@@ -294,7 +294,7 @@ RSpec.describe AgentLoop do
               expect(registry.registered?(name)).to be(false), "expected #{name} not to be registered"
             end
           end
-          "done"
+          {text: "done", api_metrics: nil}
         end
 
         sub_loop.run
@@ -311,7 +311,7 @@ RSpec.describe AgentLoop do
           AgentLoop::STANDARD_TOOLS_BY_NAME.each_key do |name|
             expect(registry.registered?(name)).to be true
           end
-          "done"
+          {text: "done", api_metrics: nil}
         end
 
         sub_loop.run
@@ -329,7 +329,7 @@ RSpec.describe AgentLoop do
       sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
       allow(client).to receive(:chat_with_tools) do |_msgs, system:, **_|
         expect(system).to eq("You are a research agent.")
-        "done"
+        {text: "done", api_metrics: nil}
       end
 
       sub_loop.run
@@ -340,7 +340,7 @@ RSpec.describe AgentLoop do
       session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       allow(client).to receive(:chat_with_tools) do |_msgs, system:, **_|
         expect(system).to include("# Soul")
-        "ok"
+        {text: "ok", api_metrics: nil}
       end
 
       agent_loop.run
@@ -349,7 +349,7 @@ RSpec.describe AgentLoop do
     it "broadcasts debug context with system prompt and tools in debug mode" do
       session.update!(view_mode: "debug")
       session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      allow(client).to receive(:chat_with_tools).and_return("ok")
+      allow(client).to receive(:chat_with_tools).and_return({text: "ok", api_metrics: nil})
 
       expect {
         agent_loop.run
@@ -370,7 +370,7 @@ RSpec.describe AgentLoop do
     it "does not broadcast debug context in basic mode" do
       session.update!(view_mode: "basic")
       session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      allow(client).to receive(:chat_with_tools).and_return("ok")
+      allow(client).to receive(:chat_with_tools).and_return({text: "ok", api_metrics: nil})
 
       expect {
         agent_loop.run
@@ -389,7 +389,7 @@ RSpec.describe AgentLoop do
       allow(client).to receive(:chat_with_tools) do |_msgs, registry:, **_|
         expect(registry.registered?("web_get")).to be true
         expect(registry.registered?("bash")).to be false
-        "ok"
+        {text: "ok", api_metrics: nil}
       end
 
       loop.run
@@ -400,7 +400,7 @@ RSpec.describe AgentLoop do
   describe "MCP tool registration" do
     it "calls Mcp::ClientManager to register MCP tools" do
       session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      allow(client).to receive(:chat_with_tools).and_return("ok")
+      allow(client).to receive(:chat_with_tools).and_return({text: "ok", api_metrics: nil})
 
       agent_loop.run
 
@@ -409,7 +409,7 @@ RSpec.describe AgentLoop do
 
     it "emits system messages for MCP servers that failed to load" do
       session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      allow(client).to receive(:chat_with_tools).and_return("ok")
+      allow(client).to receive(:chat_with_tools).and_return({text: "ok", api_metrics: nil})
       allow(mcp_manager).to receive(:register_tools)
         .and_return(["MCP: failed to load tools from broken: Connection refused"])
 
@@ -433,7 +433,7 @@ RSpec.describe AgentLoop do
       child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
 
       sub_loop = described_class.new(session: child, shell_session: shell_session, client: client)
-      allow(client).to receive(:chat_with_tools).and_return("done")
+      allow(client).to receive(:chat_with_tools).and_return({text: "done", api_metrics: nil})
 
       sub_loop.run
 

@@ -79,17 +79,18 @@ module LLM
     #   pending messages). Injected as +text+ blocks alongside
     #   +tool_result+ blocks so the LLM sees them in the next round.
     # @param options [Hash] additional API parameters (e.g. +system:+)
-    # @return [String, nil] the assistant's final text response, or nil when interrupted
+    # @return [Hash, nil] +:text+ (String) and +:api_metrics+ (Hash), or nil when interrupted
     # @raise [Providers::Anthropic::Error] on API errors
     def chat_with_tools(messages, registry:, session_id:, first_response: nil, between_rounds: nil, **options)
       messages = messages.dup
       rounds = 0
+      last_api_metrics = nil
 
       loop do
         rounds += 1
         max_rounds = Anima::Settings.max_tool_rounds
         if rounds > max_rounds
-          return "[Tool loop exceeded #{max_rounds} rounds — halting]"
+          return {text: "[Tool loop exceeded #{max_rounds} rounds — halting]", api_metrics: last_api_metrics}
         end
 
         response = if first_response && rounds == 1
@@ -101,9 +102,13 @@ module LLM
             messages: messages,
             max_tokens: max_tokens,
             tools: registry.schemas,
+            include_metrics: true,
             **options
           )
         end
+
+        # Capture api_metrics from ApiResponse wrapper (nil for pre-fetched first_response)
+        last_api_metrics = response.api_metrics if response.respond_to?(:api_metrics)
 
         log(:debug, "stop_reason=#{response["stop_reason"]} content_types=#{(response["content"] || []).map { |b| b["type"] }.join(",")}")
 
@@ -131,7 +136,7 @@ module LLM
           # cleared by the ensure block in AgentRequestJob.
           return nil if handle_interrupt!(session_id)
 
-          return extract_text(response)
+          return {text: extract_text(response), api_metrics: last_api_metrics}
         end
       end
     end

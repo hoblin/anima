@@ -56,7 +56,8 @@ module Events
             message_type: event_type,
             payload: payload,
             tool_use_id: payload[:tool_use_id],
-            timestamp: payload[:timestamp] || Time.current.to_ns
+            timestamp: payload[:timestamp] || Time.current.to_ns,
+            api_metrics: payload[:api_metrics]
           )
         end
       end

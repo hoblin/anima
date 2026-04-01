@@ -633,4 +633,141 @@ RSpec.describe TUI::MessageStore do
       expect(versions.uniq.size).to eq(versions.size)
     end
   end
+
+  describe "#token_economy" do
+    it "returns empty stats when no messages have api_metrics" do
+      stats = store.token_economy
+
+      expect(stats[:input_tokens]).to eq(0)
+      expect(stats[:output_tokens]).to eq(0)
+      expect(stats[:cache_read_input_tokens]).to eq(0)
+      expect(stats[:cache_creation_input_tokens]).to eq(0)
+      expect(stats[:call_count]).to eq(0)
+      expect(stats[:cache_hit_rate]).to eq(0.0)
+      expect(stats[:rate_limits]).to be_nil
+    end
+
+    it "accumulates token counts from api_metrics" do
+      store.process_event({
+        "type" => "agent_message",
+        "content" => "Hello",
+        "api_metrics" => {
+          "usage" => {
+            "input_tokens" => 100,
+            "output_tokens" => 50,
+            "cache_read_input_tokens" => 80,
+            "cache_creation_input_tokens" => 20
+          }
+        }
+      })
+
+      stats = store.token_economy
+      expect(stats[:input_tokens]).to eq(100)
+      expect(stats[:output_tokens]).to eq(50)
+      expect(stats[:cache_read_input_tokens]).to eq(80)
+      expect(stats[:cache_creation_input_tokens]).to eq(20)
+      expect(stats[:call_count]).to eq(1)
+    end
+
+    it "accumulates across multiple messages" do
+      2.times do
+        store.process_event({
+          "type" => "agent_message",
+          "content" => "msg",
+          "api_metrics" => {
+            "usage" => {"input_tokens" => 50, "output_tokens" => 25}
+          }
+        })
+      end
+
+      stats = store.token_economy
+      expect(stats[:input_tokens]).to eq(100)
+      expect(stats[:output_tokens]).to eq(50)
+      expect(stats[:call_count]).to eq(2)
+    end
+
+    it "calculates cache hit rate correctly" do
+      store.process_event({
+        "type" => "agent_message",
+        "content" => "msg",
+        "api_metrics" => {
+          "usage" => {
+            "input_tokens" => 20,
+            "cache_read_input_tokens" => 80,
+            "cache_creation_input_tokens" => 0
+          }
+        }
+      })
+
+      stats = store.token_economy
+      expect(stats[:cache_hit_rate]).to eq(0.8)
+    end
+
+    it "stores the most recent rate_limits" do
+      store.process_event({
+        "type" => "agent_message",
+        "content" => "first",
+        "api_metrics" => {
+          "rate_limits" => {"5h_utilization" => 0.20},
+          "usage" => {"input_tokens" => 10}
+        }
+      })
+      store.process_event({
+        "type" => "agent_message",
+        "content" => "second",
+        "api_metrics" => {
+          "rate_limits" => {"5h_utilization" => 0.25},
+          "usage" => {"input_tokens" => 10}
+        }
+      })
+
+      stats = store.token_economy
+      expect(stats[:rate_limits]["5h_utilization"]).to eq(0.25)
+    end
+
+    it "does not accumulate metrics on update actions" do
+      store.process_event({
+        "type" => "agent_message",
+        "id" => 1,
+        "content" => "msg",
+        "api_metrics" => {"usage" => {"input_tokens" => 50}}
+      })
+      store.process_event({
+        "type" => "agent_message",
+        "id" => 1,
+        "action" => "update",
+        "content" => "updated",
+        "api_metrics" => {"usage" => {"input_tokens" => 50}}
+      })
+
+      expect(store.token_economy[:input_tokens]).to eq(50)
+      expect(store.token_economy[:call_count]).to eq(1)
+    end
+
+    it "resets token_economy on clear" do
+      store.process_event({
+        "type" => "agent_message",
+        "content" => "msg",
+        "api_metrics" => {
+          "usage" => {"input_tokens" => 100},
+          "rate_limits" => {"5h_utilization" => 0.5}
+        }
+      })
+
+      store.clear
+
+      stats = store.token_economy
+      expect(stats[:input_tokens]).to eq(0)
+      expect(stats[:call_count]).to eq(0)
+      expect(stats[:rate_limits]).to be_nil
+    end
+
+    it "handles missing or malformed api_metrics gracefully" do
+      store.process_event({"type" => "agent_message", "content" => "no metrics"})
+      store.process_event({"type" => "agent_message", "content" => "bad", "api_metrics" => "not a hash"})
+      store.process_event({"type" => "agent_message", "content" => "empty", "api_metrics" => {}})
+
+      expect(store.token_economy[:call_count]).to eq(0)
+    end
+  end
 end

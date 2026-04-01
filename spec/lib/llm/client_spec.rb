@@ -498,7 +498,7 @@ RSpec.describe LLM::Client do
             [{role: "user", content: "Use web_get to fetch https://example.com"}],
             registry: registry, session_id: session.id
           )
-          expect(result).to include("Tool loop exceeded")
+          expect(result[:text]).to include("Tool loop exceeded")
         end
       end
     end
