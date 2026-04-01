@@ -353,7 +353,7 @@ class Session < ApplicationRecord
                 "tool_input" => {"message_id" => pm.source_name.to_i},
                 "content" => "Recalling message #{pm.source_name}"},
       timestamp: now,
-      token_count: 50
+      token_count: Mneme::PassiveRecall::TOOL_PAIR_OVERHEAD_TOKENS
     )
 
     messages.create!(

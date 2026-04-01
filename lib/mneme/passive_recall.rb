@@ -14,6 +14,9 @@ module Mneme
   # @example Trigger after a goal update
   #   Mneme::PassiveRecall.new(session).call
   class PassiveRecall
+    # Estimated token overhead for a tool_use wrapper (name + input fields).
+    TOOL_PAIR_OVERHEAD_TOKENS = 50
+
     # @param session [Session] the session whose goals drive recall
     def initialize(session)
       @session = session
@@ -96,12 +99,15 @@ module Mneme
     # @param results [Array<Mneme::Search::Result>]
     # @return [Integer] number of pending messages created
     def enqueue_pending_messages(results)
+      messages_by_id = Message.where(id: results.map(&:message_id))
+        .includes(:session).index_by(&:id)
+
       count = 0
       remaining = (Anima::Settings.token_budget * Anima::Settings.recall_budget_fraction).to_i
 
       results.each do |result|
-        snippet = format_snippet(result)
-        cost = Message.estimate_token_count(snippet.bytesize) + 50
+        snippet = format_snippet(result, messages_by_id)
+        cost = Message.estimate_token_count(snippet.bytesize) + TOOL_PAIR_OVERHEAD_TOKENS
         break if cost > remaining && count > 0
 
         @session.pending_messages.create!(
@@ -120,12 +126,11 @@ module Mneme
     # Formats a search result as a compact snippet.
     #
     # @param result [Mneme::Search::Result]
+    # @param messages_by_id [Hash{Integer => Message}] pre-fetched messages
     # @return [String]
-    def format_snippet(result)
-      msg = Message.find_by(id: result.message_id)
-      return result.snippet unless msg
-
-      session_label = msg.session&.name || "session ##{result.session_id}"
+    def format_snippet(result, messages_by_id)
+      msg = messages_by_id[result.message_id]
+      session_label = msg&.session&.name || "session ##{result.session_id}"
       content = result.snippet.truncate(Anima::Settings.recall_max_snippet_tokens * Message::BYTES_PER_TOKEN)
       "message #{result.message_id} (#{session_label}): #{content}"
     end

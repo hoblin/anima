@@ -29,7 +29,7 @@ class PendingMessage < ApplicationRecord
 
   validates :content, presence: true
   validates :source_type, inclusion: {in: %w[user subagent recall]}
-  validates :source_name, presence: true, if: :subagent?
+  validates :source_name, presence: true, if: -> { subagent? || recall? }
 
   after_create_commit :broadcast_created
   after_destroy_commit :broadcast_removed

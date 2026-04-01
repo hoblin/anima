@@ -167,8 +167,9 @@ module Mneme
       last_processed_id = viewport_messages.last.id
       new_boundary = @session.messages
         .where("id > ?", last_processed_id)
+        .where(message_type: Message::CONVERSATION_TYPES + ["tool_call"])
         .order(:id)
-        .find { |msg| conversation_or_think?(msg) }
+        .find_each { |msg| break msg if conversation_or_think?(msg) }
 
       # Fall back to the last message in Mneme's viewport when no conversation
       # messages exist beyond it (e.g. session went quiet after the zone).

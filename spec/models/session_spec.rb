@@ -2084,6 +2084,80 @@ RSpec.describe Session do
     end
   end
 
+  describe "#own_message_scope" do
+    let(:session) { Session.create! }
+
+    it "excludes messages below mneme_boundary_message_id" do
+      old = session.messages.create!(message_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 10)
+      recent = session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 2, token_count: 10)
+      session.update_column(:mneme_boundary_message_id, recent.id)
+
+      scope = session.send(:own_message_scope)
+      expect(scope).to include(recent)
+      expect(scope).not_to include(old)
+    end
+
+    it "includes all messages when boundary is nil" do
+      msg = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
+
+      scope = session.send(:own_message_scope)
+      expect(scope).to include(msg)
+    end
+  end
+
+  describe "#promote_recall_message!" do
+    let(:session) { Session.create! }
+
+    it "creates a tool_call and tool_response message pair" do
+      pm = session.pending_messages.create!(content: "recalled text", source_type: "recall", source_name: "42")
+
+      expect { session.promote_recall_message!(pm) }
+        .to change { session.messages.where(message_type: "tool_call").count }.by(1)
+        .and change { session.messages.where(message_type: "tool_response").count }.by(1)
+    end
+
+    it "uses deterministic tool_use_id from source_name" do
+      pm = session.pending_messages.create!(content: "recalled text", source_type: "recall", source_name: "42")
+      session.promote_recall_message!(pm)
+
+      call = session.messages.find_by(message_type: "tool_call", tool_use_id: "recall_42")
+      response = session.messages.find_by(message_type: "tool_response", tool_use_id: "recall_42")
+      expect(call).to be_present
+      expect(response).to be_present
+    end
+
+    it "sets recall_memory as the phantom tool name" do
+      pm = session.pending_messages.create!(content: "recalled text", source_type: "recall", source_name: "42")
+      session.promote_recall_message!(pm)
+
+      call = session.messages.find_by(message_type: "tool_call")
+      expect(call.payload["tool_name"]).to eq("recall_memory")
+    end
+  end
+
+  describe "#assemble_system_prompt with snapshots" do
+    let(:session) { Session.create! }
+
+    before do
+      allow(Anima::Settings).to receive(:token_budget).and_return(190_000)
+      allow(Anima::Settings).to receive(:mneme_l1_budget_fraction).and_return(0.15)
+      allow(Anima::Settings).to receive(:mneme_l2_budget_fraction).and_return(0.05)
+    end
+
+    it "includes snapshot section in the system prompt" do
+      e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 10)
+      e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "reply"}, timestamp: 2, token_count: 10)
+      recent = session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 3, token_count: 10)
+
+      session.snapshots.create!(text: "Summary of old conversation", from_message_id: e1.id, to_message_id: e2.id, level: 1, token_count: 20)
+      session.update_column(:mneme_boundary_message_id, recent.id)
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).to include("Summary of old conversation")
+      expect(prompt).to include("Recent Memory")
+    end
+  end
+
   describe "#recalculate_viewport!" do
     let(:session) { Session.create! }
 
