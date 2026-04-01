@@ -65,7 +65,7 @@ module TUI
         header = build_call_header
         lines = [tui.line(spans: [tui.span(content: header, style: style)])]
         data["input"].to_s.split("\n", -1).each do |line|
-          lines << tui.line(spans: [tui.span(content: "  #{line}", style: style)])
+          lines << tui.line(spans: [tui.span(content: preserve_indentation("  #{line}"), style: style)])
         end
         lines
       end
@@ -97,7 +97,7 @@ module TUI
         first_line_spans << tui.span(content: content_lines.first.to_s, style: style)
 
         lines = [tui.line(spans: first_line_spans)]
-        content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: "    #{line}", style: style)]) }
+        content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: preserve_indentation("    #{line}"), style: style)]) }
         lines
       end
 

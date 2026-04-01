@@ -79,10 +79,10 @@ RSpec.describe "Tool-specific decorators" do
       lines = described_class.new(data).render_call(tui)
 
       expect(lines.size).to eq(5)
-      expect(lines[1][:spans].first[:content]).to eq("  /tmp/soul.md")
-      expect(lines[2][:spans].first[:content]).to eq("  line1")
-      expect(lines[3][:spans].first[:content]).to eq("  line2")
-      expect(lines[4][:spans].first[:content]).to eq("  line3")
+      expect(lines[1][:spans].first[:content]).to eq("\u00a0\u00a0/tmp/soul.md")
+      expect(lines[2][:spans].first[:content]).to eq("\u00a0\u00a0line1")
+      expect(lines[3][:spans].first[:content]).to eq("\u00a0\u00a0line2")
+      expect(lines[4][:spans].first[:content]).to eq("\u00a0\u00a0line3")
     end
 
     it "renders response in CRUD Create color (light_green)" do

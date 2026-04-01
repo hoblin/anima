@@ -43,13 +43,13 @@ RSpec.describe TUI::Decorators::ThinkDecorator do
       expect(header).to match(/\[\d{2}:\d{2}:\d{2}\]/)
     end
 
-    it "renders multiline content indented" do
+    it "renders multiline content indented with NBSP" do
       data = {"role" => "think", "content" => "line one\nline two\nline three", "visibility" => "aloud"}
       lines = described_class.new(data).render_think(tui)
 
       expect(lines.length).to eq(3)
-      expect(lines[1][:spans].first[:content]).to eq("  line two")
-      expect(lines[2][:spans].first[:content]).to eq("  line three")
+      expect(lines[1][:spans].first[:content]).to eq("\u00a0\u00a0line two")
+      expect(lines[2][:spans].first[:content]).to eq("\u00a0\u00a0line three")
     end
 
     it "dispatches correctly from BaseDecorator.for" do

@@ -46,5 +46,14 @@ module TUI
 
       Time.at(ns / 1_000_000_000.0).strftime("%H:%M:%S")
     end
+
+    # Replaces leading ASCII spaces with non-breaking spaces (\u00a0).
+    # Ratatui's Paragraph widget with wrap:true trims regular leading
+    # spaces; NBSP preserves visual indentation in wrapped text.
+    # @param text [String] text that may contain leading spaces
+    # @return [String] text with leading spaces replaced by NBSP
+    def preserve_indentation(text)
+      text.gsub(/^( +)/) { "\u00a0" * _1.length }
+    end
   end
 end

@@ -23,11 +23,11 @@ RSpec.describe TUI::Decorators::BashDecorator do
       expect(header).to include("bash")
     end
 
-    it "indents the command input" do
+    it "indents the command input with NBSP" do
       data = {"role" => "tool_call", "tool" => "bash", "input" => "$ git status"}
       lines = described_class.new(data).render_call(tui)
 
-      expect(lines[1][:spans].first[:content]).to eq("  $ git status")
+      expect(lines[1][:spans].first[:content]).to eq("\u00a0\u00a0$ git status")
     end
   end
 

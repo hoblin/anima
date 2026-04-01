@@ -63,4 +63,32 @@ RSpec.describe TUI::Formatting do
       expect(formatter.token_count_color(20_000)).to eq("red")
     end
   end
+
+  describe "#preserve_indentation" do
+    it "replaces leading spaces with non-breaking spaces" do
+      expect(formatter.preserve_indentation("  hello")).to eq("\u00a0\u00a0hello")
+    end
+
+    it "preserves text without leading spaces" do
+      expect(formatter.preserve_indentation("hello world")).to eq("hello world")
+    end
+
+    it "handles multiple lines independently" do
+      input = "  line1\n    line2\nline3"
+      expected = "\u00a0\u00a0line1\n\u00a0\u00a0\u00a0\u00a0line2\nline3"
+      expect(formatter.preserve_indentation(input)).to eq(expected)
+    end
+
+    it "returns empty string unchanged" do
+      expect(formatter.preserve_indentation("")).to eq("")
+    end
+
+    it "does not replace tabs" do
+      expect(formatter.preserve_indentation("\thello")).to eq("\thello")
+    end
+
+    it "only replaces leading spaces, not mid-line spaces" do
+      expect(formatter.preserve_indentation("  hello world")).to eq("\u00a0\u00a0hello world")
+    end
+  end
 end

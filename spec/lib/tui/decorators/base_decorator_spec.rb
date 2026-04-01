@@ -130,13 +130,20 @@ RSpec.describe TUI::Decorators::BaseDecorator do
       expect(header).to include("[toolu_abc]")
     end
 
-    it "renders multiline input indented" do
+    it "renders multiline input indented with NBSP" do
       data = {"role" => "tool_call", "tool" => "custom", "input" => "line1\nline2"}
       lines = described_class.for(data).render_call(tui)
 
       expect(lines.length).to eq(3) # header + 2 input lines
-      expect(lines[1][:spans].first[:content]).to eq("  line1")
-      expect(lines[2][:spans].first[:content]).to eq("  line2")
+      expect(lines[1][:spans].first[:content]).to eq("\u00a0\u00a0line1")
+      expect(lines[2][:spans].first[:content]).to eq("\u00a0\u00a0line2")
+    end
+
+    it "preserves embedded indentation in tool input" do
+      data = {"role" => "tool_call", "tool" => "custom", "input" => "{\n  \"key\": \"val\"\n}"}
+      lines = described_class.for(data).render_call(tui)
+
+      expect(lines[2][:spans].first[:content]).to eq("\u00a0\u00a0\u00a0\u00a0\"key\": \"val\"")
     end
   end
 
@@ -188,6 +195,15 @@ RSpec.describe TUI::Decorators::BaseDecorator do
 
       token_span = lines.first[:spans][1]
       expect(token_span[:style][:fg]).to eq("red")
+    end
+
+    it "renders multiline response continuation with NBSP indent" do
+      data = {"role" => "tool_response", "content" => "first\nsecond\nthird", "success" => true}
+      lines = described_class.for(data).render_response(tui)
+
+      expect(lines.length).to eq(3)
+      expect(lines[1][:spans].first[:content]).to eq("\u00a0\u00a0\u00a0\u00a0second")
+      expect(lines[2][:spans].first[:content]).to eq("\u00a0\u00a0\u00a0\u00a0third")
     end
   end
 
