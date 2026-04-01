@@ -55,6 +55,7 @@ class AgentLoop
       messages: messages,
       max_tokens: @client.max_tokens,
       tools: @registry.schemas,
+      include_metrics: true,
       **options
     )
   end
