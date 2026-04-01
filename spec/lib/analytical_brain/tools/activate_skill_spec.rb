@@ -32,6 +32,11 @@ RSpec.describe AnalyticalBrain::Tools::ActivateSkill do
       expect(session.reload.active_skills).to include("gh-issue")
     end
 
+    it "creates a skill PendingMessage on the session" do
+      expect { tool.execute({"skill_name" => "gh-issue"}) }
+        .to change { session.pending_messages.where(source_type: "skill").count }.by(1)
+    end
+
     it "returns error for unknown skill" do
       result = tool.execute({"skill_name" => "nonexistent"})
 

@@ -200,18 +200,19 @@ Between spawn and completion, sub-agents communicate through natural text — th
 
 ### Skills
 
-Domain knowledge bundles loaded from Markdown files. Skills provide specialized expertise that the analytical brain activates and deactivates based on conversation context.
+Domain knowledge bundles loaded from Markdown files. Skills provide specialized expertise that the analytical brain activates based on conversation context. Skill content enters the conversation as phantom tool_use/tool_result pairs through the `PendingMessage` promotion flow — the same mechanism used for sub-agent messages. This keeps the system prompt stable for prompt caching while skills flow through the sliding window like regular messages.
 
 - **Built-in skills:** ActiveRecord, Draper decorators, DragonRuby, MCP server, RatatuiRuby, RSpec, GitHub issues
 - **User skills:** Drop `.md` files into `~/.anima/skills/` to add custom knowledge
 - **Override:** User skills with the same name replace built-in ones
 - **Format:** Flat files (`skill-name.md`) or directories (`skill-name/SKILL.md` with `examples/` and `references/`)
+- **Viewport deduplication:** The brain's skill catalog excludes skills already visible in the viewport, preventing redundant activation
 
 Active skills are displayed in the TUI HUD panel (toggle with `C-a → h`).
 
 ### Workflows
 
-Operational recipes that describe multi-step tasks. Unlike skills (domain knowledge), workflows describe WHAT to do. The analytical brain activates a workflow when it recognizes a matching task, converts the prose into tracked goals, and deactivates it when done.
+Operational recipes that describe multi-step tasks. Unlike skills (domain knowledge), workflows describe WHAT to do. The analytical brain activates a workflow when it recognizes a matching task, converts the prose into tracked goals, and deactivates it when done. Like skills, workflow content enters the conversation as phantom tool pairs through the same `PendingMessage` flow.
 
 - **Built-in workflows:** `feature`, `commit`, `create_plan`, `implement_plan`, `review_pr`, `create_note`, `research_codebase`, `decompose_ticket`, and more
 - **User workflows:** Drop `.md` files into `~/.anima/workflows/` to add custom workflows
@@ -341,7 +342,7 @@ Events flow through two channels:
 1. **In-process** — Rails Structured Event Reporter (local subscribers like Persister)
 2. **Over the wire** — Action Cable WebSocket (`Event::Broadcasting` callbacks push to connected TUI clients)
 
-Events fire, subscribers react, state updates. The system prompt — soul, active skills, active workflow, current goals — is assembled fresh for each LLM call from live state, not from the event stream. The agent's identity (soul.md) and capabilities (skills, workflows) are always current, never stale.
+Events fire, subscribers react, state updates. The system prompt — soul and current goals — is assembled fresh for each LLM call from live state, not from the event stream. Skills and workflows flow through the message stream as phantom tool pairs, keeping the system prompt stable for prompt caching. The agent's identity (soul.md) is always current, never stale.
 
 ### Context as Viewport, Not Tape
 

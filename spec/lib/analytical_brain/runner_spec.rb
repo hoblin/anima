@@ -96,6 +96,27 @@ RSpec.describe AnalyticalBrain::Runner do
         expect(captured_opts[:system]).to include("gh-issue")
       end
 
+      it "excludes viewport-present skills from the catalog" do
+        Skills::Registry.reload!
+        msg = session.messages.create!(
+          message_type: "user_message",
+          payload: {"content" => "skill", "source_type" => "skill", "source_name" => "gh-issue"},
+          timestamp: 0
+        )
+        session.update_column(:viewport_message_ids, [msg.id])
+
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).to include("AVAILABLE SKILLS")
+        expect(captured_opts[:system]).not_to include("gh-issue")
+      end
+
       it "includes currently active skills in system prompt" do
         Skills::Registry.reload!
         session.activate_skill("gh-issue")
