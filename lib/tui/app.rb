@@ -339,7 +339,7 @@ module TUI
         block: tui.block(
           borders: [:left, :bottom, :right],
           border_type: :rounded,
-          border_style: {fg: "dark_gray"}
+          border_style: {fg: "white"}
         )
       )
       frame.render_widget(bar, area)
@@ -477,7 +477,7 @@ module TUI
           title: " \u{1F4CA} Token Economy ",
           borders: [:left, :top, :right],
           border_type: :rounded,
-          border_style: {fg: "dark_gray"}
+          border_style: {fg: "white"}
         )
       )
       frame.render_widget(panel, area)
