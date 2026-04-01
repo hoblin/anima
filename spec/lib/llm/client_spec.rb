@@ -121,21 +121,25 @@ RSpec.describe LLM::Client do
     before { registry.register(tool_class) }
 
     context "when the LLM responds without tool use", :vcr do
-      it "returns the text response directly" do
+      it "returns a Hash with :text and :api_metrics keys" do
         result = client.chat_with_tools(
           [{role: "user", content: "What is 2 + 2? Just answer the number."}],
           registry: registry, session_id: session.id
         )
-        expect(result).to be_present
+        expect(result).to be_a(Hash)
+        expect(result[:text]).to be_a(String)
+        expect(result).to have_key(:api_metrics)
       end
     end
 
     context "when the LLM calls a tool", :vcr do
       let(:messages) { [{role: "user", content: "Use the web_get tool to fetch https://example.com and tell me what you find"}] }
 
-      it "executes the tool and returns the final response" do
+      it "executes the tool and returns a Hash with :text and :api_metrics keys" do
         result = client.chat_with_tools(messages, registry: registry, session_id: session.id)
-        expect(result).to be_present
+        expect(result).to be_a(Hash)
+        expect(result[:text]).to be_present
+        expect(result).to have_key(:api_metrics)
       end
 
       it "emits ToolCall and ToolResponse events" do
@@ -498,7 +502,7 @@ RSpec.describe LLM::Client do
             [{role: "user", content: "Use web_get to fetch https://example.com"}],
             registry: registry, session_id: session.id
           )
-          expect(result).to include("Tool loop exceeded")
+          expect(result[:text]).to include("Tool loop exceeded")
         end
       end
     end

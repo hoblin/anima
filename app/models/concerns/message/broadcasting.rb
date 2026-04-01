@@ -68,6 +68,7 @@ module Message::Broadcasting
     mode = session.view_mode
     decorator = MessageDecorator.for(self)
     broadcast_payload = payload.merge("id" => id, "action" => action)
+    broadcast_payload["api_metrics"] = api_metrics if api_metrics.present?
 
     if decorator
       broadcast_payload["rendered"] = {mode => decorator.render(mode)}

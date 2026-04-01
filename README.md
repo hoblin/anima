@@ -408,6 +408,30 @@ The right-side HUD panel shows session state at a glance: session name, goals (w
 
 **Braille spinner**: An animated braille character (U+2800-U+28FF) replaces the old "Thinking..." label in both the chat viewport and HUD. Each processing state has a distinct animation pattern — smooth snake rotation for LLM generation, staccato pulse for tool execution, rapid deceleration for interrupting. Sub-agents in the HUD show state-driven icons: `●` (generating, green), `◉` (tool executing, green), `●` (interrupting, red), `◌` (idle, grey).
 
+**Token Economy HUD**: A fixed panel at the bottom of the HUD displays API economics extracted from every Anthropic response:
+
+```
+╭ 📊 Token Economy ────────────────────╮
+│  5h ░░░░░░░░  1% ➞3h42m              │
+│  7d ▓▓▓▓▓▓▓▓ 98%                     │
+│  ⚡ ▓▓▓▓▓▓░░ 69%                     │
+│  💾 6.3K tokens                      │
+│     ⠛⣿⣷⣶⣿⣿⣿⣿⣷⣶⣿⣿⣿           │
+│  🟢 Verbose                          │
+╰──────────────────────────────────────╯
+```
+
+| Row | Description |
+|-----|-------------|
+| `5h` | 5-hour rate limit utilization with progress bar and reset countdown |
+| `7d` | 7-day rate limit utilization with progress bar |
+| `⚡` | Cache hit rate — percentage of input tokens served from cache |
+| `💾` | Cumulative tokens saved by cache hits |
+| `⠛⣿` | Braille sparkline — per-call cache hit history (2 calls per character); drops signal cache busts |
+| `🟢` | Connection status and current view mode |
+
+Progress bars are color-coded: green (< 70%), yellow (70-89%), red (>= 90%) for rate limits; inverted for cache hits (green >= 70%, red < 30%). All data comes from Anthropic API response headers and usage objects, broadcast as message metadata via ActionCable.
+
 When content exceeds the panel height, the HUD scrolls. Three input methods:
 
 | Input | Action |

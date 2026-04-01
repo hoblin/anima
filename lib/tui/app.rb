@@ -218,18 +218,34 @@ module TUI
 
     def render_info(frame, area, tui)
       session = @screens[:chat].session_info
+      stats = @screens[:chat].message_store.token_economy
+      has_metrics = stats[:call_count] > 0 || stats[:rate_limits]
 
-      # Split into main content area and bottom status bar
-      main_area, status_area = tui.split(
-        area,
-        direction: :vertical,
-        constraints: [
-          tui.constraint_fill(1),
-          tui.constraint_length(3)
-        ]
-      )
-
-      render_hud_content(frame, main_area, tui, session)
+      # Split into main content, optional token economy panel, and status bar
+      if has_metrics
+        economy_height = token_economy_line_count(stats) + 1 # +1 for top border
+        main_area, economy_area, status_area = tui.split(
+          area,
+          direction: :vertical,
+          constraints: [
+            tui.constraint_fill(1),
+            tui.constraint_length(economy_height),
+            tui.constraint_length(2)
+          ]
+        )
+        render_hud_content(frame, main_area, tui, session)
+        render_token_economy_panel(frame, economy_area, tui, stats)
+      else
+        main_area, status_area = tui.split(
+          area,
+          direction: :vertical,
+          constraints: [
+            tui.constraint_fill(1),
+            tui.constraint_length(2)
+          ]
+        )
+        render_hud_content(frame, main_area, tui, session)
+      end
       render_hud_status_bar(frame, status_area, tui)
     end
 
@@ -314,8 +330,9 @@ module TUI
       bar = tui.paragraph(
         text: [
           tui.line(spans: [
+            tui.span(content: "  ", style: tui.style(fg: "dark_gray")),
             tui.span(content: status_label, style: tui.style(fg: style[:color], modifiers: [:bold])),
-            tui.span(content: " \u2502 ", style: tui.style(fg: "dark_gray")),
+            tui.span(content: " ", style: tui.style(fg: "dark_gray")),
             tui.span(content: mode_label, style: tui.style(fg: mode_color, modifiers: [:bold]))
           ])
         ],
@@ -443,6 +460,191 @@ module TUI
       else
         [CHILD_ICON_IDLE, "dark_gray"]
       end
+    end
+
+    # Renders the Token Economy panel as a fixed section between HUD content
+    # and the status bar.
+    def render_token_economy_panel(frame, area, tui, stats)
+      lines = []
+
+      rate_limits = stats[:rate_limits]
+      lines.concat(build_rate_limit_lines(tui, rate_limits)) if rate_limits
+      lines.concat(build_cache_metrics_lines(tui, stats)) if stats[:call_count] > 0
+
+      panel = tui.paragraph(
+        text: lines,
+        block: tui.block(
+          title: " \u{1F4CA} Token Economy ",
+          borders: [:left, :top, :right],
+          border_type: :rounded,
+          border_style: {fg: "white"}
+        )
+      )
+      frame.render_widget(panel, area)
+    end
+
+    # Returns the number of content lines the token economy panel will render.
+    def token_economy_line_count(stats)
+      count = 0
+      if stats[:rate_limits]
+        count += 1 if stats[:rate_limits]["5h_utilization"]
+        count += 1 if stats[:rate_limits]["7d_utilization"]
+      end
+      if stats[:call_count] > 0
+        count += 2 # cache hit bar + saved
+        count += 1 if stats[:cache_history]&.size.to_i > 1 # sparkline
+      end
+      count
+    end
+
+    # Builds rate limit display lines with progress bars and pacing.
+    # Compact aligned labels: 5h, 7d (same 2-char width).
+    # @return [Array<RatatuiRuby::Widgets::Line>]
+    def build_rate_limit_lines(tui, rate_limits)
+      lines = []
+
+      # 5-hour window
+      util_5h = rate_limits["5h_utilization"]
+      if util_5h
+        pct = (util_5h * 100).round
+        bar = build_progress_bar(pct, 8)
+        color = rate_limit_color(pct)
+        reset_5h = rate_limits["5h_reset"]
+        reset_label = reset_5h ? " #{format_reset_time(reset_5h)}" : ""
+
+        lines << tui.line(spans: [
+          tui.span(content: "  5h ", style: tui.style(fg: color, modifiers: [:bold])),
+          tui.span(content: bar, style: tui.style(fg: color)),
+          tui.span(content: " #{pct.to_s.rjust(2)}%", style: tui.style(fg: color)),
+          tui.span(content: reset_label, style: tui.style(fg: "dark_gray"))
+        ])
+      end
+
+      # 7-day window
+      util_7d = rate_limits["7d_utilization"]
+      if util_7d
+        pct = (util_7d * 100).round
+        bar = build_progress_bar(pct, 8)
+        color = rate_limit_color(pct)
+
+        lines << tui.line(spans: [
+          tui.span(content: "  7d ", style: tui.style(fg: color, modifiers: [:bold])),
+          tui.span(content: bar, style: tui.style(fg: color)),
+          tui.span(content: " #{pct.to_s.rjust(2)}%", style: tui.style(fg: color))
+        ])
+      end
+
+      lines
+    end
+
+    # Builds cache efficiency display lines with sparkline graph.
+    # ⚡ for hit rate bar, braille sparkline for per-call history, 💾 for saved.
+    # @return [Array<RatatuiRuby::Widgets::Line>]
+    def build_cache_metrics_lines(tui, stats)
+      hit_rate = (stats[:cache_hit_rate] * 100).round
+      color = cache_hit_color(hit_rate)
+      bar = build_progress_bar(hit_rate, 8)
+
+      total_cached = stats[:cache_read_input_tokens]
+      saved_label = format_token_count(total_cached)
+
+      lines = [
+        tui.line(spans: [
+          tui.span(content: "  \u{26A1} ", style: tui.style(fg: color)),
+          tui.span(content: bar, style: tui.style(fg: color)),
+          tui.span(content: " #{hit_rate.to_s.rjust(2)}%", style: tui.style(fg: color))
+        ]),
+        tui.line(spans: [
+          tui.span(content: "  \u{1F4BE} ", style: tui.style(fg: "green")),
+          tui.span(content: saved_label, style: tui.style(fg: "green"))
+        ])
+      ]
+
+      # Braille sparkline: per-call cache hit history (below icons)
+      history = stats[:cache_history]
+      if history && history.size > 1
+        sparkline = build_braille_sparkline(history)
+        color = cache_hit_color(hit_rate)
+        lines << tui.line(spans: [
+          tui.span(content: "     ", style: tui.style(fg: "dark_gray")),
+          tui.span(content: sparkline, style: tui.style(fg: color))
+        ])
+      end
+
+      lines
+    end
+
+    # Builds a braille sparkline from a series of values (0.0-1.0).
+    # Each braille character encodes two adjacent data points using
+    # the left and right dot columns (4 dots each = 5 levels: 0-4).
+    #
+    # @param values [Array<Float>] data points between 0.0 and 1.0
+    # @return [String] braille sparkline string
+    def build_braille_sparkline(values)
+      # Braille dot positions: left column (dots 1,2,3,7), right column (dots 4,5,6,8)
+      # Numbered per Unicode spec: bit 0=dot1, bit 1=dot2, bit 2=dot3,
+      # bit 3=dot4, bit 4=dot5, bit 5=dot6, bit 6=dot7, bit 7=dot8
+      left_dots = [0x01, 0x02, 0x04, 0x40]   # dots 1,2,3,7 (bottom to top)
+      right_dots = [0x08, 0x10, 0x20, 0x80]   # dots 4,5,6,8 (bottom to top)
+
+      chars = []
+      values.each_slice(2) do |pair|
+        code = 0x2800 # braille base
+        # Left column: first value
+        fill_left = (pair[0].clamp(0.0, 1.0) * 4).round
+        fill_left.times { |i| code |= left_dots[i] }
+        # Right column: second value (or repeat first if odd)
+        right_val = pair[1] || pair[0]
+        fill_right = (right_val.clamp(0.0, 1.0) * 4).round
+        fill_right.times { |i| code |= right_dots[i] }
+        chars << code.chr(Encoding::UTF_8)
+      end
+      chars.join
+    end
+
+    # Builds a Unicode progress bar.
+    # @param pct [Integer] percentage (0-100)
+    # @param width [Integer] bar width in characters
+    # @return [String] progress bar string
+    def build_progress_bar(pct, width)
+      filled = (pct.clamp(0, 100) * width / 100.0).round
+      empty = width - filled
+      ("\u2593" * filled) + ("\u2591" * empty)
+    end
+
+    # Color for rate limit percentage (green < 70, yellow < 90, red >= 90).
+    def rate_limit_color(pct)
+      return "red" if pct >= 90
+      return "yellow" if pct >= 70
+      "green"
+    end
+
+    # Color for cache hit rate (green >= 70, yellow >= 30, red < 30).
+    def cache_hit_color(pct)
+      return "green" if pct >= 70
+      return "yellow" if pct >= 30
+      "red"
+    end
+
+    # Formats a reset timestamp as time remaining (e.g., "2h15m").
+    def format_reset_time(epoch_seconds)
+      diff = epoch_seconds - Time.now.to_i
+      return "soon" if diff <= 0
+
+      hours = diff / 3600
+      minutes = (diff % 3600) / 60
+      if hours > 0
+        "\u279E#{hours}h#{minutes.to_s.rjust(2, "0")}m"
+      else
+        "\u279E#{minutes}m"
+      end
+    end
+
+    # Formats a token count for display (e.g., "47.2K").
+    def format_token_count(count)
+      return "0" if count == 0
+      return count.to_s if count < 1000
+      "#{(count / 1000.0).round(1)}K tokens"
     end
 
     # Shows focus mode when a pane is focused, or the braille spinner

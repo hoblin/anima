@@ -17,6 +17,34 @@ module Providers
     # subscription tokens on Sonnet/Opus. Without it, /v1/messages returns 400.
     OAUTH_PASSPHRASE = "You are Claude Code, Anthropic's official CLI for Claude."
 
+    # Rate limit header names for extraction
+    RATE_LIMIT_HEADERS = {
+      "5h_status" => "Anthropic-Ratelimit-Unified-5h-Status",
+      "5h_reset" => "Anthropic-Ratelimit-Unified-5h-Reset",
+      "5h_utilization" => "Anthropic-Ratelimit-Unified-5h-Utilization",
+      "7d_status" => "Anthropic-Ratelimit-Unified-7d-Status",
+      "7d_reset" => "Anthropic-Ratelimit-Unified-7d-Reset",
+      "7d_utilization" => "Anthropic-Ratelimit-Unified-7d-Utilization"
+    }.freeze
+
+    # Response wrapper containing both the parsed body and API metrics.
+    # Behaves like a Hash for backward compatibility (delegates to body).
+    #
+    # @!attribute [r] body
+    #   @return [Hash] parsed API response
+    # @!attribute [r] api_metrics
+    #   @return [Hash, nil] rate limits and usage data
+    ApiResponse = Data.define(:body, :api_metrics) do
+      # Delegate Hash methods to body for backward compatibility.
+      # Callers using response["content"] continue to work unchanged.
+      def [](key) = body[key]
+      def dig(...) = body.dig(...)
+      def fetch(...) = body.fetch(...)
+      def key?(key) = body.key?(key)
+      def to_h = body
+      def to_json(...) = body.to_json(...)
+    end
+
     class Error < StandardError; end
     class AuthenticationError < Error; end
     class TokenFormatError < Error; end
@@ -76,12 +104,15 @@ module Providers
     # @param model [String] Anthropic model identifier
     # @param messages [Array<Hash>] conversation messages
     # @param max_tokens [Integer] maximum tokens in the response
+    # @param include_metrics [Boolean] when true, returns an {ApiResponse}
+    #   wrapper with both body and api_metrics; when false (default),
+    #   returns just the parsed body Hash for backward compatibility
     # @param options [Hash] additional parameters (e.g. +system:+, +tools:+)
-    # @return [Hash] parsed API response
+    # @return [Hash, ApiResponse] parsed API response, or wrapper with metrics
     # @raise [TransientError] on network failures or server errors (retryable)
     # @raise [AuthenticationError] on 401/403 (permanent)
     # @raise [Error] on other API errors
-    def create_message(model:, messages:, max_tokens:, **options)
+    def create_message(model:, messages:, max_tokens:, include_metrics: false, **options)
       wrap_system_prompt!(options)
       body = {model: model, messages: messages, max_tokens: max_tokens}.merge(options)
 
@@ -92,7 +123,7 @@ module Providers
         timeout: Anima::Settings.api_timeout
       )
 
-      handle_response(response)
+      handle_response(response, include_metrics: include_metrics)
     rescue Errno::ECONNRESET, Net::ReadTimeout, Net::OpenTimeout, SocketError, EOFError => network_error
       raise TransientError, "#{network_error.class}: #{network_error.message}"
     end
@@ -178,10 +209,13 @@ module Providers
       }
     end
 
-    def handle_response(response)
+    def handle_response(response, include_metrics: false)
       case response.code
       when 200
-        response.parsed_response
+        body = response.parsed_response
+        return body unless include_metrics
+
+        ApiResponse.new(body: body, api_metrics: extract_api_metrics(response))
       when 400
         raise Error, "Bad request: #{error_message(response)}"
       when 401
@@ -196,6 +230,37 @@ module Providers
         raise ServerError, "Anthropic server error (#{response.code}): #{response.message}"
       else
         raise Error, "Unexpected response (#{response.code}): #{response.message}"
+      end
+    end
+
+    # Extracts rate limit headers and usage data from an HTTParty response.
+    #
+    # @param response [HTTParty::Response] raw API response
+    # @return [Hash] with "rate_limits" and "usage" string keys
+    def extract_api_metrics(response)
+      {
+        "rate_limits" => extract_rate_limits(response.headers),
+        "usage" => response.parsed_response&.dig("usage")
+      }
+    end
+
+    # Extracts rate limit values from response headers.
+    #
+    # @param headers [Hash] HTTParty headers (case-insensitive)
+    # @return [Hash] normalized rate limit data
+    def extract_rate_limits(headers)
+      return {} unless headers
+
+      RATE_LIMIT_HEADERS.transform_values do |header_name|
+        # HTTParty headers are strings; VCR replays them as arrays
+        raw = headers[header_name]
+        value = raw.is_a?(Array) ? raw.first : raw
+        # Parse numeric values (utilization, reset timestamps)
+        case value
+        when /\A\d+\z/ then value.to_i
+        when /\A\d+\.\d+\z/ then value.to_f
+        else value
+        end
       end
     end
 

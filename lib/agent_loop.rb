@@ -55,6 +55,7 @@ class AgentLoop
       messages: messages,
       max_tokens: @client.max_tokens,
       tools: @registry.schemas,
+      include_metrics: true,
       **options
     )
   end
@@ -84,14 +85,18 @@ class AgentLoop
 
     between_rounds = -> { @session.promote_pending_messages! }
 
-    response = @client.chat_with_tools(
+    result = @client.chat_with_tools(
       messages, registry: @registry, session_id: @session.id,
       first_response: first_resp, between_rounds: between_rounds, **options
     )
-    return unless response
+    return unless result
 
-    Events::Bus.emit(Events::AgentMessage.new(content: response, session_id: @session.id))
-    response
+    Events::Bus.emit(Events::AgentMessage.new(
+      content: result[:text],
+      session_id: @session.id,
+      api_metrics: result[:api_metrics]
+    ))
+    result[:text]
   end
 
   # Clean up the underlying {ShellSession} PTY and resources.
