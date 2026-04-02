@@ -21,7 +21,6 @@ module Anima
     config.load_defaults 8.1
     config.api_only = true
 
-
     config.autoload_lib(ignore: %w[anima])
     config.active_job.queue_adapter = :solid_queue
     config.solid_queue.connects_to = {database: {writing: :queue}}
