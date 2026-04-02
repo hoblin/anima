@@ -264,7 +264,6 @@ RSpec.describe Providers::Anthropic do
     end
   end
 
-
   describe "error class hierarchy" do
     it "AuthenticationError inherits from Error" do
       expect(Providers::Anthropic::AuthenticationError).to be < Providers::Anthropic::Error

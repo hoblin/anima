@@ -50,7 +50,6 @@ RSpec.describe LLM::Client do
     end
   end
 
-
   describe "#chat_with_tools" do
     let(:session) { Session.create! }
     let(:registry) { Tools::Registry.new }
