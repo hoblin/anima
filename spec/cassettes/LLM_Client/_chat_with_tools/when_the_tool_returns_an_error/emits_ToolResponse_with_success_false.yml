@@ -9,7 +9,8 @@ http_interactions:
         the web_get tool to fetch https://example.com"}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
         a URL and return its contents","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["url"]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude.","cache_control":{"type":"ephemeral"}}]}'
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are Anima","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -31,7 +32,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:05:21 GMT
+      - Thu, 02 Apr 2026 21:38:38 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -79,11 +80,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1437'
+      - '1578'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=1439
+      - x-originResponse;dur=1582
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -98,21 +99,21 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxR2l6UlVQaTZvTTZzQkhINllYQ1pjcyIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxUERBS1VvOHlwUE1ONW5jRnFreEpIOSIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6IkknbGwgZmV0Y2ggdGhlIGNvbnRlbnRzIG9mIGh0dHBzOi8vZXhh
         bXBsZS5jb20gZm9yIHlvdS4ifSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoi
-        dG9vbHVfMDExeWdiQjhaOW1hWlpHb0xmZU01NUVVIiwibmFtZSI6IndlYl9n
+        dG9vbHVfMDExV0tiODgyWTMzQThWMk5vY3BpaURTIiwibmFtZSI6IndlYl9n
         ZXQiLCJpbnB1dCI6eyJ1cmwiOiJodHRwczovL2V4YW1wbGUuY29tIn0sImNh
         bGxlciI6eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29s
         X3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVs
-        bCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjo0MjcsImNhY2hlX2NyZWF0aW9u
+        bCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjo0MzIsImNhY2hlX2NyZWF0aW9u
         X2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAs
         ImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMi
         OjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9r
         ZW5zIjo3Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2Vf
         Z2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Thu, 02 Apr 2026 21:05:21 GMT
+  recorded_at: Thu, 02 Apr 2026 21:38:38 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
@@ -120,11 +121,12 @@ http_interactions:
       encoding: UTF-8
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Use
         the web_get tool to fetch https://example.com"},{"role":"assistant","content":[{"type":"text","text":"I''ll
-        fetch the contents of https://example.com for you."},{"type":"tool_use","id":"toolu_011ygbB8Z9maZZGoLfeM55EU","name":"web_get","input":{"url":"https://example.com"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_011ygbB8Z9maZZGoLfeM55EU","content":"{\"error\":\"Connection
+        fetch the contents of https://example.com for you."},{"type":"tool_use","id":"toolu_011WKb882Y33A8V2NocpiiDS","name":"web_get","input":{"url":"https://example.com"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_011WKb882Y33A8V2NocpiiDS","content":"{\"error\":\"Connection
         refused\"}"}]}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
         a URL and return its contents","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["url"]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude.","cache_control":{"type":"ephemeral"}}]}'
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are Anima","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -146,7 +148,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:05:25 GMT
+      - Thu, 02 Apr 2026 21:38:41 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -194,11 +196,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '3394'
+      - '2465'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=3396
+      - x-originResponse;dur=2467
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -213,25 +215,25 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxOEo3dmVOZmFHZ3Z4ZGNTTUVMTHJjMiIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxODRVdTNBd1ZNZEdycUx3Z05XQUFOYSIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6IkkgZW5jb3VudGVyZWQgYSBcIkNvbm5lY3Rpb24gcmVmdXNlZFwi
-        IGVycm9yIHdoZW4gdHJ5aW5nIHRvIGZldGNoIGh0dHBzOi8vZXhhbXBsZS5j
-        b20uIFRoaXMgY291bGQgYmUgZHVlIHRvIHNldmVyYWwgcmVhc29uczpcblxu
-        MS4gTmV0d29yayBjb25uZWN0aXZpdHkgaXNzdWVzXG4yLiBUaGUgc2VydmVy
-        IG1pZ2h0IGJlIHRlbXBvcmFyaWx5IHVuYXZhaWxhYmxlXG4zLiBUaGVyZSBj
-        b3VsZCBiZSBmaXJld2FsbCBvciBwcm94eSByZXN0cmljdGlvbnNcbjQuIFRo
-        ZSBVUkwgbWlnaHQgbm90IGJlIGFjY2Vzc2libGUgZnJvbSB0aGlzIGVudmly
-        b25tZW50XG5cbklmIHlvdSdkIGxpa2UgdG8gdHJ5IGEgZGlmZmVyZW50IFVS
-        TCBvciBpZiB5b3UgaGF2ZSBhIHNwZWNpZmljIHdlYnNpdGUgeW91IG5lZWQg
-        dG8gZmV0Y2gsIHBsZWFzZSBsZXQgbWUga25vdyBhbmQgSSBjYW4gYXR0ZW1w
-        dCB0byByZXRyaWV2ZSBpdCBmb3IgeW91LiJ9XSwic3RvcF9yZWFzb24iOiJl
-        bmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6
-        bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjo1MTcsImNhY2hlX2NyZWF0
-        aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMi
-        OjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tl
-        bnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRf
-        dG9rZW5zIjoxMDQsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJl
-        bmNlX2dlbyI6Im5vdF9hdmFpbGFibGUifX0=
-  recorded_at: Thu, 02 Apr 2026 21:05:25 GMT
+        dGV4dCI6Ikl0IGxvb2tzIGxpa2UgdGhlIGNvbm5lY3Rpb24gdG8gaHR0cHM6
+        Ly9leGFtcGxlLmNvbSB3YXMgcmVmdXNlZC4gVGhpcyBjb3VsZCBoYXBwZW4g
+        Zm9yIHNldmVyYWwgcmVhc29uczpcblxuMS4gVGhlIHdlYnNpdGUgbWlnaHQg
+        YmUgdGVtcG9yYXJpbHkgZG93blxuMi4gVGhlcmUgY291bGQgYmUgbmV0d29y
+        ayBjb25uZWN0aXZpdHkgaXNzdWVzXG4zLiBUaGUgc2VydmVyIG1pZ2h0IGJl
+        IGJsb2NraW5nIHJlcXVlc3RzIGZyb20gdGhpcyBzb3VyY2VcbjQuIFRoZXJl
+        IG1pZ2h0IGJlIGZpcmV3YWxsIHJlc3RyaWN0aW9uc1xuXG5Xb3VsZCB5b3Ug
+        bGlrZSBtZSB0byB0cnkgZmV0Y2hpbmcgYSBkaWZmZXJlbnQgVVJMLCBvciBp
+        cyB0aGVyZSBzb21ldGhpbmcgc3BlY2lmaWMgeW91IHdlcmUgbG9va2luZyBm
+        b3IgZnJvbSBleGFtcGxlLmNvbSB0aGF0IEkgY291bGQgaGVscCB5b3Ugd2l0
+        aCBpbiBhbm90aGVyIHdheT8ifV0sInN0b3BfcmVhc29uIjoiZW5kX3R1cm4i
+        LCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGwsInVz
+        YWdlIjp7ImlucHV0X3Rva2VucyI6NTIyLCJjYWNoZV9jcmVhdGlvbl9pbnB1
+        dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNo
+        ZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJl
+        cGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6
+        OTksInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6
+        Im5vdF9hdmFpbGFibGUifX0=
+  recorded_at: Thu, 02 Apr 2026 21:38:41 GMT
 recorded_with: VCR 6.4.0

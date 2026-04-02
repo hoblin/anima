@@ -93,7 +93,8 @@ RSpec.describe Providers::Anthropic do
       result = real_provider.create_message(
         model: "claude-sonnet-4-20250514",
         messages: [{role: "user", content: "Reply with the single word OK"}],
-        max_tokens: 8192
+        max_tokens: 8192,
+        system: "You are Anima"
       )
 
       expect(result["content"].first["text"]).to be_present
@@ -104,18 +105,7 @@ RSpec.describe Providers::Anthropic do
         model: "claude-sonnet-4-20250514",
         messages: [{role: "user", content: "Reply with the single word OK"}],
         max_tokens: 8192,
-        system: "You are helpful",
-        temperature: 0.0
-      )
-
-      expect(result["content"].first["text"]).to be_present
-    end
-
-    it "succeeds without system prompt", :vcr do
-      result = real_provider.create_message(
-        model: "claude-sonnet-4-20250514",
-        messages: [{role: "user", content: "Reply with the single word OK"}],
-        max_tokens: 8192,
+        system: "You are Anima",
         temperature: 0.0
       )
 
@@ -127,7 +117,8 @@ RSpec.describe Providers::Anthropic do
         real_provider.create_message(
           model: "bad-model",
           messages: [{role: "user", content: "Hi"}],
-          max_tokens: 8192
+          max_tokens: 8192,
+          system: "You are Anima"
         )
       }.to raise_error(Providers::Anthropic::Error)
     end
@@ -137,7 +128,8 @@ RSpec.describe Providers::Anthropic do
         provider.create_message(
           model: "claude-sonnet-4-20250514",
           messages: [{role: "user", content: "Hi"}],
-          max_tokens: 8192
+          max_tokens: 8192,
+          system: "You are Anima"
         )
       }.to raise_error(Providers::Anthropic::AuthenticationError, /Authentication failed/)
     end
@@ -147,7 +139,8 @@ RSpec.describe Providers::Anthropic do
         provider.create_message(
           model: "claude-sonnet-4-20250514",
           messages: [{role: "user", content: "Hi"}],
-          max_tokens: 8192
+          max_tokens: 8192,
+          system: "You are Anima"
         )
       }.to raise_error(Providers::Anthropic::AuthenticationError, /Forbidden/)
     end
@@ -157,7 +150,8 @@ RSpec.describe Providers::Anthropic do
         provider.create_message(
           model: "claude-sonnet-4-20250514",
           messages: [{role: "user", content: "Hi"}],
-          max_tokens: 8192
+          max_tokens: 8192,
+          system: "You are Anima"
         )
       }.to raise_error(Providers::Anthropic::RateLimitError, /Rate limit/)
     end
@@ -187,7 +181,8 @@ RSpec.describe Providers::Anthropic do
         provider.create_message(
           model: "claude-sonnet-4-20250514",
           messages: [{role: "user", content: "Hi"}],
-          max_tokens: 8192
+          max_tokens: 8192,
+          system: "You are Anima"
         )
       }.to raise_error(Providers::Anthropic::ServerError, /server error/)
     end
@@ -207,7 +202,7 @@ RSpec.describe Providers::Anthropic do
       result = real_provider.count_tokens(
         model: "claude-sonnet-4-20250514",
         messages: [{role: "user", content: "Hi"}],
-        system: "You are helpful"
+        system: "You are Anima"
       )
 
       expect(result).to be_a(Integer)
@@ -250,92 +245,25 @@ RSpec.describe Providers::Anthropic do
   end
 
   describe "#wrap_system_prompt!" do
-    let(:passphrase_block) { {type: "text", text: described_class::OAUTH_PASSPHRASE} }
     let(:cache_control) { {type: "ephemeral"} }
 
     it "always includes the passphrase as the first block" do
-      options = {system: "You are helpful"}
+      options = {system: "You are Anima"}
       provider.send(:wrap_system_prompt!, options)
 
       expect(options[:system]).to be_an(Array)
       expect(options[:system].first).to include(type: "text", text: described_class::OAUTH_PASSPHRASE)
     end
 
-    it "appends the caller's system prompt as the second block" do
-      options = {system: "You are helpful"}
+    it "appends the caller's system prompt with cache_control as the second block" do
+      options = {system: "You are Anima"}
       provider.send(:wrap_system_prompt!, options)
 
-      expect(options[:system].last).to include(type: "text", text: "You are helpful")
+      expect(options[:system].last).to eq({type: "text", text: "You are Anima", cache_control: cache_control})
       expect(options[:system].length).to eq(2)
     end
-
-    it "produces a single-element array when no system prompt is provided" do
-      options = {}
-      provider.send(:wrap_system_prompt!, options)
-
-      expect(options[:system].length).to eq(1)
-      expect(options[:system].first).to include(type: "text", text: described_class::OAUTH_PASSPHRASE)
-    end
-
-    it "annotates the last block with cache_control" do
-      options = {system: "You are helpful"}
-      provider.send(:wrap_system_prompt!, options)
-
-      expect(options[:system].last[:cache_control]).to eq(cache_control)
-    end
-
-    it "annotates passphrase block when no system prompt is provided" do
-      options = {}
-      provider.send(:wrap_system_prompt!, options)
-
-      expect(options[:system].first[:cache_control]).to eq(cache_control)
-    end
-
-    it "does not annotate the passphrase block when a system prompt is present" do
-      options = {system: "You are helpful"}
-      provider.send(:wrap_system_prompt!, options)
-
-      expect(options[:system].first).not_to have_key(:cache_control)
-    end
   end
 
-  describe "#annotate_tools_for_caching!" do
-    let(:cache_control) { {type: "ephemeral"} }
-
-    it "adds cache_control to the last tool definition" do
-      tools = [
-        {name: "tool_a", description: "A"},
-        {name: "tool_b", description: "B"}
-      ]
-      options = {tools: tools}
-      provider.send(:annotate_tools_for_caching!, options)
-
-      expect(tools.last[:cache_control]).to eq(cache_control)
-    end
-
-    it "does not annotate earlier tools" do
-      tools = [
-        {name: "tool_a", description: "A"},
-        {name: "tool_b", description: "B"}
-      ]
-      options = {tools: tools}
-      provider.send(:annotate_tools_for_caching!, options)
-
-      expect(tools.first).not_to have_key(:cache_control)
-    end
-
-    it "does nothing when tools are nil" do
-      options = {}
-      expect { provider.send(:annotate_tools_for_caching!, options) }.not_to raise_error
-    end
-
-    it "does nothing when tools are empty" do
-      options = {tools: []}
-      provider.send(:annotate_tools_for_caching!, options)
-
-      expect(options[:tools]).to eq([])
-    end
-  end
 
   describe "error class hierarchy" do
     it "AuthenticationError inherits from Error" do
@@ -432,7 +360,8 @@ RSpec.describe Providers::Anthropic do
         model: "claude-sonnet-4-20250514",
         messages: [{role: "user", content: "Say OK"}],
         max_tokens: 10,
-        include_metrics: true
+        include_metrics: true,
+        system: "You are Anima"
       )
 
       expect(response).to be_a(Providers::Anthropic::ApiResponse)

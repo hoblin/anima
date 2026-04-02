@@ -55,7 +55,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:06:06 GMT
+      - Thu, 02 Apr 2026 21:23:52 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -97,11 +97,9 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1801'
-      Vary:
-      - Accept-Encoding
+      - '2199'
       Server-Timing:
-      - x-originResponse;dur=1803
+      - x-originResponse;dur=2200
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -116,31 +114,31 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMUxOYVNyemtpdnZYZW5CdUc4c1NTS2YiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMURKQ1lycW1DWXFzdFVEOFVIbVlpa0EiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidG9vbF91
-        c2UiLCJpZCI6InRvb2x1XzAxVFFBbkQ1NHROR2F5Q3Vkb3VpbTJIciIsIm5h
+        c2UiLCJpZCI6InRvb2x1XzAxRWZKanhiNmdpcWhUNDJ2d29OY0VITCIsIm5h
         bWUiOiJzYXZlX3NuYXBzaG90IiwiaW5wdXQiOnsidGV4dCI6IlVzZXIgaW1w
-        bGVtZW50ZWQgT0F1dGggMi4wIHdpdGggUEtDRSBmb3IgYSBtb2JpbGUgYXBw
-        IGFjcm9zcyB0aHJlZSBwaGFzZXM6ICgxKSBBcmNoaXRlY3R1cmXigJRlc3Rh
-        Ymxpc2hlZCBjb2RlIHZlcmlmaWVyL2NoYWxsZW5nZSBwYXR0ZXJuIHVzaW5n
-        IFNIQS0yNTY7ICgyKSBJbXBsZW1lbnRhdGlvbuKAlGludGVncmF0ZWQgQXBw
-        QXV0aCBsaWJyYXJ5IGZvciBpT1Mgd2l0aCBzZWN1cmUgdG9rZW4gc3RvcmFn
-        ZSBpbiBLZXljaGFpbiwgYWRkaW5nIGJpb21ldHJpYyBwcm90ZWN0aW9uOyAo
-        MykgUmVzaWxpZW5jZeKAlGFkZGVkIGVycm9yIGhhbmRsaW5nIGZvciBleHBp
-        cmVkIHJlZnJlc2ggdG9rZW5zIHdpdGggbG9naW4gcmVkaXJlY3Rpb24sIGFu
-        ZCBwbGFubmVkIGJhY2tlbmQgc2FmZWd1YXJkcyBpbmNsdWRpbmcgcmF0ZSBs
-        aW1pdGluZyBhbmQgdG9rZW4gcmV2b2NhdGlvbi4gQ29yZSBvdXRjb21lOiBj
-        b21wbGV0ZSBPQXV0aCBmbG93IHdpdGggc2VjdXJpdHkgaGFyZGVuaW5nIGZy
-        b20gY2xpZW50IHRvIGJhY2tlbmQuIn0sImNhbGxlciI6eyJ0eXBlIjoiZGly
-        ZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVu
-        Y2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRf
-        dG9rZW5zIjoxMDg3LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAs
-        ImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6
-        eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhf
-        aW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MTYyLCJzZXJ2aWNl
-        X3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJub3RfYXZhaWxh
-        YmxlIn19
-  recorded_at: Thu, 02 Apr 2026 21:06:06 GMT
+        bGVtZW50ZWQgYSBjb21wbGV0ZSBPQXV0aCAyLjAgUEtDRSBmbG93IGZvciBh
+        IG1vYmlsZSBhcHAgYWNyb3NzIHRocmVlIHBoYXNlczogKDEpIERlc2lnbmVk
+        IFBLQ0UgYXV0aGVudGljYXRpb24gdXNpbmcgY29kZSB2ZXJpZmllci9jaGFs
+        bGVuZ2Ugd2l0aCBTSEEtMjU2LCAoMikgQnVpbHQgdG9rZW4gcmVmcmVzaCBt
+        ZWNoYW5pc20gdmlhIEFwcEF1dGggbGlicmFyeSBmb3IgaU9TIHdpdGggc2Vj
+        dXJlIEtleWNoYWluIHN0b3JhZ2UgYW5kIGJpb21ldHJpYyBwcm90ZWN0aW9u
+        LCAoMykgSGFyZGVuZWQgdGhlIHN5c3RlbSB3aXRoIGV4cGlyZWQgdG9rZW4g
+        aGFuZGxpbmcgKHJlZGlyZWN0IHRvIGxvZ2luKSBhbmQgZGlzY3Vzc2VkIGJh
+        Y2tlbmQgc2FmZWd1YXJkcyAocmF0ZSBsaW1pdGluZywgdG9rZW4gcmV2b2Nh
+        dGlvbikuIEZpbmFsIHN0YXRlOiBwcm9kdWN0aW9uLXJlYWR5IG1vYmlsZSBP
+        QXV0aCBpbXBsZW1lbnRhdGlvbiB3aXRoIHNlY3VyaXR5IGJlc3QgcHJhY3Rp
+        Y2VzIGZvciByZWZyZXNoIGxpZmVjeWNsZSBhbmQgYmFja2VuZCBkZWZlbnNl
+        LiJ9LCJjYWxsZXIiOnsidHlwZSI6ImRpcmVjdCJ9fV0sInN0b3BfcmVhc29u
+        IjoidG9vbF91c2UiLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFp
+        bHMiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MTA4NywiY2FjaGVf
+        Y3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rv
+        a2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0
+        X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91
+        dHB1dF90b2tlbnMiOjE2OSwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJp
+        bmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
+  recorded_at: Thu, 02 Apr 2026 21:23:52 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
@@ -154,14 +152,14 @@ http_interactions:
         library for iOS. Added secure token storage in Keychain with biometric protection.\n\n---
         Snapshot 3 (messages 21..30) ---\nAdded error handling for expired refresh
         tokens — redirect to login. Discussed rate limiting and token revocation on
-        the backend."},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01TQAnD54tNGayCudouim2Hr","name":"save_snapshot","input":{"text":"User
-        implemented OAuth 2.0 with PKCE for a mobile app across three phases: (1)
-        Architecture—established code verifier/challenge pattern using SHA-256; (2)
-        Implementation—integrated AppAuth library for iOS with secure token storage
-        in Keychain, adding biometric protection; (3) Resilience—added error handling
-        for expired refresh tokens with login redirection, and planned backend safeguards
-        including rate limiting and token revocation. Core outcome: complete OAuth
-        flow with security hardening from client to backend."},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01TQAnD54tNGayCudouim2Hr","content":"Snapshot
+        the backend."},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01EfJjxb6giqhT42vwoNcEHL","name":"save_snapshot","input":{"text":"User
+        implemented a complete OAuth 2.0 PKCE flow for a mobile app across three phases:
+        (1) Designed PKCE authentication using code verifier/challenge with SHA-256,
+        (2) Built token refresh mechanism via AppAuth library for iOS with secure
+        Keychain storage and biometric protection, (3) Hardened the system with expired
+        token handling (redirect to login) and discussed backend safeguards (rate
+        limiting, token revocation). Final state: production-ready mobile OAuth implementation
+        with security best practices for refresh lifecycle and backend defense."},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01EfJjxb6giqhT42vwoNcEHL","content":"Snapshot
         saved (id: 4, messages 1..30)"}]}],"max_tokens":2048,"tools":[{"name":"save_snapshot","description":"Summarize
         what''s leaving the viewport.","input_schema":{"type":"object","properties":{"text":{"type":"string","maxLength":8192},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["text"]}},{"name":"everything_ok","description":"Nothing
@@ -204,7 +202,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:06:07 GMT
+      - Thu, 02 Apr 2026 21:23:53 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -246,11 +244,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '637'
+      - '554'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=639
+      - x-originResponse;dur=556
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -265,14 +263,14 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMUF0TVRBWERMRkJhQUhYNG10NzczNU4iLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMVJUTFlad0hhTEE3dEQyaUJ5cjhqa3IiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24i
         OiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWls
-        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxMjc1LCJjYWNoZV9j
+        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxMjgyLCJjYWNoZV9j
         cmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9r
         ZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRf
         dG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0
         cHV0X3Rva2VucyI6Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZl
         cmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Thu, 02 Apr 2026 21:06:07 GMT
+  recorded_at: Thu, 02 Apr 2026 21:23:53 GMT
 recorded_with: VCR 6.4.0

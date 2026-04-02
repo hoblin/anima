@@ -2,15 +2,9 @@
 
 module LLM
   # Convenience layer over {Providers::Anthropic} for sending messages
-  # and handling tool execution loops. Supports both simple text chat
-  # and multi-turn tool calling via the Anthropic tool use protocol.
+  # and handling tool execution loops.
   #
-  # @example Simple chat (no tools)
-  #   client = LLM::Client.new
-  #   client.chat([{role: "user", content: "Say hello"}])
-  #   # => "Hello! How can I help you today?"
-  #
-  # @example Chat with tools
+  # @example
   #   registry = Tools::Registry.new
   #   registry.register(Tools::WebGet)
   #   client.chat_with_tools(messages, registry: registry, session_id: session.id)
@@ -37,24 +31,6 @@ module LLM
       @model = model
       @max_tokens = max_tokens
       @logger = logger
-    end
-
-    # Send messages to the LLM and return the assistant's text response.
-    #
-    # @param messages [Array<Hash>] conversation messages, each with +:role+ and +:content+
-    # @param options [Hash] additional API parameters (e.g. +system:+, +temperature:+)
-    # @return [String] the assistant's response text
-    # @raise [Providers::Anthropic::Error] on API errors
-    # @raise [Providers::Anthropic::AuthenticationError] on auth failures
-    def chat(messages, **options)
-      response = provider.create_message(
-        model: model,
-        messages: messages,
-        max_tokens: max_tokens,
-        **options
-      )
-
-      extract_text(response)
     end
 
     # Send messages with tool support. Runs the full tool execution loop:
@@ -109,7 +85,6 @@ module LLM
 
         # Capture api_metrics from ApiResponse wrapper (nil for pre-fetched first_response)
         last_api_metrics = response.api_metrics if response.respond_to?(:api_metrics)
-        log_cache_metrics(last_api_metrics)
 
         log(:debug, "stop_reason=#{response["stop_reason"]} content_types=#{(response["content"] || []).map { |b| b["type"] }.join(",")}")
 
@@ -327,24 +302,6 @@ module LLM
       return unless @logger
 
       @logger.public_send(level, message)
-    end
-
-    # Logs cache hit/miss/creation token counts when present in API metrics.
-    #
-    # @param api_metrics [Hash, nil] metrics hash with "usage" key
-    # @return [void]
-    def log_cache_metrics(api_metrics)
-      usage = api_metrics&.dig("usage")
-      return unless usage
-
-      cache_read = usage["cache_read_input_tokens"].to_i
-      cache_create = usage["cache_creation_input_tokens"].to_i
-      return if cache_read.zero? && cache_create.zero?
-
-      input = usage["input_tokens"].to_i
-      total = input + cache_read + cache_create
-      hit_pct = (total > 0) ? (cache_read * 100.0 / total).round(1) : 0.0
-      log(:debug, "cache: read=#{cache_read} create=#{cache_create} uncached=#{input} hit=#{hit_pct}%")
     end
 
     def format_tool_result(result)

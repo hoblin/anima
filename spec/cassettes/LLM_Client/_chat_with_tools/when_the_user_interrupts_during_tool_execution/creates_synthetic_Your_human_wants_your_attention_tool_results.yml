@@ -9,7 +9,8 @@ http_interactions:
         the web_get tool to fetch https://example.com"}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
         a URL and return its contents","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["url"]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude.","cache_control":{"type":"ephemeral"}}]}'
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are Anima","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -31,7 +32,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:05:35 GMT
+      - Thu, 02 Apr 2026 21:38:51 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -79,11 +80,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1498'
+      - '1756'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=1500
+      - x-originResponse;dur=1758
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -98,19 +99,19 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxTHFLRXQzQzVRamlzWUJzYUZjNUhWcyIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxSm9GQ0FWMTlxY2lSRTN0Y0NRSHFiZCIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6IkknbGwgZmV0Y2ggdGhlIGNvbnRlbnRzIG9mIGh0dHBzOi8vZXhh
         bXBsZS5jb20gZm9yIHlvdS4ifSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoi
-        dG9vbHVfMDE1RDh2dXhrR2hQZ2FCR2FXZlN6OFo5IiwibmFtZSI6IndlYl9n
+        dG9vbHVfMDFIZ3ZWSlhxRmFMeVJmN3ZLWENCRnVMIiwibmFtZSI6IndlYl9n
         ZXQiLCJpbnB1dCI6eyJ1cmwiOiJodHRwczovL2V4YW1wbGUuY29tIn0sImNh
         bGxlciI6eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29s
         X3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVs
-        bCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjo0MjcsImNhY2hlX2NyZWF0aW9u
+        bCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjo0MzIsImNhY2hlX2NyZWF0aW9u
         X2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAs
         ImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMi
         OjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9r
         ZW5zIjo3Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2Vf
         Z2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Thu, 02 Apr 2026 21:05:35 GMT
+  recorded_at: Thu, 02 Apr 2026 21:38:51 GMT
 recorded_with: VCR 6.4.0

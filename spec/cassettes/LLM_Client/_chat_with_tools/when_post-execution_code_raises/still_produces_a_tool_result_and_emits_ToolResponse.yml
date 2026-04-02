@@ -9,7 +9,8 @@ http_interactions:
         the web_get tool to fetch https://example.com"}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
         a URL and return its contents","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["url"]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude.","cache_control":{"type":"ephemeral"}}]}'
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are Anima","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -31,7 +32,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:05:43 GMT
+      - Thu, 02 Apr 2026 21:38:59 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -79,11 +80,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1550'
+      - '1777'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=1551
+      - x-originResponse;dur=1780
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -98,21 +99,21 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxVHJEWVQ4RUtueVRwYTE3eFJ5S1BkMiIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxTGltMlF2dEwzV3RhTGpxNXZDVTZ4MiIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6IkknbGwgZmV0Y2ggdGhlIGNvbnRlbnRzIG9mIGh0dHBzOi8vZXhh
         bXBsZS5jb20gZm9yIHlvdS4ifSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoi
-        dG9vbHVfMDFBNGpNV1I2OXN6ek5vaFdGb1FtREJIIiwibmFtZSI6IndlYl9n
+        dG9vbHVfMDFVTkY4ODN3Y2FNbVlBSmVGZWdjdEFaIiwibmFtZSI6IndlYl9n
         ZXQiLCJpbnB1dCI6eyJ1cmwiOiJodHRwczovL2V4YW1wbGUuY29tIn0sImNh
         bGxlciI6eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29s
         X3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVs
-        bCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjo0MjcsImNhY2hlX2NyZWF0aW9u
+        bCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjo0MzIsImNhY2hlX2NyZWF0aW9u
         X2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAs
         ImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMi
         OjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9r
         ZW5zIjo3Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2Vf
         Z2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Thu, 02 Apr 2026 21:05:43 GMT
+  recorded_at: Thu, 02 Apr 2026 21:38:59 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
@@ -120,11 +121,12 @@ http_interactions:
       encoding: UTF-8
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Use
         the web_get tool to fetch https://example.com"},{"role":"assistant","content":[{"type":"text","text":"I''ll
-        fetch the contents of https://example.com for you."},{"type":"tool_use","id":"toolu_01A4jMWR69szzNohWFoQmDBH","name":"web_get","input":{"url":"https://example.com"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01A4jMWR69szzNohWFoQmDBH","content":"{\"error\":\"Encoding::CompatibilityError:
+        fetch the contents of https://example.com for you."},{"type":"tool_use","id":"toolu_01UNF883wcaMmYAJeFegctAZ","name":"web_get","input":{"url":"https://example.com"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01UNF883wcaMmYAJeFegctAZ","content":"{\"error\":\"Encoding::CompatibilityError:
         incompatible character encodings: ASCII-8BIT and UTF-8\"}"}]}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
         a URL and return its contents","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["url"]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude.","cache_control":{"type":"ephemeral"}}]}'
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are Anima","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -146,7 +148,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:05:47 GMT
+      - Thu, 02 Apr 2026 21:39:04 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -194,11 +196,9 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '3127'
-      Vary:
-      - Accept-Encoding
+      - '3972'
       Server-Timing:
-      - x-originResponse;dur=3130
+      - x-originResponse;dur=3974
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -213,25 +213,28 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxVFI0VFk4eXprTGZvYkxhb0NjaXNSMyIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxMno3RGh0TEF6cXVCOHVpNW5ORENibSIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6Ikl0IGxvb2tzIGxpa2UgdGhlcmUgd2FzIGFuIGVuY29kaW5nIGlz
-        c3VlIHdoZW4gZmV0Y2hpbmcgdGhlIHdlYnBhZ2UuIFRoaXMgdHlwaWNhbGx5
-        IGhhcHBlbnMgd2hlbiB0aGVyZSdzIGEgbWlzbWF0Y2ggYmV0d2VlbiBjaGFy
-        YWN0ZXIgZW5jb2RpbmdzLiBUaGUgY29udGVudCBmcm9tIGh0dHBzOi8vZXhh
-        bXBsZS5jb20gY291bGRuJ3QgYmUgcHJvcGVybHkgZGlzcGxheWVkIGR1ZSB0
-        byB0aGlzIGVuY29kaW5nIGNvbXBhdGliaWxpdHkgZXJyb3IuXG5cblRoaXMg
-        aXMgYSB0ZWNobmljYWwgaXNzdWUgd2l0aCBob3cgdGhlIGNvbnRlbnQgaXMg
-        YmVpbmcgcHJvY2Vzc2VkIHJhdGhlciB0aGFuIGEgcHJvYmxlbSB3aXRoIHRo
-        ZSB3ZWJzaXRlIGl0c2VsZi4gVGhlIGV4YW1wbGUuY29tIGRvbWFpbiBpcyB0
-        eXBpY2FsbHkgdXNlZCBmb3IgZGVtb25zdHJhdGlvbiBwdXJwb3NlcyBhbmQg
-        c2hvdWxkIG5vcm1hbGx5IGJlIGFjY2Vzc2libGUuIn1dLCJzdG9wX3JlYXNv
-        biI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRh
-        aWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjU0MCwiY2FjaGVf
-        Y3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rv
-        a2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0
-        X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91
-        dHB1dF90b2tlbnMiOjkxLCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImlu
-        ZmVyZW5jZV9nZW8iOiJub3RfYXZhaWxhYmxlIn19
-  recorded_at: Thu, 02 Apr 2026 21:05:47 GMT
+        dGV4dCI6IkkgZW5jb3VudGVyZWQgYW4gZW5jb2RpbmcgZXJyb3Igd2hlbiB0
+        cnlpbmcgdG8gZmV0Y2ggaHR0cHM6Ly9leGFtcGxlLmNvbS4gVGhpcyBhcHBl
+        YXJzIHRvIGJlIGEgdGVjaG5pY2FsIGlzc3VlIHdpdGggY2hhcmFjdGVyIGVu
+        Y29kaW5nIGNvbXBhdGliaWxpdHkuIFRoZSB3ZWJzaXRlIGNvbnRlbnQgY29u
+        dGFpbnMgY2hhcmFjdGVycyB0aGF0IGNhbid0IGJlIHByb3Blcmx5IGNvbnZl
+        cnRlZCBiZXR3ZWVuIEFTQ0lJLThCSVQgYW5kIFVURi04IGVuY29kaW5nIGZv
+        cm1hdHMuXG5cblRoaXMgdHlwZSBvZiBlcnJvciB0eXBpY2FsbHkgb2NjdXJz
+        IHdoZW4gdGhlcmUncyBhIG1pc21hdGNoIGJldHdlZW4gdGhlIGNoYXJhY3Rl
+        ciBlbmNvZGluZyBkZWNsYXJlZCBieSB0aGUgd2Vic2l0ZSBhbmQgdGhlIGFj
+        dHVhbCBlbmNvZGluZyBvZiB0aGUgY29udGVudCBiZWluZyBzZXJ2ZWQuXG5c
+        bldvdWxkIHlvdSBsaWtlIG1lIHRvIHRyeSBmZXRjaGluZyBhIGRpZmZlcmVu
+        dCBVUkwsIG9yIGlzIHRoZXJlIHNvbWV0aGluZyBzcGVjaWZpYyB5b3Ugd2Vy
+        ZSBsb29raW5nIGZvciBmcm9tIGV4YW1wbGUuY29tIHRoYXQgSSBtaWdodCBi
+        ZSBhYmxlIHRvIGhlbHAgeW91IHdpdGggaW4gYW5vdGhlciB3YXk/In1dLCJz
+        dG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwi
+        c3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjU0
+        NSwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFk
+        X2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFs
+        XzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2Vu
+        cyI6MH0sIm91dHB1dF90b2tlbnMiOjEyNiwic2VydmljZV90aWVyIjoic3Rh
+        bmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
+  recorded_at: Thu, 02 Apr 2026 21:39:04 GMT
 recorded_with: VCR 6.4.0

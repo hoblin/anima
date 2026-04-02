@@ -38,9 +38,14 @@ module Tools
     #   are instantiated with context to generate their schema:
     #   - {Think}: budget-based maxLength
     #   - {Bash}: CWD embedded in description
+    # Returns tool schemas for the Anthropic API. The last schema is
+    # annotated with +cache_control+ so the API caches the entire tools
+    # prefix (tools are evaluated first in cache prefix order).
     def schemas
       default = Anima::Settings.tool_timeout
-      @tools.values.map { |tool| inject_timeout(resolve_schema(tool), default) }
+      result = @tools.values.map { |tool| inject_timeout(resolve_schema(tool), default) }
+      result.last[:cache_control] = {type: "ephemeral"}
+      result
     end
 
     # Execute a tool by name. Classes are instantiated with the registry's

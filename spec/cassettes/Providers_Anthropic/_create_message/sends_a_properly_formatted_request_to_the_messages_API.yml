@@ -7,7 +7,8 @@ http_interactions:
       encoding: UTF-8
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Reply
         with the single word OK"}],"max_tokens":8192,"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude.","cache_control":{"type":"ephemeral"}}]}'
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are Anima","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -29,7 +30,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:06:14 GMT
+      - Thu, 02 Apr 2026 21:48:23 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -77,11 +78,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '711'
+      - '785'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=712
+      - x-originResponse;dur=787
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -96,15 +97,15 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxTUtDeEZONXZpcFhqR005cVF3aUNLUyIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxUjRnTXUzenBaRnVMZWpQalJjYktqcCIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6Ik9LIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9z
         ZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJp
-        bnB1dF90b2tlbnMiOjI3LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMi
+        bnB1dF90b2tlbnMiOjMyLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMi
         OjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlv
         biI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxf
         MWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6NCwic2Vydmlj
         ZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWls
         YWJsZSJ9fQ==
-  recorded_at: Thu, 02 Apr 2026 21:06:14 GMT
+  recorded_at: Thu, 02 Apr 2026 21:48:23 GMT
 recorded_with: VCR 6.4.0

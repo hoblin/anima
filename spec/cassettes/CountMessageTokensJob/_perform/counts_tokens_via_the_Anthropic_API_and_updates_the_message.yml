@@ -6,8 +6,7 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Hello,
-        Claude"}],"system":[{"type":"text","text":"You are Claude Code, Anthropic''s
-        official CLI for Claude.","cache_control":{"type":"ephemeral"}}]}'
+        Claude"}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -29,7 +28,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:04:00 GMT
+      - Thu, 02 Apr 2026 21:37:55 GMT
       Content-Type:
       - application/json
       Content-Length:
@@ -45,9 +44,9 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '73'
+      - '100'
       Server-Timing:
-      - x-originResponse;dur=75
+      - x-originResponse;dur=102
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -60,6 +59,6 @@ http_interactions:
       - "<CF_RAY>"
     body:
       encoding: UTF-8
-      string: '{"input_tokens":24}'
-  recorded_at: Thu, 02 Apr 2026 21:04:00 GMT
+      string: '{"input_tokens":10}'
+  recorded_at: Thu, 02 Apr 2026 21:37:55 GMT
 recorded_with: VCR 6.4.0

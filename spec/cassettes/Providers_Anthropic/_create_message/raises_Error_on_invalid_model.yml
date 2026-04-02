@@ -6,7 +6,8 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"model":"bad-model","messages":[{"role":"user","content":"Hi"}],"max_tokens":8192,"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude.","cache_control":{"type":"ephemeral"}}]}'
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are Anima","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -24,11 +25,11 @@ http_interactions:
       - Ruby
   response:
     status:
-      code: 404
-      message: Not Found
+      code: 400
+      message: Bad Request
     headers:
       Date:
-      - Thu, 19 Mar 2026 20:14:48 GMT
+      - Thu, 02 Apr 2026 21:44:25 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -46,11 +47,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '32'
+      - '66'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - proxy;dur=32
+      - x-originResponse;dur=67
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -64,8 +65,9 @@ http_interactions:
     body:
       encoding: ASCII-8BIT
       base64_string: |
-        eyJ0eXBlIjoiZXJyb3IiLCJlcnJvciI6eyJ0eXBlIjoibm90X2ZvdW5kX2Vy
-        cm9yIiwibWVzc2FnZSI6Im1vZGVsOiBiYWQtbW9kZWwifSwicmVxdWVzdF9p
-        ZCI6InJlcV8wMTFDWkQzeVluTFRWaVdzTUZhNld5dVgifQ==
-  recorded_at: Thu, 19 Mar 2026 20:14:48 GMT
+        eyJ0eXBlIjoiZXJyb3IiLCJlcnJvciI6eyJ0eXBlIjoiaW52YWxpZF9yZXF1
+        ZXN0X2Vycm9yIiwibWVzc2FnZSI6InN5c3RlbS4xLnRleHQ6IElucHV0IHNo
+        b3VsZCBiZSBhIHZhbGlkIHN0cmluZyJ9LCJyZXF1ZXN0X2lkIjoicmVxXzAx
+        MUNaZmc4bjI3SndLZUdBZFNTR0VFcCJ9
+  recorded_at: Thu, 02 Apr 2026 21:44:25 GMT
 recorded_with: VCR 6.4.0

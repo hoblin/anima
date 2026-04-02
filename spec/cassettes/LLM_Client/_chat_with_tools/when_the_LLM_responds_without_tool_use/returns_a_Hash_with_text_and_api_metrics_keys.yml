@@ -9,7 +9,8 @@ http_interactions:
         is 2 + 2? Just answer the number."}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
         a URL and return its contents","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["url"]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude.","cache_control":{"type":"ephemeral"}}]}'
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are Anima","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -31,7 +32,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:05:05 GMT
+      - Thu, 02 Apr 2026 21:38:24 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -79,11 +80,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '812'
+      - '2042'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=813
+      - x-originResponse;dur=2044
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -98,15 +99,15 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxUWdwMlpOVWZKcGR0NkpuNEtSUmRQMyIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxRTlXdzI1bmRBOEY3WlE4MTFSZFo3VyIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6IjQifV0sInN0b3BfcmVhc29uIjoiZW5kX3R1cm4iLCJzdG9wX3Nl
         cXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGwsInVzYWdlIjp7Imlu
-        cHV0X3Rva2VucyI6NDI4LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMi
+        cHV0X3Rva2VucyI6NDMzLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMi
         OjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlv
         biI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxf
         MWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6NSwic2Vydmlj
         ZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWls
         YWJsZSJ9fQ==
-  recorded_at: Thu, 02 Apr 2026 21:05:06 GMT
+  recorded_at: Thu, 02 Apr 2026 21:38:24 GMT
 recorded_with: VCR 6.4.0
