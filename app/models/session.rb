@@ -149,6 +149,7 @@ class Session < ApplicationRecord
   end
 
   # Returns the workflow name currently visible in the viewport, if any.
+  # Only one workflow can be active at a time, so we return the first match.
   #
   # @return [String, nil] workflow name present in the viewport
   def workflow_in_viewport

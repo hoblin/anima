@@ -121,6 +121,11 @@ class PendingMessage < ApplicationRecord
   # Follows the same format for all non-user source types — the only
   # difference is the tool name and input hash.
   #
+  # Phantom pairs keep the system prompt stable for prompt caching (#395).
+  # Instead of injecting skills/workflows into the system prompt (which
+  # busts the cache on every change), they flow through the sliding window
+  # as messages the LLM "recalls" via phantom tool invocations.
+  #
   # @param tool_name [String] phantom tool name (not in the agent's registry)
   # @param input [Hash] tool input hash
   # @return [Array<Hash>] two-element array: assistant tool_use + user tool_result

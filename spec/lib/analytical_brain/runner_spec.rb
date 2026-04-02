@@ -117,6 +117,29 @@ RSpec.describe AnalyticalBrain::Runner do
         expect(captured_opts[:system]).not_to include("gh-issue")
       end
 
+      it "excludes viewport-present workflows from the catalog" do
+        Workflows::Registry.reload!
+        workflow_name = Workflows::Registry.instance.available_names.first
+        workflow_desc = Workflows::Registry.instance.catalog[workflow_name]
+        msg = session.messages.create!(
+          message_type: "user_message",
+          payload: {"content" => "workflow", "source_type" => "workflow", "source_name" => workflow_name},
+          timestamp: 0
+        )
+        session.update_column(:viewport_message_ids, [msg.id])
+
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).to include("AVAILABLE WORKFLOWS")
+        expect(captured_opts[:system]).not_to include("- #{workflow_name} — #{workflow_desc}")
+      end
+
       it "includes currently active skills in system prompt" do
         Skills::Registry.reload!
         session.activate_skill("gh-issue")

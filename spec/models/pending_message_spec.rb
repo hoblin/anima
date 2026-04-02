@@ -78,6 +78,59 @@ RSpec.describe PendingMessage, type: :model do
     end
   end
 
+  describe "#user?" do
+    it "returns true when source_type is user" do
+      pm = PendingMessage.new(source_type: "user")
+      expect(pm).to be_user
+    end
+
+    it "returns true by default" do
+      pm = PendingMessage.new
+      expect(pm).to be_user
+    end
+
+    it "returns false for non-user types" do
+      pm = PendingMessage.new(source_type: "skill")
+      expect(pm).not_to be_user
+    end
+  end
+
+  describe "#skill?" do
+    it "returns true when source_type is skill" do
+      pm = PendingMessage.new(source_type: "skill")
+      expect(pm).to be_skill
+    end
+
+    it "returns false for other types" do
+      pm = PendingMessage.new(source_type: "user")
+      expect(pm).not_to be_skill
+    end
+  end
+
+  describe "#workflow?" do
+    it "returns true when source_type is workflow" do
+      pm = PendingMessage.new(source_type: "workflow")
+      expect(pm).to be_workflow
+    end
+
+    it "returns false for other types" do
+      pm = PendingMessage.new(source_type: "user")
+      expect(pm).not_to be_workflow
+    end
+  end
+
+  describe "#recall?" do
+    it "returns true when source_type is recall" do
+      pm = PendingMessage.new(source_type: "recall")
+      expect(pm).to be_recall
+    end
+
+    it "returns false for other types" do
+      pm = PendingMessage.new(source_type: "user")
+      expect(pm).not_to be_recall
+    end
+  end
+
   describe "#phantom_pair?" do
     it "returns true for subagent messages" do
       pm = PendingMessage.new(source_type: "subagent")
@@ -91,6 +144,11 @@ RSpec.describe PendingMessage, type: :model do
 
     it "returns true for workflow messages" do
       pm = PendingMessage.new(source_type: "workflow")
+      expect(pm).to be_phantom_pair
+    end
+
+    it "returns true for recall messages" do
+      pm = PendingMessage.new(source_type: "recall")
       expect(pm).to be_phantom_pair
     end
 

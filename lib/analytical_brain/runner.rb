@@ -276,6 +276,7 @@ module AnalyticalBrain
     # so the brain doesn't re-activate them. When a skill evicts from the
     # viewport, it reappears here and the brain can re-inject if relevant.
     #
+    # @see Session#skills_in_viewport
     # @return [String] available skills list for the analytical brain
     def skills_catalog_section
       present = @session.skills_in_viewport
@@ -295,6 +296,7 @@ module AnalyticalBrain
 
     # Workflows already visible in the viewport are excluded from the catalog.
     #
+    # @see Session#workflow_in_viewport
     # @return [String] available workflows list for the analytical brain
     def workflows_catalog_section
       present = @session.workflow_in_viewport
