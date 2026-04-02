@@ -5,6 +5,8 @@ module AnalyticalBrain
     # Marks a goal as completed on the main session. Sets the status to
     # "completed" and records the completion timestamp.
     class FinishGoal < ::Tools::Base
+      include GoalMessaging
+
       def self.tool_name = "finish_goal"
 
       def self.description = "Mark a goal as completed."
@@ -57,6 +59,7 @@ module AnalyticalBrain
 
         msg = "Goal completed: #{desc} (id: #{id})"
         msg += " (released #{released} orphaned pins)" if released > 0
+        enqueue_goal_message(goal, msg)
         msg
       end
     end

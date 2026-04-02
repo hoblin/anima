@@ -53,7 +53,7 @@ RSpec.describe Anima::ConfigMigrator do
     context "when an entire section is missing" do
       it "appends the section with its separator comment and keys" do
         config = full_default_config.gsub(
-          /# ─── Goals.*\z/m,
+          /# ─── Analytical Brain.*\z/m,
           ""
         )
         write_config(config)
@@ -66,7 +66,6 @@ RSpec.describe Anima::ConfigMigrator do
           ["analytical_brain", "blocking_on_user_message"],
           ["analytical_brain", "blocking_on_agent_message"],
           ["analytical_brain", "message_window"],
-          ["goals", "completed_decay_messages"],
           ["mneme", "max_tokens"],
           ["mneme", "viewport_fraction"],
           ["mneme", "l1_budget_fraction"],

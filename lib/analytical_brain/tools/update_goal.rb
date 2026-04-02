@@ -13,6 +13,8 @@ module AnalyticalBrain
     # Completed goals cannot be updated; attempting to do so returns an error
     # so the brain learns to check status before calling this tool.
     class UpdateGoal < ::Tools::Base
+      include GoalMessaging
+
       def self.tool_name = "update_goal"
 
       def self.description = "Refine a goal's wording as understanding evolves."
@@ -49,7 +51,9 @@ module AnalyticalBrain
         return {error: "Cannot update completed goal: #{goal.description} (id: #{goal_id})"} if goal.completed?
 
         goal.update!(description: description)
-        "Goal updated: #{description} (id: #{goal_id})"
+        confirmation = "Goal updated: #{description} (id: #{goal_id})"
+        enqueue_goal_message(goal, confirmation)
+        confirmation
       end
     end
   end

@@ -242,16 +242,16 @@ class Session < ApplicationRecord
     save!
   end
 
-  # Assembles the system prompt: version preamble, soul, environment context,
-  # then goals. Skills and workflows are no longer part of the system prompt —
-  # they flow through the message stream as phantom tool pairs, keeping the
-  # system prompt stable for prompt caching.
+  # Assembles the system prompt: version preamble, soul, snapshots, and
+  # environment context. Skills, workflows, and goals flow through the
+  # message stream as phantom tool pairs, keeping the system prompt stable
+  # for prompt caching.
   #
   # @param environment_context [String, nil] pre-assembled environment block
   # @return [String] composed system prompt
   def assemble_system_prompt(environment_context: nil)
     [assemble_version_preamble, assemble_soul_section, assemble_snapshots_section,
-      environment_context, assemble_goals_section].compact.join("\n\n")
+      environment_context].compact.join("\n\n")
   end
 
   # Serializes non-evicted goals as a lightweight summary for ActionCable
@@ -266,14 +266,13 @@ class Session < ApplicationRecord
 
   # Builds the message array expected by the Anthropic Messages API.
   # Viewport layout (top to bottom):
-  #   [pinned messages] [sliding window messages]
+  #   [context prefix: goals + pinned messages] [sliding window messages]
   #
   # Snapshots live in the system prompt (stable between Mneme runs).
-  # Recalled memories are phantom tool_call/tool_response pairs injected
-  # by {Mneme::PassiveRecall} — they ride the conveyor belt as regular
-  # messages and are included in the sliding window automatically.
-  # Pinned messages are critical context attached to active Goals — they
-  # survive eviction intact until their Goals complete.
+  # Goal events and recalled memories flow through the message stream as
+  # phantom tool pairs — they ride the conveyor belt as regular messages.
+  # After eviction, a goal snapshot + pinned messages block is rebuilt
+  # from DB state and prepended as a phantom pair.
   #
   # The sliding window is post-processed by {#ensure_atomic_tool_pairs}
   # which removes orphaned tool messages whose partner was cut off by the
@@ -292,9 +291,9 @@ class Session < ApplicationRecord
     window = viewport_messages(token_budget: sliding_budget)
     first_message_id = window.first&.id
 
-    pinned_messages = assemble_pinned_section_messages(first_message_id, budget: pinned_budget)
+    prefix = assemble_context_prefix_messages(first_message_id, budget: pinned_budget)
 
-    pinned_messages + assemble_messages(ensure_atomic_tool_pairs(window))
+    prefix + assemble_messages(ensure_atomic_tool_pairs(window))
   end
 
   # Detects orphaned tool_call messages (those without a matching tool_response
@@ -367,21 +366,23 @@ class Session < ApplicationRecord
     end
   end
 
-  # Promotes a recall pending message into a phantom tool_call/tool_response pair.
+  # Promotes a phantom pair pending message into a tool_call/tool_response pair.
   # These persist as real Message records and ride the conveyor belt.
   #
-  # @param pm [PendingMessage] recall pending message (source_name = recalled message ID)
+  # @param pm [PendingMessage] phantom pair pending message
   # @return [void]
-  def promote_recall_message!(pm)
-    uid = "recall_#{pm.source_name}"
+  def promote_phantom_pair!(pm)
+    tool_name = pm.phantom_tool_name
+    tool_input = pm.phantom_tool_input
+    uid = "#{tool_name}_#{pm.id}"
     now = now_ns
 
     messages.create!(
       message_type: "tool_call",
       tool_use_id: uid,
-      payload: {"tool_name" => PendingMessage::RECALL_MEMORY_TOOL, "tool_use_id" => uid,
-                "tool_input" => {"message_id" => pm.source_name.to_i},
-                "content" => "Recalling message #{pm.source_name}"},
+      payload: {"tool_name" => tool_name, "tool_use_id" => uid,
+                "tool_input" => tool_input.stringify_keys,
+                "content" => pm.display_content.lines.first.chomp},
       timestamp: now,
       token_count: Mneme::PassiveRecall::TOOL_PAIR_OVERHEAD_TOKENS
     )
@@ -389,7 +390,7 @@ class Session < ApplicationRecord
     messages.create!(
       message_type: "tool_response",
       tool_use_id: uid,
-      payload: {"tool_name" => PendingMessage::RECALL_MEMORY_TOOL, "tool_use_id" => uid,
+      payload: {"tool_name" => tool_name, "tool_use_id" => uid,
                 "content" => pm.content, "success" => true},
       timestamp: now,
       token_count: Message.estimate_token_count(pm.content.bytesize)
@@ -429,8 +430,8 @@ class Session < ApplicationRecord
   # Returns a hash with two keys:
   # - +:texts+ — plain content strings for user messages (injected as text blocks
   #   within the current tool_results turn)
-  # - +:pairs+ — synthetic tool_use/tool_result message hashes for sub-agent,
-  #   skill, and workflow messages (appended as new conversation turns)
+  # - +:pairs+ — synthetic tool_use/tool_result message hashes for phantom pair
+  #   types (appended as new conversation turns)
   #
   # @return [Hash{Symbol => Array}] promoted messages split by injection strategy
   def promote_pending_messages!
@@ -438,8 +439,8 @@ class Session < ApplicationRecord
     pairs = []
     pending_messages.find_each do |pm|
       transaction do
-        if pm.recall?
-          promote_recall_message!(pm)
+        if pm.phantom_pair?
+          promote_phantom_pair!(pm)
         else
           create_user_message(pm.display_content, source_type: pm.source_type, source_name: pm.source_name)
         end
@@ -640,37 +641,6 @@ class Session < ApplicationRecord
     return if sections.empty?
 
     "## Your Expertise\n\nYou know this deeply. Now's your chance to put it to work.\n\n#{sections.join("\n\n")}"
-  end
-
-  # Evicts completed goals that have aged past the configured threshold
-  # of meaningful messages (user + agent turns). Pure arithmetic — no LLM
-  # involvement. Called before prompt assembly so evicted goals are
-  # excluded from the very next context window.
-  #
-  # @return [void]
-  def evict_stale_goals!
-    threshold = Anima::Settings.completed_decay_messages
-    goals.evictable.each do |goal|
-      messages_since = messages.llm_messages.where("created_at > ?", goal.completed_at).count
-      goal.update!(evicted_at: Time.current) if messages_since >= threshold
-    end
-  end
-
-  # Assembles the goals section of the system prompt.
-  # Automatically evicts stale completed goals before filtering.
-  # Active root goals render as `###` headings with sub-goal checkboxes.
-  # Completed root goals collapse to a single strikethrough line.
-  # Evicted goals are excluded entirely to free context budget.
-  #
-  # @return [String, nil] goals section, or nil when no goals exist
-  def assemble_goals_section
-    evict_stale_goals!
-
-    root_goals = goals.root.not_evicted.includes(:sub_goals).order(:created_at)
-    return if root_goals.empty?
-
-    entries = root_goals.map { |goal| render_goal_markdown(goal) }
-    "Current Goals\n=============\n\n#{entries.join("\n\n")}"
   end
 
   # Assembles the task section for sub-agent system prompts.
@@ -880,31 +850,43 @@ class Session < ApplicationRecord
     "## #{label}\n\n#{texts.join("\n\n")}"
   end
 
-  # Assembles pinned messages as a Goals section message for the viewport.
-  # Only includes pinned messages whose source message has evicted from the
-  # sliding window (same rule as snapshots — no duplication with live messages).
+  # Assembles the context prefix: active goals snapshot + pinned messages.
+  # Only shown after the first eviction — before that, goal events flow
+  # as phantom pairs in the message stream and pinned messages have not
+  # yet evicted.
   #
-  # Deduplication: the first Goal referencing a message shows its truncated
-  # display_text; subsequent Goals show a bare `message N` ID to save tokens.
+  # Returns a phantom tool_call/tool_result pair so the LLM sees a
+  # coherent goals + pins block it "recalled" via a tool invocation.
   #
   # @param first_message_id [Integer, nil] first message ID in the sliding window
-  # @param budget [Integer] token budget for pinned messages
-  # @return [Array<Hash>] Anthropic Messages API format (0 or 1 messages)
-  def assemble_pinned_section_messages(first_message_id, budget:)
+  # @param budget [Integer] token budget for context prefix
+  # @return [Array<Hash>] Anthropic Messages API format (0 or 2 messages)
+  def assemble_context_prefix_messages(first_message_id, budget:)
     return [] unless first_message_id
+    return [] unless messages.where("id < ?", first_message_id).exists?
+
+    root_goals = goals.root.active.includes(:sub_goals).order(:created_at)
+    return [] if root_goals.empty?
 
     pins = pinned_messages
       .includes(:message, :goals)
       .where("pinned_messages.message_id < ?", first_message_id)
       .order("pinned_messages.message_id")
 
-    return [] if pins.empty?
+    selected_pins = select_pins_within_budget(pins, budget)
+    content = render_goal_snapshot_with_pins(root_goals, selected_pins)
 
-    selected = select_pins_within_budget(pins, budget)
-    return [] if selected.empty?
-
-    text = render_pinned_messages_section(selected)
-    [{role: "user", content: "[pinned messages]\n#{text}"}]
+    # Uses session ID (not PendingMessage ID) because this snapshot is
+    # rebuilt from DB state on every eviction — it has no stable PM record.
+    uid = "goal_snapshot_#{id}"
+    [
+      {role: "assistant", content: [
+        {type: "tool_use", id: uid, name: PendingMessage::RECALL_GOAL_TOOL, input: {}}
+      ]},
+      {role: "user", content: [
+        {type: "tool_result", tool_use_id: uid, content: content}
+      ]}
+    ]
   end
 
   # Walks pinned messages chronologically, selecting until the token budget
@@ -928,23 +910,33 @@ class Session < ApplicationRecord
     selected
   end
 
-  # Renders the pinned messages section grouped by Goal.
-  # First Goal referencing a pin shows truncated text; subsequent Goals
-  # show bare `message N` ID to avoid token-expensive repetition.
+  # Renders active goals with their associated pinned messages as a
+  # combined snapshot. Each goal shows its sub-goals and any pinned
+  # messages attached to it.
   #
+  # @param root_goals [Array<Goal>] active root goals with preloaded sub_goals
   # @param pins [Array<PinnedMessage>] selected pins with preloaded goals
-  # @return [String] formatted section text
-  def render_pinned_messages_section(pins)
-    goal_pins = group_pins_by_active_goal(pins)
-
+  # @return [String] formatted goals + pins block
+  def render_goal_snapshot_with_pins(root_goals, pins)
+    pin_groups = group_pins_by_active_goal(pins)
     shown_messages = Set.new
-    goal_pins.map { |goal, pin_list|
-      render_goal_pins(goal, pin_list, shown_messages)
-    }.join("\n\n")
+
+    sections = root_goals.map { |goal|
+      lines = [render_goal_markdown(goal)]
+      goal_pins = pin_groups[goal]
+      if goal_pins
+        lines << ""
+        goal_pins.each { |pin| lines << format_pin_line(pin, shown_messages) }
+      end
+      lines.join("\n")
+    }
+
+    "Current Goals\n=============\n\n#{sections.join("\n\n")}"
   end
 
   # Groups pins by their active Goals so the viewport renders
-  # one headed section per Goal.
+  # one headed section per Goal. Relies on +:goals+ being eager-loaded
+  # on each pin — without it, +active_goal_pin_pairs+ triggers N+1.
   #
   # @param pins [Array<PinnedMessage>] pins with preloaded goals
   # @return [Hash{Goal => Array<PinnedMessage>}]
@@ -962,18 +954,6 @@ class Session < ApplicationRecord
     pin.goals.select(&:active?).map { |goal| [goal, pin] }
   end
 
-  # Renders one Goal's pinned messages as a headed list.
-  #
-  # @param goal [Goal]
-  # @param pin_list [Array<PinnedMessage>]
-  # @param shown_messages [Set<Integer>] tracks already-rendered message IDs for dedup
-  # @return [String]
-  def render_goal_pins(goal, pin_list, shown_messages)
-    lines = ["📌 #{goal.description} (id: #{goal.id})"]
-    pin_list.each { |pin| lines << format_pin_line(pin, shown_messages) }
-    lines.join("\n")
-  end
-
   # Formats a single pin line with deduplication: first occurrence shows
   # truncated text, subsequent occurrences show bare message ID only.
   #
@@ -983,9 +963,9 @@ class Session < ApplicationRecord
   def format_pin_line(pin, shown_messages)
     mid = pin.message_id
     if shown_messages.add?(mid)
-      "  message #{mid}: #{pin.display_text}"
+      "  📌 message #{mid}: #{pin.display_text}"
     else
-      "  message #{mid}"
+      "  📌 message #{mid}"
     end
   end
 
