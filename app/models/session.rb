@@ -874,6 +874,8 @@ class Session < ApplicationRecord
     selected_pins = select_pins_within_budget(pins, budget)
     content = render_goal_snapshot_with_pins(root_goals, selected_pins)
 
+    # Uses session ID (not PendingMessage ID) because this snapshot is
+    # rebuilt from DB state on every eviction — it has no stable PM record.
     uid = "goal_snapshot_#{id}"
     [
       {role: "assistant", content: [
@@ -931,7 +933,8 @@ class Session < ApplicationRecord
   end
 
   # Groups pins by their active Goals so the viewport renders
-  # one headed section per Goal.
+  # one headed section per Goal. Relies on +:goals+ being eager-loaded
+  # on each pin — without it, +active_goal_pin_pairs+ triggers N+1.
   #
   # @param pins [Array<PinnedMessage>] pins with preloaded goals
   # @return [Hash{Goal => Array<PinnedMessage>}]

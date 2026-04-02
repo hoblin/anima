@@ -6,6 +6,8 @@ module AnalyticalBrain
     # objectives (semantic episodes); sub-goals are TODO-style steps within
     # a root goal. The two-level hierarchy is enforced by the Goal model.
     class SetGoal < ::Tools::Base
+      include GoalMessaging
+
       def self.tool_name = "set_goal"
 
       def self.description = "Create a goal or sub-goal."
@@ -48,14 +50,6 @@ module AnalyticalBrain
       end
 
       private
-
-      def enqueue_goal_message(goal, confirmation)
-        @main_session.pending_messages.create!(
-          content: confirmation,
-          source_type: "goal",
-          source_name: goal.id.to_s
-        )
-      end
 
       def format_confirmation(goal)
         prefix = goal.parent_goal_id ? "Sub-goal" : "Goal"

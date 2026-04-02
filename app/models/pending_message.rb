@@ -12,9 +12,9 @@
 #
 # Each pending message knows its source (+source_type+, +source_name+)
 # and how to serialize itself for the LLM conversation via {#to_llm_messages}.
-# Non-user messages (sub-agent results, recalled skills, workflows, recall)
-# become synthetic tool_use/tool_result pairs so the LLM sees "a tool I
-# invoked returned a result" rather than "a user wrote me."
+# Non-user messages (sub-agent results, recalled skills, workflows, recall,
+# goal events) become synthetic tool_use/tool_result pairs so the LLM sees
+# "a tool I invoked returned a result" rather than "a user wrote me."
 #
 # @see Session#enqueue_user_message
 # @see Session#promote_pending_messages!

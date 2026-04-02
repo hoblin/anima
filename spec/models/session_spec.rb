@@ -815,6 +815,17 @@ RSpec.describe Session do
 
       expect(prompt_before).to eq(prompt_after)
     end
+
+    it "does not auto-evict completed goals by message count" do
+      goal = Goal.create!(session: session, description: "Ongoing work")
+      goal.update!(status: "completed", completed_at: Time.current)
+
+      20.times do |i|
+        session.messages.create!(message_type: "user_message", payload: {content: "msg #{i}"}, timestamp: i + 1)
+      end
+
+      expect(goal.reload.evicted_at).to be_nil
+    end
   end
 
   describe "#activate_workflow" do

@@ -31,7 +31,8 @@ class Goal < ApplicationRecord
   scope :not_evicted, -> { where(evicted_at: nil) }
 
   # @!method self.evictable
-  #   Completed goals pending eviction — visible to the brain for age-based review.
+  #   Completed goals not yet evicted — their phantom pairs remain in the
+  #   sliding window until Mneme compresses them during the eviction cycle.
   #   @return [ActiveRecord::Relation]
   scope :evictable, -> { completed.where(evicted_at: nil) }
 
