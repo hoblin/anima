@@ -33,6 +33,19 @@ RSpec.describe AnalyticalBrain::Tools::FinishGoal do
       expect(goal.completed_at).to be_within(1.second).of(Time.current)
     end
 
+    it "enqueues a goal PendingMessage on the main session" do
+      goal = session.goals.create!(description: "Write tests")
+
+      expect {
+        tool.execute({"goal_id" => goal.id})
+      }.to change(session.pending_messages, :count).by(1)
+
+      pm = session.pending_messages.last
+      expect(pm.source_type).to eq("goal")
+      expect(pm.source_name).to eq(goal.id.to_s)
+      expect(pm.content).to include("Goal completed:")
+    end
+
     it "marks a sub-goal as completed while parent stays active" do
       root = session.goals.create!(description: "Root goal")
       sub = session.goals.create!(description: "Sub-step", parent_goal: root)

@@ -49,7 +49,19 @@ module AnalyticalBrain
         return {error: "Cannot update completed goal: #{goal.description} (id: #{goal_id})"} if goal.completed?
 
         goal.update!(description: description)
-        "Goal updated: #{description} (id: #{goal_id})"
+        confirmation = "Goal updated: #{description} (id: #{goal_id})"
+        enqueue_goal_message(goal, confirmation)
+        confirmation
+      end
+
+      private
+
+      def enqueue_goal_message(goal, confirmation)
+        @main_session.pending_messages.create!(
+          content: confirmation,
+          source_type: "goal",
+          source_name: goal.id.to_s
+        )
       end
     end
   end

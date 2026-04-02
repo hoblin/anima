@@ -454,7 +454,7 @@ RSpec.describe Session do
       expect(prompt).not_to include("## Your Expertise")
     end
 
-    it "includes environment context between soul and goals" do
+    it "includes environment context after soul" do
       session = Session.create!
       Goal.create!(session: session, description: "Test goal")
       env = "## Environment\n\nOS: Arch Linux (pacman, yay)\nCWD: /home/user/project"
@@ -462,22 +462,18 @@ RSpec.describe Session do
       prompt = session.system_prompt(environment_context: env)
       soul_pos = prompt.index("# Soul")
       env_pos = prompt.index("## Environment")
-      goals_pos = prompt.index("Current Goals")
       expect(soul_pos).to be < env_pos
-      expect(env_pos).to be < goals_pos
+      expect(prompt).not_to include("Current Goals")
     end
 
-    it "includes environment context between soul and goals when no expertise" do
+    it "excludes goals from system prompt entirely" do
       session = Session.create!
       Goal.create!(session: session, description: "Test goal")
       env = "## Environment\n\nOS: Linux"
 
       prompt = session.system_prompt(environment_context: env)
-      soul_pos = prompt.index("# Soul")
-      env_pos = prompt.index("## Environment")
-      goals_pos = prompt.index("Current Goals\n=============")
-      expect(soul_pos).to be < env_pos
-      expect(env_pos).to be < goals_pos
+      expect(prompt).not_to include("Current Goals")
+      expect(prompt).not_to include("Test goal")
     end
 
     it "works without environment context" do
@@ -803,216 +799,21 @@ RSpec.describe Session do
 
     let(:session) { Session.create! }
 
-    it "includes soul and goals when goals exist but no skills" do
+    it "excludes goals from system prompt — they flow as phantom pairs" do
       Goal.create!(session: session, description: "Implement feature")
 
       prompt = session.assemble_system_prompt
       expect(prompt).to start_with("You are running on Anima v")
-      expect(prompt).to include("Current Goals\n=============")
-      expect(prompt).to include("### Implement feature")
-      expect(prompt).not_to include("Your Expertise")
-    end
-
-    it "includes goals but not expertise when skills and goals are present" do
-      session.activate_skill("gh-issue")
-      Goal.create!(session: session, description: "Write ticket")
-
-      prompt = session.assemble_system_prompt
-      expect(prompt).not_to include("## Your Expertise")
-      expect(prompt).to include("Current Goals\n=============")
-    end
-
-    it "renders sub-goals as checkbox items" do
-      root = Goal.create!(session: session, description: "Refactor auth")
-      Goal.create!(session: session, parent_goal: root, description: "Read existing code", status: "completed")
-      Goal.create!(session: session, parent_goal: root, description: "Write new middleware")
-
-      prompt = session.assemble_system_prompt
-      expect(prompt).to include("### Refactor auth")
-      expect(prompt).to include("- [x] Read existing code")
-      expect(prompt).to include("- [ ] Write new middleware")
-    end
-
-    it "renders multiple root goals" do
-      Goal.create!(session: session, description: "First goal")
-      Goal.create!(session: session, description: "Second goal")
-
-      prompt = session.assemble_system_prompt
-      expect(prompt).to include("### First goal")
-      expect(prompt).to include("### Second goal")
-    end
-
-    it "renders completed root goals with strikethrough" do
-      Goal.create!(session: session, description: "Set up CI", status: "completed", completed_at: 1.hour.ago)
-
-      prompt = session.assemble_system_prompt
-      expect(prompt).to include("### ~~Set up CI~~ ✓")
-    end
-
-    it "hides sub-goals of completed root goals" do
-      root = Goal.create!(session: session, description: "Done task", status: "completed", completed_at: 1.hour.ago)
-      Goal.create!(session: session, parent_goal: root, description: "Hidden sub-goal", status: "completed", completed_at: 1.hour.ago)
-
-      prompt = session.assemble_system_prompt
-      expect(prompt).to include("### ~~Done task~~ ✓")
-      expect(prompt).not_to include("Hidden sub-goal")
-    end
-
-    it "renders active and completed root goals together" do
-      Goal.create!(session: session, description: "Completed task", status: "completed", completed_at: 1.hour.ago)
-      root = Goal.create!(session: session, description: "Active task")
-      Goal.create!(session: session, parent_goal: root, description: "Step 1")
-
-      prompt = session.assemble_system_prompt
-      expect(prompt).to include("### ~~Completed task~~ ✓")
-      expect(prompt).to include("### Active task")
-      expect(prompt).to include("- [ ] Step 1")
-    end
-
-    it "excludes evicted goals from the prompt" do
-      Goal.create!(
-        session: session, description: "Evicted task",
-        status: "completed", completed_at: 2.hours.ago, evicted_at: 1.hour.ago
-      )
-      Goal.create!(session: session, description: "Visible task")
-
-      prompt = session.assemble_system_prompt
-      expect(prompt).not_to include("Evicted task")
-      expect(prompt).to include("### Visible task")
-    end
-
-    it "returns nil goals section when all goals are evicted" do
-      Goal.create!(
-        session: session, description: "Gone",
-        status: "completed", completed_at: 2.hours.ago, evicted_at: 1.hour.ago
-      )
-
-      prompt = session.assemble_system_prompt
       expect(prompt).not_to include("Current Goals")
+      expect(prompt).not_to include("Implement feature")
     end
 
-    it "automatically evicts completed goals past the decay threshold" do
-      goal = Goal.create!(
-        session: session, description: "Stale goal",
-        status: "completed", completed_at: 1.hour.ago
-      )
-      # Create enough meaningful messages to exceed the default threshold of 5
-      6.times do |i|
-        type = i.even? ? "user_message" : "agent_message"
-        session.messages.create!(message_type: type, payload: {content: "msg #{i}"}, timestamp: i + 1)
-      end
+    it "system prompt is stable regardless of goal changes" do
+      prompt_before = session.assemble_system_prompt
+      Goal.create!(session: session, description: "New goal")
+      prompt_after = session.assemble_system_prompt
 
-      session.assemble_system_prompt
-
-      expect(goal.reload.evicted_at).to be_present
-    end
-
-    it "evicts completed goals at exactly the decay threshold" do
-      goal = Goal.create!(
-        session: session, description: "Boundary goal",
-        status: "completed", completed_at: 1.hour.ago
-      )
-      # Exactly 5 meaningful messages — at the >= threshold boundary
-      5.times do |i|
-        session.messages.create!(message_type: "user_message", payload: {content: "msg #{i}"}, timestamp: i + 1)
-      end
-
-      session.assemble_system_prompt
-
-      expect(goal.reload.evicted_at).to be_present
-    end
-
-    it "does not evict completed goals below the decay threshold" do
-      goal = Goal.create!(
-        session: session, description: "Recent goal",
-        status: "completed", completed_at: 1.hour.ago
-      )
-      # Only 3 meaningful messages — below default threshold of 5
-      3.times do |i|
-        session.messages.create!(message_type: "user_message", payload: {content: "msg #{i}"}, timestamp: i + 1)
-      end
-
-      session.assemble_system_prompt
-
-      expect(goal.reload.evicted_at).to be_nil
-    end
-
-    it "does not evict active goals" do
-      goal = Goal.create!(session: session, description: "Active goal")
-      6.times do |i|
-        type = i.even? ? "user_message" : "agent_message"
-        session.messages.create!(message_type: type, payload: {content: "msg #{i}"}, timestamp: i + 1)
-      end
-
-      session.assemble_system_prompt
-
-      expect(goal.reload.evicted_at).to be_nil
-    end
-
-    it "only counts messages after the goal was completed" do
-      # 4 messages created before completion
-      4.times do |i|
-        session.messages.create!(message_type: "user_message", payload: {content: "old #{i}"}, timestamp: i + 1)
-      end
-
-      goal = Goal.create!(
-        session: session, description: "Recently done",
-        status: "completed", completed_at: Time.current
-      )
-
-      # Only 2 messages after completion — below threshold
-      2.times do |i|
-        session.messages.create!(message_type: "agent_message", payload: {content: "new #{i}"}, timestamp: 10 + i)
-      end
-
-      session.assemble_system_prompt
-
-      expect(goal.reload.evicted_at).to be_nil
-    end
-
-    it "excludes tool calls from the meaningful message count" do
-      goal = Goal.create!(
-        session: session, description: "Tool-heavy goal",
-        status: "completed", completed_at: 1.hour.ago
-      )
-      # 3 meaningful messages (below threshold)
-      3.times do |i|
-        session.messages.create!(message_type: "user_message", payload: {content: "msg #{i}"}, timestamp: i + 1)
-      end
-      # 10 tool calls — should not count toward eviction
-      10.times do |i|
-        session.messages.create!(
-          message_type: "tool_call", payload: {content: "call #{i}"},
-          timestamp: 100 + i, tool_use_id: "tool_#{i}"
-        )
-      end
-
-      session.assemble_system_prompt
-
-      expect(goal.reload.evicted_at).to be_nil
-    end
-
-    it "evicts old goals but keeps recent ones with multiple completed goals" do
-      old_goal = Goal.create!(
-        session: session, description: "Old goal",
-        status: "completed", completed_at: 3.hours.ago
-      )
-      recent_goal = Goal.create!(
-        session: session, description: "Recent goal",
-        status: "completed", completed_at: Time.current
-      )
-      # 6 messages — all after old_goal's completion, but before recent_goal's
-      6.times do |i|
-        session.messages.create!(
-          message_type: "user_message", payload: {content: "msg #{i}"},
-          timestamp: i + 1, created_at: 2.hours.ago
-        )
-      end
-
-      session.assemble_system_prompt
-
-      expect(old_goal.reload.evicted_at).to be_present
-      expect(recent_goal.reload.evicted_at).to be_nil
+      expect(prompt_before).to eq(prompt_after)
     end
   end
 
@@ -1637,7 +1438,7 @@ RSpec.describe Session do
       end
     end
 
-    context "with pinned messages" do
+    context "with context prefix (goals + pinned messages)" do
       let(:session) { Session.create! }
 
       before do
@@ -1646,7 +1447,15 @@ RSpec.describe Session do
         allow(Anima::Settings).to receive(:mneme_pinned_budget_fraction).and_return(0.05)
       end
 
-      it "includes pinned messages after snapshots and before sliding window" do
+      # Extracts the tool_result content from the context prefix phantom pair.
+      def prefix_content(result)
+        result.find { |m|
+          m[:role] == "user" && m[:content].is_a?(Array) &&
+            m[:content].any? { |c| c[:tool_use_id]&.start_with?("goal_snapshot_") }
+        }&.dig(:content, 0, :content)
+      end
+
+      it "includes goals and pinned messages as a phantom pair before sliding window" do
         old_event = session.messages.create!(message_type: "user_message", payload: {"content" => "critical instruction"}, timestamp: 1, token_count: 500)
         session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 2, token_count: 10)
 
@@ -1656,13 +1465,13 @@ RSpec.describe Session do
 
         result = session.messages_for_llm(token_budget: 100)
 
-        pinned_msg = result.find { |m| m[:content].to_s.include?("[pinned messages]") }
-        expect(pinned_msg).to be_present
-        expect(pinned_msg[:content]).to include("critical instruction")
-        expect(pinned_msg[:content]).to include("Active goal")
+        content = prefix_content(result)
+        expect(content).to be_present
+        expect(content).to include("critical instruction")
+        expect(content).to include("Active goal")
       end
 
-      it "excludes pinned messages whose source events are still in the viewport" do
+      it "excludes context prefix when no messages have evicted from viewport" do
         event = session.messages.create!(message_type: "user_message", payload: {"content" => "visible"}, timestamp: 1, token_count: 10)
 
         goal = session.goals.create!(description: "Goal")
@@ -1671,8 +1480,7 @@ RSpec.describe Session do
 
         result = session.messages_for_llm(token_budget: 1000)
 
-        contents = result.map { |m| m[:content] }
-        expect(contents.none? { |c| c.include?("[pinned messages]") }).to be true
+        expect(prefix_content(result)).to be_nil
       end
 
       it "deduplicates pinned messages across goals — first shows text, second shows bare ID" do
@@ -1687,14 +1495,13 @@ RSpec.describe Session do
 
         result = session.messages_for_llm(token_budget: 100)
 
-        pinned_content = result.find { |m| m[:content].to_s.include?("[pinned messages]") }&.dig(:content)
-        expect(pinned_content).to be_present
-        # First goal shows text, second shows bare ID
-        expect(pinned_content).to include("message #{old_event.id}: shared")
-        expect(pinned_content).to match(/message #{old_event.id}\n|message #{old_event.id}$/)
+        content = prefix_content(result)
+        expect(content).to be_present
+        expect(content).to include("message #{old_event.id}: shared")
+        expect(content).to match(/📌 message #{old_event.id}\n|📌 message #{old_event.id}$/)
       end
 
-      it "does not leak parent pinned messages into sub-agent viewport" do
+      it "does not leak parent goals/pins into sub-agent viewport" do
         parent = Session.create!
         child = Session.create!(parent_session: parent, prompt: "sub-agent")
         old_event = parent.messages.create!(message_type: "user_message", payload: {"content" => "pinned"}, timestamp: 1, token_count: 10)
@@ -1706,8 +1513,7 @@ RSpec.describe Session do
 
         result = child.messages_for_llm(token_budget: 1000)
 
-        contents = result.map { |m| m[:content] }
-        expect(contents.none? { |c| c.include?("[pinned messages]") }).to be true
+        expect(prefix_content(result)).to be_nil
       end
 
       it "surfaces sub-agent's own pinned task message when evicted from viewport" do
@@ -1721,12 +1527,38 @@ RSpec.describe Session do
         GoalPinnedMessage.create!(goal: goal, pinned_message: pin)
 
         # Sliding budget (80 - 5% pinned = 76) fits only the agent_message (50 tokens),
-        # evicting task_msg — the pinned section should resurface it.
+        # evicting task_msg — the context prefix should resurface it.
         result = child.messages_for_llm(token_budget: 80)
 
-        pinned_content = result.find { |m| m[:content].to_s.include?("[pinned messages]") }&.dig(:content)
-        expect(pinned_content).to be_present
-        expect(pinned_content).to include("analyze this code")
+        content = prefix_content(result)
+        expect(content).to be_present
+        expect(content).to include("analyze this code")
+      end
+
+      it "shows goals without pins when no pinned messages exist" do
+        session.messages.create!(message_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 500)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 2, token_count: 10)
+        session.goals.create!(description: "Active goal")
+
+        result = session.messages_for_llm(token_budget: 100)
+
+        content = prefix_content(result)
+        expect(content).to be_present
+        expect(content).to include("Current Goals")
+        expect(content).to include("Active goal")
+      end
+
+      it "excludes completed goals from the context prefix" do
+        session.messages.create!(message_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 500)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 2, token_count: 10)
+        session.goals.create!(description: "Active goal")
+        session.goals.create!(description: "Done goal", status: "completed", completed_at: 1.hour.ago)
+
+        result = session.messages_for_llm(token_budget: 100)
+
+        content = prefix_content(result)
+        expect(content).to include("Active goal")
+        expect(content).not_to include("Done goal")
       end
     end
   end

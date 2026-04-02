@@ -301,9 +301,6 @@ token_budget = 190_000
 api = 300
 command = 30
 
-[goals]
-completed_decay_messages = 5
-
 [analytical_brain]
 max_tokens = 4096
 blocking_on_user_message = true

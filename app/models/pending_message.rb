@@ -27,15 +27,16 @@ class PendingMessage < ApplicationRecord
   RECALL_SKILL_TOOL = "recall_skill"
   RECALL_WORKFLOW_TOOL = "recall_workflow"
   RECALL_MEMORY_TOOL = "recall_memory"
+  RECALL_GOAL_TOOL = "recall_goal"
 
   # Source types that produce phantom tool_use/tool_result pairs on promotion.
   # User messages produce plain text blocks instead.
-  PHANTOM_PAIR_TYPES = %w[subagent skill workflow recall].freeze
+  PHANTOM_PAIR_TYPES = %w[subagent skill workflow recall goal].freeze
 
   belongs_to :session
 
   validates :content, presence: true
-  validates :source_type, inclusion: {in: %w[user subagent skill workflow recall]}
+  validates :source_type, inclusion: {in: %w[user subagent skill workflow recall goal]}
   validates :source_name, presence: true, unless: :user?
 
   after_create_commit :broadcast_created
@@ -66,6 +67,11 @@ class PendingMessage < ApplicationRecord
     source_type == "recall"
   end
 
+  # @return [Boolean] true when this message carries a goal event
+  def goal?
+    source_type == "goal"
+  end
+
   # @return [Boolean] true when promotion produces phantom tool_use/tool_result pairs
   def phantom_pair?
     source_type.in?(PHANTOM_PAIR_TYPES)
@@ -84,6 +90,8 @@ class PendingMessage < ApplicationRecord
       "[recalled skill: #{source_name}]\n#{content}"
     when "workflow"
       "[recalled workflow: #{source_name}]\n#{content}"
+    when "goal"
+      "[goal #{source_name}]\n#{content}"
     else
       content
     end
@@ -110,6 +118,8 @@ class PendingMessage < ApplicationRecord
       build_phantom_pair(RECALL_WORKFLOW_TOOL, {workflow: source_name})
     when "recall"
       build_phantom_pair(RECALL_MEMORY_TOOL, {message_id: source_name.to_i})
+    when "goal"
+      build_phantom_pair(RECALL_GOAL_TOOL, {goal_id: source_name.to_i})
     else
       content
     end

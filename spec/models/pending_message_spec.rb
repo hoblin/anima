@@ -45,6 +45,17 @@ RSpec.describe PendingMessage, type: :model do
       expect(pm.errors[:source_name]).to be_present
     end
 
+    it "requires source_name when source_type is goal" do
+      pm = PendingMessage.new(session: session, content: "hi", source_type: "goal")
+      expect(pm).not_to be_valid
+      expect(pm.errors[:source_name]).to be_present
+    end
+
+    it "is valid as goal with source_name" do
+      pm = PendingMessage.new(session: session, content: "hi", source_type: "goal", source_name: "42")
+      expect(pm).to be_valid
+    end
+
     it "is valid as subagent with source_name" do
       pm = PendingMessage.new(session: session, content: "hi", source_type: "subagent", source_name: "scout")
       expect(pm).to be_valid
@@ -131,6 +142,18 @@ RSpec.describe PendingMessage, type: :model do
     end
   end
 
+  describe "#goal?" do
+    it "returns true when source_type is goal" do
+      pm = PendingMessage.new(source_type: "goal")
+      expect(pm).to be_goal
+    end
+
+    it "returns false for other types" do
+      pm = PendingMessage.new(source_type: "user")
+      expect(pm).not_to be_goal
+    end
+  end
+
   describe "#phantom_pair?" do
     it "returns true for subagent messages" do
       pm = PendingMessage.new(source_type: "subagent")
@@ -149,6 +172,11 @@ RSpec.describe PendingMessage, type: :model do
 
     it "returns true for recall messages" do
       pm = PendingMessage.new(source_type: "recall")
+      expect(pm).to be_phantom_pair
+    end
+
+    it "returns true for goal messages" do
+      pm = PendingMessage.new(source_type: "goal")
       expect(pm).to be_phantom_pair
     end
 
@@ -180,6 +208,12 @@ RSpec.describe PendingMessage, type: :model do
       pm = PendingMessage.new(session: session, content: "Step 1: Create branch",
         source_type: "workflow", source_name: "feature")
       expect(pm.display_content).to eq("[recalled workflow: feature]\nStep 1: Create branch")
+    end
+
+    it "returns goal-labeled content for goal messages" do
+      pm = PendingMessage.new(session: session, content: "Goal created: Implement auth (id: 42)",
+        source_type: "goal", source_name: "42")
+      expect(pm.display_content).to eq("[goal 42]\nGoal created: Implement auth (id: 42)")
     end
   end
 
@@ -253,6 +287,26 @@ RSpec.describe PendingMessage, type: :model do
 
       tool_result = messages[1][:content].first
       expect(tool_result[:content]).to eq("Step 1: Create branch")
+    end
+
+    it "returns recall_goal phantom pair for goal messages" do
+      pm = session.pending_messages.create!(
+        content: "Goal created: Implement auth (id: 42)",
+        source_type: "goal",
+        source_name: "42"
+      )
+
+      messages = pm.to_llm_messages
+      expect(messages.length).to eq(2)
+
+      tool_use = messages[0][:content].first
+      expect(tool_use[:name]).to eq("recall_goal")
+      expect(tool_use[:input]).to eq({goal_id: 42})
+      expect(tool_use[:id]).to eq("recall_goal_#{pm.id}")
+
+      tool_result = messages[1][:content].first
+      expect(tool_result[:tool_use_id]).to eq("recall_goal_#{pm.id}")
+      expect(tool_result[:content]).to eq("Goal created: Implement auth (id: 42)")
     end
   end
 

@@ -57,7 +57,16 @@ module AnalyticalBrain
 
         msg = "Goal completed: #{desc} (id: #{id})"
         msg += " (released #{released} orphaned pins)" if released > 0
+        enqueue_goal_message(goal, msg)
         msg
+      end
+
+      def enqueue_goal_message(goal, confirmation)
+        @main_session.pending_messages.create!(
+          content: confirmation,
+          source_type: "goal",
+          source_name: goal.id.to_s
+        )
       end
     end
   end

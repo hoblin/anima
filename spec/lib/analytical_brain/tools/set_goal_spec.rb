@@ -33,6 +33,17 @@ RSpec.describe AnalyticalBrain::Tools::SetGoal do
       expect(session.goals.first.status).to eq("active")
     end
 
+    it "enqueues a goal PendingMessage on the main session" do
+      expect {
+        tool.execute({"description" => "Implement auth"})
+      }.to change(session.pending_messages, :count).by(1)
+
+      pm = session.pending_messages.last
+      expect(pm.source_type).to eq("goal")
+      expect(pm.source_name).to eq(session.goals.first.id.to_s)
+      expect(pm.content).to include("Goal created:")
+    end
+
     it "creates a sub-goal under a parent" do
       parent = session.goals.create!(description: "Root goal")
 

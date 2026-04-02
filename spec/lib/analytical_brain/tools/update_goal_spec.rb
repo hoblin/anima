@@ -32,6 +32,19 @@ RSpec.describe AnalyticalBrain::Tools::UpdateGoal do
       expect(goal.reload.description).to eq("Implement OAuth2 middleware")
     end
 
+    it "enqueues a goal PendingMessage on the main session" do
+      goal = session.goals.create!(description: "Implement auth")
+
+      expect {
+        tool.execute({"goal_id" => goal.id, "description" => "Implement OAuth2"})
+      }.to change(session.pending_messages, :count).by(1)
+
+      pm = session.pending_messages.last
+      expect(pm.source_type).to eq("goal")
+      expect(pm.source_name).to eq(goal.id.to_s)
+      expect(pm.content).to include("Goal updated:")
+    end
+
     it "updates a sub-goal's description" do
       root = session.goals.create!(description: "Root goal")
       sub = session.goals.create!(description: "Read code", parent_goal: root)
