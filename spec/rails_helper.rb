@@ -20,6 +20,13 @@ RSpec.configure do |config|
   config.include ActiveJob::TestHelper
   config.include ActiveSupport::Testing::TimeHelpers
 
+  # Ensure fetch_token never raises in tests. Real token for recording,
+  # dummy token for replay — VCR intercepts the HTTP call either way.
+  config.before(:suite) do
+    token = ENV["ANTHROPIC_API_KEY"] || "sk-ant-oat01-#{"0" * 68}"
+    CredentialStore.write("anthropic", "subscription_token" => token)
+  end
+
   # Pin version so cassettes don't break on every release.
   config.before do
     stub_const("Anima::VERSION", "0.0.0-test")

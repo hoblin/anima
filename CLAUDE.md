@@ -108,7 +108,7 @@ bin/with-llms bundle exec rspec                          # record all missing ca
 bin/with-llms bundle exec rspec spec/path/to_spec.rb:42  # record one specific cassette
 ```
 
-`bin/with-llms` reads the "Anima keys" item from the Private 1Password vault, exports all fields as env vars, and runs the command. Credentials are never written to disk. `Providers::Anthropic.fetch_token` checks `ANTHROPIC_API_KEY` env var first, then falls back to `CredentialStore`.
+`bin/with-llms` reads the "Anima keys" item from the Private 1Password vault, exports all fields as env vars, and runs the command. Credentials are never written to disk. The VCR config seeds `CredentialStore` from `ANTHROPIC_API_KEY` when present, so `fetch_token` picks it up through its normal path.
 
 ### Re-recording after prompt/schema changes
 

@@ -56,7 +56,6 @@ module Providers
 
     class << self
       def fetch_token
-        return ENV["ANTHROPIC_API_KEY"] if ENV["ANTHROPIC_API_KEY"].present?
         token = CredentialStore.read("anthropic", "subscription_token")
         return token if token.present?
         return "sk-ant-oat01-#{"0" * 68}" if ENV["CI"]
