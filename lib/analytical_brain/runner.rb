@@ -272,9 +272,15 @@ module AnalyticalBrain
       SECTION
     end
 
+    # Skills already visible in the viewport are excluded from the catalog
+    # so the brain doesn't re-activate them. When a skill evicts from the
+    # viewport, it reappears here and the brain can re-inject if relevant.
+    #
+    # @see Session#skills_in_viewport
     # @return [String] available skills list for the analytical brain
     def skills_catalog_section
-      catalog = Skills::Registry.instance.catalog
+      present = @session.skills_in_viewport
+      catalog = Skills::Registry.instance.catalog.except(*present)
       items = if catalog.empty?
         "None"
       else
@@ -288,9 +294,13 @@ module AnalyticalBrain
       SECTION
     end
 
+    # Workflows already visible in the viewport are excluded from the catalog.
+    #
+    # @see Session#workflow_in_viewport
     # @return [String] available workflows list for the analytical brain
     def workflows_catalog_section
-      catalog = Workflows::Registry.instance.catalog
+      present = @session.workflow_in_viewport
+      catalog = Workflows::Registry.instance.catalog.reject { |name, _| name == present }
       items = if catalog.empty?
         "None"
       else

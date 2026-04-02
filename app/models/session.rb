@@ -139,13 +139,35 @@ class Session < ApplicationRecord
     update_column(:viewport_message_ids, ids)
   end
 
+  # Returns skill names whose recalled content is currently visible in the
+  # viewport. Used by the analytical brain for deduplication — skills already
+  # in the viewport are excluded from the activation catalog.
+  #
+  # @return [Set<String>] skill names present in the viewport
+  def skills_in_viewport
+    recalled_sources_in_viewport("skill")
+  end
+
+  # Returns the workflow name currently visible in the viewport, if any.
+  # Only one workflow can be active at a time, so we return the first match.
+  #
+  # @return [String, nil] workflow name present in the viewport
+  def workflow_in_viewport
+    recalled_sources_in_viewport("workflow").first
+  end
+
   # Returns the system prompt for this session.
   # Sub-agent sessions use their stored prompt plus active skills and
   # the pinned task. Main sessions assemble a full system prompt from
-  # soul, environment, skills/workflow, and goals.
+  # soul, environment, and goals. Skills and workflows are injected as
+  # phantom tool_use/tool_result pairs in the message stream (not here)
+  # to keep the system prompt stable for prompt caching.
+  #
+  # Sub-agent sessions still include expertise inline — they're short-lived
+  # and don't benefit from prompt caching.
   #
   # @param environment_context [String, nil] pre-assembled environment block
-  #   from {EnvironmentProbe}; injected between soul and expertise sections
+  #   from {EnvironmentProbe}; injected between soul and goals sections
   # @return [String, nil] the system prompt text, or nil when nothing to inject
   def system_prompt(environment_context: nil)
     if sub_agent?
@@ -156,7 +178,9 @@ class Session < ApplicationRecord
   end
 
   # Activates a skill on this session. Validates the skill exists in the
-  # registry, adds it to active_skills, and persists.
+  # registry, updates active_skills, and enqueues the skill content as a
+  # {PendingMessage} so it enters the conversation as a phantom
+  # tool_use/tool_result pair through the normal promotion flow.
   #
   # @param skill_name [String] name of the skill to activate
   # @return [Skills::Definition] the activated skill
@@ -170,10 +194,12 @@ class Session < ApplicationRecord
 
     self.active_skills = active_skills + [skill_name]
     save!
+    enqueue_recall_message("skill", skill_name, definition.content)
     definition
   end
 
   # Deactivates a skill on this session. Removes it from active_skills and persists.
+  # The skill's recalled message stays in the conversation and evicts naturally.
   #
   # @param skill_name [String] name of the skill to deactivate
   # @return [void]
@@ -185,8 +211,9 @@ class Session < ApplicationRecord
   end
 
   # Activates a workflow on this session. Validates the workflow exists in the
-  # registry, sets it as the active workflow, and persists. Only one workflow
-  # can be active at a time — activating a new one replaces the previous.
+  # registry, sets it as the active workflow, and enqueues the workflow content
+  # as a {PendingMessage}. Only one workflow can be active at a time —
+  # activating a new one replaces the previous.
   #
   # @param workflow_name [String] name of the workflow to activate
   # @return [Workflows::Definition] the activated workflow
@@ -200,10 +227,12 @@ class Session < ApplicationRecord
 
     self.active_workflow = workflow_name
     save!
+    enqueue_recall_message("workflow", workflow_name, definition.content)
     definition
   end
 
   # Deactivates the current workflow on this session.
+  # The workflow's recalled message stays in the conversation and evicts naturally.
   #
   # @return [void]
   def deactivate_workflow
@@ -214,14 +243,15 @@ class Session < ApplicationRecord
   end
 
   # Assembles the system prompt: version preamble, soul, environment context,
-  # skills/workflow, then goals.
-  # The soul is always present — "who am I" before "what can I do."
+  # then goals. Skills and workflows are no longer part of the system prompt —
+  # they flow through the message stream as phantom tool pairs, keeping the
+  # system prompt stable for prompt caching.
   #
   # @param environment_context [String, nil] pre-assembled environment block
   # @return [String] composed system prompt
   def assemble_system_prompt(environment_context: nil)
     [assemble_version_preamble, assemble_soul_section, assemble_snapshots_section,
-      environment_context, assemble_expertise_section, assemble_goals_section].compact.join("\n\n")
+      environment_context, assemble_goals_section].compact.join("\n\n")
   end
 
   # Serializes non-evicted goals as a lightweight summary for ActionCable
@@ -349,7 +379,7 @@ class Session < ApplicationRecord
     messages.create!(
       message_type: "tool_call",
       tool_use_id: uid,
-      payload: {"tool_name" => PendingMessage::RECALL_TOOL_NAME, "tool_use_id" => uid,
+      payload: {"tool_name" => PendingMessage::RECALL_MEMORY_TOOL, "tool_use_id" => uid,
                 "tool_input" => {"message_id" => pm.source_name.to_i},
                 "content" => "Recalling message #{pm.source_name}"},
       timestamp: now,
@@ -359,7 +389,7 @@ class Session < ApplicationRecord
     messages.create!(
       message_type: "tool_response",
       tool_use_id: uid,
-      payload: {"tool_name" => PendingMessage::RECALL_TOOL_NAME, "tool_use_id" => uid,
+      payload: {"tool_name" => PendingMessage::RECALL_MEMORY_TOOL, "tool_use_id" => uid,
                 "content" => pm.content, "success" => true},
       timestamp: now,
       token_count: Message.estimate_token_count(pm.content.bytesize)
@@ -374,12 +404,18 @@ class Session < ApplicationRecord
   # messages — these callers own the persistence lifecycle.
   #
   # @param content [String] user message text
+  # @param source_type [String, nil] origin type (e.g. "skill", "workflow")
+  #   for viewport tracking; omitted for plain user messages
+  # @param source_name [String, nil] origin name (e.g. skill name)
   # @return [Message] the persisted message record
-  def create_user_message(content)
+  def create_user_message(content, source_type: nil, source_name: nil)
     now = now_ns
+    payload = {type: "user_message", content: content, session_id: id, timestamp: now}
+    payload["source_type"] = source_type if source_type
+    payload["source_name"] = source_name if source_name
     messages.create!(
       message_type: "user_message",
-      payload: {type: "user_message", content: content, session_id: id, timestamp: now},
+      payload: payload,
       timestamp: now
     )
   end
@@ -393,8 +429,8 @@ class Session < ApplicationRecord
   # Returns a hash with two keys:
   # - +:texts+ — plain content strings for user messages (injected as text blocks
   #   within the current tool_results turn)
-  # - +:pairs+ — synthetic tool_use/tool_result message hashes for sub-agent
-  #   messages (appended as new conversation turns)
+  # - +:pairs+ — synthetic tool_use/tool_result message hashes for sub-agent,
+  #   skill, and workflow messages (appended as new conversation turns)
   #
   # @return [Hash{Symbol => Array}] promoted messages split by injection strategy
   def promote_pending_messages!
@@ -405,11 +441,11 @@ class Session < ApplicationRecord
         if pm.recall?
           promote_recall_message!(pm)
         else
-          create_user_message(pm.display_content)
+          create_user_message(pm.display_content, source_type: pm.source_type, source_name: pm.source_name)
         end
         pm.destroy!
       end
-      if pm.subagent? || pm.recall?
+      if pm.phantom_pair?
         pairs.concat(pm.to_llm_messages)
       else
         texts << pm.content
@@ -532,6 +568,35 @@ class Session < ApplicationRecord
   end
 
   private
+
+  # Finds recalled skill/workflow source names in the current viewport.
+  # Scans viewport messages for user_messages tagged with the given source_type.
+  #
+  # @param source_type [String] "skill" or "workflow"
+  # @return [Set<String>] source names present in the viewport
+  def recalled_sources_in_viewport(source_type)
+    ids = viewport_message_ids
+    return Set.new if ids.empty?
+
+    messages
+      .where(id: ids, message_type: "user_message")
+      .where("json_extract(payload, '$.source_type') = ?", source_type)
+      .pluck(Arel.sql("json_extract(payload, '$.source_name')"))
+      .to_set
+  end
+
+  # Enqueues a recalled skill or workflow as a {PendingMessage}.
+  # Always goes through the pending queue because the analytical brain
+  # only runs during processing. The message enters the conversation
+  # through the normal promotion flow as a phantom tool_use/tool_result pair.
+  #
+  # @param source_type [String] "skill" or "workflow"
+  # @param source_name [String] skill or workflow name
+  # @param content [String] definition content to recall
+  # @return [PendingMessage] the created pending message
+  def enqueue_recall_message(source_type, source_name, content)
+    pending_messages.create!(content: content, source_type: source_type, source_name: source_name)
+  end
 
   # One-line version preamble so the agent knows its own version.
   # Useful for commits, handoffs, and debugging.

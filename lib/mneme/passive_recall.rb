@@ -76,7 +76,7 @@ module Mneme
 
       existing_recall_ids = @session.messages
         .where(message_type: "tool_call")
-        .where("payload ->> 'tool_name' = ?", PendingMessage::RECALL_TOOL_NAME)
+        .where("payload ->> 'tool_name' = ?", PendingMessage::RECALL_MEMORY_TOOL)
         .pluck(:tool_use_id)
         .to_set
 

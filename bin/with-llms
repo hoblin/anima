@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Load Anthropic dev credentials from 1Password and run a command.
+#
+# Usage:
+#   bin/with-anthropic bundle exec rspec spec/jobs/count_message_tokens_job_spec.rb
+#   bin/with-anthropic bundle exec rspec  # re-record all missing cassettes
+#
+# Credentials are read once, passed to the subprocess, and never written to disk.
+
+set -euo pipefail
+
+if ! command -v op &> /dev/null; then
+  echo "Error: 1Password CLI (op) not found. Install it: https://developer.1password.com/docs/cli/" >&2
+  exit 1
+fi
+
+eval "$(op item get 'Anima keys' --vault Private --format json \
+  | jq -r '.fields[] | select(.value != null and .value != "") | "export \(.label)=\(.value | @sh)"')"
+
+exec "$@"

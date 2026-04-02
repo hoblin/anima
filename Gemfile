@@ -14,6 +14,7 @@ group :development do
 end
 
 group :test do
+  gem "fuubar"
   gem "rspec", "~> 3.0"
   gem "rspec-rails", "~> 7.0"
   gem "vcr", "~> 6.0"

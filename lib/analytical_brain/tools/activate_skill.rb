@@ -3,8 +3,8 @@
 module AnalyticalBrain
   module Tools
     # Activates a domain knowledge skill on the main session.
-    # The skill's content is injected into the main agent's system prompt,
-    # making the knowledge available for the current and future responses.
+    # The skill's content enters the conversation as a phantom
+    # tool_use/tool_result pair through the {PendingMessage} promotion flow.
     class ActivateSkill < ::Tools::Base
       def self.tool_name = "activate_skill"
 

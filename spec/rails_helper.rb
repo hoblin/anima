@@ -8,7 +8,9 @@ require "webmock/rspec"
 
 Dir[Rails.root.join("spec/support/**/*.rb")].each { |f| require f }
 
-# Ensure test database schema is current (critical for CI where db/schema.rb is gitignored).
+# Ensure test database schema is current.
+# Uses structure.sql (SQL format) which captures FTS5 virtual tables and triggers
+# that the Ruby schema dumper cannot express.
 ActiveRecord::Tasks::DatabaseTasks.prepare_all
 
 RSpec.configure do |config|
@@ -17,6 +19,13 @@ RSpec.configure do |config|
   config.filter_rails_from_backtrace!
   config.include ActiveJob::TestHelper
   config.include ActiveSupport::Testing::TimeHelpers
+
+  # Ensure fetch_token never raises in tests. Real token for recording,
+  # dummy token for replay — VCR intercepts the HTTP call either way.
+  config.before(:suite) do
+    token = ENV["ANTHROPIC_API_KEY"] || "sk-ant-oat01-#{"0" * 68}"
+    CredentialStore.write("anthropic", "subscription_token" => token)
+  end
 
   # Pin version so cassettes don't break on every release.
   config.before do

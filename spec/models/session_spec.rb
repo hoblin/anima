@@ -446,27 +446,25 @@ RSpec.describe Session do
       expect(session.system_prompt).to include("# Soul")
     end
 
-    it "places soul before expertise in the system prompt" do
+    it "does not include expertise in main session system prompt" do
       session = Session.create!
       session.activate_skill("gh-issue")
 
       prompt = session.system_prompt
-      soul_pos = prompt.index("# Soul")
-      expertise_pos = prompt.index("## Your Expertise")
-      expect(soul_pos).to be < expertise_pos
+      expect(prompt).not_to include("## Your Expertise")
     end
 
-    it "includes environment context between soul and expertise" do
+    it "includes environment context between soul and goals" do
       session = Session.create!
-      session.activate_skill("gh-issue")
+      Goal.create!(session: session, description: "Test goal")
       env = "## Environment\n\nOS: Arch Linux (pacman, yay)\nCWD: /home/user/project"
 
       prompt = session.system_prompt(environment_context: env)
       soul_pos = prompt.index("# Soul")
       env_pos = prompt.index("## Environment")
-      expertise_pos = prompt.index("## Your Expertise")
+      goals_pos = prompt.index("Current Goals")
       expect(soul_pos).to be < env_pos
-      expect(env_pos).to be < expertise_pos
+      expect(env_pos).to be < goals_pos
     end
 
     it "includes environment context between soul and goals when no expertise" do
@@ -528,6 +526,22 @@ RSpec.describe Session do
       reloaded = Session.find(session.id)
       expect(reloaded.active_skills).to eq(["gh-issue"])
     end
+
+    it "creates a PendingMessage with source_type skill" do
+      expect { session.activate_skill("gh-issue") }
+        .to change { session.pending_messages.where(source_type: "skill").count }.by(1)
+
+      pm = session.pending_messages.last
+      expect(pm.source_name).to eq("gh-issue")
+      expect(pm.content).to include("WHAT/WHY/HOW")
+    end
+
+    it "does not create duplicate PendingMessage on idempotent call" do
+      session.activate_skill("gh-issue")
+
+      expect { session.activate_skill("gh-issue") }
+        .not_to change { session.pending_messages.count }
+    end
   end
 
   describe "#deactivate_skill" do
@@ -555,6 +569,58 @@ RSpec.describe Session do
     end
   end
 
+  describe "#skills_in_viewport" do
+    let(:session) { Session.create! }
+
+    it "returns empty set when viewport has no skill messages" do
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hello"}, timestamp: 1)
+      session.update_column(:viewport_message_ids, session.messages.pluck(:id))
+
+      expect(session.skills_in_viewport).to eq(Set.new)
+    end
+
+    it "returns skill names from viewport messages with source_type skill" do
+      msg = session.messages.create!(
+        message_type: "user_message",
+        payload: {"content" => "skill content", "source_type" => "skill", "source_name" => "gh-issue"},
+        timestamp: 1
+      )
+      session.update_column(:viewport_message_ids, [msg.id])
+
+      expect(session.skills_in_viewport).to eq(Set["gh-issue"])
+    end
+
+    it "excludes skill messages not in viewport" do
+      session.messages.create!(
+        message_type: "user_message",
+        payload: {"content" => "skill content", "source_type" => "skill", "source_name" => "gh-issue"},
+        timestamp: 1
+      )
+      session.update_column(:viewport_message_ids, [])
+
+      expect(session.skills_in_viewport).to eq(Set.new)
+    end
+  end
+
+  describe "#workflow_in_viewport" do
+    let(:session) { Session.create! }
+
+    it "returns nil when no workflow message is in viewport" do
+      expect(session.workflow_in_viewport).to be_nil
+    end
+
+    it "returns workflow name from viewport message" do
+      msg = session.messages.create!(
+        message_type: "user_message",
+        payload: {"content" => "workflow content", "source_type" => "workflow", "source_name" => "feature"},
+        timestamp: 1
+      )
+      session.update_column(:viewport_message_ids, [msg.id])
+
+      expect(session.workflow_in_viewport).to eq("feature")
+    end
+  end
+
   describe "#assemble_system_prompt" do
     before { Skills::Registry.reload! }
 
@@ -564,25 +630,11 @@ RSpec.describe Session do
       expect(session.assemble_system_prompt).to start_with("You are running on Anima v")
     end
 
-    it "includes Your Expertise header when skills are active" do
+    it "does not include expertise section — skills flow through messages" do
       session.activate_skill("gh-issue")
 
-      expect(session.assemble_system_prompt).to include("## Your Expertise")
-    end
-
-    it "includes full skill content" do
-      session.activate_skill("gh-issue")
-
-      prompt = session.assemble_system_prompt
-      expect(prompt).to include("WHAT/WHY/HOW")
-      expect(prompt).to include("Quality Checklist")
-    end
-
-    it "uses the first heading from skill content as section title" do
-      session.activate_skill("gh-issue")
-
-      prompt = session.assemble_system_prompt
-      expect(prompt).to include("### GitHub Issue Writing")
+      expect(session.assemble_system_prompt).not_to include("## Your Expertise")
+      expect(session.assemble_system_prompt).not_to include("WHAT/WHY/HOW")
     end
 
     context "with multiple skills" do
@@ -606,15 +658,6 @@ RSpec.describe Session do
 
       after { FileUtils.remove_entry(tmp_dir) }
 
-      it "assembles all active skills into the system prompt" do
-        session.activate_skill("gh-issue")
-        session.activate_skill("testing")
-
-        prompt = session.assemble_system_prompt
-        expect(prompt).to include("### GitHub Issue Writing")
-        expect(prompt).to include("### Testing Guide")
-      end
-
       it "preserves activation order" do
         session.activate_skill("testing")
         session.activate_skill("gh-issue")
@@ -628,9 +671,6 @@ RSpec.describe Session do
         session.deactivate_skill("gh-issue")
 
         expect(session.reload.active_skills).to eq(["testing"])
-        prompt = session.assemble_system_prompt
-        expect(prompt).to include("### Testing Guide")
-        expect(prompt).not_to include("GitHub Issue Writing")
       end
     end
   end
@@ -773,12 +813,12 @@ RSpec.describe Session do
       expect(prompt).not_to include("Your Expertise")
     end
 
-    it "includes all sections when skills and goals are present" do
+    it "includes goals but not expertise when skills and goals are present" do
       session.activate_skill("gh-issue")
       Goal.create!(session: session, description: "Write ticket")
 
       prompt = session.assemble_system_prompt
-      expect(prompt).to include("## Your Expertise")
+      expect(prompt).not_to include("## Your Expertise")
       expect(prompt).to include("Current Goals\n=============")
     end
 
@@ -1020,6 +1060,22 @@ RSpec.describe Session do
       reloaded = Session.find(session.id)
       expect(reloaded.active_workflow).to eq("feature")
     end
+
+    it "creates a PendingMessage with source_type workflow" do
+      expect { session.activate_workflow("feature") }
+        .to change { session.pending_messages.where(source_type: "workflow").count }.by(1)
+
+      pm = session.pending_messages.last
+      expect(pm.source_name).to eq("feature")
+      expect(pm.content).to include("branch creation to PR readiness")
+    end
+
+    it "does not create duplicate PendingMessage on idempotent call" do
+      session.activate_workflow("feature")
+
+      expect { session.activate_workflow("feature") }
+        .not_to change { session.pending_messages.count }
+    end
   end
 
   describe "#deactivate_workflow" do
@@ -1212,24 +1268,15 @@ RSpec.describe Session do
 
     let(:session) { Session.create! }
 
-    it "includes workflow content in Your Expertise section" do
+    it "does not include workflow content — workflows flow through messages" do
       session.activate_workflow("feature")
 
       prompt = session.assemble_system_prompt
-      expect(prompt).to include("## Your Expertise")
-      expect(prompt).to include("branch creation to PR readiness")
+      expect(prompt).not_to include("## Your Expertise")
+      expect(prompt).not_to include("branch creation to PR readiness")
     end
 
-    it "includes both skills and workflow content" do
-      session.activate_skill("gh-issue")
-      session.activate_workflow("feature")
-
-      prompt = session.assemble_system_prompt
-      expect(prompt).to include("### GitHub Issue Writing")
-      expect(prompt).to include("branch creation to PR readiness")
-    end
-
-    it "returns only soul when neither skills nor workflow nor goals are present" do
+    it "returns only soul when no goals are present" do
       expect(session.assemble_system_prompt).to start_with("You are running on Anima v")
     end
   end
@@ -1969,6 +2016,31 @@ RSpec.describe Session do
         .select { |m| m[:role] == "assistant" }
         .map { |m| m[:content].first[:id] }
       expect(ids.uniq.length).to eq(2)
+    end
+
+    it "returns skill messages as recall_skill phantom pairs" do
+      session.pending_messages.create!(
+        content: "Write thorough tests.", source_type: "skill", source_name: "testing"
+      )
+
+      result = session.promote_pending_messages!
+      expect(result[:texts]).to eq([])
+      expect(result[:pairs].length).to eq(2)
+      expect(result[:pairs][0][:content].first[:name]).to eq("recall_skill")
+      expect(result[:pairs][1][:content].first[:content]).to eq("Write thorough tests.")
+    end
+
+    it "persists skill messages with recall label and source metadata" do
+      session.pending_messages.create!(
+        content: "Write thorough tests.", source_type: "skill", source_name: "testing"
+      )
+
+      session.promote_pending_messages!
+
+      msg = session.messages.last
+      expect(msg.payload["content"]).to eq("[recalled skill: testing]\nWrite thorough tests.")
+      expect(msg.payload["source_type"]).to eq("skill")
+      expect(msg.payload["source_name"]).to eq("testing")
     end
 
     it "returns empty texts and pairs when no pending messages exist" do

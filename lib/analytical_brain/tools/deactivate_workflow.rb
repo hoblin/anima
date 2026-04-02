@@ -3,7 +3,8 @@
 module AnalyticalBrain
   module Tools
     # Deactivates the current workflow on the main session.
-    # The workflow's content is removed from the main agent's system prompt.
+    # The workflow's recalled message stays in the conversation and
+    # evicts naturally from the sliding window.
     class DeactivateWorkflow < ::Tools::Base
       def self.tool_name = "deactivate_workflow"
 

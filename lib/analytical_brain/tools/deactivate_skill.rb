@@ -3,7 +3,8 @@
 module AnalyticalBrain
   module Tools
     # Deactivates a domain knowledge skill on the main session.
-    # The skill's content is removed from the main agent's system prompt.
+    # The skill's recalled message stays in the conversation and
+    # evicts naturally from the sliding window.
     class DeactivateSkill < ::Tools::Base
       def self.tool_name = "deactivate_skill"
 

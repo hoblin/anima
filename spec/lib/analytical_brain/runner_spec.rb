@@ -96,6 +96,50 @@ RSpec.describe AnalyticalBrain::Runner do
         expect(captured_opts[:system]).to include("gh-issue")
       end
 
+      it "excludes viewport-present skills from the catalog" do
+        Skills::Registry.reload!
+        msg = session.messages.create!(
+          message_type: "user_message",
+          payload: {"content" => "skill", "source_type" => "skill", "source_name" => "gh-issue"},
+          timestamp: 0
+        )
+        session.update_column(:viewport_message_ids, [msg.id])
+
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).to include("AVAILABLE SKILLS")
+        expect(captured_opts[:system]).not_to include("gh-issue")
+      end
+
+      it "excludes viewport-present workflows from the catalog" do
+        Workflows::Registry.reload!
+        workflow_name = Workflows::Registry.instance.available_names.first
+        workflow_desc = Workflows::Registry.instance.catalog[workflow_name]
+        msg = session.messages.create!(
+          message_type: "user_message",
+          payload: {"content" => "workflow", "source_type" => "workflow", "source_name" => workflow_name},
+          timestamp: 0
+        )
+        session.update_column(:viewport_message_ids, [msg.id])
+
+        captured_opts = nil
+        allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+          captured_opts = opts
+          "Done"
+        }
+
+        runner.call
+
+        expect(captured_opts[:system]).to include("AVAILABLE WORKFLOWS")
+        expect(captured_opts[:system]).not_to include("- #{workflow_name} — #{workflow_desc}")
+      end
+
       it "includes currently active skills in system prompt" do
         Skills::Registry.reload!
         session.activate_skill("gh-issue")
@@ -382,8 +426,8 @@ RSpec.describe AnalyticalBrain::Runner do
 
     context "integration with real LLM", :vcr do
       it "renames an unnamed session based on conversation topic" do
-        session.messages.create!(message_type: "user_message", payload: {"content" => "Help me set up PostgreSQL replication for our Rails app"}, timestamp: 1)
-        session.messages.create!(message_type: "agent_message", payload: {"content" => "I'll help you configure PostgreSQL streaming replication with your Rails app."}, timestamp: 2)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "Write RSpec tests for the User model validations"}, timestamp: 1)
+        session.messages.create!(message_type: "agent_message", payload: {"content" => "I'll write comprehensive RSpec tests for the User model validations."}, timestamp: 2)
 
         described_class.new(session).call
 

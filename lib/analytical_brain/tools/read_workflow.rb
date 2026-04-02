@@ -4,8 +4,8 @@ module AnalyticalBrain
   module Tools
     # Reads and activates a workflow on the main session.
     # Returns the full workflow content so the brain can create goals from it.
-    # Also sets the workflow as active on the session, injecting its content
-    # into the main agent's "Your Expertise" section.
+    # The workflow's content enters the conversation as a phantom
+    # tool_use/tool_result pair through the {PendingMessage} promotion flow.
     class ReadWorkflow < ::Tools::Base
       def self.tool_name = "read_workflow"
 
