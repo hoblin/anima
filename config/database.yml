@@ -4,12 +4,12 @@ default: &default
   adapter: sqlite3
   pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
   timeout: 5000
+  schema_format: sql
 
 development:
   primary:
     <<: *default
     database: <%= File.join(anima_home, "db", "development.sqlite3") %>
-    schema_format: sql
   queue:
     <<: *default
     database: <%= File.join(anima_home, "db", "development_queue.sqlite3") %>
@@ -23,7 +23,6 @@ test:
   primary:
     <<: *default
     database: <%= File.join(anima_home, "db", "test.sqlite3") %>
-    schema_format: sql
   queue:
     <<: *default
     database: <%= File.join(anima_home, "db", "test_queue.sqlite3") %>
@@ -37,7 +36,6 @@ production:
   primary:
     <<: *default
     database: <%= File.join(anima_home, "db", "production.sqlite3") %>
-    schema_format: sql
   queue:
     <<: *default
     database: <%= File.join(anima_home, "db", "production_queue.sqlite3") %>
