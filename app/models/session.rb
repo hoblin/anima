@@ -366,21 +366,23 @@ class Session < ApplicationRecord
     end
   end
 
-  # Promotes a recall pending message into a phantom tool_call/tool_response pair.
+  # Promotes a phantom pair pending message into a tool_call/tool_response pair.
   # These persist as real Message records and ride the conveyor belt.
   #
-  # @param pm [PendingMessage] recall pending message (source_name = recalled message ID)
+  # @param pm [PendingMessage] phantom pair pending message
   # @return [void]
-  def promote_recall_message!(pm)
-    uid = "recall_#{pm.source_name}"
+  def promote_phantom_pair!(pm)
+    tool_name = pm.phantom_tool_name
+    tool_input = pm.phantom_tool_input
+    uid = "#{tool_name}_#{pm.id}"
     now = now_ns
 
     messages.create!(
       message_type: "tool_call",
       tool_use_id: uid,
-      payload: {"tool_name" => PendingMessage::RECALL_MEMORY_TOOL, "tool_use_id" => uid,
-                "tool_input" => {"message_id" => pm.source_name.to_i},
-                "content" => "Recalling message #{pm.source_name}"},
+      payload: {"tool_name" => tool_name, "tool_use_id" => uid,
+                "tool_input" => tool_input.stringify_keys,
+                "content" => pm.display_content.lines.first.chomp},
       timestamp: now,
       token_count: Mneme::PassiveRecall::TOOL_PAIR_OVERHEAD_TOKENS
     )
@@ -388,7 +390,7 @@ class Session < ApplicationRecord
     messages.create!(
       message_type: "tool_response",
       tool_use_id: uid,
-      payload: {"tool_name" => PendingMessage::RECALL_MEMORY_TOOL, "tool_use_id" => uid,
+      payload: {"tool_name" => tool_name, "tool_use_id" => uid,
                 "content" => pm.content, "success" => true},
       timestamp: now,
       token_count: Message.estimate_token_count(pm.content.bytesize)
@@ -428,8 +430,8 @@ class Session < ApplicationRecord
   # Returns a hash with two keys:
   # - +:texts+ — plain content strings for user messages (injected as text blocks
   #   within the current tool_results turn)
-  # - +:pairs+ — synthetic tool_use/tool_result message hashes for sub-agent,
-  #   skill, and workflow messages (appended as new conversation turns)
+  # - +:pairs+ — synthetic tool_use/tool_result message hashes for phantom pair
+  #   types (appended as new conversation turns)
   #
   # @return [Hash{Symbol => Array}] promoted messages split by injection strategy
   def promote_pending_messages!
@@ -437,8 +439,8 @@ class Session < ApplicationRecord
     pairs = []
     pending_messages.find_each do |pm|
       transaction do
-        if pm.recall?
-          promote_recall_message!(pm)
+        if pm.phantom_pair?
+          promote_phantom_pair!(pm)
         else
           create_user_message(pm.display_content, source_type: pm.source_type, source_name: pm.source_name)
         end

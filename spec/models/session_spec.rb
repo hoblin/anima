@@ -1786,64 +1786,113 @@ RSpec.describe Session do
   describe "#promote_pending_messages!" do
     let(:session) { Session.create! }
 
-    it "creates a real message from a pending message and deletes the pending record" do
-      pm = session.pending_messages.create!(content: "queued")
+    context "with user messages" do
+      it "persists as user_message and deletes the pending record" do
+        pm = session.pending_messages.create!(content: "queued")
 
-      session.promote_pending_messages!
+        session.promote_pending_messages!
 
-      expect(PendingMessage.find_by(id: pm.id)).to be_nil
-      msg = session.messages.last
-      expect(msg.message_type).to eq("user_message")
-      expect(msg.payload["content"]).to eq("queued")
+        expect(PendingMessage.find_by(id: pm.id)).to be_nil
+        msg = session.messages.last
+        expect(msg.message_type).to eq("user_message")
+        expect(msg.payload["content"]).to eq("queued")
+      end
+
+      it "returns content in :texts, nothing in :pairs" do
+        session.pending_messages.create!(content: "q1")
+        session.pending_messages.create!(content: "q2")
+
+        result = session.promote_pending_messages!
+        expect(result[:texts]).to eq(["q1", "q2"])
+        expect(result[:pairs]).to eq([])
+      end
     end
 
-    it "returns user texts in :texts key" do
-      session.pending_messages.create!(content: "q1")
-      session.pending_messages.create!(content: "q2")
+    context "with phantom pair types" do
+      # Every phantom pair type must persist as tool_call + tool_response
+      # in the DB (not user_message) so the TUI renders them correctly.
+      {
+        "subagent" => {source_name: "sleuth", tool_name: "subagent_message"},
+        "skill" => {source_name: "testing", tool_name: "recall_skill"},
+        "workflow" => {source_name: "feature", tool_name: "recall_workflow"},
+        "recall" => {source_name: "42", tool_name: "recall_memory"},
+        "goal" => {source_name: "7", tool_name: "recall_goal"}
+      }.each do |source_type, meta|
+        context "with #{source_type} message" do
+          let!(:pm) do
+            session.pending_messages.create!(
+              content: "test content", source_type: source_type, source_name: meta[:source_name]
+            )
+          end
 
-      result = session.promote_pending_messages!
-      expect(result[:texts]).to eq(["q1", "q2"])
-      expect(result[:pairs]).to eq([])
+          it "persists as tool_call + tool_response pair (not user_message)" do
+            session.promote_pending_messages!
+
+            types = session.messages.pluck(:message_type)
+            expect(types).to eq(%w[tool_call tool_response])
+          end
+
+          it "sets the correct phantom tool name on both messages" do
+            session.promote_pending_messages!
+
+            call = session.messages.find_by(message_type: "tool_call")
+            response = session.messages.find_by(message_type: "tool_response")
+            expect(call.payload["tool_name"]).to eq(meta[:tool_name])
+            expect(response.payload["tool_name"]).to eq(meta[:tool_name])
+          end
+
+          it "shares a tool_use_id between call and response" do
+            session.promote_pending_messages!
+
+            call = session.messages.find_by(message_type: "tool_call")
+            response = session.messages.find_by(message_type: "tool_response")
+            expect(call.tool_use_id).to be_present
+            expect(call.tool_use_id).to eq(response.tool_use_id)
+          end
+
+          it "stores content in the tool_response payload" do
+            session.promote_pending_messages!
+
+            response = session.messages.find_by(message_type: "tool_response")
+            expect(response.payload["content"]).to eq("test content")
+          end
+
+          it "returns phantom pairs in :pairs, nothing in :texts" do
+            result = session.promote_pending_messages!
+            expect(result[:texts]).to eq([])
+            expect(result[:pairs].length).to eq(2)
+            expect(result[:pairs][0][:role]).to eq("assistant")
+            expect(result[:pairs][1][:role]).to eq("user")
+          end
+
+          it "deletes the pending record" do
+            session.promote_pending_messages!
+
+            expect(PendingMessage.find_by(id: pm.id)).to be_nil
+          end
+        end
+      end
     end
 
-    it "returns sub-agent messages as synthetic tool pairs in :pairs key" do
-      session.pending_messages.create!(
-        content: "Found the bug", source_type: "subagent", source_name: "sleuth"
-      )
+    context "with mixed user and phantom pair messages" do
+      it "persists each type correctly and splits the return value" do
+        session.pending_messages.create!(content: "user says hi")
+        session.pending_messages.create!(
+          content: "Found a bug", source_type: "subagent", source_name: "sleuth"
+        )
+        session.pending_messages.create!(content: "user follows up")
 
-      result = session.promote_pending_messages!
-      expect(result[:texts]).to eq([])
-      expect(result[:pairs].length).to eq(2)
-      expect(result[:pairs][0][:role]).to eq("assistant")
-      expect(result[:pairs][1][:role]).to eq("user")
+        result = session.promote_pending_messages!
+
+        expect(result[:texts]).to eq(["user says hi", "user follows up"])
+        expect(result[:pairs].length).to eq(2)
+
+        types = session.messages.pluck(:message_type)
+        expect(types).to eq(%w[user_message tool_call tool_response user_message])
+      end
     end
 
-    it "persists sub-agent messages with attribution in display content" do
-      session.pending_messages.create!(
-        content: "Done!", source_type: "subagent", source_name: "sleuth"
-      )
-
-      session.promote_pending_messages!
-
-      msg = session.messages.last
-      expect(msg.payload["content"]).to eq("[sub-agent sleuth]: Done!")
-    end
-
-    it "splits mixed user and sub-agent messages into texts and pairs" do
-      session.pending_messages.create!(content: "user says hi")
-      session.pending_messages.create!(
-        content: "Found a bug", source_type: "subagent", source_name: "sleuth"
-      )
-      session.pending_messages.create!(content: "user follows up")
-
-      result = session.promote_pending_messages!
-      expect(result[:texts]).to eq(["user says hi", "user follows up"])
-      expect(result[:pairs].length).to eq(2)
-      expect(result[:pairs][0][:role]).to eq("assistant")
-      expect(result[:pairs][1][:role]).to eq("user")
-    end
-
-    it "generates unique tool_use_ids for multiple sub-agent messages" do
+    it "generates unique tool_use_ids for multiple phantom pairs" do
       session.pending_messages.create!(
         content: "Result A", source_type: "subagent", source_name: "scout"
       )
@@ -1851,49 +1900,19 @@ RSpec.describe Session do
         content: "Result B", source_type: "subagent", source_name: "sleuth"
       )
 
-      result = session.promote_pending_messages!
-      # Two subagent messages → 4 pair entries (2 turns each)
-      expect(result[:pairs].length).to eq(4)
-
-      ids = result[:pairs]
-        .select { |m| m[:role] == "assistant" }
-        .map { |m| m[:content].first[:id] }
-      expect(ids.uniq.length).to eq(2)
-    end
-
-    it "returns skill messages as recall_skill phantom pairs" do
-      session.pending_messages.create!(
-        content: "Write thorough tests.", source_type: "skill", source_name: "testing"
-      )
-
-      result = session.promote_pending_messages!
-      expect(result[:texts]).to eq([])
-      expect(result[:pairs].length).to eq(2)
-      expect(result[:pairs][0][:content].first[:name]).to eq("recall_skill")
-      expect(result[:pairs][1][:content].first[:content]).to eq("Write thorough tests.")
-    end
-
-    it "persists skill messages with recall label and source metadata" do
-      session.pending_messages.create!(
-        content: "Write thorough tests.", source_type: "skill", source_name: "testing"
-      )
-
       session.promote_pending_messages!
 
-      msg = session.messages.last
-      expect(msg.payload["content"]).to eq("[recalled skill: testing]\nWrite thorough tests.")
-      expect(msg.payload["source_type"]).to eq("skill")
-      expect(msg.payload["source_name"]).to eq("testing")
+      tool_use_ids = session.messages.where(message_type: "tool_call").pluck(:tool_use_id)
+      expect(tool_use_ids.length).to eq(2)
+      expect(tool_use_ids.uniq.length).to eq(2)
     end
 
     it "returns empty texts and pairs when no pending messages exist" do
-      session.messages.create!(message_type: "user_message", payload: {"content" => "done"}, timestamp: 1)
-
       result = session.promote_pending_messages!
       expect(result).to eq({texts: [], pairs: []})
     end
 
-    it "promoted message gets an ID after existing messages" do
+    it "promoted messages get IDs after existing messages" do
       session.messages.create!(message_type: "user_message", payload: {"content" => "first"}, timestamp: 1, token_count: 10)
       session.messages.create!(
         message_type: "tool_call",
@@ -1910,7 +1929,7 @@ RSpec.describe Session do
       session.promote_pending_messages!
 
       promoted = session.messages.reload.last
-      tool_response = session.messages.where(message_type: "tool_response").first
+      tool_response = session.messages.where(tool_use_id: "toolu_A", message_type: "tool_response").first
       expect(promoted.id).to be > tool_response.id
       expect(promoted.payload["content"]).to eq("hey")
     end
@@ -2020,33 +2039,43 @@ RSpec.describe Session do
     end
   end
 
-  describe "#promote_recall_message!" do
+  describe "#promote_phantom_pair!" do
     let(:session) { Session.create! }
 
     it "creates a tool_call and tool_response message pair" do
       pm = session.pending_messages.create!(content: "recalled text", source_type: "recall", source_name: "42")
 
-      expect { session.promote_recall_message!(pm) }
+      expect { session.promote_phantom_pair!(pm) }
         .to change { session.messages.where(message_type: "tool_call").count }.by(1)
         .and change { session.messages.where(message_type: "tool_response").count }.by(1)
     end
 
-    it "uses deterministic tool_use_id from source_name" do
+    it "derives tool_use_id from tool name and pending message ID" do
       pm = session.pending_messages.create!(content: "recalled text", source_type: "recall", source_name: "42")
-      session.promote_recall_message!(pm)
+      expected_uid = "recall_memory_#{pm.id}"
 
-      call = session.messages.find_by(message_type: "tool_call", tool_use_id: "recall_42")
-      response = session.messages.find_by(message_type: "tool_response", tool_use_id: "recall_42")
-      expect(call).to be_present
-      expect(response).to be_present
-    end
-
-    it "sets recall_memory as the phantom tool name" do
-      pm = session.pending_messages.create!(content: "recalled text", source_type: "recall", source_name: "42")
-      session.promote_recall_message!(pm)
+      session.promote_phantom_pair!(pm)
 
       call = session.messages.find_by(message_type: "tool_call")
-      expect(call.payload["tool_name"]).to eq("recall_memory")
+      response = session.messages.find_by(message_type: "tool_response")
+      expect(call.tool_use_id).to eq(expected_uid)
+      expect(response.tool_use_id).to eq(expected_uid)
+    end
+
+    it "uses the phantom tool name from PendingMessage" do
+      pm = session.pending_messages.create!(content: "goal event", source_type: "goal", source_name: "7")
+      session.promote_phantom_pair!(pm)
+
+      call = session.messages.find_by(message_type: "tool_call")
+      expect(call.payload["tool_name"]).to eq("recall_goal")
+    end
+
+    it "stores tool input as stringified keys" do
+      pm = session.pending_messages.create!(content: "goal event", source_type: "goal", source_name: "7")
+      session.promote_phantom_pair!(pm)
+
+      call = session.messages.find_by(message_type: "tool_call")
+      expect(call.payload["tool_input"]).to eq("goal_id" => 7)
     end
   end
 

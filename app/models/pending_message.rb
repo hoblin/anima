@@ -33,6 +33,24 @@ class PendingMessage < ApplicationRecord
   # User messages produce plain text blocks instead.
   PHANTOM_PAIR_TYPES = %w[subagent skill workflow recall goal].freeze
 
+  # Maps each phantom pair source type to its synthetic tool name.
+  PHANTOM_TOOL_NAMES = {
+    "subagent" => SUBAGENT_TOOL,
+    "skill" => RECALL_SKILL_TOOL,
+    "workflow" => RECALL_WORKFLOW_TOOL,
+    "recall" => RECALL_MEMORY_TOOL,
+    "goal" => RECALL_GOAL_TOOL
+  }.freeze
+
+  # Maps each phantom pair source type to a lambda building its tool input.
+  PHANTOM_TOOL_INPUTS = {
+    "subagent" => ->(name) { {from: name} },
+    "skill" => ->(name) { {skill: name} },
+    "workflow" => ->(name) { {workflow: name} },
+    "recall" => ->(name) { {message_id: name.to_i} },
+    "goal" => ->(name) { {goal_id: name.to_i} }
+  }.freeze
+
   belongs_to :session
 
   validates :content, presence: true
@@ -77,6 +95,21 @@ class PendingMessage < ApplicationRecord
     source_type.in?(PHANTOM_PAIR_TYPES)
   end
 
+  # Phantom tool name for DB persistence and LLM injection.
+  # Each phantom pair source type maps to a synthetic tool name.
+  #
+  # @return [String] phantom tool name
+  def phantom_tool_name
+    PHANTOM_TOOL_NAMES.fetch(source_type)
+  end
+
+  # Phantom tool input hash for DB persistence and LLM injection.
+  #
+  # @return [Hash] tool input hash
+  def phantom_tool_input
+    PHANTOM_TOOL_INPUTS.fetch(source_type).call(source_name)
+  end
+
   # Content formatted for display and history persistence.
   # Sub-agent messages include an attribution prefix. Skill/workflow
   # messages include a recall label. User messages pass through unchanged.
@@ -99,30 +132,16 @@ class PendingMessage < ApplicationRecord
 
   # Builds LLM message hashes for this pending message.
   #
-  # Non-user messages become synthetic tool_use/tool_result pairs so the
-  # LLM associates them with tool invocation semantics — the same phantom
-  # pair pattern for sub-agent results, recalled skills, workflows, and
-  # associative recall. User messages return plain content — injected as
-  # text blocks within the current tool_results turn, not as separate
-  # conversation turns.
+  # Phantom pair types become synthetic tool_use/tool_result pairs so the
+  # LLM sees them as its own past invocations. User messages return plain
+  # content for injection as text blocks within the current tool_results turn.
   #
   # @return [Array<Hash>] synthetic tool pair for phantom pair types
   # @return [String] raw content for user messages
   def to_llm_messages
-    case source_type
-    when "subagent"
-      build_phantom_pair(SUBAGENT_TOOL, {from: source_name})
-    when "skill"
-      build_phantom_pair(RECALL_SKILL_TOOL, {skill: source_name})
-    when "workflow"
-      build_phantom_pair(RECALL_WORKFLOW_TOOL, {workflow: source_name})
-    when "recall"
-      build_phantom_pair(RECALL_MEMORY_TOOL, {message_id: source_name.to_i})
-    when "goal"
-      build_phantom_pair(RECALL_GOAL_TOOL, {goal_id: source_name.to_i})
-    else
-      content
-    end
+    return content unless phantom_pair?
+
+    build_phantom_pair(phantom_tool_name, phantom_tool_input)
   end
 
   private
