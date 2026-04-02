@@ -698,8 +698,8 @@ class Session < ApplicationRecord
   end
 
   # Scopes own messages for viewport assembly.
-  # Excludes messages below the Mneme boundary — once Mneme compresses a zone,
-  # those messages leave the viewport and their context lives on as snapshots.
+  # Starts from the Mneme boundary (inclusive) — older messages have been
+  # compressed into snapshots and no longer participate in the viewport.
   # @return [ActiveRecord::Relation]
   def own_message_scope
     scope = messages.context_messages
