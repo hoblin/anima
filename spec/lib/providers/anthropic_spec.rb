@@ -251,20 +251,21 @@ RSpec.describe Providers::Anthropic do
 
   describe "#wrap_system_prompt!" do
     let(:passphrase_block) { {type: "text", text: described_class::OAUTH_PASSPHRASE} }
+    let(:cache_control) { {type: "ephemeral"} }
 
     it "always includes the passphrase as the first block" do
       options = {system: "You are helpful"}
       provider.send(:wrap_system_prompt!, options)
 
       expect(options[:system]).to be_an(Array)
-      expect(options[:system].first).to eq(passphrase_block)
+      expect(options[:system].first).to include(type: "text", text: described_class::OAUTH_PASSPHRASE)
     end
 
     it "appends the caller's system prompt as the second block" do
       options = {system: "You are helpful"}
       provider.send(:wrap_system_prompt!, options)
 
-      expect(options[:system].last).to eq({type: "text", text: "You are helpful"})
+      expect(options[:system].last).to include(type: "text", text: "You are helpful")
       expect(options[:system].length).to eq(2)
     end
 
@@ -272,7 +273,67 @@ RSpec.describe Providers::Anthropic do
       options = {}
       provider.send(:wrap_system_prompt!, options)
 
-      expect(options[:system]).to eq([passphrase_block])
+      expect(options[:system].length).to eq(1)
+      expect(options[:system].first).to include(type: "text", text: described_class::OAUTH_PASSPHRASE)
+    end
+
+    it "annotates the last block with cache_control" do
+      options = {system: "You are helpful"}
+      provider.send(:wrap_system_prompt!, options)
+
+      expect(options[:system].last[:cache_control]).to eq(cache_control)
+    end
+
+    it "annotates passphrase block when no system prompt is provided" do
+      options = {}
+      provider.send(:wrap_system_prompt!, options)
+
+      expect(options[:system].first[:cache_control]).to eq(cache_control)
+    end
+
+    it "does not annotate the passphrase block when a system prompt is present" do
+      options = {system: "You are helpful"}
+      provider.send(:wrap_system_prompt!, options)
+
+      expect(options[:system].first).not_to have_key(:cache_control)
+    end
+  end
+
+  describe "#annotate_tools_for_caching!" do
+    let(:cache_control) { {type: "ephemeral"} }
+
+    it "adds cache_control to the last tool definition" do
+      tools = [
+        {name: "tool_a", description: "A"},
+        {name: "tool_b", description: "B"}
+      ]
+      options = {tools: tools}
+      provider.send(:annotate_tools_for_caching!, options)
+
+      expect(tools.last[:cache_control]).to eq(cache_control)
+    end
+
+    it "does not annotate earlier tools" do
+      tools = [
+        {name: "tool_a", description: "A"},
+        {name: "tool_b", description: "B"}
+      ]
+      options = {tools: tools}
+      provider.send(:annotate_tools_for_caching!, options)
+
+      expect(tools.first).not_to have_key(:cache_control)
+    end
+
+    it "does nothing when tools are nil" do
+      options = {}
+      expect { provider.send(:annotate_tools_for_caching!, options) }.not_to raise_error
+    end
+
+    it "does nothing when tools are empty" do
+      options = {tools: []}
+      provider.send(:annotate_tools_for_caching!, options)
+
+      expect(options[:tools]).to eq([])
     end
   end
 

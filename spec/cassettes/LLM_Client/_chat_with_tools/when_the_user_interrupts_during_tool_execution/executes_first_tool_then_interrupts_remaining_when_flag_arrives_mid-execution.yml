@@ -8,8 +8,8 @@ http_interactions:
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Use
         the web_get tool to fetch both https://example.com and https://example.org"}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
         a URL and return its contents","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["url"]}}],"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude."}]}'
+        (default: 180)."}},"required":["url"]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude.","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -31,7 +31,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Tue, 24 Mar 2026 06:26:05 GMT
+      - Thu, 02 Apr 2026 21:05:40 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -39,31 +39,33 @@ http_interactions:
       Connection:
       - keep-alive
       Anthropic-Ratelimit-Unified-Status:
-      - allowed
+      - allowed_warning
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1774335600'
+      - '1775174400'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.07'
+      - '0.01'
       Anthropic-Ratelimit-Unified-7d-Status:
-      - allowed
+      - allowed_warning
       Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1774591200'
+      - '1775196000'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.52'
+      - '0.99'
+      Anthropic-Ratelimit-Unified-7d-Surpassed-Threshold:
+      - '0.75'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
-      - '1774602000'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
-      - '0.07'
+      - '0.14'
       Anthropic-Ratelimit-Unified-Representative-Claim:
-      - five_hour
+      - seven_day
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1774335600'
+      - '1775196000'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -77,11 +79,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1597'
+      - '1775'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=1599
+      - x-originResponse;dur=1776
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -96,22 +98,22 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxS1NvUWt4cWo1dHdUbXBzUWZjdmJEMyIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxM3d6QmhQVUZGZTh6UUVhYThxNkw3VCIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6IkknbGwgZmV0Y2ggYm90aCBVUkxzIGZvciB5b3UgdXNpbmcgdGhl
         IHdlYl9nZXQgdG9vbC4ifSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoidG9v
-        bHVfMDFLMnY2Y3dSVDdudkpyQnZjWUZQRFJQIiwibmFtZSI6IndlYl9nZXQi
+        bHVfMDFXMnJBRVh4a2dHOGs1aEhENUVlTWRwIiwibmFtZSI6IndlYl9nZXQi
         LCJpbnB1dCI6eyJ1cmwiOiJodHRwczovL2V4YW1wbGUuY29tIn0sImNhbGxl
         ciI6eyJ0eXBlIjoiZGlyZWN0In19LHsidHlwZSI6InRvb2xfdXNlIiwiaWQi
-        OiJ0b29sdV8wMVRUSjlHY2V5TGRRRUJnVnh2Z1p1eEEiLCJuYW1lIjoid2Vi
+        OiJ0b29sdV8wMThWaVZianBqd3RBZm43Zm1oQ0pNaVIiLCJuYW1lIjoid2Vi
         X2dldCIsImlucHV0Ijp7InVybCI6Imh0dHBzOi8vZXhhbXBsZS5vcmcifSwi
         Y2FsbGVyIjp7InR5cGUiOiJkaXJlY3QifX1dLCJzdG9wX3JlYXNvbiI6InRv
-        b2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsiaW5wdXRf
-        dG9rZW5zIjo0MzQsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwi
-        Y2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7
-        ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9p
-        bnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoxMTIsInNlcnZpY2Vf
-        dGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFpbGFi
-        bGUifX0=
-  recorded_at: Tue, 24 Mar 2026 06:26:05 GMT
+        b2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpu
+        dWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjQzNCwiY2FjaGVfY3JlYXRp
+        b25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6
+        MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2Vu
+        cyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90
+        b2tlbnMiOjExMiwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVu
+        Y2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
+  recorded_at: Thu, 02 Apr 2026 21:05:40 GMT
 recorded_with: VCR 6.4.0

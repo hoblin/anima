@@ -6,7 +6,7 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Hi"}],"max_tokens":8192,"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude."}]}'
+        are Claude Code, Anthropic''s official CLI for Claude.","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -28,7 +28,7 @@ http_interactions:
       message: Unauthorized
     headers:
       Date:
-      - Thu, 19 Mar 2026 20:26:16 GMT
+      - Thu, 02 Apr 2026 21:05:04 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -44,19 +44,19 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '14'
+      - '19'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - proxy;dur=14
-      Set-Cookie:
-      - "<CLOUDFLARE_COOKIE>"
-      X-Robots-Tag:
-      - none
+      - x-originResponse;dur=20
       Cf-Cache-Status:
       - DYNAMIC
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
       Content-Security-Policy:
       - default-src 'none'; frame-ancestors 'none'
+      X-Robots-Tag:
+      - none
       Cf-Ray:
       - "<CF_RAY>"
     body:
@@ -64,6 +64,6 @@ http_interactions:
       base64_string: |
         eyJ0eXBlIjoiZXJyb3IiLCJlcnJvciI6eyJ0eXBlIjoiYXV0aGVudGljYXRp
         b25fZXJyb3IiLCJtZXNzYWdlIjoiSW52YWxpZCBiZWFyZXIgdG9rZW4ifSwi
-        cmVxdWVzdF9pZCI6InJlcV8wMTFDWkQ0ckpKTjdKWGdhQXhlTjc4eVMifQ==
-  recorded_at: Thu, 19 Mar 2026 20:26:16 GMT
+        cmVxdWVzdF9pZCI6InJlcV8wMTFDWmZkOGpGWmszZ2ZKYjdGTEtLY3UifQ==
+  recorded_at: Thu, 02 Apr 2026 21:05:04 GMT
 recorded_with: VCR 6.4.0

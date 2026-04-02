@@ -17,8 +17,8 @@ http_interactions:
         what''s leaving the viewport.","input_schema":{"type":"object","properties":{"text":{"type":"string","maxLength":8192},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["text"]}},{"name":"everything_ok","description":"Nothing
         else worth remembering.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":[]}}],"system":[{"type":"text","text":"You are
-        Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        (default: 180)."}},"required":[]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
         are Mneme, the memory department of an AI agent named Anima.\nYour job is
         to compress multiple conversation summaries into a single\nhigher-level summary.\n\nYou
         MUST ONLY communicate through tool calls — NEVER output text.\n\n──────────────────────────────\nWHAT
@@ -33,7 +33,7 @@ http_interactions:
         Relationships and patterns across snapshots\n\nDrop:\n- Redundant details
         repeated across snapshots\n- Mechanical execution details\n- Interim decisions
         that were superseded by later ones\n\nAlways finish with exactly ONE tool
-        call: either save_snapshot or everything_ok.\n"}]}'
+        call: either save_snapshot or everything_ok.\n","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -55,7 +55,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 07:00:35 GMT
+      - Thu, 02 Apr 2026 21:06:06 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -67,9 +67,9 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775127600'
+      - '1775174400'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.0'
+      - '0.01'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed_warning
       Anthropic-Ratelimit-Unified-7d-Reset:
@@ -97,11 +97,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2149'
+      - '1801'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=2151
+      - x-originResponse;dur=1803
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -116,31 +116,31 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMUoyUG04dGdkVlFFdkRVN0NZdVBKZmQiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMUxOYVNyemtpdnZYZW5CdUc4c1NTS2YiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidG9vbF91
-        c2UiLCJpZCI6InRvb2x1XzAxSmFGU2FidzZ2N0xNcmlCU3BObXp2ZiIsIm5h
+        c2UiLCJpZCI6InRvb2x1XzAxVFFBbkQ1NHROR2F5Q3Vkb3VpbTJIciIsIm5h
         bWUiOiJzYXZlX3NuYXBzaG90IiwiaW5wdXQiOnsidGV4dCI6IlVzZXIgaW1w
-        bGVtZW50ZWQgY29tcGxldGUgT0F1dGggMi4wIFBLQ0UgZmxvdyBmb3IgbW9i
-        aWxlIGFwcCBhY3Jvc3MgdGhyZWUgcGhhc2VzOiAoMSkgZXN0YWJsaXNoZWQg
-        UEtDRSBhcmNoaXRlY3R1cmUgd2l0aCBTSEEtMjU2IGNvZGUgY2hhbGxlbmdl
-        L3ZlcmlmaWVyIHBhdHRlcm47ICgyKSBpbnRlZ3JhdGVkIEFwcEF1dGggbGli
-        cmFyeSBmb3IgaU9TIHdpdGggc2VjdXJlIHRva2VuIHJlZnJlc2ggdXNpbmcg
-        S2V5Y2hhaW4tYmFja2VkIGJpb21ldHJpYyBzdG9yYWdlOyAoMykgYWRkZWQg
-        cmVzaWxpZW5jZSBsYXllciBpbmNsdWRpbmcgZXhwaXJlZCB0b2tlbiBoYW5k
-        bGluZyB0aGF0IHJlZGlyZWN0cyB0byBsb2dpbiwgcGx1cyBiYWNrZW5kIHJh
-        dGUgbGltaXRpbmcgYW5kIHRva2VuIHJldm9jYXRpb24gc2FmZWd1YXJkcy4g
-        VGhlIHJlc3VsdCBpcyBhIHByb2R1Y3Rpb24tcmVhZHkgbW9iaWxlIE9BdXRo
-        IGltcGxlbWVudGF0aW9uIHdpdGggc2VjdXJpdHksIHJlZnJlc2gsIGFuZCBl
-        cnJvciBoYW5kbGluZyBmdWxseSBhZGRyZXNzZWQuIn0sImNhbGxlciI6eyJ0
-        eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0
-        b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbCwidXNhZ2Ui
-        OnsiaW5wdXRfdG9rZW5zIjoxMDg3LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90
-        b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9j
-        cmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhl
-        bWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MTY1
-        LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJu
-        b3RfYXZhaWxhYmxlIn19
-  recorded_at: Thu, 02 Apr 2026 07:00:35 GMT
+        bGVtZW50ZWQgT0F1dGggMi4wIHdpdGggUEtDRSBmb3IgYSBtb2JpbGUgYXBw
+        IGFjcm9zcyB0aHJlZSBwaGFzZXM6ICgxKSBBcmNoaXRlY3R1cmXigJRlc3Rh
+        Ymxpc2hlZCBjb2RlIHZlcmlmaWVyL2NoYWxsZW5nZSBwYXR0ZXJuIHVzaW5n
+        IFNIQS0yNTY7ICgyKSBJbXBsZW1lbnRhdGlvbuKAlGludGVncmF0ZWQgQXBw
+        QXV0aCBsaWJyYXJ5IGZvciBpT1Mgd2l0aCBzZWN1cmUgdG9rZW4gc3RvcmFn
+        ZSBpbiBLZXljaGFpbiwgYWRkaW5nIGJpb21ldHJpYyBwcm90ZWN0aW9uOyAo
+        MykgUmVzaWxpZW5jZeKAlGFkZGVkIGVycm9yIGhhbmRsaW5nIGZvciBleHBp
+        cmVkIHJlZnJlc2ggdG9rZW5zIHdpdGggbG9naW4gcmVkaXJlY3Rpb24sIGFu
+        ZCBwbGFubmVkIGJhY2tlbmQgc2FmZWd1YXJkcyBpbmNsdWRpbmcgcmF0ZSBs
+        aW1pdGluZyBhbmQgdG9rZW4gcmV2b2NhdGlvbi4gQ29yZSBvdXRjb21lOiBj
+        b21wbGV0ZSBPQXV0aCBmbG93IHdpdGggc2VjdXJpdHkgaGFyZGVuaW5nIGZy
+        b20gY2xpZW50IHRvIGJhY2tlbmQuIn0sImNhbGxlciI6eyJ0eXBlIjoiZGly
+        ZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVu
+        Y2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRf
+        dG9rZW5zIjoxMDg3LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAs
+        ImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6
+        eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhf
+        aW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MTYyLCJzZXJ2aWNl
+        X3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJub3RfYXZhaWxh
+        YmxlIn19
+  recorded_at: Thu, 02 Apr 2026 21:06:06 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
@@ -154,20 +154,20 @@ http_interactions:
         library for iOS. Added secure token storage in Keychain with biometric protection.\n\n---
         Snapshot 3 (messages 21..30) ---\nAdded error handling for expired refresh
         tokens — redirect to login. Discussed rate limiting and token revocation on
-        the backend."},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01JaFSabw6v7LMriBSpNmzvf","name":"save_snapshot","input":{"text":"User
-        implemented complete OAuth 2.0 PKCE flow for mobile app across three phases:
-        (1) established PKCE architecture with SHA-256 code challenge/verifier pattern;
-        (2) integrated AppAuth library for iOS with secure token refresh using Keychain-backed
-        biometric storage; (3) added resilience layer including expired token handling
-        that redirects to login, plus backend rate limiting and token revocation safeguards.
-        The result is a production-ready mobile OAuth implementation with security,
-        refresh, and error handling fully addressed."},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01JaFSabw6v7LMriBSpNmzvf","content":"Snapshot
+        the backend."},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01TQAnD54tNGayCudouim2Hr","name":"save_snapshot","input":{"text":"User
+        implemented OAuth 2.0 with PKCE for a mobile app across three phases: (1)
+        Architecture—established code verifier/challenge pattern using SHA-256; (2)
+        Implementation—integrated AppAuth library for iOS with secure token storage
+        in Keychain, adding biometric protection; (3) Resilience—added error handling
+        for expired refresh tokens with login redirection, and planned backend safeguards
+        including rate limiting and token revocation. Core outcome: complete OAuth
+        flow with security hardening from client to backend."},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01TQAnD54tNGayCudouim2Hr","content":"Snapshot
         saved (id: 4, messages 1..30)"}]}],"max_tokens":2048,"tools":[{"name":"save_snapshot","description":"Summarize
         what''s leaving the viewport.","input_schema":{"type":"object","properties":{"text":{"type":"string","maxLength":8192},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["text"]}},{"name":"everything_ok","description":"Nothing
         else worth remembering.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":[]}}],"system":[{"type":"text","text":"You are
-        Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        (default: 180)."}},"required":[]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
         are Mneme, the memory department of an AI agent named Anima.\nYour job is
         to compress multiple conversation summaries into a single\nhigher-level summary.\n\nYou
         MUST ONLY communicate through tool calls — NEVER output text.\n\n──────────────────────────────\nWHAT
@@ -182,7 +182,7 @@ http_interactions:
         Relationships and patterns across snapshots\n\nDrop:\n- Redundant details
         repeated across snapshots\n- Mechanical execution details\n- Interim decisions
         that were superseded by later ones\n\nAlways finish with exactly ONE tool
-        call: either save_snapshot or everything_ok.\n"}]}'
+        call: either save_snapshot or everything_ok.\n","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -204,7 +204,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 07:00:36 GMT
+      - Thu, 02 Apr 2026 21:06:07 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -216,9 +216,9 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775127600'
+      - '1775174400'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.0'
+      - '0.01'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed_warning
       Anthropic-Ratelimit-Unified-7d-Reset:
@@ -246,11 +246,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '508'
+      - '637'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=510
+      - x-originResponse;dur=639
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -265,14 +265,14 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMUppQnpBREhZb2ozdXhaSnFldlZyQzkiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMUF0TVRBWERMRkJhQUhYNG10NzczNU4iLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24i
         OiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWls
-        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxMjc4LCJjYWNoZV9j
+        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxMjc1LCJjYWNoZV9j
         cmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9r
         ZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRf
         dG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0
         cHV0X3Rva2VucyI6Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZl
         cmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Thu, 02 Apr 2026 07:00:36 GMT
+  recorded_at: Thu, 02 Apr 2026 21:06:07 GMT
 recorded_with: VCR 6.4.0

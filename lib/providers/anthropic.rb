@@ -114,6 +114,7 @@ module Providers
     # @raise [Error] on other API errors
     def create_message(model:, messages:, max_tokens:, include_metrics: false, **options)
       wrap_system_prompt!(options)
+      annotate_tools_for_caching!(options)
       body = {model: model, messages: messages, max_tokens: max_tokens}.merge(options)
 
       response = self.class.post(
@@ -190,6 +191,8 @@ module Providers
     # Wraps the system parameter in the array-of-blocks format required by
     # Anthropic for OAuth tokens. The passphrase block is always present;
     # the caller's prompt (if any) is appended as the second block.
+    # The last block is annotated with +cache_control+ so the API caches
+    # the entire system prefix (tools are evaluated before system).
     #
     # @param options [Hash] mutable options hash (modified in place)
     # @return [void]
@@ -197,7 +200,21 @@ module Providers
       prompt = options[:system]
       blocks = [{type: "text", text: OAUTH_PASSPHRASE}]
       blocks << {type: "text", text: prompt} if prompt
+      blocks.last[:cache_control] = {type: "ephemeral"}
       options[:system] = blocks
+    end
+
+    # Marks the last tool definition with +cache_control+ so the API caches
+    # the entire tools prefix. Tools are evaluated first in the cache prefix
+    # order (tools → system → messages), making this the most stable segment.
+    #
+    # @param options [Hash] mutable options hash (modified in place)
+    # @return [void]
+    def annotate_tools_for_caching!(options)
+      tools = options[:tools]
+      return unless tools&.any?
+
+      tools.last[:cache_control] = {type: "ephemeral"}
     end
 
     def request_headers

@@ -507,4 +507,35 @@ RSpec.describe LLM::Client do
       end
     end
   end
+
+  describe "#log_cache_metrics" do
+    let(:logger) { instance_double(Logger) }
+    let(:logged_client) { described_class.new(provider: provider, logger: logger) }
+
+    it "logs cache hit percentage when cache tokens are present" do
+      metrics = {"usage" => {"input_tokens" => 100, "cache_read_input_tokens" => 800, "cache_creation_input_tokens" => 100}}
+
+      expect(logger).to receive(:debug).with(/cache: read=800 create=100 uncached=100 hit=80\.0%/)
+      logged_client.send(:log_cache_metrics, metrics)
+    end
+
+    it "skips logging when cache tokens are zero" do
+      metrics = {"usage" => {"input_tokens" => 100, "cache_read_input_tokens" => 0, "cache_creation_input_tokens" => 0}}
+
+      expect(logger).not_to receive(:debug)
+      logged_client.send(:log_cache_metrics, metrics)
+    end
+
+    it "skips logging when metrics are nil" do
+      expect(logger).not_to receive(:debug)
+      logged_client.send(:log_cache_metrics, nil)
+    end
+
+    it "handles missing cache fields gracefully" do
+      metrics = {"usage" => {"input_tokens" => 100}}
+
+      expect(logger).not_to receive(:debug)
+      logged_client.send(:log_cache_metrics, metrics)
+    end
+  end
 end

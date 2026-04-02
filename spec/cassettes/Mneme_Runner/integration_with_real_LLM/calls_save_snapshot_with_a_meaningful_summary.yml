@@ -19,8 +19,8 @@ http_interactions:
         critical messages to goals so they survive viewport eviction.","input_schema":{"type":"object","properties":{"message_ids":{"type":"array","items":{"type":"integer"}},"goal_ids":{"type":"array","items":{"type":"integer"}},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["message_ids","goal_ids"]}},{"name":"everything_ok","description":"Nothing
         else worth remembering.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":[]}}],"system":[{"type":"text","text":"You are
-        Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        (default: 180)."}},"required":[]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
         are Mneme, the memory department of an AI agent named Anima.\nThe agent''s
         context is a conveyor belt — events flow through and eventually fall off.\nRemember
         what matters. Let the rest go.\nCommunicate only through tool calls — never
@@ -39,7 +39,7 @@ http_interactions:
         Pinned messages survive eviction\nintact — use this sparingly for messages
         where paraphrasing would lose meaning.\n\nIf the eviction zone contains only
         mechanical activity, call everything_ok.\n\nYou may combine save_snapshot
-        and attach_messages_to_goals in one turn.\n"}]}'
+        and attach_messages_to_goals in one turn.\n","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -61,7 +61,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 07:00:41 GMT
+      - Thu, 02 Apr 2026 21:06:11 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -73,9 +73,9 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775127600'
+      - '1775174400'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.0'
+      - '0.01'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed_warning
       Anthropic-Ratelimit-Unified-7d-Reset:
@@ -103,11 +103,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2838'
+      - '2104'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=2840
+      - x-originResponse;dur=2107
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -122,31 +122,27 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMVhaVDR2NHhFU010aUtHVGMyMTRMcEwiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMUNzbkZ0eDRIMWQ2bnlWRlNEWUxHTnIiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidG9vbF91
-        c2UiLCJpZCI6InRvb2x1XzAxV3kya2V4UmVoSnk4UExraG41ekxzcyIsIm5h
+        c2UiLCJpZCI6InRvb2x1XzAxTEVleFZjWnVpbzJTZVpvUHdpMTNtOCIsIm5h
         bWUiOiJzYXZlX3NuYXBzaG90IiwiaW5wdXQiOnsidGV4dCI6IlVzZXIgcmVx
         dWVzdGVkIGhlbHAgc2V0dGluZyB1cCBPQXV0aCAyLjAgd2l0aCBQS0NFIGZv
-        ciBhIG1vYmlsZSBhcHAuIEFzc2lzdGFudCBwcm92aWRlZCBpbml0aWFsIGd1
-        aWRhbmNlIG9uIHRoZSBQS0NFIGZsb3c6IGdlbmVyYXRpbmcgYSBjb2RlIHZl
-        cmlmaWVyIChyYW5kb20gc3RyaW5nKSBhbmQgZGVyaXZpbmcgdGhlIGNoYWxs
-        ZW5nZSAoU0hBLTI1NiBoYXNoKSwgdGhlbiByZWRpcmVjdGluZyB0byBhdXRo
-        b3JpemF0aW9uIHNlcnZlciB3aXRoIHRoZSBjaGFsbGVuZ2UuIFVzZXIgY2xh
-        cmlmaWVkIGltcGxlbWVudGF0aW9uIGRldGFpbHM6IHVzZSBBcHBBdXRoIGxp
-        YnJhcnkgZm9yIGlPUyBzcGVjaWZpY2FsbHkgYW5kIGVuc3VyZSB0b2tlbiBy
-        ZWZyZXNoIGhhbmRsaW5nIGlzIGluY2x1ZGVkLiBObyBjb25jcmV0ZSBpbXBs
-        ZW1lbnRhdGlvbiBzdGFydGVkIHlldCDigJQgbmV4dCBzdGVwcyBhcmUgYnVp
-        bGRpbmcgaU9TIGludGVncmF0aW9uIHVzaW5nIEFwcEF1dGggbGlicmFyeSB3
-        aXRoIHByb3BlciB0b2tlbiByZWZyZXNoIG1lY2hhbmlzbS4ifSwiY2FsbGVy
-        Ijp7InR5cGUiOiJkaXJlY3QifX1dLCJzdG9wX3JlYXNvbiI6InRvb2xfdXNl
-        Iiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1
-        c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEzMTcsImNhY2hlX2NyZWF0aW9uX2lu
-        cHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNh
-        Y2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAs
-        ImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5z
-        IjoxNTcsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dl
-        byI6Im5vdF9hdmFpbGFibGUifX0=
-  recorded_at: Thu, 02 Apr 2026 07:00:41 GMT
+        ciBhIG1vYmlsZSBhcHAuIEFzc2lzdGFudCBvdXRsaW5lZCB0aGUgUEtDRSBm
+        bG93IChjb2RlIHZlcmlmaWVyLCBTSEEtMjU2IGNoYWxsZW5nZSwgYXV0aG9y
+        aXphdGlvbiByZWRpcmVjdCkuIFVzZXIgdGhlbiBzcGVjaWZpZWQgdXNpbmcg
+        QXBwQXV0aCBsaWJyYXJ5IGZvciBpT1Mgd2l0aCB0b2tlbiByZWZyZXNoIGhh
+        bmRsaW5nIGFzIGltcGxlbWVudGF0aW9uIHJlcXVpcmVtZW50cy4gQ29udGV4
+        dDogTW9iaWxlIE9BdXRoIHNlY3VyaXR5IHNldHVwIGluIHByb2dyZXNzIHdp
+        dGggc3BlY2lmaWMgbGlicmFyeSBjaG9pY2UgYW5kIGZlYXR1cmUgbmVlZHMg
+        aWRlbnRpZmllZC4ifSwiY2FsbGVyIjp7InR5cGUiOiJkaXJlY3QifX1dLCJz
+        dG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwi
+        c3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEz
+        MTcsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVh
+        ZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJh
+        bF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tl
+        bnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoxMjcsInNlcnZpY2VfdGllciI6InN0
+        YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFpbGFibGUifX0=
+  recorded_at: Thu, 02 Apr 2026 21:06:11 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
@@ -160,22 +156,20 @@ http_interactions:
         The verifier is a random string, and the challenge is its SHA-256 hash. Then
         we redirect to the authorization server with the challenge.\nmessage 3 User:
         Use the AppAuth library for iOS and handle token refresh\n\nReview the eviction
-        zone and decide whether to save a snapshot or signal everything_ok."},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01Wy2kexRehJy8PLkhn5zLss","name":"save_snapshot","input":{"text":"User
+        zone and decide whether to save a snapshot or signal everything_ok."},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01LEexVcZuio2SeZoPwi13m8","name":"save_snapshot","input":{"text":"User
         requested help setting up OAuth 2.0 with PKCE for a mobile app. Assistant
-        provided initial guidance on the PKCE flow: generating a code verifier (random
-        string) and deriving the challenge (SHA-256 hash), then redirecting to authorization
-        server with the challenge. User clarified implementation details: use AppAuth
-        library for iOS specifically and ensure token refresh handling is included.
-        No concrete implementation started yet — next steps are building iOS integration
-        using AppAuth library with proper token refresh mechanism."},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01Wy2kexRehJy8PLkhn5zLss","content":"Snapshot
+        outlined the PKCE flow (code verifier, SHA-256 challenge, authorization redirect).
+        User then specified using AppAuth library for iOS with token refresh handling
+        as implementation requirements. Context: Mobile OAuth security setup in progress
+        with specific library choice and feature needs identified."},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01LEexVcZuio2SeZoPwi13m8","content":"Snapshot
         saved (id: 1, messages 1..3)"}]}],"max_tokens":2048,"tools":[{"name":"save_snapshot","description":"Summarize
         what''s leaving the viewport.","input_schema":{"type":"object","properties":{"text":{"type":"string","maxLength":8192},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["text"]}},{"name":"attach_messages_to_goals","description":"Pin
         critical messages to goals so they survive viewport eviction.","input_schema":{"type":"object","properties":{"message_ids":{"type":"array","items":{"type":"integer"}},"goal_ids":{"type":"array","items":{"type":"integer"}},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["message_ids","goal_ids"]}},{"name":"everything_ok","description":"Nothing
         else worth remembering.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":[]}}],"system":[{"type":"text","text":"You are
-        Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        (default: 180)."}},"required":[]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
         are Mneme, the memory department of an AI agent named Anima.\nThe agent''s
         context is a conveyor belt — events flow through and eventually fall off.\nRemember
         what matters. Let the rest go.\nCommunicate only through tool calls — never
@@ -194,7 +188,7 @@ http_interactions:
         Pinned messages survive eviction\nintact — use this sparingly for messages
         where paraphrasing would lose meaning.\n\nIf the eviction zone contains only
         mechanical activity, call everything_ok.\n\nYou may combine save_snapshot
-        and attach_messages_to_goals in one turn.\n"}]}'
+        and attach_messages_to_goals in one turn.\n","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -216,7 +210,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 07:00:42 GMT
+      - Thu, 02 Apr 2026 21:06:12 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -228,9 +222,9 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775127600'
+      - '1775174400'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.0'
+      - '0.01'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed_warning
       Anthropic-Ratelimit-Unified-7d-Reset:
@@ -258,11 +252,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '765'
+      - '752'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=767
+      - x-originResponse;dur=753
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -277,14 +271,14 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMU1Rem1jODlZVWE5Mnh2REtmWVRkc2ciLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMTZTZmNTS1pzM2dWZDVOYlplU2pjY3oiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24i
         OiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWls
-        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxNTAwLCJjYWNoZV9j
+        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxNDcwLCJjYWNoZV9j
         cmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9r
         ZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRf
         dG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0
         cHV0X3Rva2VucyI6Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZl
         cmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Thu, 02 Apr 2026 07:00:42 GMT
+  recorded_at: Thu, 02 Apr 2026 21:06:12 GMT
 recorded_with: VCR 6.4.0

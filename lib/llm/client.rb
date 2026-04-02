@@ -109,6 +109,7 @@ module LLM
 
         # Capture api_metrics from ApiResponse wrapper (nil for pre-fetched first_response)
         last_api_metrics = response.api_metrics if response.respond_to?(:api_metrics)
+        log_cache_metrics(last_api_metrics)
 
         log(:debug, "stop_reason=#{response["stop_reason"]} content_types=#{(response["content"] || []).map { |b| b["type"] }.join(",")}")
 
@@ -326,6 +327,24 @@ module LLM
       return unless @logger
 
       @logger.public_send(level, message)
+    end
+
+    # Logs cache hit/miss/creation token counts when present in API metrics.
+    #
+    # @param api_metrics [Hash, nil] metrics hash with "usage" key
+    # @return [void]
+    def log_cache_metrics(api_metrics)
+      usage = api_metrics&.dig("usage")
+      return unless usage
+
+      cache_read = usage["cache_read_input_tokens"].to_i
+      cache_create = usage["cache_creation_input_tokens"].to_i
+      return if cache_read.zero? && cache_create.zero?
+
+      input = usage["input_tokens"].to_i
+      total = input + cache_read + cache_create
+      hit_pct = (total > 0) ? (cache_read * 100.0 / total).round(1) : 0.0
+      log(:debug, "cache: read=#{cache_read} create=#{cache_create} uncached=#{input} hit=#{hit_pct}%")
     end
 
     def format_tool_result(result)
