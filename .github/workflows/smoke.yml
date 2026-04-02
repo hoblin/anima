@@ -30,14 +30,21 @@ jobs:
         run: anima install
 
       - name: Start brain (no systemd in CI)
-        run: tmux new-session -d -s anima-brain 'anima start -e production'
+        run: tmux new-session -d -s anima-brain 'anima start -e production; sleep 120'
 
       - name: Connect TUI and verify
         run: |
           # Wait for brain to be ready
           for i in $(seq 1 60); do
             curl -sf http://localhost:42134/up >/dev/null 2>&1 && break
-            [ $i -eq 60 ] && { echo "FAIL: brain did not start"; exit 1; }
+            if [ $i -eq 60 ]; then
+              echo "FAIL: brain did not start"
+              echo "--- brain tmux pane ---"
+              tmux capture-pane -t anima-brain -p -S -200
+              echo "--- brain log ---"
+              cat ~/.anima/log/production.log 2>/dev/null || echo "(no log)"
+              exit 1
+            fi
             sleep 1
           done
 
@@ -46,7 +53,16 @@ jobs:
           # Wait for TUI to connect (WebSocket needs time in CI)
           for j in $(seq 1 30); do
             tmux capture-pane -t anima-test -p | grep -q '🟢' && break
-            [ $j -eq 30 ] && { echo "FAIL: TUI did not connect"; tmux capture-pane -t anima-test -p; exit 1; }
+            if [ $j -eq 30 ]; then
+              echo "FAIL: TUI did not connect"
+              echo "--- TUI pane ---"
+              tmux capture-pane -t anima-test -p
+              echo "--- brain pane ---"
+              tmux capture-pane -t anima-brain -p -S -200
+              echo "--- brain log ---"
+              cat ~/.anima/log/production.log 2>/dev/null || echo "(no log)"
+              exit 1
+            fi
             sleep 1
           done
           echo "Smoke test passed"
