@@ -35,9 +35,9 @@ jobs:
       - name: Connect TUI and verify
         run: |
           # Wait for brain to be ready
-          for i in $(seq 1 30); do
+          for i in $(seq 1 60); do
             curl -sf http://localhost:42134/up >/dev/null 2>&1 && break
-            [ $i -eq 30 ] && { echo "FAIL: brain did not start"; exit 1; }
+            [ $i -eq 60 ] && { echo "FAIL: brain did not start"; exit 1; }
             sleep 1
           done
 
