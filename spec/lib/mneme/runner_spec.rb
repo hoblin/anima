@@ -153,6 +153,31 @@ RSpec.describe Mneme::Runner do
         expect(session.mneme_snapshot_first_message_id).to be_present
         expect(session.mneme_snapshot_last_message_id).to be_present
       end
+
+      it "advances boundary past Mneme's viewport to the first remaining conversation message" do
+        # Mneme's viewport budget (33% of 190K) fits ~62K tokens.
+        # Create messages that fill Mneme's viewport, then add messages beyond it.
+        5.times { create_message(type: "user_message", content: "in viewport", token_count: 12_000) }
+        beyond = create_message(type: "user_message", content: "beyond viewport", token_count: 100)
+
+        allow(client).to receive(:chat_with_tools) { "Done" }
+
+        runner.call
+
+        expect(session.reload.mneme_boundary_message_id).to eq(beyond.id)
+      end
+
+      it "falls back to last viewport message when no messages exist beyond viewport" do
+        allow(client).to receive(:chat_with_tools) { "Done" }
+
+        runner.call
+
+        # All messages from `before` fit in Mneme's viewport with no messages beyond.
+        # Boundary falls back to last conversation message in viewport.
+        boundary = Message.find(session.reload.mneme_boundary_message_id)
+        expect(boundary).to be_conversation_or_think
+        expect(boundary.payload["content"]).to eq("More details please")
+      end
     end
 
     context "with active goals" do

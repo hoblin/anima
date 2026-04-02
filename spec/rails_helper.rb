@@ -8,7 +8,9 @@ require "webmock/rspec"
 
 Dir[Rails.root.join("spec/support/**/*.rb")].each { |f| require f }
 
-# Ensure test database schema is current (critical for CI where db/schema.rb is gitignored).
+# Ensure test database schema is current.
+# Uses structure.sql (SQL format) which captures FTS5 virtual tables and triggers
+# that the Ruby schema dumper cannot express.
 ActiveRecord::Tasks::DatabaseTasks.prepare_all
 
 RSpec.configure do |config|

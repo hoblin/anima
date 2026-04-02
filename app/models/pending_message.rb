@@ -12,9 +12,9 @@
 #
 # Each pending message knows its source (+source_type+, +source_name+)
 # and how to serialize itself for the LLM conversation via {#to_llm_messages}.
-# Non-user messages (sub-agent results, recalled skills, workflows) become
-# synthetic tool_use/tool_result pairs so the LLM sees "a tool I invoked
-# returned a result" rather than "a user wrote me."
+# Non-user messages (sub-agent results, recalled skills, workflows, recall)
+# become synthetic tool_use/tool_result pairs so the LLM sees "a tool I
+# invoked returned a result" rather than "a user wrote me."
 #
 # @see Session#enqueue_user_message
 # @see Session#promote_pending_messages!
@@ -26,15 +26,16 @@ class PendingMessage < ApplicationRecord
   SUBAGENT_TOOL = "subagent_message"
   RECALL_SKILL_TOOL = "recall_skill"
   RECALL_WORKFLOW_TOOL = "recall_workflow"
+  RECALL_MEMORY_TOOL = "recall_memory"
 
   # Source types that produce phantom tool_use/tool_result pairs on promotion.
   # User messages produce plain text blocks instead.
-  PHANTOM_PAIR_TYPES = %w[subagent skill workflow].freeze
+  PHANTOM_PAIR_TYPES = %w[subagent skill workflow recall].freeze
 
   belongs_to :session
 
   validates :content, presence: true
-  validates :source_type, inclusion: {in: %w[user subagent skill workflow]}
+  validates :source_type, inclusion: {in: %w[user subagent skill workflow recall]}
   validates :source_name, presence: true, unless: :user?
 
   after_create_commit :broadcast_created
@@ -58,6 +59,11 @@ class PendingMessage < ApplicationRecord
   # @return [Boolean] true when this message carries recalled workflow content
   def workflow?
     source_type == "workflow"
+  end
+
+  # @return [Boolean] true when this message is an associative recall phantom pair
+  def recall?
+    source_type == "recall"
   end
 
   # @return [Boolean] true when promotion produces phantom tool_use/tool_result pairs
@@ -87,9 +93,10 @@ class PendingMessage < ApplicationRecord
   #
   # Non-user messages become synthetic tool_use/tool_result pairs so the
   # LLM associates them with tool invocation semantics — the same phantom
-  # pair pattern for sub-agent results, recalled skills, and workflows.
-  # User messages return plain content — injected as text blocks within
-  # the current tool_results turn, not as separate conversation turns.
+  # pair pattern for sub-agent results, recalled skills, workflows, and
+  # associative recall. User messages return plain content — injected as
+  # text blocks within the current tool_results turn, not as separate
+  # conversation turns.
   #
   # @return [Array<Hash>] synthetic tool pair for phantom pair types
   # @return [String] raw content for user messages
@@ -101,6 +108,8 @@ class PendingMessage < ApplicationRecord
       build_phantom_pair(RECALL_SKILL_TOOL, {skill: source_name})
     when "workflow"
       build_phantom_pair(RECALL_WORKFLOW_TOOL, {workflow: source_name})
+    when "recall"
+      build_phantom_pair(RECALL_MEMORY_TOOL, {message_id: source_name.to_i})
     else
       content
     end
