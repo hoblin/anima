@@ -403,8 +403,8 @@ RSpec.describe AnalyticalBrain::Runner do
 
     context "integration with real LLM", :vcr do
       it "renames an unnamed session based on conversation topic" do
-        session.messages.create!(message_type: "user_message", payload: {"content" => "Help me set up PostgreSQL replication for our Rails app"}, timestamp: 1)
-        session.messages.create!(message_type: "agent_message", payload: {"content" => "I'll help you configure PostgreSQL streaming replication with your Rails app."}, timestamp: 2)
+        session.messages.create!(message_type: "user_message", payload: {"content" => "Write RSpec tests for the User model validations"}, timestamp: 1)
+        session.messages.create!(message_type: "agent_message", payload: {"content" => "I'll write comprehensive RSpec tests for the User model validations."}, timestamp: 2)
 
         described_class.new(session).call
 

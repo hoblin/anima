@@ -1,0 +1,278 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":"Compress
+        these 3 Level 1 snapshots into a single Level 2 summary:\n\n--- Snapshot 1
+        (messages 1..10) ---\nUser asked for help setting up OAuth with PKCE for a
+        mobile app. Agent proposed using code verifier/challenge pattern with SHA-256.\n\n---
+        Snapshot 2 (messages 11..20) ---\nImplemented token refresh flow using AppAuth
+        library for iOS. Added secure token storage in Keychain with biometric protection.\n\n---
+        Snapshot 3 (messages 21..30) ---\nAdded error handling for expired refresh
+        tokens — redirect to login. Discussed rate limiting and token revocation on
+        the backend."}],"max_tokens":2048,"tools":[{"name":"save_snapshot","description":"Summarize
+        what''s leaving the viewport.","input_schema":{"type":"object","properties":{"text":{"type":"string","maxLength":8192},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["text"]}},{"name":"everything_ok","description":"Nothing
+        else worth remembering.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":[]}}],"system":[{"type":"text","text":"You are
+        Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are Mneme, the memory department of an AI agent named Anima.\nYour job is
+        to compress multiple conversation summaries into a single\nhigher-level summary.\n\nYou
+        MUST ONLY communicate through tool calls — NEVER output text.\n\n──────────────────────────────\nWHAT
+        YOU SEE\n──────────────────────────────\nSeveral Level 1 snapshots — hourly
+        conversation summaries.\nEach captures key decisions, goals discussed, and
+        important context\nfrom a portion of the conversation history.\n\n──────────────────────────────\nYOUR
+        TASK\n──────────────────────────────\nCompress the snapshots into ONE Level
+        2 summary that captures the\nessential arc across all of them. If the snapshots
+        contain meaningful\ncontent, call save_snapshot. If they are purely mechanical,
+        call\neverything_ok.\n\nPreserve:\n- Key decisions and their reasoning\n-
+        Goal progress across the time span\n- Important context shifts or pivots\n-
+        Relationships and patterns across snapshots\n\nDrop:\n- Redundant details
+        repeated across snapshots\n- Mechanical execution details\n- Interim decisions
+        that were superseded by later ones\n\nAlways finish with exactly ONE tool
+        call: either save_snapshot or everything_ok.\n"}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Thu, 02 Apr 2026 07:00:35 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed_warning
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1775127600'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.0'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed_warning
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1775196000'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.99'
+      Anthropic-Ratelimit-Unified-7d-Surpassed-Threshold:
+      - '0.75'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - seven_day
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1775196000'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '2149'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - x-originResponse;dur=2151
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      X-Robots-Tag:
+      - none
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
+        Z18wMUoyUG04dGdkVlFFdkRVN0NZdVBKZmQiLCJ0eXBlIjoibWVzc2FnZSIs
+        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidG9vbF91
+        c2UiLCJpZCI6InRvb2x1XzAxSmFGU2FidzZ2N0xNcmlCU3BObXp2ZiIsIm5h
+        bWUiOiJzYXZlX3NuYXBzaG90IiwiaW5wdXQiOnsidGV4dCI6IlVzZXIgaW1w
+        bGVtZW50ZWQgY29tcGxldGUgT0F1dGggMi4wIFBLQ0UgZmxvdyBmb3IgbW9i
+        aWxlIGFwcCBhY3Jvc3MgdGhyZWUgcGhhc2VzOiAoMSkgZXN0YWJsaXNoZWQg
+        UEtDRSBhcmNoaXRlY3R1cmUgd2l0aCBTSEEtMjU2IGNvZGUgY2hhbGxlbmdl
+        L3ZlcmlmaWVyIHBhdHRlcm47ICgyKSBpbnRlZ3JhdGVkIEFwcEF1dGggbGli
+        cmFyeSBmb3IgaU9TIHdpdGggc2VjdXJlIHRva2VuIHJlZnJlc2ggdXNpbmcg
+        S2V5Y2hhaW4tYmFja2VkIGJpb21ldHJpYyBzdG9yYWdlOyAoMykgYWRkZWQg
+        cmVzaWxpZW5jZSBsYXllciBpbmNsdWRpbmcgZXhwaXJlZCB0b2tlbiBoYW5k
+        bGluZyB0aGF0IHJlZGlyZWN0cyB0byBsb2dpbiwgcGx1cyBiYWNrZW5kIHJh
+        dGUgbGltaXRpbmcgYW5kIHRva2VuIHJldm9jYXRpb24gc2FmZWd1YXJkcy4g
+        VGhlIHJlc3VsdCBpcyBhIHByb2R1Y3Rpb24tcmVhZHkgbW9iaWxlIE9BdXRo
+        IGltcGxlbWVudGF0aW9uIHdpdGggc2VjdXJpdHksIHJlZnJlc2gsIGFuZCBl
+        cnJvciBoYW5kbGluZyBmdWxseSBhZGRyZXNzZWQuIn0sImNhbGxlciI6eyJ0
+        eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0
+        b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbCwidXNhZ2Ui
+        OnsiaW5wdXRfdG9rZW5zIjoxMDg3LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90
+        b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9j
+        cmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhl
+        bWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MTY1
+        LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJu
+        b3RfYXZhaWxhYmxlIn19
+  recorded_at: Thu, 02 Apr 2026 07:00:35 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":"Compress
+        these 3 Level 1 snapshots into a single Level 2 summary:\n\n--- Snapshot 1
+        (messages 1..10) ---\nUser asked for help setting up OAuth with PKCE for a
+        mobile app. Agent proposed using code verifier/challenge pattern with SHA-256.\n\n---
+        Snapshot 2 (messages 11..20) ---\nImplemented token refresh flow using AppAuth
+        library for iOS. Added secure token storage in Keychain with biometric protection.\n\n---
+        Snapshot 3 (messages 21..30) ---\nAdded error handling for expired refresh
+        tokens — redirect to login. Discussed rate limiting and token revocation on
+        the backend."},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01JaFSabw6v7LMriBSpNmzvf","name":"save_snapshot","input":{"text":"User
+        implemented complete OAuth 2.0 PKCE flow for mobile app across three phases:
+        (1) established PKCE architecture with SHA-256 code challenge/verifier pattern;
+        (2) integrated AppAuth library for iOS with secure token refresh using Keychain-backed
+        biometric storage; (3) added resilience layer including expired token handling
+        that redirects to login, plus backend rate limiting and token revocation safeguards.
+        The result is a production-ready mobile OAuth implementation with security,
+        refresh, and error handling fully addressed."},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01JaFSabw6v7LMriBSpNmzvf","content":"Snapshot
+        saved (id: 4, messages 1..30)"}]}],"max_tokens":2048,"tools":[{"name":"save_snapshot","description":"Summarize
+        what''s leaving the viewport.","input_schema":{"type":"object","properties":{"text":{"type":"string","maxLength":8192},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["text"]}},{"name":"everything_ok","description":"Nothing
+        else worth remembering.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":[]}}],"system":[{"type":"text","text":"You are
+        Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are Mneme, the memory department of an AI agent named Anima.\nYour job is
+        to compress multiple conversation summaries into a single\nhigher-level summary.\n\nYou
+        MUST ONLY communicate through tool calls — NEVER output text.\n\n──────────────────────────────\nWHAT
+        YOU SEE\n──────────────────────────────\nSeveral Level 1 snapshots — hourly
+        conversation summaries.\nEach captures key decisions, goals discussed, and
+        important context\nfrom a portion of the conversation history.\n\n──────────────────────────────\nYOUR
+        TASK\n──────────────────────────────\nCompress the snapshots into ONE Level
+        2 summary that captures the\nessential arc across all of them. If the snapshots
+        contain meaningful\ncontent, call save_snapshot. If they are purely mechanical,
+        call\neverything_ok.\n\nPreserve:\n- Key decisions and their reasoning\n-
+        Goal progress across the time span\n- Important context shifts or pivots\n-
+        Relationships and patterns across snapshots\n\nDrop:\n- Redundant details
+        repeated across snapshots\n- Mechanical execution details\n- Interim decisions
+        that were superseded by later ones\n\nAlways finish with exactly ONE tool
+        call: either save_snapshot or everything_ok.\n"}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Thu, 02 Apr 2026 07:00:36 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed_warning
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1775127600'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.0'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed_warning
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1775196000'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.99'
+      Anthropic-Ratelimit-Unified-7d-Surpassed-Threshold:
+      - '0.75'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - seven_day
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1775196000'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '508'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - x-originResponse;dur=510
+      Cf-Cache-Status:
+      - DYNAMIC
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      X-Robots-Tag:
+      - none
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
+        Z18wMUppQnpBREhZb2ozdXhaSnFldlZyQzkiLCJ0eXBlIjoibWVzc2FnZSIs
+        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24i
+        OiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWls
+        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxMjc4LCJjYWNoZV9j
+        cmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9r
+        ZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRf
+        dG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0
+        cHV0X3Rva2VucyI6Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZl
+        cmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
+  recorded_at: Thu, 02 Apr 2026 07:00:36 GMT
+recorded_with: VCR 6.4.0
