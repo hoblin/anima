@@ -42,15 +42,14 @@ jobs:
           done
 
           tmux new-session -d -s anima-test -x 120 -y 30 'anima tui'
-          sleep 3
 
-          if tmux capture-pane -t anima-test -p | grep -q '🟢'; then
-            echo "Smoke test passed"
-          else
-            echo "FAIL: TUI did not connect"
-            tmux capture-pane -t anima-test -p
-            exit 1
-          fi
+          # Wait for TUI to connect (WebSocket needs time in CI)
+          for j in $(seq 1 30); do
+            tmux capture-pane -t anima-test -p | grep -q '🟢' && break
+            [ $j -eq 30 ] && { echo "FAIL: TUI did not connect"; tmux capture-pane -t anima-test -p; exit 1; }
+            sleep 1
+          done
+          echo "Smoke test passed"
 
           tmux kill-session -t anima-test
           tmux kill-session -t anima-brain
