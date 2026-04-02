@@ -103,7 +103,7 @@ Record mode is `:once` with body matching. VCR replays cassettes whose recorded 
 
 ### Recording and re-recording cassettes
 
-`bin/with-llms` injects 1Password credentials for the duration of a command. Without it, `rails_helper.rb` seeds a dummy token and all API calls return 401.
+`bin/with-llms` injects 1Password credentials for the duration of a command. Without it, `rails_helper.rb` seeds a dummy token and all API calls return 401. 1Password requires human authorization (biometric/GUI) — wait for the prompt to be accepted before the command proceeds.
 
 ```bash
 bin/with-llms bundle exec rspec                          # record all missing cassettes
