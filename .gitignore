@@ -16,7 +16,7 @@ Gemfile.lock
 # Rails
 db/*.sqlite3
 db/*.sqlite3-*
-db/schema.rb
+db/*structure*
 config/master.key
 config/credentials/*.key
 
