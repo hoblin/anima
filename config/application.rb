@@ -20,7 +20,7 @@ module Anima
   class Application < Rails::Application
     config.load_defaults 8.1
     config.api_only = true
-    config.active_record.schema_format = :sql
+
 
     config.autoload_lib(ignore: %w[anima])
     config.active_job.queue_adapter = :solid_queue
