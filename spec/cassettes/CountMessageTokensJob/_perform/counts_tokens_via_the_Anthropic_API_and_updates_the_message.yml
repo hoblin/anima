@@ -29,7 +29,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 26 Mar 2026 20:04:55 GMT
+      - Thu, 02 Apr 2026 06:56:55 GMT
       Content-Type:
       - application/json
       Content-Length:
@@ -45,9 +45,9 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '67'
+      - '131'
       Server-Timing:
-      - x-originResponse;dur=68
+      - x-originResponse;dur=132
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -61,5 +61,5 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"input_tokens":24}'
-  recorded_at: Thu, 26 Mar 2026 20:04:55 GMT
+  recorded_at: Thu, 02 Apr 2026 06:56:55 GMT
 recorded_with: VCR 6.4.0

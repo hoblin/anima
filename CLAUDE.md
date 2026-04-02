@@ -95,15 +95,28 @@ Temporarily break `OAUTH_PASSPHRASE` in `lib/providers/anthropic.rb` — revert 
 
 ## VCR over WebMock
 
-Use VCR cassettes for all HTTP tests — never `stub_request`. Add `:vcr` metadata (bare symbol, no cassette path) and VCR auto-names cassettes from the spec description. Use a real token via `CredentialStore` for happy-path tests.
+Use VCR cassettes for all HTTP tests — never `stub_request`. Add `:vcr` metadata (bare symbol, no cassette path) and VCR auto-names cassettes from the spec description.
 
 Record mode is `:once` — VCR records a cassette the first time, then replays on subsequent runs. If the request body changes (e.g. prompt text changed), VCR raises `UnhandledHTTPRequestError` instead of silently appending dead episodes.
+
+### Recording cassettes
+
+Cassette recording requires a real Anthropic API token. Use `bin/with-llms` to inject credentials from 1Password for the duration of the command:
+
+```bash
+bin/with-llms bundle exec rspec                          # record all missing cassettes
+bin/with-llms bundle exec rspec spec/path/to_spec.rb:42  # record one specific cassette
+```
+
+`bin/with-llms` reads the "Anima keys" item from the Private 1Password vault, exports all fields as env vars, and runs the command. Credentials are never written to disk. `Providers::Anthropic.fetch_token` checks `ANTHROPIC_API_KEY` env var first, then falls back to `CredentialStore`.
+
+### Re-recording after prompt/schema changes
 
 When prompt text changes, re-record affected cassettes:
 
 1. Run full specs (`bundle exec rspec`) — affected cassettes surface as test failures.
 2. Delete failing cassettes with `rm -f`.
-3. Run full specs again — records fresh single-episode cassettes.
+3. Run full specs again with credentials: `bin/with-llms bundle exec rspec`.
 
 Never delete cassettes before the first full run — you won't know which ones are affected.
 
