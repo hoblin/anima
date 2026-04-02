@@ -148,13 +148,15 @@ module Mneme
       registry
     end
 
-    # Advances the terminal message pointer after Mneme completes.
+    # Advances the terminal message pointer past the zone Mneme just processed.
     # Runs unconditionally — even when the LLM called `everything_ok` (no snapshot
     # needed), the zone was reviewed and should be advanced past. Without this,
     # Mneme would re-examine the same mechanical-only content on every trigger.
     #
-    # Sets it to the last conversation message in the viewport, ensuring
-    # the boundary is always a message/think message, never a tool_call/tool_response.
+    # Sets the boundary to the first conversation/think message AFTER Mneme's
+    # viewport — the start of the remaining context. This creates the batch
+    # eviction cycle: the next Mneme trigger fires only after this boundary
+    # message itself falls out of the main viewport (~1/3 turnover later).
     # Also updates the snapshot range pointers.
     #
     # @param viewport [Mneme::CompressedViewport]
@@ -162,7 +164,16 @@ module Mneme
       viewport_messages = viewport.messages
       return if viewport_messages.empty?
 
-      new_boundary = viewport_messages.reverse_each.find { |message| conversation_or_think?(message) }
+      last_processed_id = viewport_messages.last.id
+      new_boundary = @session.messages
+        .where("id > ?", last_processed_id)
+        .where(message_type: Message::CONVERSATION_TYPES + ["tool_call"])
+        .order(:id)
+        .find_each { |msg| break msg if conversation_or_think?(msg) }
+
+      # Fall back to the last message in Mneme's viewport when no conversation
+      # messages exist beyond it (e.g. session went quiet after the zone).
+      new_boundary ||= viewport_messages.reverse_each.find { |msg| conversation_or_think?(msg) }
       return unless new_boundary
 
       boundary_id = new_boundary.id

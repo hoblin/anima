@@ -22,11 +22,14 @@ class PendingMessage < ApplicationRecord
   # the parent LLM conversation when a sub-agent message is promoted.
   SYNTHETIC_TOOL_NAME = "subagent_message"
 
+  # Phantom tool name for associative recall — not in the agent's tool registry.
+  RECALL_TOOL_NAME = "recall_memory"
+
   belongs_to :session
 
   validates :content, presence: true
-  validates :source_type, inclusion: {in: %w[user subagent]}
-  validates :source_name, presence: true, if: :subagent?
+  validates :source_type, inclusion: {in: %w[user subagent recall]}
+  validates :source_name, presence: true, if: -> { subagent? || recall? }
 
   after_create_commit :broadcast_created
   after_destroy_commit :broadcast_removed
@@ -34,6 +37,11 @@ class PendingMessage < ApplicationRecord
   # @return [Boolean] true when this message originated from a sub-agent
   def subagent?
     source_type == "subagent"
+  end
+
+  # @return [Boolean] true when this message is an associative recall phantom pair
+  def recall?
+    source_type == "recall"
   end
 
   # Content formatted for display and history persistence.
@@ -51,12 +59,12 @@ class PendingMessage < ApplicationRecord
 
   # Builds LLM message hashes for this pending message.
   #
-  # Sub-agent messages become synthetic tool_use/tool_result pairs so the
-  # parent LLM associates them with tool invocation semantics.
+  # Sub-agent and recall messages become synthetic tool_use/tool_result pairs
+  # so the LLM associates them with tool invocation semantics.
   # User messages return plain content — they are injected as text blocks
   # within the current tool_results turn, not as separate conversation turns.
   #
-  # @return [Array<Hash>] synthetic tool pair for sub-agent messages
+  # @return [Array<Hash>] synthetic tool pair for sub-agent/recall messages
   # @return [String] raw content for user messages
   def to_llm_messages
     if subagent?
@@ -65,6 +73,17 @@ class PendingMessage < ApplicationRecord
         {role: "assistant", content: [
           {type: "tool_use", id: tool_use_id, name: SYNTHETIC_TOOL_NAME,
            input: {from: source_name}}
+        ]},
+        {role: "user", content: [
+          {type: "tool_result", tool_use_id: tool_use_id, content: content}
+        ]}
+      ]
+    elsif recall?
+      tool_use_id = "recall_#{source_name}"
+      [
+        {role: "assistant", content: [
+          {type: "tool_use", id: tool_use_id, name: RECALL_TOOL_NAME,
+           input: {message_id: source_name.to_i}}
         ]},
         {role: "user", content: [
           {type: "tool_result", tool_use_id: tool_use_id, content: content}

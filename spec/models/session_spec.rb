@@ -1479,88 +1479,86 @@ RSpec.describe Session do
       let(:session) { Session.create! }
 
       before do
+        allow(Anima::Settings).to receive(:token_budget).and_return(190_000)
         allow(Anima::Settings).to receive(:mneme_l1_budget_fraction).and_return(0.15)
         allow(Anima::Settings).to receive(:mneme_l2_budget_fraction).and_return(0.05)
       end
 
-      # Creates events and returns a snapshot whose source events are BEFORE
-      # the viewport (to_message_id < first viewport event).
-      def create_viewport_with_evicted_snapshot(session, budget:)
-        # Old events that will be evicted by budget pressure
-        e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: budget)
-        e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old reply"}, timestamp: 2, token_count: budget)
-        # Recent event that fills the viewport
-        session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 3, token_count: 10)
+      it "does not include snapshots in the message array" do
+        e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 10)
+        e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old reply"}, timestamp: 2, token_count: 10)
+        recent = session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 3, token_count: 10)
 
-        # Snapshot covers the old events (contiguous range)
-        session.snapshots.create!(
-          text: "Earlier discussion summary",
-          from_message_id: e1.id, to_message_id: e2.id,
-          level: 1, token_count: 20
-        )
-      end
-
-      it "includes L1 snapshots above sliding window events" do
-        create_viewport_with_evicted_snapshot(session, budget: 1000)
-
-        # Budget tight enough that old events evict, leaving snapshot visible
-        result = session.messages_for_llm(token_budget: 100)
-
-        expect(result.first[:content]).to include("[recent memory]")
-        expect(result.first[:content]).to include("Earlier discussion summary")
-      end
-
-      it "excludes snapshots whose source events are still in the viewport" do
-        e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "visible"}, timestamp: 1, token_count: 10)
-        e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "reply"}, timestamp: 2, token_count: 10)
-
-        # Snapshot covers events still in the viewport
-        session.snapshots.create!(text: "Should not appear", from_message_id: e1.id, to_message_id: e2.id, level: 1, token_count: 20)
+        session.snapshots.create!(text: "Summary", from_message_id: e1.id, to_message_id: e2.id, level: 1, token_count: 20)
+        session.update_column(:mneme_boundary_message_id, recent.id)
 
         result = session.messages_for_llm(token_budget: 1000)
 
-        contents = result.map { |m| m[:content] }
-        expect(contents.none? { |c| c.include?("Should not appear") }).to be true
+        contents = result.map { |m| m[:content].to_s }
+        expect(contents.none? { |c| c.include?("Summary") }).to be true
       end
 
-      it "places L2 snapshots above L1 snapshots in message order" do
-        # Create old events that will evict, then a recent one that stays
-        e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "old1"}, timestamp: 1, token_count: 500)
-        e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old2"}, timestamp: 2, token_count: 500)
-        e3 = session.messages.create!(message_type: "user_message", payload: {"content" => "old3"}, timestamp: 3, token_count: 500)
-        e4 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old4"}, timestamp: 4, token_count: 500)
-        session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 5, token_count: 10)
+      it "includes L1 snapshots in the system prompt via assemble_snapshots_section" do
+        e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 10)
+        e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old reply"}, timestamp: 2, token_count: 10)
+        recent = session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 3, token_count: 10)
 
-        # L2 covers first two events, L1 covers next two (not covered by L2)
+        session.snapshots.create!(text: "Earlier discussion summary", from_message_id: e1.id, to_message_id: e2.id, level: 1, token_count: 20)
+        session.update_column(:mneme_boundary_message_id, recent.id)
+
+        section = session.send(:assemble_snapshots_section)
+
+        expect(section).to include("Recent Memory")
+        expect(section).to include("Earlier discussion summary")
+      end
+
+      it "excludes snapshots whose source events are after the boundary" do
+        e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "visible"}, timestamp: 1, token_count: 10)
+        e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "reply"}, timestamp: 2, token_count: 10)
+
+        session.snapshots.create!(text: "Should not appear", from_message_id: e1.id, to_message_id: e2.id, level: 1, token_count: 20)
+        # Boundary is at e1 — snapshot covers events at/after boundary, not evicted
+        session.update_column(:mneme_boundary_message_id, e1.id)
+
+        section = session.send(:assemble_snapshots_section)
+
+        expect(section).to be_nil
+      end
+
+      it "places L2 snapshots above L1 snapshots in the section" do
+        e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "old1"}, timestamp: 1, token_count: 10)
+        e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old2"}, timestamp: 2, token_count: 10)
+        e3 = session.messages.create!(message_type: "user_message", payload: {"content" => "old3"}, timestamp: 3, token_count: 10)
+        e4 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old4"}, timestamp: 4, token_count: 10)
+        recent = session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 5, token_count: 10)
+
         session.snapshots.create!(text: "L2 meta-summary", from_message_id: e1.id, to_message_id: e2.id, level: 2, token_count: 20)
         session.snapshots.create!(text: "L1 uncovered", from_message_id: e3.id, to_message_id: e4.id, level: 1, token_count: 20)
+        session.update_column(:mneme_boundary_message_id, recent.id)
 
-        # Budget tight so old events evict, making snapshots visible
-        result = session.messages_for_llm(token_budget: 100)
+        section = session.send(:assemble_snapshots_section)
 
-        memory_messages = result.select { |m| m[:content].is_a?(String) && m[:content].start_with?("[") }
-        labels = memory_messages.map { |m| m[:content].lines.first.strip }
-        expect(labels).to eq(["[long-term memory]", "[recent memory]"])
+        expect(section).to include("Long-term Memory")
+        expect(section).to include("Recent Memory")
+        expect(section.index("Long-term Memory")).to be < section.index("Recent Memory")
       end
 
       it "drops L1 snapshots covered by L2" do
-        # Create old events, then a recent one
-        e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "old1"}, timestamp: 1, token_count: 500)
-        e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old2"}, timestamp: 2, token_count: 500)
-        e3 = session.messages.create!(message_type: "user_message", payload: {"content" => "old3"}, timestamp: 3, token_count: 500)
-        e4 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old4"}, timestamp: 4, token_count: 500)
-        session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 5, token_count: 10)
+        e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "old1"}, timestamp: 1, token_count: 10)
+        e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old2"}, timestamp: 2, token_count: 10)
+        e3 = session.messages.create!(message_type: "user_message", payload: {"content" => "old3"}, timestamp: 3, token_count: 10)
+        e4 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old4"}, timestamp: 4, token_count: 10)
+        recent = session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 5, token_count: 10)
 
-        # L1(e1..e2), L1(e3..e4) — both covered by L2(e1..e4)
         session.snapshots.create!(text: "L1 covered a", from_message_id: e1.id, to_message_id: e2.id, level: 1, token_count: 20)
         session.snapshots.create!(text: "L1 covered b", from_message_id: e3.id, to_message_id: e4.id, level: 1, token_count: 20)
         session.snapshots.create!(text: "L2 covers both", from_message_id: e1.id, to_message_id: e4.id, level: 2, token_count: 30)
+        session.update_column(:mneme_boundary_message_id, recent.id)
 
-        result = session.messages_for_llm(token_budget: 100)
+        section = session.send(:assemble_snapshots_section)
 
-        contents = result.map { |m| m[:content] }
-        expect(contents.any? { |c| c.include?("L2 covers both") }).to be true
-        expect(contents.none? { |c| c.include?("L1 covered") }).to be true
+        expect(section).to include("L2 covers both")
+        expect(section).not_to include("L1 covered")
       end
 
       it "skips snapshot injection for sub-agent sessions" do
@@ -2086,6 +2084,80 @@ RSpec.describe Session do
     end
   end
 
+  describe "#own_message_scope" do
+    let(:session) { Session.create! }
+
+    it "excludes messages below mneme_boundary_message_id" do
+      old = session.messages.create!(message_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 10)
+      recent = session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 2, token_count: 10)
+      session.update_column(:mneme_boundary_message_id, recent.id)
+
+      scope = session.send(:own_message_scope)
+      expect(scope).to include(recent)
+      expect(scope).not_to include(old)
+    end
+
+    it "includes all messages when boundary is nil" do
+      msg = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
+
+      scope = session.send(:own_message_scope)
+      expect(scope).to include(msg)
+    end
+  end
+
+  describe "#promote_recall_message!" do
+    let(:session) { Session.create! }
+
+    it "creates a tool_call and tool_response message pair" do
+      pm = session.pending_messages.create!(content: "recalled text", source_type: "recall", source_name: "42")
+
+      expect { session.promote_recall_message!(pm) }
+        .to change { session.messages.where(message_type: "tool_call").count }.by(1)
+        .and change { session.messages.where(message_type: "tool_response").count }.by(1)
+    end
+
+    it "uses deterministic tool_use_id from source_name" do
+      pm = session.pending_messages.create!(content: "recalled text", source_type: "recall", source_name: "42")
+      session.promote_recall_message!(pm)
+
+      call = session.messages.find_by(message_type: "tool_call", tool_use_id: "recall_42")
+      response = session.messages.find_by(message_type: "tool_response", tool_use_id: "recall_42")
+      expect(call).to be_present
+      expect(response).to be_present
+    end
+
+    it "sets recall_memory as the phantom tool name" do
+      pm = session.pending_messages.create!(content: "recalled text", source_type: "recall", source_name: "42")
+      session.promote_recall_message!(pm)
+
+      call = session.messages.find_by(message_type: "tool_call")
+      expect(call.payload["tool_name"]).to eq("recall_memory")
+    end
+  end
+
+  describe "#assemble_system_prompt with snapshots" do
+    let(:session) { Session.create! }
+
+    before do
+      allow(Anima::Settings).to receive(:token_budget).and_return(190_000)
+      allow(Anima::Settings).to receive(:mneme_l1_budget_fraction).and_return(0.15)
+      allow(Anima::Settings).to receive(:mneme_l2_budget_fraction).and_return(0.05)
+    end
+
+    it "includes snapshot section in the system prompt" do
+      e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 10)
+      e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "reply"}, timestamp: 2, token_count: 10)
+      recent = session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 3, token_count: 10)
+
+      session.snapshots.create!(text: "Summary of old conversation", from_message_id: e1.id, to_message_id: e2.id, level: 1, token_count: 20)
+      session.update_column(:mneme_boundary_message_id, recent.id)
+
+      prompt = session.assemble_system_prompt
+      expect(prompt).to include("Summary of old conversation")
+      expect(prompt).to include("Recent Memory")
+    end
+  end
+
   describe "#recalculate_viewport!" do
     let(:session) { Session.create! }
 
@@ -2136,104 +2208,6 @@ RSpec.describe Session do
       session.snapshot_viewport!([1, 2])
       session.snapshot_viewport!([3, 4, 5])
       expect(session.reload.viewport_message_ids).to eq([3, 4, 5])
-    end
-  end
-
-  describe "#assemble_recall_messages" do
-    let(:session) { Session.create! }
-
-    def create_message(sess, type:, content:)
-      sess.messages.create!(
-        message_type: type,
-        payload: {"content" => content},
-        timestamp: Time.current.to_ns
-      )
-    end
-
-    it "returns empty when no recalled event IDs" do
-      expect(session.send(:assemble_recall_messages, budget: 1000)).to eq([])
-    end
-
-    it "returns recall messages for stored event IDs" do
-      other_session = Session.create!(name: "Past Work")
-      event = create_message(other_session, type: "user_message", content: "Important finding about auth")
-      session.update_column(:recalled_message_ids, [event.id])
-
-      messages = session.send(:assemble_recall_messages, budget: 1000)
-
-      expect(messages.size).to eq(1)
-      expect(messages.first[:role]).to eq("user")
-      expect(messages.first[:content]).to include("[associative recall]")
-      expect(messages.first[:content]).to include("Important finding about auth")
-      expect(messages.first[:content]).to include("Past Work")
-    end
-
-    it "respects budget and stops when exceeded" do
-      other_session = Session.create!
-      e1 = create_message(other_session, type: "user_message", content: "A" * 500)
-      e2 = create_message(other_session, type: "user_message", content: "B" * 500)
-      session.update_column(:recalled_message_ids, [e1.id, e2.id])
-
-      messages = session.send(:assemble_recall_messages, budget: 50)
-
-      # Budget should allow at least one snippet but not both
-      expect(messages.first[:content]).to include("A")
-    end
-
-    it "skips events that no longer exist" do
-      event = create_message(session, type: "user_message", content: "Still here")
-      session.update_column(:recalled_message_ids, [999999, event.id])
-
-      messages = session.send(:assemble_recall_messages, budget: 1000)
-
-      expect(messages.first[:content]).to include("Still here")
-      expect(messages.first[:content]).not_to include("999999")
-    end
-
-    it "falls back to session ID when name is nil" do
-      unnamed_session = Session.create!(name: nil)
-      event = create_message(unnamed_session, type: "user_message", content: "test")
-      session.update_column(:recalled_message_ids, [event.id])
-
-      messages = session.send(:assemble_recall_messages, budget: 1000)
-
-      expect(messages.first[:content]).to include("session ##{unnamed_session.id}")
-    end
-  end
-
-  describe "#extract_message_content (private)" do
-    let(:session) { Session.create! }
-
-    it "extracts content from user messages" do
-      event = session.messages.create!(
-        message_type: "user_message",
-        payload: {"content" => "Hello world"},
-        timestamp: 1
-      )
-
-      expect(session.send(:extract_message_content, event)).to eq("Hello world")
-    end
-
-    it "extracts thoughts from think tool calls" do
-      event = session.messages.create!(
-        message_type: "tool_call",
-        payload: {"tool_name" => "think", "tool_input" => {"thoughts" => "Deep thought"}, "tool_use_id" => "t1"},
-        tool_use_id: "t1",
-        timestamp: 1
-      )
-
-      expect(session.send(:extract_message_content, event)).to eq("Deep thought")
-    end
-
-    it "returns tool name summary for non-think tool calls" do
-      event = session.messages.create!(
-        message_type: "tool_call",
-        payload: {"tool_name" => "bash", "tool_input" => {"cmd" => "ls"}, "tool_use_id" => "t1"},
-        tool_use_id: "t1",
-        timestamp: 1
-      )
-
-      expect(session.send(:extract_message_content, event)).to eq("bash(…)")
     end
   end
 

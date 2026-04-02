@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 # Runs passive recall after goal updates — searches message history for
-# context relevant to active goals and caches results on the session
-# for viewport injection.
+# context relevant to active goals and injects phantom tool_call/tool_response
+# pairs into the session's message stream.
 #
-# Idempotent: multiple enqueues for the same session safely overwrite
-# each other's results — last one wins.
+# Phantom pairs ride the conveyor belt like regular messages, getting
+# cached, evicted, and compressed by Mneme naturally.
 #
 # @example
 #   PassiveRecallJob.perform_later(session.id)
@@ -17,13 +17,8 @@ class PassiveRecallJob < ApplicationJob
   # @param session_id [Integer]
   def perform(session_id)
     session = Session.find(session_id)
-    results = Mneme::PassiveRecall.new(session).call
+    count = Mneme::PassiveRecall.new(session).call
 
-    if results.any?
-      session.update_column(:recalled_message_ids, results.map(&:message_id))
-      Mneme.logger.info("session=#{session_id} — passive recall found #{results.size} memories")
-    elsif session.recalled_message_ids.present?
-      session.update_column(:recalled_message_ids, [])
-    end
+    Mneme.logger.info("session=#{session_id} — passive recall injected #{count} phantom pairs") if count > 0
   end
 end
