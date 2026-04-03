@@ -35,7 +35,7 @@ module TUI
       return Settings.theme_color_muted if tokens < 1_000
       return Settings.theme_color_text if tokens < 3_000
       return Settings.theme_color_warning if tokens < 10_000
-      return 208 if tokens < 20_000 # orange (256-color)
+      return Settings.theme_color_expensive if tokens < 20_000
 
       Settings.theme_color_error
     end

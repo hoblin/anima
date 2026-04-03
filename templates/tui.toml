@@ -185,6 +185,10 @@ flash_warning_bg = "yellow"
 flash_info_fg = "white"
 flash_info_bg = "blue"
 
+# Token count color for expensive responses (10k-20k tokens).
+# 208 = orange in 256-color palette.
+color_expensive = 208
+
 # Tool response CRUD colors — distinguish read/create/update at a glance.
 tool_read_color = "light_blue"
 tool_create_color = "light_green"
