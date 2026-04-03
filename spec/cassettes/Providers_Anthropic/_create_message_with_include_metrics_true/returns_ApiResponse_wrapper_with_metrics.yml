@@ -5,9 +5,10 @@ http_interactions:
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Say
-        OK"}],"max_tokens":10,"system":[{"type":"text","text":"You are Claude Code,
-        Anthropic''s official CLI for Claude."},{"type":"text","text":"You are Anima","cache_control":{"type":"ephemeral"}}]}'
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":[{"type":"text","text":"Say
+        OK","cache_control":{"type":"ephemeral"}}]}],"max_tokens":10,"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are Anima","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -29,7 +30,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:48:26 GMT
+      - Fri, 03 Apr 2026 06:03:27 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -37,21 +38,19 @@ http_interactions:
       Connection:
       - keep-alive
       Anthropic-Ratelimit-Unified-Status:
-      - allowed_warning
+      - allowed
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775174400'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.01'
+      - '0.07'
       Anthropic-Ratelimit-Unified-7d-Status:
-      - allowed_warning
+      - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1775196000'
+      - '1775800800'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.99'
-      Anthropic-Ratelimit-Unified-7d-Surpassed-Threshold:
-      - '0.75'
+      - '0.0'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
@@ -59,11 +58,11 @@ http_interactions:
       Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
       - '0.14'
       Anthropic-Ratelimit-Unified-Representative-Claim:
-      - seven_day
+      - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1775196000'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -77,11 +76,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '842'
+      - '874'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=845
+      - x-originResponse;dur=877
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -96,7 +95,7 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxR3duckwyaWNpRmU5NW85YTkxYkxTbyIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxMm4zdjhoY2hYOGJSeEd5NTJoVTM0WiIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6Ik9LIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9z
         ZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJp
@@ -106,5 +105,5 @@ http_interactions:
         MWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6NCwic2Vydmlj
         ZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWls
         YWJsZSJ9fQ==
-  recorded_at: Thu, 02 Apr 2026 21:48:26 GMT
+  recorded_at: Fri, 03 Apr 2026 06:03:27 GMT
 recorded_with: VCR 6.4.0

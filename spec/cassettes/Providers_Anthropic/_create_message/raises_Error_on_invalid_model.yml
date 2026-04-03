@@ -5,7 +5,7 @@ http_interactions:
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: '{"model":"bad-model","messages":[{"role":"user","content":"Hi"}],"max_tokens":8192,"system":[{"type":"text","text":"You
+      string: '{"model":"bad-model","messages":[{"role":"user","content":[{"type":"text","text":"Hi","cache_control":{"type":"ephemeral"}}]}],"max_tokens":8192,"system":[{"type":"text","text":"You
         are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
         are Anima","cache_control":{"type":"ephemeral"}}]}'
     headers:
@@ -25,11 +25,11 @@ http_interactions:
       - Ruby
   response:
     status:
-      code: 400
-      message: Bad Request
+      code: 404
+      message: Not Found
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:44:25 GMT
+      - Fri, 03 Apr 2026 06:03:25 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -47,27 +47,24 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '66'
-      Vary:
-      - Accept-Encoding
+      - '139'
       Server-Timing:
-      - x-originResponse;dur=67
-      Cf-Cache-Status:
-      - DYNAMIC
+      - x-originResponse;dur=141
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
       X-Robots-Tag:
       - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
       Cf-Ray:
       - "<CF_RAY>"
     body:
       encoding: ASCII-8BIT
       base64_string: |
-        eyJ0eXBlIjoiZXJyb3IiLCJlcnJvciI6eyJ0eXBlIjoiaW52YWxpZF9yZXF1
-        ZXN0X2Vycm9yIiwibWVzc2FnZSI6InN5c3RlbS4xLnRleHQ6IElucHV0IHNo
-        b3VsZCBiZSBhIHZhbGlkIHN0cmluZyJ9LCJyZXF1ZXN0X2lkIjoicmVxXzAx
-        MUNaZmc4bjI3SndLZUdBZFNTR0VFcCJ9
-  recorded_at: Thu, 02 Apr 2026 21:44:25 GMT
+        eyJ0eXBlIjoiZXJyb3IiLCJlcnJvciI6eyJ0eXBlIjoibm90X2ZvdW5kX2Vy
+        cm9yIiwibWVzc2FnZSI6Im1vZGVsOiBiYWQtbW9kZWwifSwicmVxdWVzdF9p
+        ZCI6InJlcV8wMTFDWmdMQm12Zkx0SG1xb3F4aTRZUHEifQ==
+  recorded_at: Fri, 03 Apr 2026 06:03:25 GMT
 recorded_with: VCR 6.4.0

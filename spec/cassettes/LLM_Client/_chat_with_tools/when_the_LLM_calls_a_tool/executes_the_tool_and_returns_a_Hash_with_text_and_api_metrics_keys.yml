@@ -5,8 +5,8 @@ http_interactions:
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Use
-        the web_get tool to fetch https://example.com and tell me what you find"}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":[{"type":"text","text":"Use
+        the web_get tool to fetch https://example.com and tell me what you find","cache_control":{"type":"ephemeral"}}]}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
         a URL and return its contents","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["url"]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
         are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
@@ -32,7 +32,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:38:26 GMT
+      - Fri, 03 Apr 2026 06:03:46 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -40,21 +40,19 @@ http_interactions:
       Connection:
       - keep-alive
       Anthropic-Ratelimit-Unified-Status:
-      - allowed_warning
+      - allowed
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775174400'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.01'
+      - '0.07'
       Anthropic-Ratelimit-Unified-7d-Status:
-      - allowed_warning
+      - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1775196000'
+      - '1775800800'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.99'
-      Anthropic-Ratelimit-Unified-7d-Surpassed-Threshold:
-      - '0.75'
+      - '0.0'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
@@ -62,11 +60,11 @@ http_interactions:
       Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
       - '0.14'
       Anthropic-Ratelimit-Unified-Representative-Claim:
-      - seven_day
+      - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1775196000'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -80,11 +78,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1804'
+      - '1780'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=1807
+      - x-originResponse;dur=1781
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -99,30 +97,30 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxQURKakRLZ1J4YldIa3NDcDh3RHQ4YSIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxUXhMUWVqcXNLSm5HTXZkZ280cnZVMSIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6IkknbGwgZmV0Y2ggdGhlIGNvbnRlbnQgZnJvbSBodHRwczovL2V4
-        YW1wbGUuY29tIGZvciB5b3UuIn0seyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6
-        InRvb2x1XzAxRTFSenFiUzlwZVBVYXNSZzhvOG93ayIsIm5hbWUiOiJ3ZWJf
-        Z2V0IiwiaW5wdXQiOnsidXJsIjoiaHR0cHM6Ly9leGFtcGxlLmNvbSJ9LCJj
-        YWxsZXIiOnsidHlwZSI6ImRpcmVjdCJ9fV0sInN0b3BfcmVhc29uIjoidG9v
-        bF91c2UiLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51
-        bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6NDM4LCJjYWNoZV9jcmVhdGlv
-        bl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjow
-        LCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5z
-        IjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rv
-        a2VucyI6NzIsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNl
-        X2dlbyI6Im5vdF9hdmFpbGFibGUifX0=
-  recorded_at: Thu, 02 Apr 2026 21:38:26 GMT
+        dGV4dCI6IkknbGwgZmV0Y2ggdGhlIGNvbnRlbnRzIG9mIGh0dHBzOi8vZXhh
+        bXBsZS5jb20gZm9yIHlvdS4ifSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoi
+        dG9vbHVfMDEzU2N5YU1OaFl6WE5ORDNEVXFXZ0h0IiwibmFtZSI6IndlYl9n
+        ZXQiLCJpbnB1dCI6eyJ1cmwiOiJodHRwczovL2V4YW1wbGUuY29tIn0sImNh
+        bGxlciI6eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29s
+        X3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVs
+        bCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjo0MzgsImNhY2hlX2NyZWF0aW9u
+        X2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAs
+        ImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMi
+        OjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9r
+        ZW5zIjo3Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2Vf
+        Z2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
+  recorded_at: Fri, 03 Apr 2026 06:03:46 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Use
-        the web_get tool to fetch https://example.com and tell me what you find"},{"role":"assistant","content":[{"type":"text","text":"I''ll
-        fetch the content from https://example.com for you."},{"type":"tool_use","id":"toolu_01E1RzqbS9pePUasRg8o8owk","name":"web_get","input":{"url":"https://example.com"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01E1RzqbS9pePUasRg8o8owk","content":"\u003chtml\u003eExample
-        Domain\u003c/html\u003e"}]}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":[{"type":"text","text":"Use
+        the web_get tool to fetch https://example.com and tell me what you find"}]},{"role":"assistant","content":[{"type":"text","text":"I''ll
+        fetch the contents of https://example.com for you."},{"type":"tool_use","id":"toolu_013ScyaMNhYzXNND3DUqWgHt","name":"web_get","input":{"url":"https://example.com"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_013ScyaMNhYzXNND3DUqWgHt","content":"\u003chtml\u003eExample
+        Domain\u003c/html\u003e","cache_control":{"type":"ephemeral"}}]}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
         a URL and return its contents","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["url"]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
         are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
@@ -148,7 +146,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:38:31 GMT
+      - Fri, 03 Apr 2026 06:03:50 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -156,21 +154,19 @@ http_interactions:
       Connection:
       - keep-alive
       Anthropic-Ratelimit-Unified-Status:
-      - allowed_warning
+      - allowed
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775174400'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.01'
+      - '0.07'
       Anthropic-Ratelimit-Unified-7d-Status:
-      - allowed_warning
+      - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1775196000'
+      - '1775800800'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.99'
-      Anthropic-Ratelimit-Unified-7d-Surpassed-Threshold:
-      - '0.75'
+      - '0.0'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
@@ -178,11 +174,11 @@ http_interactions:
       Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
       - '0.14'
       Anthropic-Ratelimit-Unified-Representative-Claim:
-      - seven_day
+      - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1775196000'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -196,11 +192,9 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '4338'
-      Vary:
-      - Accept-Encoding
+      - '4083'
       Server-Timing:
-      - x-originResponse;dur=4339
+      - x-originResponse;dur=4084
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -215,29 +209,27 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxNDhTaXhja3FyYjh5MkRGaEZmNEFYVSIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxVEthaVBuOTNoSHBXTFpjekxqZ1Y4NyIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6IkkgZmV0Y2hlZCBodHRwczovL2V4YW1wbGUuY29tIGFuZCBmb3Vu
-        ZCB0aGF0IGl0IHJldHVybnMgYSBtaW5pbWFsIEhUTUwgcmVzcG9uc2Ugd2l0
-        aCBqdXN0IFwiRXhhbXBsZSBEb21haW5cIiBhcyB0aGUgY29udGVudC4gVGhp
-        cyBpcyB0aGUgZmFtb3VzIGV4YW1wbGUuY29tIGRvbWFpbiB0aGF0J3MgcmVz
-        ZXJ2ZWQgYnkgSUFOQSAoSW50ZXJuZXQgQXNzaWduZWQgTnVtYmVycyBBdXRo
-        b3JpdHkpIGZvciB1c2UgaW4gZG9jdW1lbnRhdGlvbiBhbmQgZXhhbXBsZXMu
-        IEl0J3MgY29tbW9ubHkgdXNlZCBhcyBhIHBsYWNlaG9sZGVyIGRvbWFpbiBp
-        biB0dXRvcmlhbHMsIHRlc3RpbmcsIGFuZCBkb2N1bWVudGF0aW9uIGJlY2F1
-        c2UgaXQncyBndWFyYW50ZWVkIHRvIGV4aXN0IGFuZCByZXR1cm4gYSBzaW1w
-        bGUsIHByZWRpY3RhYmxlIHJlc3BvbnNlLlxuXG5UaGUgZnVsbCBIVE1MIHN0
-        cnVjdHVyZSBhcHBlYXJzIHRvIGJlIHF1aXRlIG1pbmltYWwgLSBqdXN0IGNv
-        bnRhaW5pbmcgXCJFeGFtcGxlIERvbWFpblwiIGFzIHRoZSB0aXRsZS9jb250
-        ZW50LCB3aGljaCBpcyB0eXBpY2FsIGZvciB0aGlzIHJlc2VydmVkIGRvbWFp
-        biB0aGF0IHNlcnZlcyBhcyBhIHN0YW5kYXJkIGV4YW1wbGUgaW4gd2ViIGRl
-        dmVsb3BtZW50IGFuZCBuZXR3b3JraW5nIGNvbnRleHRzLiJ9XSwic3RvcF9y
-        ZWFzb24iOiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3Bf
-        ZGV0YWlscyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjo1MjgsImNh
-        Y2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1
-        dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9p
-        bnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9
-        LCJvdXRwdXRfdG9rZW5zIjoxMzIsInNlcnZpY2VfdGllciI6InN0YW5kYXJk
-        IiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFpbGFibGUifX0=
-  recorded_at: Thu, 02 Apr 2026 21:38:31 GMT
+        dGV4dCI6IlRoZSB3ZWIgcGFnZSBhdCBodHRwczovL2V4YW1wbGUuY29tIHJl
+        dHVybnMgYSB2ZXJ5IHNpbXBsZSBIVE1MIGRvY3VtZW50IHdpdGgganVzdCB0
+        aGUgdGl0bGUgXCJFeGFtcGxlIERvbWFpblwiLiBUaGlzIGlzIHRoZSB3ZWxs
+        LWtub3duIGV4YW1wbGUuY29tIGRvbWFpbiB0aGF0J3MgcmVzZXJ2ZWQgYnkg
+        dGhlIEludGVybmV0IEFzc2lnbmVkIE51bWJlcnMgQXV0aG9yaXR5IChJQU5B
+        KSBmb3IgdXNlIGluIGRvY3VtZW50YXRpb24gYW5kIGV4YW1wbGVzLiBJdCdz
+        IGNvbW1vbmx5IHVzZWQgYXMgYSBwbGFjZWhvbGRlciBkb21haW4gaW4gdGVj
+        aG5pY2FsIGRvY3VtZW50YXRpb24sIHR1dG9yaWFscywgYW5kIHRlc3Rpbmcg
+        c2NlbmFyaW9zLlxuXG5UaGUgcmVzcG9uc2UgYXBwZWFycyB0byBiZSBqdXN0
+        IGEgbWluaW1hbCBIVE1MIHN0cnVjdHVyZSB3aXRoIHRoZSB0aXRsZSwgd2hp
+        Y2ggaXMgdHlwaWNhbCBmb3IgZXhhbXBsZS5jb20gYXMgaXQgc2VydmVzIGFz
+        IGEgYmFzaWMgZGVtb25zdHJhdGlvbiBkb21haW4gcmF0aGVyIHRoYW4gaG9z
+        dGluZyBhY3R1YWwgY29udGVudC4ifV0sInN0b3BfcmVhc29uIjoiZW5kX3R1
+        cm4iLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGws
+        InVzYWdlIjp7ImlucHV0X3Rva2VucyI6NTI4LCJjYWNoZV9jcmVhdGlvbl9p
+        bnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJj
+        YWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjow
+        LCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2Vu
+        cyI6MTEyLCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9n
+        ZW8iOiJub3RfYXZhaWxhYmxlIn19
+  recorded_at: Fri, 03 Apr 2026 06:03:50 GMT
 recorded_with: VCR 6.4.0

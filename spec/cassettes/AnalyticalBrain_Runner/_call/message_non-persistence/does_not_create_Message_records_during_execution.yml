@@ -5,9 +5,9 @@ http_interactions:
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":"The
+      string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":[{"type":"text","text":"The
         main session is working on this:\n```\nUser: Hello\nAssistant: Hi\n```\n\nReview
-        and take any needed actions, then call everything_is_ready."}],"max_tokens":4096,"tools":[{"name":"rename_session","description":"Rename
+        and take any needed actions, then call everything_is_ready.","cache_control":{"type":"ephemeral"}}]}],"max_tokens":4096,"tools":[{"name":"rename_session","description":"Rename
         the session.","input_schema":{"type":"object","properties":{"emoji":{"type":"string"},"name":{"type":"string","description":"1-3
         words."},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["emoji","name"]}},{"name":"activate_skill","description":"Give
         the agent domain knowledge relevant to the current conversation.","input_schema":{"type":"object","properties":{"skill_name":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
@@ -105,7 +105,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:22:24 GMT
+      - Fri, 03 Apr 2026 06:05:03 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -113,27 +113,25 @@ http_interactions:
       Connection:
       - keep-alive
       Anthropic-Ratelimit-Unified-Status:
-      - allowed_warning
+      - allowed
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775174400'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.01'
+      - '0.07'
       Anthropic-Ratelimit-Unified-7d-Status:
-      - allowed_warning
+      - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1775196000'
+      - '1775800800'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.99'
-      Anthropic-Ratelimit-Unified-7d-Surpassed-Threshold:
-      - '0.75'
+      - '0.0'
       Anthropic-Ratelimit-Unified-Representative-Claim:
-      - seven_day
+      - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1775196000'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -147,56 +145,66 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1382'
-      Vary:
-      - Accept-Encoding
+      - '2133'
       Server-Timing:
-      - x-originResponse;dur=1384
-      Cf-Cache-Status:
-      - DYNAMIC
+      - x-originResponse;dur=2134
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
       X-Robots-Tag:
       - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
       Cf-Ray:
       - "<CF_RAY>"
     body:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMTR0RG1ZU0xqbTFMZFVOTTcyTTJYSHUiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMUxoVzc0UzZVODVCWmJyU3dlaWFyNWgiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
-        InRleHQiOiJUaGUgdXNlciBoYXMganVzdCBzdGFydGVkIGEgbmV3IHNlc3Np
-        b24gd2l0aCBhIHNpbXBsZSBncmVldGluZy4gVGhlcmUncyBubyBjbGVhciB0
-        b3BpYywgZG9tYWluLCBvciB0YXNrIHlldC4gTm8gc2tpbGxzLCB3b3JrZmxv
-        d3MsIG9yIGdvYWxzIGFyZSBuZWVkZWQgYXQgdGhpcyBzdGFnZS5cblxuSSds
-        bCBjYWxsIGV2ZXJ5dGhpbmdfaXNfcmVhZHkgc2luY2Ugbm8gY29udGV4dCB1
-        cGRhdGVzIGFyZSByZXF1aXJlZC4ifSx7InR5cGUiOiJ0b29sX3VzZSIsImlk
-        IjoidG9vbHVfMDFON21LckdNNzdRV0VLNUs3cXhadmQ4IiwibmFtZSI6ImV2
-        ZXJ5dGhpbmdfaXNfcmVhZHkiLCJpbnB1dCI6e30sImNhbGxlciI6eyJ0eXBl
-        IjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bf
-        c2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbCwidXNhZ2UiOnsi
-        aW5wdXRfdG9rZW5zIjoyNDM0LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tl
-        bnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVh
-        dGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVy
-        YWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6OTMsInNl
-        cnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9h
-        dmFpbGFibGUifX0=
-  recorded_at: Thu, 02 Apr 2026 21:22:24 GMT
+        InRleHQiOiJJJ2xsIHJldmlldyB0aGUgY3VycmVudCBzdGF0ZSBhbmQgdGFr
+        ZSBhcHByb3ByaWF0ZSBhY3Rpb24uXG5cblRoZSBjb252ZXJzYXRpb24gc2hv
+        d3MgYSBzaW1wbGUgZ3JlZXRpbmcgZXhjaGFuZ2Ugd2l0aCBubyBjbGVhciB0
+        b3BpYyBvciBkb21haW4geWV0LiBTaW5jZSB0aGUgY29udmVyc2F0aW9uIGlz
+        IGp1c3QgYmVnaW5uaW5nIHdpdGggYSBiYXNpYyBcIkhlbGxvL0hpXCIgZXhj
+        aGFuZ2UsIHRoZXJlJ3Mgbm90aGluZyBzcGVjaWZpYyB0byBzZXQgdXAgeWV0
+        OlxuXG4tICoqU2Vzc2lvbiBuYW1lKio6IE5vdCBuZWVkZWQgdW50aWwgYSB0
+        b3BpYyBlbWVyZ2VzXG4tICoqU2tpbGxzKio6IE5vIGRvbWFpbiBpcyBhcHBh
+        cmVudCB5ZXRcbi0gKipXb3JrZmxvdyoqOiBObyBtdWx0aS1zdGVwIHRhc2sg
+        aGFzIGJlZW4gZGVmaW5lZFxuLSAqKkdvYWxzKio6IE5vIGFjdGlvbmFibGUg
+        d29yayBoYXMgYmVlbiBkZXNjcmliZWRcblxuSSdsbCB3YWl0IGZvciB0aGUg
+        dXNlciB0byBwcm92aWRlIG1vcmUgY29udGV4dCBhYm91dCB3aGF0IHRoZXkg
+        d2FudCB0byB3b3JrIG9uLiJ9LHsidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0
+        b29sdV8wMU1tZmVUczdiV1VKUGszbXphd29ScG8iLCJuYW1lIjoiZXZlcnl0
+        aGluZ19pc19yZWFkeSIsImlucHV0Ijp7fSwiY2FsbGVyIjp7InR5cGUiOiJk
+        aXJlY3QifX1dLCJzdG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1
+        ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1
+        dF90b2tlbnMiOjI0MzQsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6
+        MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9u
+        Ijp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8x
+        aF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoxNTksInNlcnZp
+        Y2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFp
+        bGFibGUifX0=
+  recorded_at: Fri, 03 Apr 2026 06:05:03 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":"The
+      string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":[{"type":"text","text":"The
         main session is working on this:\n```\nUser: Hello\nAssistant: Hi\n```\n\nReview
-        and take any needed actions, then call everything_is_ready."},{"role":"assistant","content":[{"type":"text","text":"The
-        user has just started a new session with a simple greeting. There''s no clear
-        topic, domain, or task yet. No skills, workflows, or goals are needed at this
-        stage.\n\nI''ll call everything_is_ready since no context updates are required."},{"type":"tool_use","id":"toolu_01N7mKrGM77QWEK5K7qxZvd8","name":"everything_is_ready","input":{},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01N7mKrGM77QWEK5K7qxZvd8","content":"Acknowledged.
-        No changes needed."}]}],"max_tokens":4096,"tools":[{"name":"rename_session","description":"Rename
+        and take any needed actions, then call everything_is_ready."}]},{"role":"assistant","content":[{"type":"text","text":"I''ll
+        review the current state and take appropriate action.\n\nThe conversation
+        shows a simple greeting exchange with no clear topic or domain yet. Since
+        the conversation is just beginning with a basic \"Hello/Hi\" exchange, there''s
+        nothing specific to set up yet:\n\n- **Session name**: Not needed until a
+        topic emerges\n- **Skills**: No domain is apparent yet\n- **Workflow**: No
+        multi-step task has been defined\n- **Goals**: No actionable work has been
+        described\n\nI''ll wait for the user to provide more context about what they
+        want to work on."},{"type":"tool_use","id":"toolu_01MmfeTs7bWUJPk3mzawoRpo","name":"everything_is_ready","input":{},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01MmfeTs7bWUJPk3mzawoRpo","content":"Acknowledged.
+        No changes needed.","cache_control":{"type":"ephemeral"}}]}],"max_tokens":4096,"tools":[{"name":"rename_session","description":"Rename
         the session.","input_schema":{"type":"object","properties":{"emoji":{"type":"string"},"name":{"type":"string","description":"1-3
         words."},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["emoji","name"]}},{"name":"activate_skill","description":"Give
         the agent domain knowledge relevant to the current conversation.","input_schema":{"type":"object","properties":{"skill_name":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
@@ -294,7 +302,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:22:25 GMT
+      - Fri, 03 Apr 2026 06:05:04 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -302,27 +310,25 @@ http_interactions:
       Connection:
       - keep-alive
       Anthropic-Ratelimit-Unified-Status:
-      - allowed_warning
+      - allowed
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775174400'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.01'
+      - '0.07'
       Anthropic-Ratelimit-Unified-7d-Status:
-      - allowed_warning
+      - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1775196000'
+      - '1775800800'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.99'
-      Anthropic-Ratelimit-Unified-7d-Surpassed-Threshold:
-      - '0.75'
+      - '0.0'
       Anthropic-Ratelimit-Unified-Representative-Claim:
-      - seven_day
+      - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1775196000'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -336,31 +342,31 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '599'
+      - '552'
       Server-Timing:
-      - x-originResponse;dur=601
-      Cf-Cache-Status:
-      - DYNAMIC
+      - x-originResponse;dur=554
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
       X-Robots-Tag:
       - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
       Cf-Ray:
       - "<CF_RAY>"
     body:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMVUyNW1UV0JzeWNnSkQ3TmVKaXNydUMiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMUdvMjNwRmp0WWk0UnZ2cDZ1d05oUUoiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24i
         OiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWls
-        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyNTQ1LCJjYWNoZV9j
+        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyNjExLCJjYWNoZV9j
         cmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9r
         ZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRf
         dG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0
         cHV0X3Rva2VucyI6Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZl
         cmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Thu, 02 Apr 2026 21:22:25 GMT
+  recorded_at: Fri, 03 Apr 2026 06:05:04 GMT
 recorded_with: VCR 6.4.0

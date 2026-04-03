@@ -5,8 +5,8 @@ http_interactions:
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Use
-        the web_get tool to fetch https://example.com"}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":[{"type":"text","text":"Use
+        the web_get tool to fetch https://example.com","cache_control":{"type":"ephemeral"}}]}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
         a URL and return its contents","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["url"]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
         are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
@@ -32,7 +32,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:38:54 GMT
+      - Fri, 03 Apr 2026 06:04:15 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -40,21 +40,19 @@ http_interactions:
       Connection:
       - keep-alive
       Anthropic-Ratelimit-Unified-Status:
-      - allowed_warning
+      - allowed
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775174400'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.01'
+      - '0.07'
       Anthropic-Ratelimit-Unified-7d-Status:
-      - allowed_warning
+      - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1775196000'
+      - '1775800800'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.99'
-      Anthropic-Ratelimit-Unified-7d-Surpassed-Threshold:
-      - '0.75'
+      - '0.0'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
@@ -62,11 +60,11 @@ http_interactions:
       Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
       - '0.14'
       Anthropic-Ratelimit-Unified-Representative-Claim:
-      - seven_day
+      - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1775196000'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -80,11 +78,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2210'
+      - '1555'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=2212
+      - x-originResponse;dur=1557
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -99,11 +97,11 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxRHh5ZWZVRXRxUFJOZnhtazN3YUY1SCIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxQkpkdTVIczdjZ29nVW9xNVB0ZmJjViIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6IkknbGwgZmV0Y2ggdGhlIGNvbnRlbnRzIG9mIGh0dHBzOi8vZXhh
         bXBsZS5jb20gZm9yIHlvdS4ifSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoi
-        dG9vbHVfMDE2Tm1zODhKRnA3VzZtRHl1UXltYkxIIiwibmFtZSI6IndlYl9n
+        dG9vbHVfMDFHQ01qdG1IeXFmb0hOR0F0b2JmSnBoIiwibmFtZSI6IndlYl9n
         ZXQiLCJpbnB1dCI6eyJ1cmwiOiJodHRwczovL2V4YW1wbGUuY29tIn0sImNh
         bGxlciI6eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29s
         X3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVs
@@ -113,5 +111,5 @@ http_interactions:
         OjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9r
         ZW5zIjo3Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2Vf
         Z2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Thu, 02 Apr 2026 21:38:54 GMT
+  recorded_at: Fri, 03 Apr 2026 06:04:15 GMT
 recorded_with: VCR 6.4.0

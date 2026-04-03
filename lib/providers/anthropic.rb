@@ -114,6 +114,7 @@ module Providers
     # @raise [Error] on other API errors
     def create_message(model:, messages:, max_tokens:, include_metrics: false, **options)
       wrap_system_prompt!(options)
+      annotate_last_message_for_caching!(messages)
       body = {model: model, messages: messages, max_tokens: max_tokens}.merge(options)
 
       response = self.class.post(
@@ -199,6 +200,44 @@ module Providers
       blocks = [{type: "text", text: OAUTH_PASSPHRASE}]
       blocks << {type: "text", text: prompt, cache_control: {type: "ephemeral"}}
       options[:system] = blocks
+    end
+
+    # Annotates the last message's last content block with +cache_control+
+    # so every subsequent API call in a tool-use loop hits the prefix cache.
+    # String content is normalized to array-of-blocks format since bare
+    # strings cannot carry +cache_control+ metadata.
+    #
+    # Clears stale breakpoints from earlier messages to stay within the
+    # Anthropic 4-breakpoint limit (tools + system consume 2).
+    #
+    # @param messages [Array<Hash>] mutable messages array (modified in place)
+    # @return [void]
+    def annotate_last_message_for_caching!(messages)
+      return if messages.empty?
+
+      clear_stale_cache_breakpoints!(messages[0...-1])
+
+      last_msg = messages.last
+      content = last_msg[:content]
+
+      case content
+      when String
+        last_msg[:content] = [{type: "text", text: content, cache_control: {type: "ephemeral"}}]
+      when Array
+        last_block = content.last
+        last_block[:cache_control] = {type: "ephemeral"} if last_block
+      end
+    end
+
+    # Removes +cache_control+ from content blocks in the given messages.
+    # Called before re-annotating the last message to stay within the
+    # Anthropic 4-breakpoint limit across tool-loop rounds.
+    def clear_stale_cache_breakpoints!(messages)
+      messages.each do |msg|
+        content = msg[:content]
+        next unless content.is_a?(Array)
+        content.each { |block| block.delete(:cache_control) if block.is_a?(Hash) }
+      end
     end
 
     def request_headers
