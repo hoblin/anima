@@ -779,6 +779,10 @@ class Session < ApplicationRecord
   # a permanent API error. Token budget cutoffs can split pairs when the
   # boundary falls between a tool_call and its tool_response.
   #
+  # Still necessary even though {#assemble_messages} pairs by +tool_use_id+:
+  # the assembly assumes every tool_call has a matching response in the window.
+  # This guard ensures that assumption holds after viewport truncation.
+  #
   # @param message_list [Array<Message>] chronologically ordered messages
   # @return [Array<Message>] messages with unpaired tool messages removed
   def ensure_atomic_tool_pairs(message_list)
@@ -976,37 +980,90 @@ class Session < ApplicationRecord
 
   # Converts a chronological list of messages into Anthropic wire-format messages.
   # Prepends a compact timestamp to each user message for LLM time awareness.
-  # Groups consecutive tool_call messages into one assistant message and
-  # consecutive tool_response messages into one user message.
   #
-  # @param msgs [Array<Message>]
-  # @return [Array<Hash>]
+  # Tool pairing uses +tool_use_id+ lookup, not message order. When a batch
+  # of consecutive +tool_call+ messages is encountered, all matching
+  # +tool_response+ messages are found by +tool_use_id+ and emitted as a
+  # single user message immediately after the assistant message. This
+  # guarantees correct API structure even when responses are persisted
+  # out of order (e.g. parallel tool execution, interleaved sub-agent
+  # deliveries, or promoted pending messages).
+  #
+  # Assumes +ensure_atomic_tool_pairs+ has already removed any unpaired
+  # tool messages from the window.
+  #
+  # @param msgs [Array<Message>] chronologically ordered (by id), pre-filtered
+  # @return [Array<Hash>] Anthropic API message format
   def assemble_messages(msgs)
-    msgs.each_with_object([]) do |msg, api_messages|
+    response_index = build_tool_response_index(msgs)
+    consumed_response_ids = Set.new
+
+    result = []
+    i = 0
+    while i < msgs.length
+      msg = msgs[i]
+
       case msg.message_type
       when "user_message"
-        content = "#{format_message_time(msg.timestamp)}\n#{msg.payload["content"]}"
-        api_messages << {role: "user", content: content}
+        result << {role: "user", content: "#{format_message_time(msg.timestamp)}\n#{msg.payload["content"]}"}
+        i += 1
       when "agent_message"
-        api_messages << {role: "assistant", content: msg.payload["content"].to_s}
+        result << {role: "assistant", content: msg.payload["content"].to_s}
+        i += 1
       when "tool_call"
-        append_grouped_block(api_messages, "assistant", tool_use_block(msg.payload))
+        i = assemble_tool_pair(msgs, i, response_index, consumed_response_ids, result)
       when "tool_response"
-        append_grouped_block(api_messages, "user", tool_result_block(msg.payload))
+        # Already emitted by assemble_tool_pair via tool_use_id lookup.
+        # Any unconsumed response here was orphaned by viewport eviction
+        # and should have been stripped by ensure_atomic_tool_pairs.
+        i += 1
       when "system_message"
-        # Wrapped as user role with prefix — Claude API has no system role in conversation history
-        api_messages << {role: "user", content: "[system] #{msg.payload["content"]}"}
+        result << {role: "user", content: "[system] #{msg.payload["content"]}"}
+        i += 1
+      else
+        i += 1
       end
     end
+
+    result
   end
 
-  # Groups consecutive tool blocks into a single message of the given role.
-  def append_grouped_block(api_messages, role, block)
-    prev = api_messages.last
-    if prev&.dig(:role) == role && prev[:content].is_a?(Array)
-      prev[:content] << block
-    else
-      api_messages << {role: role, content: [block]}
+  # Collects a batch of consecutive tool_call messages starting at +start+,
+  # emits one assistant message with all tool_use blocks, then emits one
+  # user message with matching tool_result blocks found by tool_use_id.
+  #
+  # @return [Integer] index of the first message after the batch
+  def assemble_tool_pair(msgs, start, response_index, consumed_response_ids, result)
+    # Collect consecutive tool_calls (same LLM turn)
+    batch = []
+    i = start
+    while i < msgs.length && msgs[i].message_type == "tool_call"
+      batch << msgs[i]
+      i += 1
+    end
+
+    # Assistant message: all tool_use blocks
+    result << {role: "assistant", content: batch.map { |tc| tool_use_block(tc.payload) }}
+
+    # User message: matching tool_result blocks, paired by tool_use_id
+    tool_results = batch.filter_map do |tc|
+      response = response_index[tc.tool_use_id]
+      next unless response
+      consumed_response_ids << response.tool_use_id
+      tool_result_block(response.payload)
+    end
+    result << {role: "user", content: tool_results} if tool_results.any?
+
+    i
+  end
+
+  # Builds a hash mapping tool_use_id → tool_response Message for O(1) lookup.
+  #
+  # @param msgs [Array<Message>]
+  # @return [Hash{String => Message}]
+  def build_tool_response_index(msgs)
+    msgs.each_with_object({}) do |msg, idx|
+      idx[msg.tool_use_id] = msg if msg.message_type == "tool_response"
     end
   end
 
