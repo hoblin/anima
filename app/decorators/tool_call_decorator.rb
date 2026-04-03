@@ -105,7 +105,7 @@ class ToolCallDecorator < MessageDecorator
   # Formats write tool input with file path header and content body.
   # Content newlines are preserved so the TUI can render them as
   # separate lines, matching how read_file tool responses display file content.
-  # @param input [Hash] tool input hash with "file_path" and "content" keys
+  # @param input [Hash] tool input hash with "path" and "content" keys
   # @return [String] path + content with real newlines, or TOON-encoded hash when content is empty
   def format_write_content(input)
     path = input.dig("path").to_s

@@ -161,6 +161,13 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(child.parent_session).to eq(parent_session)
     end
 
+    it "inherits the parent shell's working directory" do
+      tool.execute(input)
+
+      child = Session.last
+      expect(child.initial_cwd).to eq("/home/user/project")
+    end
+
     it "creates a Goal on the child session with the task as description" do
       tool.execute(input)
 

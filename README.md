@@ -178,7 +178,7 @@ Plus dynamic tools from configured MCP servers, namespaced as `server_name__tool
 
 ### Sub-Agents
 
-Sub-agents aren't processes — they're sessions on the same event bus. When a sub-agent spawns, it starts with a clean context: a system prompt (identity + communication instructions), a Goal from the task description, and a single user message containing the task — auto-pinned so it survives viewport eviction. No parent conversation history. Sub-agents inherit the parent shell's working directory and use a separate model and token budget (configurable via `subagent_model` and `subagent_token_budget`).
+Sub-agents aren't processes — they're sessions on the same event bus. When a sub-agent spawns, it starts with a clean context: a system prompt (identity + communication instructions), a Goal from the task description, and a single user message containing the task — auto-pinned so it survives viewport eviction. No parent conversation history. Sub-agents inherit the parent shell's working directory at spawn time and use a separate model and token budget (configurable via `subagent_model` and `subagent_token_budget`).
 
 Two types:
 
