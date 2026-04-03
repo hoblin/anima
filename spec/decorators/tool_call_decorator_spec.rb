@@ -113,7 +113,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       event = session.messages.create!(
         message_type: "tool_call",
         payload: {"content" => "reading", "tool_name" => "read_file",
-                  "tool_input" => {"file_path" => "/app/models/user.rb"}},
+                  "tool_input" => {"path" => "/app/models/user.rb"}},
         tool_use_id: "toolu_verbose3",
         timestamp: 1
       )
@@ -128,7 +128,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       event = session.messages.create!(
         message_type: "tool_call",
         payload: {"content" => "editing", "tool_name" => "edit_file",
-                  "tool_input" => {"file_path" => "/app/models/user.rb", "changes" => "..."}},
+                  "tool_input" => {"path" => "/app/models/user.rb", "changes" => "..."}},
         tool_use_id: "toolu_verbose4",
         timestamp: 1
       )
@@ -143,7 +143,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       event = session.messages.create!(
         message_type: "tool_call",
         payload: {"content" => "writing", "tool_name" => "write_file",
-                  "tool_input" => {"file_path" => "/tmp/output.txt", "content" => "data"}},
+                  "tool_input" => {"path" => "/tmp/output.txt", "content" => "data"}},
         tool_use_id: "toolu_verbose5",
         timestamp: 1
       )
@@ -346,7 +346,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
 
     context "write_file tool" do
       it "preserves newlines in multi-line content" do
-        input = {"file_path" => "/tmp/soul.md", "content" => "line1\nline2\nline3"}
+        input = {"path" => "/tmp/soul.md", "content" => "line1\nline2\nline3"}
         event = session.messages.create!(
           message_type: "tool_call",
           payload: {
@@ -363,7 +363,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       end
 
       it "falls back to TOON when content is empty" do
-        input = {"file_path" => "/tmp/empty.txt", "content" => ""}
+        input = {"path" => "/tmp/empty.txt", "content" => ""}
         event = session.messages.create!(
           message_type: "tool_call",
           payload: {

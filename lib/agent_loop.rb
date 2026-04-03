@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "shellwords"
+
 # Orchestrates the LLM agent loop: accepts user input, runs the tool-use
 # cycle via {LLM::Client}, and emits events through {Events::Bus}.
 #
@@ -31,6 +33,7 @@ class AgentLoop
   def initialize(session:, shell_session: nil, client: nil, registry: nil)
     @session = session
     @shell_session = shell_session || ShellSession.new(session_id: session.id)
+    restore_initial_cwd
     @client = client
     @registry = registry
   end
@@ -44,7 +47,7 @@ class AgentLoop
   # @return [void]
   # @raise [Providers::Anthropic::Error] on any LLM delivery failure
   def deliver!
-    @client ||= LLM::Client.new
+    @client ||= build_client
     @registry ||= build_tool_registry
 
     messages = @session.messages_for_llm
@@ -74,7 +77,7 @@ class AgentLoop
   # @raise [Providers::Anthropic::TransientError] on retryable network/server errors
   # @raise [Providers::Anthropic::AuthenticationError] on auth failures
   def run
-    @client ||= LLM::Client.new
+    @client ||= build_client
     @registry ||= build_tool_registry
 
     messages = @session.messages_for_llm
@@ -119,6 +122,28 @@ class AgentLoop
   STANDARD_TOOLS_BY_NAME = STANDARD_TOOLS.index_by(&:tool_name).freeze
 
   private
+
+  # Restores the working directory inherited from the parent session.
+  # Sub-agents store the parent's CWD at spawn time so their shell starts
+  # in the same directory the parent was working in.
+  # @return [void]
+  def restore_initial_cwd
+    cwd = @session.initial_cwd
+    return unless cwd.present? && File.directory?(cwd)
+
+    @shell_session.run("cd #{Shellwords.shellescape(cwd)}")
+  end
+
+  # Builds the LLM client with the appropriate model for this session type.
+  # Sub-agents use a separate (typically cheaper) model from Settings.
+  # @return [LLM::Client]
+  def build_client
+    if @session.sub_agent?
+      LLM::Client.new(model: Anima::Settings.subagent_model)
+    else
+      LLM::Client.new
+    end
+  end
 
   # Assembles LLM options (system prompt).
   # Broadcasts the full debug context (system prompt + tool schemas)

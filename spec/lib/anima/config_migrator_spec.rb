@@ -102,10 +102,10 @@ RSpec.describe Anima::ConfigMigrator do
         expect(result.additions.size).to eq(1)
         expect(result.additions.first.section).to eq("llm")
         expect(result.additions.first.key).to eq("token_budget")
-        expect(result.additions.first.value).to eq(190_000)
+        expect(result.additions.first.value).to eq(120_000)
 
         updated = config_path.read
-        expect(updated).to include("token_budget = 190_000")
+        expect(updated).to include("token_budget = 120_000")
         expect(updated).to include("Context window budget")
       end
     end

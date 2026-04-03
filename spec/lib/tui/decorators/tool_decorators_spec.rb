@@ -29,7 +29,16 @@ RSpec.describe "Tool-specific decorators" do
       expect(header).to include("read_file")
 
       style = lines.first[:spans].first[:style]
-      expect(style[:fg]).to eq("magenta")
+      expect(style[:fg]).to eq(TUI::Settings.theme_color_accent)
+    end
+
+    it "shows file path in the header line" do
+      data = {"role" => "tool_call", "tool" => "read_file", "input" => "/app/models/user.rb"}
+      lines = described_class.new(data).render_call(tui)
+
+      header = lines.first[:spans].first[:content]
+      expect(header).to include("/app/models/user.rb")
+      expect(lines.size).to eq(1)
     end
 
     it "renders response in CRUD Read color (light_blue)" do
@@ -37,7 +46,7 @@ RSpec.describe "Tool-specific decorators" do
       lines = described_class.new(data).render_response(tui)
 
       style = lines.first[:spans].first[:style]
-      expect(style[:fg]).to eq("light_blue")
+      expect(style[:fg]).to eq(TUI::Settings.theme_tool_read_color)
     end
   end
 
@@ -51,7 +60,7 @@ RSpec.describe "Tool-specific decorators" do
       expect(header).to include("edit_file")
 
       style = lines.first[:spans].first[:style]
-      expect(style[:fg]).to eq("magenta")
+      expect(style[:fg]).to eq(TUI::Settings.theme_color_accent)
     end
 
     it "renders response in CRUD Update color (light_yellow)" do
@@ -59,7 +68,7 @@ RSpec.describe "Tool-specific decorators" do
       lines = described_class.new(data).render_response(tui)
 
       style = lines.first[:spans].first[:style]
-      expect(style[:fg]).to eq("light_yellow")
+      expect(style[:fg]).to eq(TUI::Settings.theme_tool_update_color)
     end
   end
 
@@ -73,19 +82,19 @@ RSpec.describe "Tool-specific decorators" do
       expect(header).to include("write_file")
 
       style = lines.first[:spans].first[:style]
-      expect(style[:fg]).to eq("magenta")
+      expect(style[:fg]).to eq(TUI::Settings.theme_color_accent)
     end
 
-    it "renders multi-line content on separate lines" do
+    it "renders file path in header and remaining content on separate lines" do
       input = "/tmp/soul.md\nline1\nline2\nline3"
       data = {"role" => "tool_call", "tool" => "write_file", "input" => input}
       lines = described_class.new(data).render_call(tui)
 
-      expect(lines.size).to eq(5)
-      expect(lines[1][:spans].first[:content]).to eq("\u00a0\u00a0/tmp/soul.md")
-      expect(lines[2][:spans].first[:content]).to eq("\u00a0\u00a0line1")
-      expect(lines[3][:spans].first[:content]).to eq("\u00a0\u00a0line2")
-      expect(lines[4][:spans].first[:content]).to eq("\u00a0\u00a0line3")
+      expect(lines.size).to eq(4)
+      expect(lines.first[:spans].first[:content]).to include("/tmp/soul.md")
+      expect(lines[1][:spans].first[:content]).to eq("\u00a0\u00a0line1")
+      expect(lines[2][:spans].first[:content]).to eq("\u00a0\u00a0line2")
+      expect(lines[3][:spans].first[:content]).to eq("\u00a0\u00a0line3")
     end
 
     it "renders response in CRUD Create color (light_green)" do
@@ -93,7 +102,7 @@ RSpec.describe "Tool-specific decorators" do
       lines = described_class.new(data).render_response(tui)
 
       style = lines.first[:spans].first[:style]
-      expect(style[:fg]).to eq("light_green")
+      expect(style[:fg]).to eq(TUI::Settings.theme_tool_create_color)
     end
   end
 
@@ -107,7 +116,7 @@ RSpec.describe "Tool-specific decorators" do
       expect(header).to include("web_get")
 
       style = lines.first[:spans].first[:style]
-      expect(style[:fg]).to eq("magenta")
+      expect(style[:fg]).to eq(TUI::Settings.theme_color_accent)
     end
 
     it "renders response in CRUD Read color (light_blue)" do
@@ -115,7 +124,7 @@ RSpec.describe "Tool-specific decorators" do
       lines = described_class.new(data).render_response(tui)
 
       style = lines.first[:spans].first[:style]
-      expect(style[:fg]).to eq("light_blue")
+      expect(style[:fg]).to eq(TUI::Settings.theme_tool_read_color)
     end
   end
 end

@@ -44,8 +44,10 @@ module Tools
     end
 
     # @param session [Session] the parent session spawning the sub-agent
-    def initialize(session:, **)
+    # @param shell_session [ShellSession] the parent's persistent shell (for CWD inheritance)
+    def initialize(session:, shell_session:, **)
       @session = session
+      @shell_session = shell_session
     end
 
     # Creates a child session with a clean context (no parent history),
@@ -79,7 +81,8 @@ module Tools
       child = Session.create!(
         parent_session_id: @session.id,
         prompt: GENERIC_PROMPT,
-        granted_tools: granted_tools
+        granted_tools: granted_tools,
+        initial_cwd: @shell_session.pwd
       )
       create_goal_with_pinned_task(child, task)
       assign_nickname_via_brain(child)

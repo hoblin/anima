@@ -692,6 +692,129 @@ RSpec.describe TUI::App do
       end
     end
 
+    describe "HUD child navigation" do
+      let(:chat) { app.instance_variable_get(:@screens)[:chat] }
+      let(:children) do
+        [
+          {"id" => 101, "name" => "api-scout", "session_state" => "llm_generating"},
+          {"id" => 102, "name" => "loop-sleuth", "session_state" => "idle"},
+          {"id" => 103, "name" => "test-fixer", "session_state" => "tool_executing"}
+        ]
+      end
+
+      before do
+        chat.instance_variable_get(:@session_info)[:children] = children
+        allow(chat).to receive(:switch_session)
+      end
+
+      describe "entering child navigation via command mode" do
+        before { app.instance_variable_set(:@command_mode, true) }
+
+        it "enters child navigation mode on right arrow when children exist" do
+          app.send(:handle_event, key_event(code: "right"))
+
+          expect(app.hud_focused).to be true
+          expect(app.hud_child_index).to eq(0)
+        end
+
+        it "enters plain scroll mode on right arrow when no children" do
+          chat.instance_variable_get(:@session_info)[:children] = []
+
+          app.send(:handle_event, key_event(code: "right"))
+
+          expect(app.hud_focused).to be true
+          expect(app.hud_child_index).to be_nil
+        end
+
+        it "scrolls HUD to bottom to reveal sub-agents" do
+          app.instance_variable_set(:@hud_max_scroll, 15)
+
+          app.send(:handle_event, key_event(code: "right"))
+
+          expect(app.instance_variable_get(:@hud_scroll_offset)).to eq(15)
+        end
+      end
+
+      describe "navigating between children" do
+        before do
+          app.instance_variable_set(:@command_mode, true)
+          app.send(:handle_event, key_event(code: "right"))
+        end
+
+        it "moves selection down" do
+          app.send(:handle_event, key_event(code: "down"))
+          expect(app.hud_child_index).to eq(1)
+        end
+
+        it "moves selection up" do
+          app.send(:handle_event, key_event(code: "down"))
+          app.send(:handle_event, key_event(code: "up"))
+          expect(app.hud_child_index).to eq(0)
+        end
+
+        it "clamps at first child" do
+          app.send(:handle_event, key_event(code: "up"))
+          expect(app.hud_child_index).to eq(0)
+        end
+
+        it "clamps at last child" do
+          2.times { app.send(:handle_event, key_event(code: "down")) }
+          app.send(:handle_event, key_event(code: "down"))
+          expect(app.hud_child_index).to eq(2)
+        end
+      end
+
+      describe "selecting a child" do
+        before do
+          app.instance_variable_set(:@command_mode, true)
+          app.send(:handle_event, key_event(code: "right"))
+        end
+
+        it "switches to selected child session on Enter" do
+          app.send(:handle_event, key_event(code: "down"))
+          app.send(:handle_event, key_event(code: "enter"))
+
+          expect(chat).to have_received(:switch_session).with(102)
+          expect(app.hud_focused).to be false
+          expect(app.hud_child_index).to be_nil
+        end
+
+        it "switches to first child by default" do
+          app.send(:handle_event, key_event(code: "enter"))
+
+          expect(chat).to have_received(:switch_session).with(101)
+        end
+      end
+
+      describe "exiting child navigation" do
+        before do
+          app.instance_variable_set(:@command_mode, true)
+          app.send(:handle_event, key_event(code: "right"))
+        end
+
+        it "exits child navigation on Escape" do
+          app.send(:handle_event, key_event(code: "esc"))
+
+          expect(app.hud_focused).to be false
+          expect(app.hud_child_index).to be_nil
+        end
+
+        it "exits child navigation on left arrow back to scroll mode" do
+          app.send(:handle_event, key_event(code: "left"))
+
+          expect(app.hud_focused).to be true
+          expect(app.hud_child_index).to be_nil
+        end
+
+        it "exits child navigation on Ctrl+A" do
+          app.send(:handle_event, key_event(code: "a", modifiers: ["ctrl"]))
+
+          expect(app.hud_focused).to be false
+          expect(app.hud_child_index).to be_nil
+        end
+      end
+    end
+
     describe "Escape routing" do
       it "unfocuses chat pane on Escape when chat is focused" do
         chat = app.instance_variable_get(:@screens)[:chat]
@@ -1569,6 +1692,41 @@ RSpec.describe TUI::App do
         children = [{"id" => 1, "name" => nil, "processing" => false}]
         result = app.send(:hud_children_section, tui, {children: children})
         expect(result[2][:spans][1][:content]).to eq("@sub-agent")
+      end
+
+      it "highlights selected child in navigation mode" do
+        app.instance_variable_set(:@hud_child_index, 0)
+        children = [
+          {"id" => 1, "name" => "api-scout", "session_state" => "llm_generating"},
+          {"id" => 2, "name" => "loop-sleuth", "session_state" => "idle"}
+        ]
+        result = app.send(:hud_children_section, tui, {children: children})
+
+        selected_spans = result[2][:spans]
+        expect(selected_spans[0][:content]).to include("\u25B8") # ▸ pointer
+        expect(selected_spans[0][:style][:fg]).to eq("cyan")
+        expect(selected_spans[1][:content]).to eq("@api-scout")
+        expect(selected_spans[1][:style][:fg]).to eq("cyan")
+
+        unselected_spans = result[3][:spans]
+        expect(unselected_spans[1][:style][:fg]).to eq("white")
+      end
+
+      it "shows back hint in header during navigation mode" do
+        app.instance_variable_set(:@hud_child_index, 0)
+        children = [{"id" => 1, "name" => "scout", "session_state" => "idle"}]
+        result = app.send(:hud_children_section, tui, {children: children})
+
+        header_spans = result[1][:spans]
+        expect(header_spans[0][:content]).to include("\u2190 back")
+      end
+
+      it "omits back hint when not in navigation mode" do
+        children = [{"id" => 1, "name" => "scout", "session_state" => "idle"}]
+        result = app.send(:hud_children_section, tui, {children: children})
+
+        header_spans = result[1][:spans]
+        expect(header_spans[0][:content]).not_to include("\u2190")
       end
     end
 

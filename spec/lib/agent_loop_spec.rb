@@ -24,6 +24,60 @@ RSpec.describe AgentLoop do
       expect(loop).to be_a(described_class)
       loop.finalize
     end
+
+    context "CWD restoration" do
+      it "restores initial_cwd when directory exists" do
+        session.update!(initial_cwd: Dir.tmpdir)
+        mock_shell = instance_double(ShellSession, finalize: nil)
+        expect(mock_shell).to receive(:run).with("cd #{Shellwords.shellescape(Dir.tmpdir)}")
+
+        loop = described_class.new(session: session, shell_session: mock_shell, client: client)
+        loop.finalize
+      end
+
+      it "skips restoration when initial_cwd is nil" do
+        mock_shell = instance_double(ShellSession, finalize: nil)
+
+        loop = described_class.new(session: session, shell_session: mock_shell, client: client)
+        loop.finalize
+      end
+
+      it "skips restoration when directory does not exist" do
+        session.update!(initial_cwd: "/nonexistent/path/that/does/not/exist")
+        mock_shell = instance_double(ShellSession, finalize: nil)
+
+        loop = described_class.new(session: session, shell_session: mock_shell, client: client)
+        loop.finalize
+      end
+    end
+  end
+
+  describe "#build_client (via run)" do
+    before do
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+    end
+
+    it "uses default model for main sessions" do
+      expect(LLM::Client).to receive(:new).with(no_args).and_return(client)
+      allow(client).to receive(:chat_with_tools).and_return({text: "ok", api_metrics: nil})
+
+      loop = described_class.new(session: session, shell_session: shell_session)
+      loop.run
+      loop.finalize
+    end
+
+    it "uses subagent_model for sub-agent sessions" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "sub-agent")
+      child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
+
+      expect(LLM::Client).to receive(:new).with(model: Anima::Settings.subagent_model).and_return(client)
+      allow(client).to receive(:chat_with_tools).and_return({text: "done", api_metrics: nil})
+
+      sub_loop = described_class.new(session: child, shell_session: shell_session)
+      sub_loop.run
+      sub_loop.finalize
+    end
   end
 
   describe "#run" do

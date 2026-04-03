@@ -58,9 +58,11 @@ module Tools
     private_class_method :name_property
 
     # @param session [Session] the parent session spawning the specialist
+    # @param shell_session [ShellSession] the parent's persistent shell (for CWD inheritance)
     # @param agent_registry [Agents::Registry, nil] injectable for testing
-    def initialize(session:, agent_registry: nil, **)
+    def initialize(session:, shell_session:, agent_registry: nil, **)
       @session = session
+      @shell_session = shell_session
       @agent_registry = agent_registry || Agents::Registry.instance
     end
 
@@ -94,7 +96,8 @@ module Tools
       child = Session.create!(
         parent_session_id: @session.id,
         prompt: build_prompt(definition),
-        granted_tools: definition.tools
+        granted_tools: definition.tools,
+        initial_cwd: @shell_session.pwd
       )
       create_goal_with_pinned_task(child, task)
       assign_nickname_via_brain(child)

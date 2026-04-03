@@ -96,6 +96,15 @@ module Anima
       # @return [Integer]
       def thinking_budget = get("llm", "thinking_budget")
 
+      # Model for sub-agent sessions. Sonnet is cost-effective for focused tasks.
+      # @return [String] Anthropic model identifier
+      def subagent_model = get("llm", "subagent_model")
+
+      # Context window budget for sub-agent sessions.
+      # Smaller than main to keep sub-agents out of the "dumb zone".
+      # @return [Integer]
+      def subagent_token_budget = get("llm", "subagent_token_budget")
+
       # ─── Timeouts (seconds) ────────────────────────────────────────
 
       # LLM API request timeout.

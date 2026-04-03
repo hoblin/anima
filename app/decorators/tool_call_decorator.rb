@@ -105,10 +105,10 @@ class ToolCallDecorator < MessageDecorator
   # Formats write tool input with file path header and content body.
   # Content newlines are preserved so the TUI can render them as
   # separate lines, matching how read_file tool responses display file content.
-  # @param input [Hash] tool input hash with "file_path" and "content" keys
+  # @param input [Hash] tool input hash with "path" and "content" keys
   # @return [String] path + content with real newlines, or TOON-encoded hash when content is empty
   def format_write_content(input)
-    path = input.dig("file_path").to_s
+    path = input.dig("path").to_s
     content = input.dig("content").to_s
     return Toon.encode(input) if content.empty?
 
@@ -126,7 +126,7 @@ class ToolCallDecorator < MessageDecorator
     when "web_get"
       "GET #{input&.dig("url")}"
     when "read_file", "edit_file", "write_file"
-      input&.dig("file_path").to_s
+      input&.dig("path").to_s
     else
       truncate_lines(Toon.encode(input), max_lines: 2)
     end

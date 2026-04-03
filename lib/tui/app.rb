@@ -22,7 +22,7 @@ module TUI
     }.freeze
 
     MENU_LABELS = (COMMAND_KEYS.map { |key, action| "[#{key}] #{action.to_s.tr("_", " ").capitalize}" } +
-      ["[\u2191] Scroll chat", "[\u2193] Return to input", "[\u2192] Scroll HUD"]).freeze
+      ["[\u2191] Scroll chat", "[\u2193] Return to input", "[\u2192] Sub-agents / HUD"]).freeze
 
     # Picker entry prefix width: "[N]" (3) + marker (1) + space (1) = 5
     PICKER_PREFIX_WIDTH = 5
@@ -69,6 +69,8 @@ module TUI
     attr_reader :hud_visible
     # @return [Boolean] true when the HUD pane has keyboard focus for scrolling
     attr_reader :hud_focused
+    # @return [Integer, nil] index of selected child in HUD navigation, nil when inactive
+    attr_reader :hud_child_index
     # @return [Boolean] true when the token setup popup overlay is visible
     attr_reader :token_setup_active
     # @return [Boolean] true when graceful shutdown has been requested via signal
@@ -90,6 +92,7 @@ module TUI
       @session_picker_parent_id = nil
       @hud_visible = true
       @hud_focused = false
+      @hud_child_index = nil
       @hud_scroll_offset = 0
       @hud_max_scroll = 0
       @hud_visible_height = 0
@@ -400,25 +403,37 @@ module TUI
     end
 
     # Builds the sub-agents section with activity indicators.
+    # Highlights the selected child when HUD child navigation is active.
     # @return [Array<RatatuiRuby::Widgets::Line>, nil]
     def hud_children_section(tui, session)
       children = session[:children]
       return if children.nil? || children.empty?
 
+      header_label = @hud_child_index ? "Sub-agents [\u2190 back]" : "Sub-agents"
+
       lines = [
         tui.line(spans: [tui.span(content: "")]),
         tui.line(spans: [
-          tui.span(content: "\u{1F465} Sub-agents", style: tui.style(fg: Settings.theme_color_muted))
+          tui.span(content: "\u{1F465} #{header_label}", style: tui.style(fg: Settings.theme_color_muted))
         ])
       ]
 
-      children.each do |child|
+      children.each_with_index do |child, idx|
         icon, color = child_icon_and_color(child)
         name = child["name"] || "sub-agent"
-        lines << tui.line(spans: [
-          tui.span(content: "  #{icon} ", style: tui.style(fg: color)),
-          tui.span(content: "@#{name}", style: tui.style(fg: Settings.theme_color_text))
-        ])
+        selected = idx == @hud_child_index
+
+        lines << if selected
+          tui.line(spans: [
+            tui.span(content: "\u25B8 #{icon} ", style: tui.style(fg: Settings.theme_color_info)),
+            tui.span(content: "@#{name}", style: tui.style(fg: Settings.theme_color_info, modifiers: [:bold]))
+          ])
+        else
+          tui.line(spans: [
+            tui.span(content: "  #{icon} ", style: tui.style(fg: color)),
+            tui.span(content: "@#{name}", style: tui.style(fg: Settings.theme_color_text))
+          ])
+        end
       end
 
       lines
@@ -656,20 +671,34 @@ module TUI
       @screens[:chat].loading?
     end
 
-    # Switches keyboard focus to the HUD pane for scrolling.
-    # Unfocuses the chat pane if it was focused.
+    # Switches keyboard focus to the HUD pane.
+    # When children exist, enters child navigation mode with the first
+    # child selected; otherwise enters plain scroll mode.
     #
     # @return [void]
     def focus_hud
       @screens[:chat].unfocus_chat if @screens[:chat].chat_focused
       @hud_focused = true
+      children = hud_children
+      if children.any?
+        @hud_child_index = 0
+        @hud_scroll_offset = @hud_max_scroll
+      end
     end
 
-    # Returns keyboard focus from the HUD pane.
+    # Returns keyboard focus from the HUD pane and exits child navigation.
     #
     # @return [void]
     def unfocus_hud
       @hud_focused = false
+      @hud_child_index = nil
+    end
+
+    # Returns the current session's child sessions (sub-agents).
+    #
+    # @return [Array<Hash>] child session hashes, empty when none
+    def hud_children
+      @screens[:chat].session_info[:children] || []
     end
 
     # Scrolls the HUD viewport up, clamping at the top.
@@ -790,7 +819,10 @@ module TUI
     end
 
     # Handles keyboard events when the HUD pane has focus.
-    # Arrow keys and Page Up/Down scroll the HUD; Escape and Ctrl+A exit.
+    # When a child is selected (child navigation mode), arrow keys move
+    # between sub-agents and Enter switches to the selected session.
+    # Otherwise, arrow keys and Page Up/Down scroll the HUD content.
+    # Escape and Ctrl+A always exit HUD focus.
     def handle_hud_focused_event(event)
       return nil if event.none?
       return :quit if event.ctrl_c?
@@ -808,6 +840,36 @@ module TUI
         return nil
       end
 
+      if @hud_child_index
+        handle_hud_child_navigation(event)
+      else
+        handle_hud_scroll(event)
+      end
+      nil
+    end
+
+    # Navigates between sub-agent entries in the HUD.
+    # Up/Down move selection, Enter switches to the selected session,
+    # Left exits child navigation back to scroll mode.
+    def handle_hud_child_navigation(event)
+      children = hud_children
+      return if children.empty?
+
+      if event.up?
+        @hud_child_index = [@hud_child_index - 1, 0].max
+      elsif event.down?
+        @hud_child_index = [@hud_child_index + 1, children.size - 1].min
+      elsif event.left?
+        @hud_child_index = nil
+      elsif event.enter?
+        child = children[@hud_child_index]
+        @screens[:chat].switch_session(child["id"]) if child
+        unfocus_hud
+      end
+    end
+
+    # Scrolls the HUD viewport with arrow/page keys.
+    def handle_hud_scroll(event)
       if event.up?
         scroll_hud_up(Settings.hud_scroll_step)
       elsif event.down?
@@ -821,7 +883,6 @@ module TUI
       elsif event.end?
         scroll_hud_down(@hud_max_scroll)
       end
-      nil
     end
 
     # Routes mouse scroll events to the HUD when the cursor is over the HUD area.
