@@ -1268,6 +1268,169 @@ RSpec.describe Session do
       end
     end
 
+    context "with out-of-order tool responses (issue #419)" do
+      it "pairs tool results by tool_use_id when responses are persisted in reverse order" do
+        session.messages.create!(
+          message_type: "tool_call",
+          payload: {"tool_name" => "bash", "tool_input" => {"cmd" => "ls"},
+                    "tool_use_id" => "toolu_first"},
+          tool_use_id: "toolu_first", timestamp: 1
+        )
+        session.messages.create!(
+          message_type: "tool_call",
+          payload: {"tool_name" => "web_get", "tool_input" => {"url" => "https://b.com"},
+                    "tool_use_id" => "toolu_second"},
+          tool_use_id: "toolu_second", timestamp: 2
+        )
+        # Responses persisted in REVERSE order (toolu_second completed first)
+        session.messages.create!(
+          message_type: "tool_response",
+          payload: {"content" => "page B", "tool_name" => "web_get",
+                    "tool_use_id" => "toolu_second"},
+          tool_use_id: "toolu_second", timestamp: 3
+        )
+        session.messages.create!(
+          message_type: "tool_response",
+          payload: {"content" => "file.txt", "tool_name" => "bash",
+                    "tool_use_id" => "toolu_first"},
+          tool_use_id: "toolu_first", timestamp: 4
+        )
+
+        result = session.messages_for_llm
+        assistant_msg = result.find { |m| m[:role] == "assistant" }
+        user_msg = result.find { |m| m[:role] == "user" }
+
+        # Calls grouped in one assistant message
+        expect(assistant_msg[:content]).to eq([
+          {type: "tool_use", id: "toolu_first", name: "bash", input: {"cmd" => "ls"}},
+          {type: "tool_use", id: "toolu_second", name: "web_get", input: {"url" => "https://b.com"}}
+        ])
+        # Results follow call order (by tool_use_id match), not persistence order
+        expect(user_msg[:content]).to eq([
+          {type: "tool_result", tool_use_id: "toolu_first", content: "file.txt"},
+          {type: "tool_result", tool_use_id: "toolu_second", content: "page B"}
+        ])
+      end
+
+      it "pairs correctly when tool responses are separated by an agent message" do
+        session.messages.create!(
+          message_type: "tool_call",
+          payload: {"tool_name" => "bash", "tool_input" => {},
+                    "tool_use_id" => "toolu_a"},
+          tool_use_id: "toolu_a", timestamp: 1
+        )
+        session.messages.create!(
+          message_type: "tool_call",
+          payload: {"tool_name" => "web_get", "tool_input" => {},
+                    "tool_use_id" => "toolu_b"},
+          tool_use_id: "toolu_b", timestamp: 2
+        )
+        # Response for toolu_b arrives first
+        session.messages.create!(
+          message_type: "tool_response",
+          payload: {"content" => "page B", "tool_use_id" => "toolu_b"},
+          tool_use_id: "toolu_b", timestamp: 3
+        )
+        # An agent message lands between the two tool responses
+        # (e.g. a sub-agent delivery promoted into the conversation)
+        session.messages.create!(
+          message_type: "agent_message",
+          payload: {"content" => "Processing..."},
+          timestamp: 4
+        )
+        # Response for toolu_a arrives last
+        session.messages.create!(
+          message_type: "tool_response",
+          payload: {"content" => "done", "tool_use_id" => "toolu_a"},
+          tool_use_id: "toolu_a", timestamp: 5
+        )
+
+        result = session.messages_for_llm
+
+        # Tool pair is assembled correctly: calls batched, results paired by ID
+        expect(result[0][:role]).to eq("assistant")
+        expect(result[0][:content]).to eq([
+          {type: "tool_use", id: "toolu_a", name: "bash", input: {}},
+          {type: "tool_use", id: "toolu_b", name: "web_get", input: {}}
+        ])
+        expect(result[1][:role]).to eq("user")
+        expect(result[1][:content]).to eq([
+          {type: "tool_result", tool_use_id: "toolu_a", content: "done"},
+          {type: "tool_result", tool_use_id: "toolu_b", content: "page B"}
+        ])
+        # Agent message follows the tool pair (not interleaved into it)
+        expect(result[2]).to eq({role: "assistant", content: "Processing..."})
+      end
+
+      it "handles multiple separate tool rounds with interleaved agent responses" do
+        # Round 1
+        session.messages.create!(
+          message_type: "tool_call",
+          payload: {"tool_name" => "bash", "tool_input" => {"cmd" => "pwd"},
+                    "tool_use_id" => "toolu_r1"},
+          tool_use_id: "toolu_r1", timestamp: 1
+        )
+        session.messages.create!(
+          message_type: "tool_response",
+          payload: {"content" => "/home", "tool_use_id" => "toolu_r1"},
+          tool_use_id: "toolu_r1", timestamp: 2
+        )
+        # Agent thinks between rounds
+        session.messages.create!(
+          message_type: "agent_message",
+          payload: {"content" => "Now let me check the files."},
+          timestamp: 3
+        )
+        # Round 2 — parallel, responses reversed
+        session.messages.create!(
+          message_type: "tool_call",
+          payload: {"tool_name" => "bash", "tool_input" => {"cmd" => "ls"},
+                    "tool_use_id" => "toolu_r2a"},
+          tool_use_id: "toolu_r2a", timestamp: 4
+        )
+        session.messages.create!(
+          message_type: "tool_call",
+          payload: {"tool_name" => "web_get", "tool_input" => {"url" => "https://x.com"},
+                    "tool_use_id" => "toolu_r2b"},
+          tool_use_id: "toolu_r2b", timestamp: 5
+        )
+        session.messages.create!(
+          message_type: "tool_response",
+          payload: {"content" => "page X", "tool_use_id" => "toolu_r2b"},
+          tool_use_id: "toolu_r2b", timestamp: 6
+        )
+        session.messages.create!(
+          message_type: "tool_response",
+          payload: {"content" => "file.rb", "tool_use_id" => "toolu_r2a"},
+          tool_use_id: "toolu_r2a", timestamp: 7
+        )
+
+        result = session.messages_for_llm
+
+        # Round 1: single tool pair
+        expect(result[0][:role]).to eq("assistant")
+        expect(result[0][:content]).to eq([
+          {type: "tool_use", id: "toolu_r1", name: "bash", input: {"cmd" => "pwd"}}
+        ])
+        expect(result[1][:role]).to eq("user")
+        expect(result[1][:content]).to eq([
+          {type: "tool_result", tool_use_id: "toolu_r1", content: "/home"}
+        ])
+
+        # Agent message between rounds
+        expect(result[2]).to eq({role: "assistant", content: "Now let me check the files."})
+
+        # Round 2: parallel pair, results in call order despite reversed persistence
+        expect(result[3][:role]).to eq("assistant")
+        expect(result[3][:content].length).to eq(2)
+        expect(result[4][:role]).to eq("user")
+        expect(result[4][:content]).to eq([
+          {type: "tool_result", tool_use_id: "toolu_r2a", content: "file.rb"},
+          {type: "tool_result", tool_use_id: "toolu_r2b", content: "page X"}
+        ])
+      end
+    end
+
     it "preserves event order" do
       session.messages.create!(message_type: "user_message", payload: {"content" => "first"}, timestamp: 1)
       session.messages.create!(message_type: "agent_message", payload: {"content" => "second"}, timestamp: 2)
