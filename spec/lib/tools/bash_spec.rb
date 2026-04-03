@@ -176,6 +176,13 @@ RSpec.describe Tools::Bash do
         result = tool.execute("commands" => ["cd /tmp", "pwd"])
         expect(result).to include("stdout:\n/tmp")
       end
+
+      it "appends environment summary only once at the end" do
+        result = tool.execute("commands" => ["cd /tmp", "cd /var"])
+        # env_summary appears once at the end, not per-command
+        expect(result).to include("You are now in /var")
+        expect(result.scan("You are now in").length).to eq(1)
+      end
     end
 
     context "with batch commands in parallel mode" do

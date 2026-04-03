@@ -248,6 +248,25 @@ RSpec.describe ShellSession do
       expect(result[:env_summary]).to be_nil
     end
 
+    it "reports branch change without directory change" do
+      Dir.mktmpdir do |tmpdir|
+        shell.run("cd #{tmpdir}")
+        shell.run("git init && git commit --allow-empty -m init")
+        branch = "test-branch-#{SecureRandom.hex(4)}"
+        result = shell.run("git checkout -b #{branch}")
+        expect(result[:env_summary]).to include("Branch changed to #{branch}.")
+      end
+    end
+
+    it "reports project files on first visit to a directory" do
+      Dir.mktmpdir do |tmpdir|
+        shell.run("echo warmup")
+        File.write(File.join(tmpdir, "CLAUDE.md"), "# Test")
+        result = shell.run("cd #{tmpdir}")
+        expect(result[:env_summary]).to include("Project has instructions in CLAUDE.md")
+      end
+    end
+
     it "does not include env_summary on error" do
       result = shell.run("exit 1")
       expect(result).to have_key(:error)
