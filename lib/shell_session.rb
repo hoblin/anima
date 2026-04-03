@@ -163,6 +163,7 @@ class ShellSession
     start_stderr_reader
     init_shell
     update_pwd
+    seed_env_snapshot
     @alive = true
   end
 
@@ -445,11 +446,21 @@ class ShellSession
     end
   end
 
+  # Captures the initial environment snapshot so the first real Bash call
+  # can diff against the actual shell state instead of a blank sentinel.
+  # Without this, every first call in a new turn would report the full
+  # location as "changed" because EnvironmentSnapshot.blank has pwd: nil.
+  #
+  # Called at the end of {#start} after the PTY is initialized and @pwd is set.
+  # @return [void]
+  def seed_env_snapshot
+    @env_snapshot = take_env_snapshot(EnvironmentSnapshot.blank)
+  end
+
   # Snapshots the shell's environment and returns a natural-language summary
   # of what changed since the last snapshot. The agent discovers its
   # environment through these summaries in Bash tool responses.
   #
-  # First call (nil previous snapshot) produces a full location report.
   # Subsequent calls only mention what changed. Returns nil when nothing did.
   #
   # @return [String, nil] human-readable summary of environment changes

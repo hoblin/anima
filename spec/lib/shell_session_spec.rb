@@ -230,20 +230,18 @@ RSpec.describe ShellSession do
   end
 
   describe "environment tracking" do
-    it "returns env_summary on first successful command" do
+    it "omits env_summary on first command when environment matches startup state" do
       result = shell.run("echo hello")
-      expect(result[:env_summary]).to be_a(String)
-      expect(result[:env_summary]).to include("You are now in")
+      expect(result[:env_summary]).to be_nil
     end
 
     it "returns env_summary when directory changes" do
-      shell.run("echo warmup")
       result = shell.run("cd /tmp")
       expect(result[:env_summary]).to include("You are now in /tmp")
     end
 
     it "omits env_summary when nothing changes" do
-      shell.run("echo warmup")
+      shell.run("cd /tmp")
       result = shell.run("echo hello")
       expect(result[:env_summary]).to be_nil
     end
@@ -260,7 +258,6 @@ RSpec.describe ShellSession do
 
     it "reports project files on first visit to a directory" do
       Dir.mktmpdir do |tmpdir|
-        shell.run("echo warmup")
         File.write(File.join(tmpdir, "CLAUDE.md"), "# Test")
         result = shell.run("cd #{tmpdir}")
         expect(result[:env_summary]).to include("Project has instructions in CLAUDE.md")
