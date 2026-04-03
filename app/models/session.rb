@@ -99,6 +99,13 @@ class Session < ApplicationRecord
     AnalyticalBrainJob.perform_later(id)
   end
 
+  # Token budget appropriate for this session type.
+  # Sub-agents use a smaller budget to stay out of the "dumb zone".
+  # @return [Integer]
+  def effective_token_budget
+    sub_agent? ? Anima::Settings.subagent_token_budget : Anima::Settings.token_budget
+  end
+
   # Returns the messages currently visible in the LLM context window.
   # Walks messages newest-first and includes them until the token budget
   # is exhausted. Messages are full-size or excluded entirely.
@@ -109,7 +116,7 @@ class Session < ApplicationRecord
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @return [Array<Message>] chronologically ordered
-  def viewport_messages(token_budget: Anima::Settings.token_budget)
+  def viewport_messages(token_budget: effective_token_budget)
     select_messages(own_message_scope, budget: token_budget)
   end
 
@@ -278,7 +285,7 @@ class Session < ApplicationRecord
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @return [Array<Hash>] Anthropic Messages API format
-  def messages_for_llm(token_budget: Anima::Settings.token_budget)
+  def messages_for_llm(token_budget: effective_token_budget)
     heal_orphaned_tool_calls!
 
     sliding_budget = token_budget

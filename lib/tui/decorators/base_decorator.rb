@@ -19,6 +19,26 @@ module TUI
     # @example Render a tool call
     #   decorator = TUI::Decorators::BaseDecorator.for(data)
     #   lines = decorator.render(tui)
+    # Shared rendering for file-related tool decorators (read, write, edit).
+    # Extracts the file path from input and displays it in the header line,
+    # making the target file immediately visible — like bash shows its command.
+    module FileCallBehavior
+      def render_call(tui)
+        style = tui.style(fg: color)
+        input_lines = data["input"].to_s.split("\n", -1)
+        path_line = input_lines.first.to_s
+
+        header = build_call_header
+        header = "#{header} #{path_line}" unless path_line.empty?
+        lines = [tui.line(spans: [tui.span(content: header, style: style)])]
+
+        input_lines.drop(1).each do |line|
+          lines << tui.line(spans: [tui.span(content: preserve_indentation("  #{line}"), style: style)])
+        end
+        lines
+      end
+    end
+
     class BaseDecorator
       include Formatting
 

@@ -4,6 +4,7 @@ require "rails_helper"
 
 RSpec.describe Tools::SpawnSpecialist do
   let!(:parent_session) { Session.create! }
+  let(:shell_session) { instance_double(ShellSession, pwd: "/home/user/project") }
   let(:tmp_dir) { Dir.mktmpdir }
   let(:agent_registry) do
     registry = Agents::Registry.new
@@ -11,7 +12,7 @@ RSpec.describe Tools::SpawnSpecialist do
     registry
   end
 
-  subject(:tool) { described_class.new(session: parent_session, agent_registry: agent_registry) }
+  subject(:tool) { described_class.new(session: parent_session, shell_session: shell_session, agent_registry: agent_registry) }
 
   before do
     # Stub the analytical brain to simulate nickname assignment

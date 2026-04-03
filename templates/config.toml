@@ -29,11 +29,18 @@ max_tool_rounds = 500
 
 # Context window budget — tokens reserved for conversation history.
 # Set this based on your model's context window minus system prompt.
-token_budget = 190_000
+token_budget = 120_000
 
 # Maximum character length for the Think tool's thoughts parameter.
 # Sub-agents receive half this budget (their tasks are less complex).
 thinking_budget = 10_000
+
+# Model for sub-agent sessions. Sonnet is cost-effective for focused tasks.
+subagent_model = "claude-sonnet-4-6"
+
+# Context window budget for sub-agent sessions.
+# Smaller than main to stay out of the "dumb zone" (~last 10% of context).
+subagent_token_budget = 90_000
 
 # ─── Timeouts (seconds) ─────────────────────────────────────────
 

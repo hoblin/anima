@@ -4,8 +4,9 @@ require "rails_helper"
 
 RSpec.describe Tools::SpawnSubagent do
   let!(:parent_session) { Session.create! }
+  let(:shell_session) { instance_double(ShellSession, pwd: "/home/user/project") }
 
-  subject(:tool) { described_class.new(session: parent_session) }
+  subject(:tool) { described_class.new(session: parent_session, shell_session: shell_session) }
 
   before do
     # Stub the analytical brain to simulate nickname assignment
@@ -93,6 +94,13 @@ RSpec.describe Tools::SpawnSubagent do
 
       child = Session.last
       expect(child.parent_session).to eq(parent_session)
+    end
+
+    it "inherits the parent shell's working directory" do
+      tool.execute(input)
+
+      child = Session.last
+      expect(child.initial_cwd).to eq("/home/user/project")
     end
 
     it "sets the child session's prompt with identity context" do

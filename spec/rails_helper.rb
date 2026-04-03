@@ -42,7 +42,9 @@ RSpec.configure do |config|
         "max_tokens" => 8192,
         "max_tool_rounds" => 500,
         "token_budget" => 190_000,
-        "thinking_budget" => 10_000
+        "thinking_budget" => 10_000,
+        "subagent_model" => "claude-sonnet-4-6",
+        "subagent_token_budget" => 90_000
       },
       "timeouts" => {"api" => 300, "command" => 30, "mcp_response" => 60, "web_request" => 10, "tool" => 180, "interrupt_check" => 2},
       "shell" => {"max_output_bytes" => 100_000},
