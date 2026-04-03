@@ -29,6 +29,15 @@ RSpec.describe "Tool-specific decorators" do
       expect(style[:fg]).to eq("magenta")
     end
 
+    it "shows file path in the header line" do
+      data = {"role" => "tool_call", "tool" => "read_file", "input" => "/app/models/user.rb"}
+      lines = described_class.new(data).render_call(tui)
+
+      header = lines.first[:spans].first[:content]
+      expect(header).to include("/app/models/user.rb")
+      expect(lines.size).to eq(1)
+    end
+
     it "renders response in CRUD Read color (light_blue)" do
       data = {"role" => "tool_response", "tool" => "read_file", "content" => "file contents", "success" => true}
       lines = described_class.new(data).render_response(tui)
@@ -73,16 +82,16 @@ RSpec.describe "Tool-specific decorators" do
       expect(style[:fg]).to eq("magenta")
     end
 
-    it "renders multi-line content on separate lines" do
+    it "renders file path in header and remaining content on separate lines" do
       input = "/tmp/soul.md\nline1\nline2\nline3"
       data = {"role" => "tool_call", "tool" => "write_file", "input" => input}
       lines = described_class.new(data).render_call(tui)
 
-      expect(lines.size).to eq(5)
-      expect(lines[1][:spans].first[:content]).to eq("\u00a0\u00a0/tmp/soul.md")
-      expect(lines[2][:spans].first[:content]).to eq("\u00a0\u00a0line1")
-      expect(lines[3][:spans].first[:content]).to eq("\u00a0\u00a0line2")
-      expect(lines[4][:spans].first[:content]).to eq("\u00a0\u00a0line3")
+      expect(lines.size).to eq(4)
+      expect(lines.first[:spans].first[:content]).to include("/tmp/soul.md")
+      expect(lines[1][:spans].first[:content]).to eq("\u00a0\u00a0line1")
+      expect(lines[2][:spans].first[:content]).to eq("\u00a0\u00a0line2")
+      expect(lines[3][:spans].first[:content]).to eq("\u00a0\u00a0line3")
     end
 
     it "renders response in CRUD Create color (light_green)" do

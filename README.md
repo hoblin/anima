@@ -178,7 +178,7 @@ Plus dynamic tools from configured MCP servers, namespaced as `server_name__tool
 
 ### Sub-Agents
 
-Sub-agents aren't processes — they're sessions on the same event bus. When a sub-agent spawns, it starts with a clean context: a system prompt (identity + communication instructions), a Goal from the task description, and a single user message containing the task — auto-pinned so it survives viewport eviction. No parent conversation history.
+Sub-agents aren't processes — they're sessions on the same event bus. When a sub-agent spawns, it starts with a clean context: a system prompt (identity + communication instructions), a Goal from the task description, and a single user message containing the task — auto-pinned so it survives viewport eviction. No parent conversation history. Sub-agents inherit the parent shell's working directory at spawn time and use a separate model and token budget (configurable via `subagent_model` and `subagent_token_budget`).
 
 Two types:
 
@@ -295,7 +295,9 @@ model = "claude-opus-4-6"
 fast_model = "claude-haiku-4-5"
 max_tokens = 8192
 max_tool_rounds = 250
-token_budget = 190_000
+token_budget = 120_000
+subagent_model = "claude-sonnet-4-6"
+subagent_token_budget = 90_000
 
 [timeouts]
 api = 300

@@ -371,6 +371,33 @@ RSpec.describe Session do
     end
   end
 
+  describe "#effective_token_budget" do
+    it "returns main token_budget for root sessions" do
+      session = Session.create!
+      expect(session.effective_token_budget).to eq(Anima::Settings.token_budget)
+    end
+
+    it "returns subagent_token_budget for sub-agent sessions" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "task")
+      expect(child.effective_token_budget).to eq(Anima::Settings.subagent_token_budget)
+    end
+  end
+
+  describe "#initial_cwd" do
+    it "stores the parent working directory for sub-agents" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "task", initial_cwd: "/home/user/project")
+
+      expect(child.reload.initial_cwd).to eq("/home/user/project")
+    end
+
+    it "defaults to nil for root sessions" do
+      session = Session.create!
+      expect(session.initial_cwd).to be_nil
+    end
+  end
+
   describe "#system_prompt" do
     before { Skills::Registry.reload! }
 
