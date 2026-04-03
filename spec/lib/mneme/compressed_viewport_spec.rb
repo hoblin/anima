@@ -154,20 +154,40 @@ RSpec.describe Mneme::CompressedViewport do
   end
 
   describe "token budget" do
-    it "respects the token budget when selecting events" do
+    it "respects the token budget, selecting oldest messages first" do
       10.times do |i|
         create_message(type: "user_message", content: "message #{i}", token_count: 1000)
       end
 
-      # Budget for 3 events (3000 tokens)
+      # Budget for 3 events (3000 tokens) — walks oldest-first from boundary
       viewport = described_class.new(session, token_budget: 3000)
       result = viewport.render
 
-      # Should include recent events but not all
-      expect(result).to include("message 9")
-      expect(result).to include("message 8")
-      expect(result).to include("message 7")
-      expect(result).not_to include("message 0")
+      # Should include oldest events (eviction zone) — not newest
+      expect(result).to include("message 0")
+      expect(result).to include("message 1")
+      expect(result).to include("message 2")
+      expect(result).not_to include("message 9")
+    end
+
+    it "selects oldest messages from boundary, not newest (regression: #422)" do
+      # Simulate a long session: 10 messages at 1000 tokens each.
+      # Mneme viewport budget = 3000 (fits 3 messages).
+      # Boundary at the first message.
+      messages = 10.times.map do |i|
+        create_message(type: "user_message", content: "message #{i}", token_count: 1000)
+      end
+
+      viewport = described_class.new(
+        session,
+        token_budget: 3000,
+        from_message_id: messages.first.id
+      )
+
+      # Should select the 3 oldest messages from boundary, not the 3 newest
+      selected_ids = viewport.messages.map(&:id)
+      expect(selected_ids).to eq(messages[0..2].map(&:id))
+      expect(selected_ids).not_to include(messages.last.id)
     end
   end
 

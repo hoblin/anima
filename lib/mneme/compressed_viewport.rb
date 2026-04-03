@@ -52,10 +52,14 @@ module Mneme
     private
 
     # Fetches messages within token budget, starting from from_message_id.
-    # Selects newest-first until budget exhausted, returns chronological.
+    # Walks oldest-first from the boundary so Mneme processes the eviction
+    # zone (oldest messages) rather than the recent zone. This ensures
+    # {Mneme::Runner#advance_boundary} advances past only the oldest third,
+    # preserving recent conversation context in the main viewport.
+    #
     # Caches per-message token costs in @message_costs for reuse by split_into_zones.
     #
-    # @return [Array<Message>]
+    # @return [Array<Message>] chronologically ordered (oldest first)
     def fetch_messages
       scope = @session.messages.context_messages
 
@@ -67,7 +71,7 @@ module Mneme
       @message_costs = {}
       remaining = @token_budget
 
-      scope.reorder(id: :desc).each do |message|
+      scope.reorder(id: :asc).each do |message|
         cost = message_token_cost(message)
         break if cost > remaining && selected.any?
 
@@ -76,7 +80,7 @@ module Mneme
         remaining -= cost
       end
 
-      selected.reverse
+      selected
     end
 
     # Splits messages into three zones by token count.
