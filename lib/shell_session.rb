@@ -447,11 +447,13 @@ class ShellSession
   end
 
   # Captures the initial environment snapshot so the first real Bash call
-  # can diff against the actual shell state instead of a blank sentinel.
-  # Without this, every first call in a new turn would report the full
-  # location as "changed" because EnvironmentSnapshot.blank has pwd: nil.
+  # can diff against the actual shell state rather than a blank sentinel
+  # whose nil pwd would always trigger a "location changed" report.
   #
-  # Called at the end of {#start} after the PTY is initialized and @pwd is set.
+  # Sets {#env_snapshot} to a real snapshot of the current pwd, git branch,
+  # repo, and project files. Called within {#start} after {#update_pwd}
+  # and before the session is marked alive.
+  #
   # @return [void]
   def seed_env_snapshot
     @env_snapshot = take_env_snapshot(EnvironmentSnapshot.blank)
@@ -461,7 +463,7 @@ class ShellSession
   # of what changed since the last snapshot. The agent discovers its
   # environment through these summaries in Bash tool responses.
   #
-  # Subsequent calls only mention what changed. Returns nil when nothing did.
+  # Each call only mentions what changed. Returns nil when nothing did.
   #
   # @return [String, nil] human-readable summary of environment changes
   def update_environment
