@@ -233,4 +233,84 @@ RSpec.describe "Mneme terminal event trigger integration" do
       expect(section_after).to include("L2 meta-summary of all three")
     end
   end
+
+  describe "eviction preserves recent sliding window (regression: #422)" do
+    let(:client) { instance_double(LLM::Client) }
+    # Budget holds 9 messages. Mneme viewport = 33% = 3 messages.
+    # After eviction, the oldest 3 should be gone, newest 6+ should remain.
+    let(:budget) { 9000 }
+    let(:event_size) { 1000 }
+
+    before do
+      allow(Anima::Settings).to receive(:token_budget).and_return(budget)
+      allow(Anima::Settings).to receive(:mneme_pinned_budget_fraction).and_return(0.0)
+    end
+
+    it "evicts only the oldest third, not the entire sliding window" do
+      # Create 12 conversation messages (exceeds budget of 9).
+      # Main viewport (newest-first, budget 9000) shows messages 4-12.
+      # Boundary at message 1.
+      msgs = 12.times.map do |i|
+        type = i.even? ? "user_message" : "agent_message"
+        create_message(type: type, content: "msg #{i}", token_count: event_size)
+      end
+
+      session.update_column(:mneme_boundary_message_id, msgs[0].id)
+      session.recalculate_viewport!
+
+      # Boundary (msg 0) has left the main viewport — Mneme triggers
+      expect(session.viewport_message_ids).not_to include(msgs[0].id)
+
+      # Mneme runs — compressed viewport walks oldest-first from boundary,
+      # fits 3 messages (33% of 9000 = 2970, rounds to 3 × 1000).
+      allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
+        opts[:registry].execute("save_snapshot", {"text" => "Summary of msgs 0-2"})
+        "Done"
+      }
+
+      Mneme::Runner.new(session, client: client).call
+      session.reload
+
+      # Boundary should advance past the eviction zone (~msg 3), NOT past msg 11
+      expect(session.mneme_boundary_message_id).to be <= msgs[3].id
+
+      # Main viewport should still contain recent messages
+      llm_messages = session.messages_for_llm
+      message_texts = llm_messages.flat_map { |m|
+        content = m[:content]
+        content.is_a?(String) ? [content] : []
+      }
+
+      # Recent messages must be present — the sliding window was NOT wiped
+      expect(message_texts.any? { |t| t.include?("msg 11") }).to be(true),
+        "Expected msg 11 in viewport but sliding window was wiped. " \
+        "Boundary at #{session.mneme_boundary_message_id}, " \
+        "viewport IDs: #{session.viewport_message_ids}"
+
+      expect(message_texts.any? { |t| t.include?("msg 10") }).to be(true)
+      expect(message_texts.any? { |t| t.include?("msg 9") }).to be(true)
+    end
+
+    it "boundary advances by roughly one-third of the viewport, not to the end" do
+      msgs = 12.times.map do |i|
+        type = i.even? ? "user_message" : "agent_message"
+        create_message(type: type, content: "msg #{i}", token_count: event_size)
+      end
+
+      session.update_column(:mneme_boundary_message_id, msgs[0].id)
+
+      allow(client).to receive(:chat_with_tools) { "Done" }
+
+      Mneme::Runner.new(session, client: client).call
+      session.reload
+
+      new_boundary = session.mneme_boundary_message_id
+      # Boundary should be near the start (after evicting ~3 messages),
+      # not near the end (msg 11 or later)
+      expect(new_boundary).to be <= msgs[4].id,
+        "Boundary jumped to #{new_boundary} (msg ids: #{msgs.map(&:id).join(", ")}). " \
+        "Expected it near msg #{msgs[3].id} after evicting ~3 messages."
+      expect(new_boundary).to be > msgs[0].id
+    end
+  end
 end
