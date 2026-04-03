@@ -264,6 +264,59 @@ RSpec.describe Providers::Anthropic do
     end
   end
 
+  describe "#annotate_last_message_for_caching!" do
+    let(:cache_control) { {type: "ephemeral"} }
+
+    it "wraps string content in array-of-blocks with cache_control" do
+      messages = [{role: "user", content: "hello"}]
+      provider.send(:annotate_last_message_for_caching!, messages)
+
+      expect(messages.last[:content]).to eq([{type: "text", text: "hello", cache_control: cache_control}])
+    end
+
+    it "annotates the last block of array content with cache_control" do
+      messages = [{role: "user", content: [
+        {type: "tool_result", tool_use_id: "toolu_1", content: "ok"},
+        {type: "tool_result", tool_use_id: "toolu_2", content: "done"}
+      ]}]
+      provider.send(:annotate_last_message_for_caching!, messages)
+
+      expect(messages.last[:content].first).not_to have_key(:cache_control)
+      expect(messages.last[:content].last[:cache_control]).to eq(cache_control)
+    end
+
+    it "does nothing when messages are empty" do
+      messages = []
+      provider.send(:annotate_last_message_for_caching!, messages)
+
+      expect(messages).to be_empty
+    end
+
+    it "clears stale cache_control from earlier messages" do
+      messages = [
+        {role: "user", content: [{type: "text", text: "old", cache_control: {type: "ephemeral"}}]},
+        {role: "user", content: "new"}
+      ]
+      provider.send(:annotate_last_message_for_caching!, messages)
+
+      expect(messages.first[:content].first).not_to have_key(:cache_control)
+      expect(messages.last[:content]).to eq([{type: "text", text: "new", cache_control: cache_control}])
+    end
+
+    it "only annotates the very last message in a multi-message array" do
+      messages = [
+        {role: "user", content: "first"},
+        {role: "assistant", content: "response"},
+        {role: "user", content: "second"}
+      ]
+      provider.send(:annotate_last_message_for_caching!, messages)
+
+      expect(messages[0][:content]).to eq("first")
+      expect(messages[1][:content]).to eq("response")
+      expect(messages[2][:content]).to eq([{type: "text", text: "second", cache_control: cache_control}])
+    end
+  end
+
   describe "error class hierarchy" do
     it "AuthenticationError inherits from Error" do
       expect(Providers::Anthropic::AuthenticationError).to be < Providers::Anthropic::Error
