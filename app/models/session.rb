@@ -996,7 +996,6 @@ class Session < ApplicationRecord
   # @return [Array<Hash>] Anthropic API message format
   def assemble_messages(msgs)
     response_index = build_tool_response_index(msgs)
-    consumed_response_ids = Set.new
 
     result = []
     i = 0
@@ -1011,10 +1010,10 @@ class Session < ApplicationRecord
         result << {role: "assistant", content: msg.payload["content"].to_s}
         i += 1
       when "tool_call"
-        i = assemble_tool_pair(msgs, i, response_index, consumed_response_ids, result)
+        i = assemble_tool_pair(msgs, i, response_index, result)
       when "tool_response"
         # Already emitted by assemble_tool_pair via tool_use_id lookup.
-        # Any unconsumed response here was orphaned by viewport eviction
+        # Any response still here was orphaned by viewport eviction
         # and should have been stripped by ensure_atomic_tool_pairs.
         i += 1
       when "system_message"
@@ -1032,8 +1031,12 @@ class Session < ApplicationRecord
   # emits one assistant message with all tool_use blocks, then emits one
   # user message with matching tool_result blocks found by tool_use_id.
   #
+  # @param msgs [Array<Message>] the full message list
+  # @param start [Integer] index of the first tool_call in the batch
+  # @param response_index [Hash{String => Message}] tool_use_id → tool_response
+  # @param result [Array<Hash>] accumulator for assembled API messages
   # @return [Integer] index of the first message after the batch
-  def assemble_tool_pair(msgs, start, response_index, consumed_response_ids, result)
+  def assemble_tool_pair(msgs, start, response_index, result)
     # Collect consecutive tool_calls (same LLM turn)
     batch = []
     i = start
@@ -1049,7 +1052,6 @@ class Session < ApplicationRecord
     tool_results = batch.filter_map do |tc|
       response = response_index[tc.tool_use_id]
       next unless response
-      consumed_response_ids << response.tool_use_id
       tool_result_block(response.payload)
     end
     result << {role: "user", content: tool_results} if tool_results.any?

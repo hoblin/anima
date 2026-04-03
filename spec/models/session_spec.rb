@@ -1312,7 +1312,7 @@ RSpec.describe Session do
         ])
       end
 
-      it "pairs correctly when a non-tool message is interleaved between calls and responses" do
+      it "pairs correctly when tool responses are separated by an agent message" do
         session.messages.create!(
           message_type: "tool_call",
           payload: {"tool_name" => "bash", "tool_input" => {},
@@ -1325,17 +1325,20 @@ RSpec.describe Session do
                     "tool_use_id" => "toolu_b"},
           tool_use_id: "toolu_b", timestamp: 2
         )
-        # A system message lands between calls and responses (e.g. sub-agent delivery)
-        session.messages.create!(
-          message_type: "system_message",
-          payload: {"content" => "MCP: server connected"},
-          timestamp: 3
-        )
+        # Response for toolu_b arrives first
         session.messages.create!(
           message_type: "tool_response",
-          payload: {"content" => "ok", "tool_use_id" => "toolu_b"},
-          tool_use_id: "toolu_b", timestamp: 4
+          payload: {"content" => "page B", "tool_use_id" => "toolu_b"},
+          tool_use_id: "toolu_b", timestamp: 3
         )
+        # An agent message lands between the two tool responses
+        # (e.g. a sub-agent delivery promoted into the conversation)
+        session.messages.create!(
+          message_type: "agent_message",
+          payload: {"content" => "Processing..."},
+          timestamp: 4
+        )
+        # Response for toolu_a arrives last
         session.messages.create!(
           message_type: "tool_response",
           payload: {"content" => "done", "tool_use_id" => "toolu_a"},
@@ -1344,15 +1347,19 @@ RSpec.describe Session do
 
         result = session.messages_for_llm
 
-        # Tool pair is assembled correctly despite interleaving
+        # Tool pair is assembled correctly: calls batched, results paired by ID
         expect(result[0][:role]).to eq("assistant")
-        expect(result[0][:content].length).to eq(2)
+        expect(result[0][:content]).to eq([
+          {type: "tool_use", id: "toolu_a", name: "bash", input: {}},
+          {type: "tool_use", id: "toolu_b", name: "web_get", input: {}}
+        ])
         expect(result[1][:role]).to eq("user")
-        expect(result[1][:content].length).to eq(2)
-        expect(result[1][:content][0][:tool_use_id]).to eq("toolu_a")
-        expect(result[1][:content][1][:tool_use_id]).to eq("toolu_b")
-        # System message follows the tool pair
-        expect(result[2]).to eq({role: "user", content: "[system] MCP: server connected"})
+        expect(result[1][:content]).to eq([
+          {type: "tool_result", tool_use_id: "toolu_a", content: "done"},
+          {type: "tool_result", tool_use_id: "toolu_b", content: "page B"}
+        ])
+        # Agent message follows the tool pair (not interleaved into it)
+        expect(result[2]).to eq({role: "assistant", content: "Processing..."})
       end
 
       it "handles multiple separate tool rounds with interleaved agent responses" do
