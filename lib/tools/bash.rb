@@ -44,17 +44,6 @@ module Tools
       @session = session
     end
 
-    # Returns tool schema with the shell's current working directory
-    # embedded in the description so the agent sees it during tool
-    # selection — eliminating redundant +cd+ prefixes.
-    #
-    # @return [Hash] Anthropic tool schema with dynamic description
-    def dynamic_schema
-      schema = self.class.schema.deep_dup
-      schema[:description] = "Execute shell commands in #{@shell_session.pwd}. Working directory and environment persist between calls."
-      schema
-    end
-
     # @param input [Hash<String, Object>] string-keyed hash from the Anthropic API.
     #   Supports optional "timeout" key (seconds) to override the global
     #   command_timeout setting for long-running operations.
@@ -78,7 +67,7 @@ module Tools
 
     private
 
-    # Executes a single command — the original code path, preserved for backward compatibility.
+    # Executes a single command — the original code path.
     def execute_single(command, timeout: nil)
       command = command.to_s
       return {error: "Command cannot be blank"} if command.strip.empty?
@@ -88,7 +77,8 @@ module Tools
       return format_interrupted(result) if result[:interrupted]
       return result if result.key?(:error)
 
-      format_result(result[:stdout], result[:stderr], result[:exit_code])
+      output = format_result(result[:stdout], result[:stderr], result[:exit_code])
+      append_env_summary(output, result[:env_summary])
     end
 
     # Executes an array of commands, returning a combined result string.
@@ -108,6 +98,8 @@ module Tools
       results = []
       failed = false
       interrupted = false
+
+      last_env_summary = nil
 
       commands.each_with_index do |command, index|
         position = "[#{index + 1}/#{total}]"
@@ -140,11 +132,21 @@ module Tools
           exit_code = result[:exit_code]
           output = format_result(result[:stdout], result[:stderr], exit_code)
           results << "#{position} $ #{command}\n#{output}"
+          last_env_summary = result[:env_summary]
           failed = true if exit_code != 0
         end
       end
 
-      results.join("\n\n")
+      append_env_summary(results.join("\n\n"), last_env_summary)
+    end
+
+    # Appends environment summary to tool output when present.
+    #
+    # @param output [String] formatted tool response
+    # @param env_summary [String, nil] natural-language environment change summary
+    # @return [String] output with env summary appended
+    def append_env_summary(output, env_summary)
+      env_summary ? "#{output}\n\n#{env_summary}" : output
     end
 
     def format_result(stdout, stderr, exit_code)

@@ -14,7 +14,6 @@ detectors:
     exclude:
       - "Anima::Settings#get"
   # Rescue blocks naturally reference the error object more than self.
-  # EnvironmentProbe assembles output from local data structures — not envy.
   # Brain transcript builds from event collection — the method's entire purpose.
   # ConfigMigrator text processing methods naturally reference local line arrays.
   # ToolDecorator subclasses operate on the tool result — that's the pattern.
@@ -22,7 +21,6 @@ detectors:
   FeatureEnvy:
     exclude:
       - "AnalyticalBrainJob#perform"
-      - "EnvironmentProbe"
       - "AnalyticalBrain::Runner#build_messages"
       - "Anima::ConfigMigrator"
       - "WebGetToolDecorator"
@@ -68,13 +66,13 @@ detectors:
       - "WebGetToolDecorator#text_html"
   # Session model is the core domain object — methods grow naturally.
   # Mcp CLI accumulates subcommand helpers across add/remove/list/secrets.
-  # EnvironmentProbe probes multiple orthogonal facets (OS, Git, project files).
-  # Each facet needs its own detection + formatting methods.
+  # ShellSession probes multiple orthogonal facets (CWD, Git, project files)
+  # and manages PTY lifecycle — methods grow with responsibilities.
   TooManyMethods:
     exclude:
       - "Session"
       - "Anima::CLI::Mcp"
-      - "EnvironmentProbe"
+      - "ShellSession"
       # Runner composes system prompt from modular sections — methods grow with responsibilities.
       - "AnalyticalBrain::Runner"
   # Decorators branch on tool type across 4 render modes — inherent to the pattern.

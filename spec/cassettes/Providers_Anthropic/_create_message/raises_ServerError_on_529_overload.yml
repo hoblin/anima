@@ -7,8 +7,7 @@ http_interactions:
       encoding: UTF-8
       string: '{"model":"claude-opus-4-6","messages":[{"role":"user","content":[{"type":"text","text":"Hey,
         how are you doing today?","cache_control":{"type":"ephemeral"}}]}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
-        shell commands in /home/test/anima. Working directory and environment persist
-        between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
+        shell commands. Working directory and environment persist between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
         command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
         (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}}}},{"name":"read_file","description":"Read file. Relative

@@ -64,7 +64,6 @@ module Tools
     #   end
     #
     # @see Think#dynamic_schema Budget-based maxLength
-    # @see Bash#dynamic_schema CWD in description
 
     # Accepts and discards context keywords so that the Registry can pass
     # shared dependencies (e.g. shell_session) to any tool uniformly.

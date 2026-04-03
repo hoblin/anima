@@ -1,0 +1,144 @@
+#!/usr/bin/env ruby
+# Inspect a VCR cassette as a readable conversation.
+#
+# Usage:
+#   bin/inspect-cassette spec/cassettes/path/to/cassette.yml
+#   bin/inspect-cassette cassette_name   # searches spec/cassettes/
+#
+# Parses each recorded HTTP round-trip and presents the conversation
+# (user messages, assistant responses, tool calls/results) formatted
+# with Toon. System prompt and tool schemas are omitted.
+
+require "yaml"
+require "json"
+require "base64"
+require "uri"
+require "toon"
+
+CASSETTES_DIR = File.expand_path("../spec/cassettes", __dir__)
+ANTHROPIC_API = "api.anthropic.com"
+
+def find_cassette(name)
+  return name if File.exist?(name)
+
+  # Try as-is under cassettes dir
+  path = File.join(CASSETTES_DIR, name)
+  return path if File.exist?(path)
+
+  # Append .yml if missing
+  path = "#{path}.yml" unless name.end_with?(".yml")
+  return path if File.exist?(path)
+
+  # Fuzzy search by basename
+  matches = Dir.glob("#{CASSETTES_DIR}/**/*.yml").select { |f| f.include?(name.tr(" ", "_")) }
+  case matches.size
+  when 0
+    abort "No cassette found matching: #{name}"
+  when 1
+    matches.first
+  else
+    abort "Ambiguous name '#{name}', matches:\n#{matches.map { |m| "  #{m}" }.join("\n")}"
+  end
+end
+
+def decode_response_body(response)
+  body = response["body"]
+  raw = if body["base64_string"]
+    Base64.decode64(body["base64_string"])
+  else
+    body["string"]
+  end
+  JSON.parse(raw)
+end
+
+def format_content_block(block)
+  case block["type"]
+  when "text"
+    block["text"]
+  when "tool_use"
+    input = Toon.encode(block["input"])
+    "🔧 #{block["name"]}(#{input})"
+  when "tool_result"
+    content = block["content"]
+    content = content.is_a?(Array) ? content.map { |b| format_content_block(b) }.join("\n") : content.to_s
+    truncated = (content.length > 500) ? "#{content[0, 500]}…" : content
+    "📎 tool_result[#{block["tool_use_id"]&.slice(-8..)}]: #{truncated}"
+  else
+    Toon.encode(block)
+  end
+end
+
+def format_message(msg)
+  role = msg["role"]
+  content = msg["content"]
+
+  text = if content.is_a?(String)
+    content
+  elsif content.is_a?(Array)
+    content.map { |b| format_content_block(b) }.join("\n")
+  else
+    content.to_s
+  end
+
+  label = (role == "user") ? "USER" : "ASSISTANT"
+  "#{label}:\n#{text}"
+end
+
+# ─── Main ──────────────────────────────────────────────────────────
+
+cassette_arg = ARGV.first || abort("Usage: #{$PROGRAM_NAME} <cassette_name_or_path>")
+path = find_cassette(cassette_arg)
+data = YAML.safe_load_file(path, permitted_classes: [Symbol])
+
+# Filter to Anthropic API calls only — cassettes may also record tool HTTP
+# requests (e.g. GitHub API calls from web_get).
+llm_interactions = data["http_interactions"].select { |interaction|
+  uri = URI.parse(interaction["request"]["uri"])
+  uri.host == ANTHROPIC_API && uri.path == "/v1/messages"
+}
+
+omitted = data["http_interactions"].size - llm_interactions.size
+abort "No Anthropic messages API calls found in cassette: #{path}" if llm_interactions.empty?
+
+puts "Cassette: #{path}"
+puts "Rounds:   #{llm_interactions.size}"
+puts "          (#{omitted} non-LLM HTTP requests omitted)" if omitted > 0
+puts
+
+seen_messages = 0
+llm_interactions.each_with_index do |interaction, round|
+  request_body = JSON.parse(interaction["request"]["body"]["string"])
+  messages = request_body["messages"] || []
+  response_body = decode_response_body(interaction["response"])
+
+  status = interaction["response"]["status"]["code"]
+  model = response_body["model"] || request_body["model"]
+
+  puts "── Round #{round + 1} (#{status} #{model}) ──"
+  puts
+
+  # Print only messages we haven't shown yet
+  new_messages = messages[seen_messages..]
+  new_messages.each do |msg|
+    puts format_message(msg)
+    puts
+  end
+
+  # Print the assistant response from this round
+  if response_body["content"]
+    assistant_msg = {"role" => "assistant", "content" => response_body["content"]}
+    puts format_message(assistant_msg)
+
+    stop = response_body["stop_reason"]
+    usage = response_body["usage"]
+    if usage
+      tokens = "in:#{usage["input_tokens"]} out:#{usage["output_tokens"]}"
+      tokens += " cache_create:#{usage["cache_creation_input_tokens"]}" if usage["cache_creation_input_tokens"]&.positive?
+      tokens += " cache_read:#{usage["cache_read_input_tokens"]}" if usage["cache_read_input_tokens"]&.positive?
+      puts "  [#{stop} | #{tokens}]"
+    end
+    puts
+  end
+
+  seen_messages = messages.size + 1 # +1 for the assistant response we just printed
+end

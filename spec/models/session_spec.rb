@@ -381,14 +381,6 @@ RSpec.describe Session do
       expect(child.system_prompt).to eq("You are a research assistant.")
     end
 
-    it "ignores environment_context for sub-agent sessions" do
-      parent = Session.create!
-      child = Session.create!(parent_session: parent, prompt: "You are a research assistant.")
-
-      expect(child.system_prompt(environment_context: "## Environment\n\nOS: Linux"))
-        .to eq("You are a research assistant.")
-    end
-
     it "includes task section when sub-agent has an active goal" do
       parent = Session.create!
       child = Session.create!(parent_session: parent, prompt: "You are a research assistant.")
@@ -454,29 +446,16 @@ RSpec.describe Session do
       expect(prompt).not_to include("## Your Expertise")
     end
 
-    it "includes environment context after soul" do
-      session = Session.create!
-      Goal.create!(session: session, description: "Test goal")
-      env = "## Environment\n\nOS: Arch Linux (pacman, yay)\nCWD: /home/user/project"
-
-      prompt = session.system_prompt(environment_context: env)
-      soul_pos = prompt.index("# Soul")
-      env_pos = prompt.index("## Environment")
-      expect(soul_pos).to be < env_pos
-      expect(prompt).not_to include("Current Goals")
-    end
-
     it "excludes goals from system prompt entirely" do
       session = Session.create!
       Goal.create!(session: session, description: "Test goal")
-      env = "## Environment\n\nOS: Linux"
 
-      prompt = session.system_prompt(environment_context: env)
+      prompt = session.system_prompt
       expect(prompt).not_to include("Current Goals")
       expect(prompt).not_to include("Test goal")
     end
 
-    it "works without environment context" do
+    it "does not include environment context in system prompt" do
       session = Session.create!
 
       prompt = session.system_prompt

@@ -229,6 +229,59 @@ RSpec.describe ShellSession do
     end
   end
 
+  describe "environment tracking" do
+    it "returns env_summary on first successful command" do
+      result = shell.run("echo hello")
+      expect(result[:env_summary]).to be_a(String)
+      expect(result[:env_summary]).to include("You are now in")
+    end
+
+    it "returns env_summary when directory changes" do
+      shell.run("echo warmup")
+      result = shell.run("cd /tmp")
+      expect(result[:env_summary]).to include("You are now in /tmp")
+    end
+
+    it "omits env_summary when nothing changes" do
+      shell.run("echo warmup")
+      result = shell.run("echo hello")
+      expect(result[:env_summary]).to be_nil
+    end
+
+    it "reports branch change without directory change" do
+      Dir.mktmpdir do |tmpdir|
+        shell.run("cd #{tmpdir}")
+        shell.run("git init && git config user.name Test && git config user.email test@test.com && git commit --allow-empty -m init")
+        branch = "test-branch-#{SecureRandom.hex(4)}"
+        result = shell.run("git checkout -b #{branch}")
+        expect(result[:env_summary]).to include("Branch changed to #{branch}.")
+      end
+    end
+
+    it "reports project files on first visit to a directory" do
+      Dir.mktmpdir do |tmpdir|
+        shell.run("echo warmup")
+        File.write(File.join(tmpdir, "CLAUDE.md"), "# Test")
+        result = shell.run("cd #{tmpdir}")
+        expect(result[:env_summary]).to include("Project has instructions in CLAUDE.md")
+      end
+    end
+
+    it "does not include env_summary on error" do
+      result = shell.run("exit 1")
+      expect(result).to have_key(:error)
+      expect(result).not_to have_key(:env_summary)
+    end
+
+    it "does not include env_summary on interrupt" do
+      checker = -> { true }
+      allow(Anima::Settings).to receive(:interrupt_check_interval).and_return(0.5)
+      result = shell.run("sleep 30", interrupt_check: checker)
+      expect(result[:interrupted]).to be true
+      expect(result).not_to have_key(:env_summary)
+    end
+  end
+
   describe "#alive?" do
     it "returns true for a running session" do
       expect(shell.alive?).to be true
