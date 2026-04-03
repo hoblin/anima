@@ -2,15 +2,9 @@
 
 module LLM
   # Convenience layer over {Providers::Anthropic} for sending messages
-  # and handling tool execution loops. Supports both simple text chat
-  # and multi-turn tool calling via the Anthropic tool use protocol.
+  # and handling tool execution loops.
   #
-  # @example Simple chat (no tools)
-  #   client = LLM::Client.new
-  #   client.chat([{role: "user", content: "Say hello"}])
-  #   # => "Hello! How can I help you today?"
-  #
-  # @example Chat with tools
+  # @example
   #   registry = Tools::Registry.new
   #   registry.register(Tools::WebGet)
   #   client.chat_with_tools(messages, registry: registry, session_id: session.id)
@@ -37,24 +31,6 @@ module LLM
       @model = model
       @max_tokens = max_tokens
       @logger = logger
-    end
-
-    # Send messages to the LLM and return the assistant's text response.
-    #
-    # @param messages [Array<Hash>] conversation messages, each with +:role+ and +:content+
-    # @param options [Hash] additional API parameters (e.g. +system:+, +temperature:+)
-    # @return [String] the assistant's response text
-    # @raise [Providers::Anthropic::Error] on API errors
-    # @raise [Providers::Anthropic::AuthenticationError] on auth failures
-    def chat(messages, **options)
-      response = provider.create_message(
-        model: model,
-        messages: messages,
-        max_tokens: max_tokens,
-        **options
-      )
-
-      extract_text(response)
     end
 
     # Send messages with tool support. Runs the full tool execution loop:

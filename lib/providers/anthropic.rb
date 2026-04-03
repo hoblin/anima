@@ -137,7 +137,6 @@ module Providers
     # @return [Integer] estimated input token count
     # @raise [Error] on API errors
     def count_tokens(model:, messages:, **options)
-      wrap_system_prompt!(options)
       body = {model: model, messages: messages}.merge(options)
 
       response = self.class.post(
@@ -190,13 +189,15 @@ module Providers
     # Wraps the system parameter in the array-of-blocks format required by
     # Anthropic for OAuth tokens. The passphrase block is always present;
     # the caller's prompt (if any) is appended as the second block.
+    # The last block is annotated with +cache_control+ so the API caches
+    # the entire system prefix (tools are evaluated before system).
     #
     # @param options [Hash] mutable options hash (modified in place)
     # @return [void]
     def wrap_system_prompt!(options)
       prompt = options[:system]
       blocks = [{type: "text", text: OAUTH_PASSPHRASE}]
-      blocks << {type: "text", text: prompt} if prompt
+      blocks << {type: "text", text: prompt, cache_control: {type: "ephemeral"}}
       options[:system] = blocks
     end
 

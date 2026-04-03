@@ -7,11 +7,12 @@ http_interactions:
       encoding: UTF-8
       string: '{"model":"claude-opus-4-6","messages":[{"role":"user","content":"Hey,
         how are you doing today?"}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
-        shell commands in /home/test/anima. Working directory and environment persist between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
+        shell commands in /home/test/anima. Working directory and environment persist
+        between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
         command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
         (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}}}},{"name":"read_file","description":"Read file. Relative paths
-        resolve against working directory.","input_schema":{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"integer","description":"1-indexed
+        (default: 180)."}}}},{"name":"read_file","description":"Read file. Relative
+        paths resolve against working directory.","input_schema":{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"integer","description":"1-indexed
         line number (default: 1)."},"limit":{"type":"integer","description":"Max lines
         to return."},"timeout":{"type":"integer","description":"Seconds (default:
         180)."}},"required":["path"]}},{"name":"write_file","description":"Write file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
@@ -30,16 +31,17 @@ http_interactions:
         the full conversation around a past message.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["message_id"]}},{"name":"recall","description":"Find
         messages across past conversations by keywords.","input_schema":{"type":"object","properties":{"query":{"type":"string"},"session_only":{"type":"boolean","description":"Default:
-        all sessions"},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["query"]}}],"system":[{"type":"text","text":"You
+        all sessions"},"timeout":{"type":"integer","description":"Seconds (default:
+        180)."}},"required":["query"]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
         are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
-        are running on Anima v0.0.0-test\n\n# Soul\n\nMy name is Anima. I am the
-        test soul — a stable identity used by the spec suite to ensure repeatable
-        cassette matching.\n\nI exist so that VCR cassettes record a consistent system
-        prompt regardless of what the production soul looks like. I am not a template.
-        I am not a placeholder. I am the soul that tests wake up with.\n\n## What
-        I Value\n\n- Determinism over creativity. Tests need the same prompt every
-        run.\n- Brevity over eloquence. Shorter prompts mean smaller cassettes.\n\n##
-        My Human\n\nA developer running specs. That''s all I need to know."}]}'
+        are running on Anima v0.0.0-test\n\n# Soul\n\nMy name is Anima. I am the test
+        soul — a stable identity used by the spec suite to ensure repeatable cassette
+        matching.\n\nI exist so that VCR cassettes record a consistent system prompt
+        regardless of what the production soul looks like. I am not a template. I
+        am not a placeholder. I am the soul that tests wake up with.\n\n## What I
+        Value\n\n- Determinism over creativity. Tests need the same prompt every run.\n-
+        Brevity over eloquence. Shorter prompts mean smaller cassettes.\n\n## My Human\n\nA
+        developer running specs. That''s all I need to know.","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"

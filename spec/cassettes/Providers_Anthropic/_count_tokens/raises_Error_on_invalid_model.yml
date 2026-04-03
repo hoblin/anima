@@ -5,8 +5,7 @@ http_interactions:
     uri: https://api.anthropic.com/v1/messages/count_tokens
     body:
       encoding: UTF-8
-      string: '{"model":"bad-model","messages":[{"role":"user","content":"Hi"}],"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude."}]}'
+      string: '{"model":"bad-model","messages":[{"role":"user","content":"Hi"}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -28,7 +27,7 @@ http_interactions:
       message: Not Found
     headers:
       Date:
-      - Thu, 19 Mar 2026 20:14:50 GMT
+      - Thu, 02 Apr 2026 21:39:25 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -46,19 +45,19 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '63'
+      - '85'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - proxy;dur=63
-      Set-Cookie:
-      - "<CLOUDFLARE_COOKIE>"
-      X-Robots-Tag:
-      - none
+      - x-originResponse;dur=87
       Cf-Cache-Status:
       - DYNAMIC
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
       Content-Security-Policy:
       - default-src 'none'; frame-ancestors 'none'
+      X-Robots-Tag:
+      - none
       Cf-Ray:
       - "<CF_RAY>"
     body:
@@ -66,6 +65,6 @@ http_interactions:
       base64_string: |
         eyJ0eXBlIjoiZXJyb3IiLCJlcnJvciI6eyJ0eXBlIjoibm90X2ZvdW5kX2Vy
         cm9yIiwibWVzc2FnZSI6Im1vZGVsOiBiYWQtbW9kZWwifSwicmVxdWVzdF9p
-        ZCI6InJlcV8wMTFDWkQzeWh0MmV6NlZIMXVoZ0VHWU0ifQ==
-  recorded_at: Thu, 19 Mar 2026 20:14:50 GMT
+        ZCI6InJlcV8wMTFDWmZma2ZtVFJ5RFFKRGlrQTV3NE0ifQ==
+  recorded_at: Thu, 02 Apr 2026 21:39:25 GMT
 recorded_with: VCR 6.4.0

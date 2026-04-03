@@ -10,6 +10,8 @@ Research spikes should describe what we need, not where to look. Prescribing sol
 
 Always fix flaky tests. Never skip, mark pending, or work around them — fix the root cause.
 
+Always run rspec without `--format` flags — the default progress formatter is optimized for agent consumption.
+
 Run specs by line number (`bundle exec rspec spec/path/to_spec.rb:42`). Pointing at an `it` runs that example; pointing at a `describe` or `context` runs the whole block.
 
 Run `standardrb` without `--no-fix` so it auto-corrects trivial formatting issues.
@@ -97,30 +99,28 @@ Temporarily break `OAUTH_PASSPHRASE` in `lib/providers/anthropic.rb` — revert 
 
 Use VCR cassettes for all HTTP tests — never `stub_request`. Add `:vcr` metadata (bare symbol, no cassette path) and VCR auto-names cassettes from the spec description.
 
-Record mode is `:once` — VCR records a cassette the first time, then replays on subsequent runs. If the request body changes (e.g. prompt text changed), VCR raises `UnhandledHTTPRequestError` instead of silently appending dead episodes.
+Record mode is `:once` with body matching. VCR replays cassettes whose recorded request body is byte-identical to the current request. Any change to system prompt text, tool schemas, or message structure produces a new request body — causing `UnhandledHTTPRequestError` on every affected cassette.
 
-### Recording cassettes
+### Recording and re-recording cassettes
 
-Cassette recording requires a real Anthropic API token. Use `bin/with-llms` to inject credentials from 1Password for the duration of the command:
+`bin/with-llms` injects 1Password credentials for the duration of a command. Without it, `rails_helper.rb` seeds a dummy token and all API calls return 401. 1Password requires human authorization (biometric/GUI) — wait for the prompt to be accepted before the command proceeds.
 
 ```bash
 bin/with-llms bundle exec rspec                          # record all missing cassettes
 bin/with-llms bundle exec rspec spec/path/to_spec.rb:42  # record one specific cassette
 ```
 
-`bin/with-llms` reads the "Anima keys" item from the Private 1Password vault, exports all fields as env vars, and runs the command. Credentials are never written to disk. The VCR config seeds `CredentialStore` from `ANTHROPIC_API_KEY` when present, so `fetch_token` picks it up through its normal path.
+### After prompt or schema changes
 
-### Re-recording after prompt/schema changes
+1. `bundle exec rspec` — identify failures (cassettes whose request body no longer matches).
+2. Classify each failing cassette:
+   - **Re-recordable** (success-path cassettes, auth error cassettes with fake tokens): delete with `rm -f`.
+   - **Not re-recordable** (error cassettes recorded during outages, e.g. the 529 overload cassette): manually edit the cassette's request body JSON to match the new format. Use a Ruby script to parse, modify, and rewrite — never hand-edit YAML.
+3. `bin/with-llms bundle exec rspec` — re-records deleted cassettes, verifies edited ones replay correctly.
 
-When prompt text changes, re-record affected cassettes:
+Never delete cassettes before step 1 — you won't know which are affected.
 
-1. Run full specs (`bundle exec rspec`) — affected cassettes surface as test failures.
-2. Delete failing cassettes with `rm -f`.
-3. Run full specs again with credentials: `bin/with-llms bundle exec rspec`.
-
-Never delete cassettes before the first full run — you won't know which ones are affected.
-
-**Exception: error cassettes recorded during outages** (e.g. the 529 overload cassette) cannot be re-recorded on demand. When tool schema or prompt changes alter the request body, manually edit the cassette to match the new body. Never manually edit cassettes that can be re-recorded — always use the delete-and-rerecord flow above.
+**Trap: running without credentials records 401 cassettes.** If `bin/with-llms` fails (e.g. 1Password auth timeout), VCR records the 401 response as a new cassette. Subsequent runs replay the 401 instead of hitting the API. Fix: delete cassettes created during the failed run, then re-run with credentials.
 
 ## GitHub sub-issues
 

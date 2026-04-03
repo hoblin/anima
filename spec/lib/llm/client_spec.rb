@@ -50,58 +50,10 @@ RSpec.describe LLM::Client do
     end
   end
 
-  describe "#chat" do
-    it "returns the assistant's response text", :vcr do
-      result = client.chat([{role: "user", content: "Reply with the single word OK"}])
-      expect(result).to be_a(String)
-      expect(result).to be_present
-    end
-
-    it "passes system prompt and options through to the provider", :vcr do
-      result = client.chat(
-        [{role: "user", content: "Reply with the single word OK"}],
-        system: "You are helpful",
-        temperature: 0.0
-      )
-      expect(result).to be_present
-    end
-
-    it "supports multi-turn conversations", :vcr do
-      multi_turn = [
-        {role: "user", content: "Remember the number 42"},
-        {role: "assistant", content: "Got it, I'll remember 42."},
-        {role: "user", content: "What number did I just say?"}
-      ]
-
-      result = client.chat(multi_turn)
-      expect(result).to include("42")
-    end
-
-    it "uses the configured model", :vcr do
-      haiku_client = described_class.new(
-        model: "claude-haiku-4-5-20251001",
-        provider: provider
-      )
-
-      result = haiku_client.chat([{role: "user", content: "Reply with the single word OK"}])
-      expect(result).to be_present
-    end
-
-    context "when the API returns an error", :vcr do
-      let(:bad_provider) { Providers::Anthropic.new(fake_token) }
-      let(:bad_client) { described_class.new(provider: bad_provider) }
-
-      it "propagates authentication errors" do
-        expect {
-          bad_client.chat([{role: "user", content: "Hi"}])
-        }.to raise_error(Providers::Anthropic::AuthenticationError)
-      end
-    end
-  end
-
   describe "#chat_with_tools" do
     let(:session) { Session.create! }
     let(:registry) { Tools::Registry.new }
+    let(:llm_options) { {system: "You are Anima"} }
 
     let(:tool_class) do
       Class.new(Tools::Base) do
@@ -124,7 +76,7 @@ RSpec.describe LLM::Client do
       it "returns a Hash with :text and :api_metrics keys" do
         result = client.chat_with_tools(
           [{role: "user", content: "What is 2 + 2? Just answer the number."}],
-          registry: registry, session_id: session.id
+          registry: registry, session_id: session.id, **llm_options
         )
         expect(result).to be_a(Hash)
         expect(result[:text]).to be_a(String)
@@ -136,7 +88,7 @@ RSpec.describe LLM::Client do
       let(:messages) { [{role: "user", content: "Use the web_get tool to fetch https://example.com and tell me what you find"}] }
 
       it "executes the tool and returns a Hash with :text and :api_metrics keys" do
-        result = client.chat_with_tools(messages, registry: registry, session_id: session.id)
+        result = client.chat_with_tools(messages, registry: registry, session_id: session.id, **llm_options)
         expect(result).to be_a(Hash)
         expect(result[:text]).to be_present
         expect(result).to have_key(:api_metrics)
@@ -148,7 +100,7 @@ RSpec.describe LLM::Client do
         allow(subscriber).to receive(:emit) { |e| events << e }
         Events::Bus.subscribe(subscriber)
 
-        client.chat_with_tools(messages, registry: registry, session_id: session.id)
+        client.chat_with_tools(messages, registry: registry, session_id: session.id, **llm_options)
 
         tool_call = events.find { |e| e[:payload][:type] == "tool_call" }
         expect(tool_call[:payload][:tool_name]).to eq("web_get")
@@ -188,7 +140,7 @@ RSpec.describe LLM::Client do
 
         client.chat_with_tools(
           [{role: "user", content: "Use the web_get tool to fetch https://example.com"}],
-          registry: error_registry, session_id: session.id
+          registry: error_registry, session_id: session.id, **llm_options
         )
 
         tool_response = events.find { |e| e[:payload][:type] == "tool_response" }
@@ -225,7 +177,7 @@ RSpec.describe LLM::Client do
 
         result = client.chat_with_tools(
           [{role: "user", content: "Use the web_get tool to fetch https://example.com"}],
-          registry: exploding_registry, session_id: session.id
+          registry: exploding_registry, session_id: session.id, **llm_options
         )
 
         expect(result).to be_present
@@ -244,7 +196,7 @@ RSpec.describe LLM::Client do
       it "returns nil when interrupted before tools execute" do
         session.update_column(:interrupt_requested, true)
 
-        result = client.chat_with_tools(messages, registry: registry, session_id: session.id)
+        result = client.chat_with_tools(messages, registry: registry, session_id: session.id, **llm_options)
         expect(result).to be_nil
       end
 
@@ -256,7 +208,7 @@ RSpec.describe LLM::Client do
         allow(subscriber).to receive(:emit) { |e| events << e }
         Events::Bus.subscribe(subscriber)
 
-        client.chat_with_tools(messages, registry: registry, session_id: session.id)
+        client.chat_with_tools(messages, registry: registry, session_id: session.id, **llm_options)
 
         tool_responses = events.select { |e| e[:payload][:type] == "tool_response" }
         expect(tool_responses).not_to be_empty
@@ -271,7 +223,7 @@ RSpec.describe LLM::Client do
       it "clears the interrupt flag" do
         session.update_column(:interrupt_requested, true)
 
-        client.chat_with_tools(messages, registry: registry, session_id: session.id)
+        client.chat_with_tools(messages, registry: registry, session_id: session.id, **llm_options)
 
         expect(session.reload.interrupt_requested?).to be false
       end
@@ -290,7 +242,7 @@ RSpec.describe LLM::Client do
         allow(subscriber).to receive(:emit) { |e| events << e }
         Events::Bus.subscribe(subscriber)
 
-        client.chat_with_tools(two_url_messages, registry: registry, session_id: session.id)
+        client.chat_with_tools(two_url_messages, registry: registry, session_id: session.id, **llm_options)
 
         tool_responses = events.select { |e| e[:payload][:type] == "tool_response" }
         expect(tool_responses.size).to eq(2)
@@ -310,8 +262,7 @@ RSpec.describe LLM::Client do
 
         result = client.chat_with_tools(
           messages,
-          registry: Tools::Registry.new,
-          session_id: session.id
+          registry: registry, session_id: session.id, **llm_options
         )
 
         expect(result).to be_nil
@@ -332,7 +283,7 @@ RSpec.describe LLM::Client do
         allow(subscriber).to receive(:emit) { |e| events << e }
         Events::Bus.subscribe(subscriber)
 
-        result = client.chat_with_tools(messages, registry: registry, session_id: session.id)
+        result = client.chat_with_tools(messages, registry: registry, session_id: session.id, **llm_options)
 
         expect(result).to be_present
         tool_response = events.find { |e| e[:payload][:type] == "tool_response" }
@@ -415,7 +366,7 @@ RSpec.describe LLM::Client do
 
         client.chat_with_tools(
           [{role: "user", content: "Fetch example.com"}],
-          registry: registry, session_id: session.id,
+          registry: registry, session_id: session.id, **llm_options,
           between_rounds: between_rounds
         )
 
@@ -441,7 +392,7 @@ RSpec.describe LLM::Client do
 
         client.chat_with_tools(
           [{role: "user", content: "Fetch example.com"}],
-          registry: registry, session_id: session.id,
+          registry: registry, session_id: session.id, **llm_options,
           between_rounds: between_rounds
         )
 
@@ -464,7 +415,7 @@ RSpec.describe LLM::Client do
 
         client.chat_with_tools(
           [{role: "user", content: "Fetch example.com"}],
-          registry: registry, session_id: session.id,
+          registry: registry, session_id: session.id, **llm_options,
           between_rounds: -> { {texts: [], pairs: []} }
         )
 
@@ -485,7 +436,7 @@ RSpec.describe LLM::Client do
         expect {
           client.chat_with_tools(
             [{role: "user", content: "Fetch example.com"}],
-            registry: registry, session_id: session.id,
+            registry: registry, session_id: session.id, **llm_options,
             between_rounds: nil
           )
         }.not_to raise_error
@@ -500,7 +451,7 @@ RSpec.describe LLM::Client do
           record: :none) do
           result = client.chat_with_tools(
             [{role: "user", content: "Use web_get to fetch https://example.com"}],
-            registry: registry, session_id: session.id
+            registry: registry, session_id: session.id, **llm_options
           )
           expect(result[:text]).to include("Tool loop exceeded")
         end

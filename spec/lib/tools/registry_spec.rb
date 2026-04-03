@@ -30,10 +30,6 @@ RSpec.describe Tools::Registry do
   describe "#schemas" do
     before { allow(Anima::Settings).to receive(:tool_timeout).and_return(180) }
 
-    it "returns empty array when no tools registered" do
-      expect(registry.schemas).to eq([])
-    end
-
     it "returns schema array for registered tools with injected timeout parameter" do
       registry.register(tool_class)
       schemas = registry.schemas
@@ -49,6 +45,13 @@ RSpec.describe Tools::Registry do
       registry.schemas
 
       expect(tool_class.input_schema[:properties]).not_to have_key("timeout")
+    end
+
+    it "annotates the last tool with cache_control for prompt caching" do
+      registry.register(tool_class)
+      schemas = registry.schemas
+
+      expect(schemas.last[:cache_control]).to eq({type: "ephemeral"})
     end
 
     context "with dynamic schema tools" do
