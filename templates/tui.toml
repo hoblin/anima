@@ -185,6 +185,11 @@ flash_warning_bg = "yellow"
 flash_info_fg = "white"
 flash_info_bg = "blue"
 
+# Tool response CRUD colors — distinguish read/create/update at a glance.
+tool_read_color = "light_blue"
+tool_create_color = "light_green"
+tool_update_color = "light_yellow"
+
 # Border colors.
 border_focused = "yellow"
 border_normal = "white"

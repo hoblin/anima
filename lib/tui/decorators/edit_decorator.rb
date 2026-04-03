@@ -13,7 +13,7 @@ module TUI
       end
 
       def response_color
-        "light_yellow"
+        Settings.theme_tool_update_color
       end
     end
   end
