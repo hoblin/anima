@@ -120,13 +120,13 @@ module TUI
       # visually distinct from conversation messages (user/assistant/thought).
       # @return [String]
       def color
-        "magenta"
+        Settings.color_accent
       end
 
       # Color for tool response content. Subclasses override for tool-specific colors.
       # @return [String]
       def response_color
-        "white"
+        Settings.color_text
       end
 
       private

@@ -26,11 +26,17 @@ module TUI
   class Flash
     Entry = Struct.new(:message, :level, :created_at, keyword_init: true)
 
-    LEVEL_STYLES = {
-      error: {fg: "white", bg: "red", icon: " \u2718 "},
-      warning: {fg: "black", bg: "yellow", icon: " \u26A0 "},
-      info: {fg: "white", bg: "blue", icon: " \u2139 "}
-    }.freeze
+    LEVEL_ICONS = {error: " \u2718 ", warning: " \u26A0 ", info: " \u2139 "}.freeze
+
+    # Builds level styles from current theme settings.
+    # Called per-render so hot-reloaded theme changes take effect immediately.
+    def self.level_styles
+      {
+        error: {fg: Settings.flash_error_fg, bg: Settings.flash_error_bg},
+        warning: {fg: Settings.flash_warning_fg, bg: Settings.flash_warning_bg},
+        info: {fg: Settings.flash_info_fg, bg: Settings.flash_info_bg}
+      }
+    end
 
     def initialize
       @entries = []
@@ -117,10 +123,12 @@ module TUI
     end
 
     def render_entry(frame, area, entry, tui)
-      config = LEVEL_STYLES.fetch(entry.level, LEVEL_STYLES[:info])
+      styles = self.class.level_styles
+      config = styles.fetch(entry.level, styles[:info])
+      icon = LEVEL_ICONS.fetch(entry.level, LEVEL_ICONS[:info])
       style = tui.style(fg: config[:fg], bg: config[:bg], modifiers: [:bold])
 
-      text = "#{config[:icon]}#{entry.message} "
+      text = "#{icon}#{entry.message} "
       # Pad to full width so background color fills the entire row
       padded = text.ljust(area.width)
 

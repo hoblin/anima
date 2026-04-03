@@ -153,12 +153,37 @@ cache_hit_low = 30
 
 # Chat message background colors (256-color palette codes).
 # 22 = dark green (#005f00), 17 = dark navy (#00005f).
+# Full palette: https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit
 user_message_bg = 22
 assistant_message_bg = 17
 
 # Scrollbar colors.
 scrollbar_thumb = "cyan"
 scrollbar_track = "dark_gray"
+
+# Semantic colors — consistent visual language across the TUI.
+# Success (connected, completed, saved), error (disconnected, failed),
+# warning (connecting, loading, in-progress), info (labels, highlights),
+# muted (de-emphasized, idle, hints), accent (tool calls, special actions).
+color_success = "green"
+color_error = "red"
+color_warning = "yellow"
+color_info = "cyan"
+color_muted = "dark_gray"
+color_accent = "magenta"
+color_text = "white"
+
+# Selection highlight (session picker, menus).
+highlight_fg = "black"
+highlight_bg = "cyan"
+
+# Flash notification colors.
+flash_error_fg = "white"
+flash_error_bg = "red"
+flash_warning_fg = "black"
+flash_warning_bg = "yellow"
+flash_info_fg = "white"
+flash_info_bg = "blue"
 
 # Border colors.
 border_focused = "yellow"

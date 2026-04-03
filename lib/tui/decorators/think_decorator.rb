@@ -17,7 +17,7 @@ module TUI
       # @param tui [RatatuiRuby] TUI rendering API
       # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_think(tui)
-        style = tui.style(fg: "dark_gray")
+        style = tui.style(fg: Settings.color_muted)
         ts = data["timestamp"]
 
         meta = []

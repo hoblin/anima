@@ -45,12 +45,15 @@ module TUI
     class << self
       # Override config file path (for testing).
       # Resets the cache so the next access reads from the new location.
+      # Synchronized to avoid racing with concurrent {#config} readers.
       #
       # @param path [String, nil] custom path, or +nil+ to restore default
       def config_path=(path)
-        @config_path = path
-        @config_cache = nil
-        @config_mtime = nil
+        @cache_mutex.synchronize do
+          @config_path = path
+          @config_cache = nil
+          @config_mtime = nil
+        end
       end
 
       # @return [String] active config file path
@@ -226,6 +229,66 @@ module TUI
       # 256-color palette code for assistant message background.
       # @return [Integer]
       def assistant_message_bg = get("theme", "assistant_message_bg")
+
+      # Semantic color for success states (connected, completed, saved).
+      # @return [String]
+      def color_success = get("theme", "color_success")
+
+      # Semantic color for error states (disconnected, failed, invalid).
+      # @return [String]
+      def color_error = get("theme", "color_error")
+
+      # Semantic color for warning states (connecting, loading, in-progress).
+      # @return [String]
+      def color_warning = get("theme", "color_warning")
+
+      # Semantic color for informational elements (labels, highlights, active items).
+      # @return [String]
+      def color_info = get("theme", "color_info")
+
+      # Semantic color for de-emphasized content (hints, idle, separators).
+      # @return [String]
+      def color_muted = get("theme", "color_muted")
+
+      # Semantic color for special actions (tool calls, debug mode).
+      # @return [String]
+      def color_accent = get("theme", "color_accent")
+
+      # Semantic color for default text content.
+      # @return [String]
+      def color_text = get("theme", "color_text")
+
+      # Selection highlight foreground (session picker, menus).
+      # @return [String]
+      def highlight_fg = get("theme", "highlight_fg")
+
+      # Selection highlight background (session picker, menus).
+      # @return [String]
+      def highlight_bg = get("theme", "highlight_bg")
+
+      # Flash error notification foreground.
+      # @return [String]
+      def flash_error_fg = get("theme", "flash_error_fg")
+
+      # Flash error notification background.
+      # @return [String]
+      def flash_error_bg = get("theme", "flash_error_bg")
+
+      # Flash warning notification foreground.
+      # @return [String]
+      def flash_warning_fg = get("theme", "flash_warning_fg")
+
+      # Flash warning notification background.
+      # @return [String]
+      def flash_warning_bg = get("theme", "flash_warning_bg")
+
+      # Flash info notification foreground.
+      # @return [String]
+      def flash_info_fg = get("theme", "flash_info_fg")
+
+      # Flash info notification background.
+      # @return [String]
+      def flash_info_bg = get("theme", "flash_info_bg")
 
       # Scrollbar thumb (filled) color.
       # @return [String]

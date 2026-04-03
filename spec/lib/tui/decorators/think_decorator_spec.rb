@@ -5,6 +5,9 @@ require "tui/decorators/base_decorator"
 require "tui/decorators/think_decorator"
 
 RSpec.describe TUI::Decorators::ThinkDecorator do
+  before { TUI::Settings.config_path = File.expand_path("../../../../templates/tui.toml", __dir__) }
+  after { TUI::Settings.reset! }
+
   let(:tui) do
     stub = Object.new
     def stub.style(fg: nil, bg: nil, modifiers: nil) = {fg: fg, bg: bg, modifiers: modifiers}

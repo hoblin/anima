@@ -1385,34 +1385,34 @@ RSpec.describe TUI::App do
   end
 
   describe "connection status" do
-    it "defines styles for all connection states" do
-      expect(TUI::App::STATUS_STYLES.keys).to contain_exactly(
+    it "defines labels and colors for all connection states" do
+      expect(TUI::App::STATUS_LABELS.keys).to contain_exactly(
+        :disconnected, :connecting, :connected, :subscribed, :reconnecting
+      )
+      expect(TUI::App::STATUS_COLORS.keys).to contain_exactly(
         :disconnected, :connecting, :connected, :subscribed, :reconnecting
       )
     end
 
     it "uses emoji-only label for subscribed (normal) state" do
-      expect(TUI::App::STATUS_STYLES[:subscribed][:label]).to eq("🟢")
+      expect(TUI::App::STATUS_LABELS[:subscribed]).to eq("🟢")
     end
 
     it "uses red emoji with text for disconnected state" do
-      style = TUI::App::STATUS_STYLES[:disconnected]
-      expect(style[:label]).to eq("🔴 Disconnected")
-      expect(style[:color]).to eq("red")
+      expect(TUI::App::STATUS_LABELS[:disconnected]).to eq("🔴 Disconnected")
+      expect(TUI::App::STATUS_COLORS[:disconnected]).to eq(:color_error)
     end
 
     it "uses yellow emoji with text for connecting states" do
       %i[connecting connected].each do |state|
-        style = TUI::App::STATUS_STYLES[state]
-        expect(style[:label]).to eq("🟡 Connecting")
-        expect(style[:color]).to eq("yellow")
+        expect(TUI::App::STATUS_LABELS[state]).to eq("🟡 Connecting")
+        expect(TUI::App::STATUS_COLORS[state]).to eq(:color_warning)
       end
     end
 
     it "uses yellow emoji with text for reconnecting state" do
-      style = TUI::App::STATUS_STYLES[:reconnecting]
-      expect(style[:label]).to eq("🟡 Reconnecting")
-      expect(style[:color]).to eq("yellow")
+      expect(TUI::App::STATUS_LABELS[:reconnecting]).to eq("🟡 Reconnecting")
+      expect(TUI::App::STATUS_COLORS[:reconnecting]).to eq(:color_warning)
     end
 
     describe "#hud_skills_line" do

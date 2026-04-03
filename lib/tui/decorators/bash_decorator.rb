@@ -13,7 +13,7 @@ module TUI
       end
 
       def response_color
-        (data["success"] == false) ? "red" : "green"
+        (data["success"] == false) ? Settings.color_error : Settings.color_success
       end
     end
   end

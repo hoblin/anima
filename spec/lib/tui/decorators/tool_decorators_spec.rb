@@ -8,6 +8,9 @@ require "tui/decorators/write_decorator"
 require "tui/decorators/web_get_decorator"
 
 RSpec.describe "Tool-specific decorators" do
+  before { TUI::Settings.config_path = File.expand_path("../../../../templates/tui.toml", __dir__) }
+  after { TUI::Settings.reset! }
+
   let(:tui) do
     stub = Object.new
     def stub.style(fg: nil, bg: nil, modifiers: nil) = {fg: fg, bg: bg, modifiers: modifiers}
