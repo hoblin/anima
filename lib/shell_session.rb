@@ -11,6 +11,15 @@ require "uri"
 # Immutable snapshot of the shell's environment for change detection.
 # Compared between commands to produce natural-language summaries of what
 # changed — the agent discovers its environment through Bash tool responses.
+#
+# @!attribute [r] pwd
+#   @return [String, nil] current working directory
+# @!attribute [r] branch
+#   @return [String, nil] current git branch name
+# @!attribute [r] repo
+#   @return [String, nil] "owner/repo" extracted from git origin remote
+# @!attribute [r] project_files
+#   @return [Array<String>] sorted relative paths to project instruction files
 EnvironmentSnapshot = Data.define(:pwd, :branch, :repo, :project_files) do
   # Sentinel for "never detected" — diffs against this produce a full snapshot.
   def self.blank = new(pwd: nil, branch: nil, repo: nil, project_files: [])
