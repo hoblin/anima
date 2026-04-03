@@ -43,6 +43,10 @@ module Anima
       result = Spinner.run("Migrating brain configuration...") do
         Anima::ConfigMigrator.new.run
       end
+      if result.status == :not_found
+        say "Config file not found. Run 'anima install' first.", :red
+        exit 1
+      end
       report_migration("Config", result)
 
       tui_config_path = File.join(Anima::ConfigMigrator::ANIMA_HOME, "tui.toml")
