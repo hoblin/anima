@@ -120,6 +120,15 @@ bin/with-llms bundle exec rspec spec/path/to_spec.rb:42  # record one specific c
 
 Never delete cassettes before step 1 — you won't know which are affected.
 
+### Inspecting cassettes
+
+`bin/inspect-cassette` renders a cassette as a readable conversation (no system prompt or tools, just the chat). Accepts a full path or fuzzy name search.
+
+```bash
+bin/inspect-cassette spec/cassettes/path/to/cassette.yml
+bin/inspect-cassette smoke_test          # fuzzy match
+```
+
 **Trap: running without credentials records 401 cassettes.** If `bin/with-llms` fails (e.g. 1Password auth timeout), VCR records the 401 response as a new cassette. Subsequent runs replay the 401 instead of hitting the API. Fix: delete cassettes created during the failed run, then re-run with credentials.
 
 ## GitHub sub-issues
