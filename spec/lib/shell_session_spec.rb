@@ -230,55 +230,88 @@ RSpec.describe ShellSession do
   end
 
   describe "environment tracking" do
-    it "returns env_summary on first successful command" do
-      result = shell.run("echo hello")
-      expect(result[:env_summary]).to be_a(String)
-      expect(result[:env_summary]).to include("You are now in")
-    end
+    describe "seed_env_snapshot" do
+      it "sets @env_snapshot to real startup state on initialization" do
+        # seed_env_snapshot runs inside start(), called by initialize
+        snapshot = shell.send(:instance_variable_get, :@env_snapshot)
+        expect(snapshot).to be_a(EnvironmentSnapshot)
+        expect(snapshot.pwd).to eq(shell.pwd)
+        expect(snapshot.pwd).not_to be_nil
+      end
 
-    it "returns env_summary when directory changes" do
-      shell.run("echo warmup")
-      result = shell.run("cd /tmp")
-      expect(result[:env_summary]).to include("You are now in /tmp")
-    end
+      it "is idempotent — calling twice preserves the same state" do
+        snap_before = shell.send(:instance_variable_get, :@env_snapshot)
+        shell.send(:seed_env_snapshot)
+        snap_after = shell.send(:instance_variable_get, :@env_snapshot)
+        expect(snap_after.pwd).to eq(snap_before.pwd)
+        expect(snap_after.branch).to eq(snap_before.branch)
+        expect(snap_after.repo).to eq(snap_before.repo)
+      end
 
-    it "omits env_summary when nothing changes" do
-      shell.run("echo warmup")
-      result = shell.run("echo hello")
-      expect(result[:env_summary]).to be_nil
-    end
-
-    it "reports branch change without directory change" do
-      Dir.mktmpdir do |tmpdir|
-        shell.run("cd #{tmpdir}")
-        shell.run("git init && git config user.name Test && git config user.email test@test.com && git commit --allow-empty -m init")
-        branch = "test-branch-#{SecureRandom.hex(4)}"
-        result = shell.run("git checkout -b #{branch}")
-        expect(result[:env_summary]).to include("Branch changed to #{branch}.")
+      it "captures nil branch and repo outside a git repo" do
+        Dir.mktmpdir do |tmpdir|
+          non_git_shell = described_class.new(session_id: "non-git-test")
+          non_git_shell.run("cd #{Shellwords.shellescape(tmpdir)}")
+          # Re-seed after cd to capture non-git state
+          non_git_shell.send(:seed_env_snapshot)
+          snapshot = non_git_shell.send(:instance_variable_get, :@env_snapshot)
+          expect(snapshot.branch).to be_nil
+          expect(snapshot.repo).to be_nil
+        ensure
+          non_git_shell&.finalize
+        end
       end
     end
 
-    it "reports project files on first visit to a directory" do
-      Dir.mktmpdir do |tmpdir|
-        shell.run("echo warmup")
-        File.write(File.join(tmpdir, "CLAUDE.md"), "# Test")
-        result = shell.run("cd #{tmpdir}")
-        expect(result[:env_summary]).to include("Project has instructions in CLAUDE.md")
+    describe "env_summary in tool responses" do
+      it "returns nil when first command does not change environment" do
+        # pwd matches the seeded snapshot — no footer expected
+        result = shell.run("echo hello")
+        expect(result[:env_summary]).to be_nil
       end
-    end
 
-    it "does not include env_summary on error" do
-      result = shell.run("exit 1")
-      expect(result).to have_key(:error)
-      expect(result).not_to have_key(:env_summary)
-    end
+      it "reports location when directory changes" do
+        result = shell.run("cd /tmp")
+        expect(result[:env_summary]).to include("You are now in /tmp")
+      end
 
-    it "does not include env_summary on interrupt" do
-      checker = -> { true }
-      allow(Anima::Settings).to receive(:interrupt_check_interval).and_return(0.5)
-      result = shell.run("sleep 30", interrupt_check: checker)
-      expect(result[:interrupted]).to be true
-      expect(result).not_to have_key(:env_summary)
+      it "returns nil on subsequent command when environment is unchanged" do
+        shell.run("cd /tmp") # changes env — footer emitted (discarded here)
+        result = shell.run("echo hello")
+        expect(result[:env_summary]).to be_nil
+      end
+
+      it "reports branch change without directory change" do
+        Dir.mktmpdir do |tmpdir|
+          shell.run("cd #{Shellwords.shellescape(tmpdir)}")
+          shell.run("git init && git config user.name Test && git config user.email test@test.com && git commit --allow-empty -m init")
+          branch = "test-branch-#{SecureRandom.hex(4)}"
+          result = shell.run("git checkout -b #{branch}")
+          expect(result[:env_summary]).to include("Branch changed to #{branch}.")
+        end
+      end
+
+      it "reports project files on first visit to a directory" do
+        Dir.mktmpdir do |tmpdir|
+          File.write(File.join(tmpdir, "CLAUDE.md"), "# Test")
+          result = shell.run("cd #{Shellwords.shellescape(tmpdir)}")
+          expect(result[:env_summary]).to include("Project has instructions in CLAUDE.md")
+        end
+      end
+
+      it "returns nil on error" do
+        result = shell.run("exit 1")
+        expect(result).to have_key(:error)
+        expect(result).not_to have_key(:env_summary)
+      end
+
+      it "returns nil on interrupt" do
+        checker = -> { true }
+        allow(Anima::Settings).to receive(:interrupt_check_interval).and_return(0.5)
+        result = shell.run("sleep 30", interrupt_check: checker)
+        expect(result[:interrupted]).to be true
+        expect(result).not_to have_key(:env_summary)
+      end
     end
   end
 
