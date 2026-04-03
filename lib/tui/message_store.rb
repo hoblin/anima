@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "settings"
+
 module TUI
   # Thread-safe in-memory store for chat entries displayed in the TUI.
   # Replaces {Events::Subscribers::MessageCollector} in the WebSocket-based
@@ -32,11 +34,6 @@ module TUI
       "user_message" => "user",
       "agent_message" => "assistant"
     }.freeze
-
-    # Maximum cache history entries kept for sparkline rendering.
-    # Each braille character encodes 2 data points, so 200 entries
-    # render as ~100 characters — plenty for a TUI panel width.
-    MAX_CACHE_HISTORY = 200
 
     def initialize
       @entries = []
@@ -425,7 +422,7 @@ module TUI
           total = input + cache_read + cache_create
           hit_rate = (total > 0) ? cache_read.to_f / total : 0.0
           history = @token_economy[:cache_history]
-          history.shift if history.size >= MAX_CACHE_HISTORY
+          history.shift if history.size >= Settings.max_cache_history
           history << hit_rate
         end
 

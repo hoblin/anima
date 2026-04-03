@@ -31,6 +31,7 @@ module Anima
       create_directories
       create_soul_file
       create_settings_config
+      create_tui_config
       create_mcp_config
       generate_credentials
       create_systemd_service
@@ -65,6 +66,18 @@ module Anima
 
       template = File.read(File.join(TEMPLATE_DIR, "config.toml"))
       config_path.write(template.gsub("{{ANIMA_HOME}}") { anima_home.to_s })
+      say "  created #{config_path}"
+    end
+
+    # Creates ~/.anima/tui.toml — TUI-specific presentation settings.
+    # Separate from config.toml because the TUI is a standalone client
+    # process with no Rails dependency.
+    def create_tui_config
+      config_path = anima_home.join("tui.toml")
+      return if config_path.exist?
+
+      template = File.read(File.join(TEMPLATE_DIR, "tui.toml"))
+      config_path.write(template)
       say "  created #{config_path}"
     end
 

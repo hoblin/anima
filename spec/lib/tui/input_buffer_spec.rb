@@ -6,6 +6,9 @@ require "tui/input_buffer"
 RSpec.describe TUI::InputBuffer do
   subject(:buffer) { described_class.new }
 
+  before { TUI::Settings.config_path = File.expand_path("../../../templates/tui.toml", __dir__) }
+  after { TUI::Settings.reset! }
+
   describe "#initialize" do
     it "starts with empty text" do
       expect(buffer.text).to eq("")
@@ -34,16 +37,16 @@ RSpec.describe TUI::InputBuffer do
     end
 
     it "returns false when buffer is full" do
-      buffer.instance_variable_set(:@text, "x" * described_class::MAX_LENGTH)
-      buffer.instance_variable_set(:@cursor_pos, described_class::MAX_LENGTH)
+      buffer.instance_variable_set(:@text, "x" * TUI::Settings.input_max_length)
+      buffer.instance_variable_set(:@cursor_pos, TUI::Settings.input_max_length)
       expect(buffer.insert("a")).to be false
     end
 
     it "rejects multi-char insert that would exceed MAX_LENGTH" do
-      buffer.instance_variable_set(:@text, "x" * (described_class::MAX_LENGTH - 3))
-      buffer.instance_variable_set(:@cursor_pos, described_class::MAX_LENGTH - 3)
+      buffer.instance_variable_set(:@text, "x" * (TUI::Settings.input_max_length - 3))
+      buffer.instance_variable_set(:@cursor_pos, TUI::Settings.input_max_length - 3)
       expect(buffer.insert("toolong")).to be false
-      expect(buffer.text.length).to eq(described_class::MAX_LENGTH - 3)
+      expect(buffer.text.length).to eq(TUI::Settings.input_max_length - 3)
     end
 
     it "returns true on success" do
@@ -70,8 +73,8 @@ RSpec.describe TUI::InputBuffer do
     end
 
     it "returns false when full" do
-      buffer.instance_variable_set(:@text, "x" * described_class::MAX_LENGTH)
-      buffer.instance_variable_set(:@cursor_pos, described_class::MAX_LENGTH)
+      buffer.instance_variable_set(:@text, "x" * TUI::Settings.input_max_length)
+      buffer.instance_variable_set(:@cursor_pos, TUI::Settings.input_max_length)
       expect(buffer.newline).to be false
     end
   end

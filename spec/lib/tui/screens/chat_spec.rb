@@ -13,6 +13,7 @@ RSpec.describe TUI::Screens::Chat do
   subject(:screen) { described_class.new(cable_client: cable_client, message_store: message_store) }
 
   before do
+    TUI::Settings.config_path = File.expand_path("../../../../templates/tui.toml", __dir__)
     allow(cable_client).to receive(:drain_messages).and_return([])
     allow(cable_client).to receive(:speak)
     allow(cable_client).to receive(:create_session)
@@ -21,6 +22,8 @@ RSpec.describe TUI::Screens::Chat do
     allow(cable_client).to receive(:update_session_id)
     allow(cable_client).to receive(:change_view_mode)
   end
+
+  after { TUI::Settings.reset! }
 
   # RatatuiRuby::Message uses method_missing for dynamic predicates,
   # so we use plain doubles instead of instance_double
@@ -117,7 +120,7 @@ RSpec.describe TUI::Screens::Chat do
       end
 
       it "stops accepting input at MAX_LENGTH" do
-        max = TUI::InputBuffer::MAX_LENGTH
+        max = TUI::Settings.input_max_length
         set_input("a" * max)
         expect(screen.handle_event(key_event(code: "x"))).to be false
         expect(screen.input.length).to eq(max)
@@ -666,12 +669,12 @@ RSpec.describe TUI::Screens::Chat do
 
       it "scrolls up on mouse wheel up" do
         screen.handle_event(mouse_event(kind: "scroll_up"))
-        expect(screen.scroll_offset).to eq(10 - TUI::Screens::Chat::MOUSE_SCROLL_STEP)
+        expect(screen.scroll_offset).to eq(10 - TUI::Settings.chat_mouse_scroll_step)
       end
 
       it "scrolls down on mouse wheel down" do
         screen.handle_event(mouse_event(kind: "scroll_down"))
-        expect(screen.scroll_offset).to eq(10 + TUI::Screens::Chat::MOUSE_SCROLL_STEP)
+        expect(screen.scroll_offset).to eq(10 + TUI::Settings.chat_mouse_scroll_step)
       end
 
       it "returns true for scroll wheel events" do
@@ -686,7 +689,7 @@ RSpec.describe TUI::Screens::Chat do
       it "works during loading" do
         screen.instance_variable_set(:@loading, true)
         screen.handle_event(mouse_event(kind: "scroll_up"))
-        expect(screen.scroll_offset).to eq(10 - TUI::Screens::Chat::MOUSE_SCROLL_STEP)
+        expect(screen.scroll_offset).to eq(10 - TUI::Settings.chat_mouse_scroll_step)
       end
     end
 
@@ -879,7 +882,7 @@ RSpec.describe TUI::Screens::Chat do
 
       it "mouse scroll still works" do
         screen.handle_event(mouse_event(kind: "scroll_up"))
-        expect(screen.scroll_offset).to eq(10 - TUI::Screens::Chat::MOUSE_SCROLL_STEP)
+        expect(screen.scroll_offset).to eq(10 - TUI::Settings.chat_mouse_scroll_step)
       end
     end
 
@@ -1141,14 +1144,14 @@ RSpec.describe TUI::Screens::Chat do
       end
 
       it "returns false when buffer is full" do
-        set_input("x" * TUI::InputBuffer::MAX_LENGTH)
+        set_input("x" * TUI::Settings.input_max_length)
         expect(screen.handle_event(paste_event(content: "more"))).to be false
       end
 
       it "rejects paste that would exceed MAX_LENGTH" do
-        set_input("x" * (TUI::InputBuffer::MAX_LENGTH - 5))
+        set_input("x" * (TUI::Settings.input_max_length - 5))
         expect(screen.handle_event(paste_event(content: "too long!"))).to be false
-        expect(screen.input.length).to eq(TUI::InputBuffer::MAX_LENGTH - 5)
+        expect(screen.input.length).to eq(TUI::Settings.input_max_length - 5)
       end
 
       it "accepts paste while loading" do

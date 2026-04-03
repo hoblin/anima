@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "settings"
+
 module TUI
   # Manages editable text with cursor position tracking.
   # Supports multiline input with newline insertion, cursor navigation
@@ -7,8 +9,6 @@ module TUI
   #
   # Pure logic object with no rendering or framework dependencies.
   class InputBuffer
-    MAX_LENGTH = 10_000
-
     attr_reader :text, :cursor_pos
 
     def initialize
@@ -36,9 +36,9 @@ module TUI
       @text.include?("\n")
     end
 
-    # @return [Boolean] whether the buffer has reached MAX_LENGTH
+    # @return [Boolean] whether the buffer has reached Settings.input_max_length
     def full?
-      @text.length >= MAX_LENGTH
+      @text.length >= Settings.input_max_length
     end
 
     # Ensures cursor stays within valid bounds after external state changes.
@@ -48,9 +48,9 @@ module TUI
     end
 
     # @param char [String] character(s) to insert at cursor
-    # @return [Boolean] true if inserted, false if result would exceed MAX_LENGTH
+    # @return [Boolean] true if inserted, false if result would exceed Settings.input_max_length
     def insert(char)
-      return false if @text.length + char.length > MAX_LENGTH
+      return false if @text.length + char.length > Settings.input_max_length
 
       @text = "#{@text[0...@cursor_pos]}#{char}#{@text[@cursor_pos..]}"
       @cursor_pos += char.length

@@ -9,6 +9,9 @@ RSpec.describe TUI::CableClient do
 
   subject(:client) { described_class.new(host: host, session_id: session_id) }
 
+  before { TUI::Settings.config_path = File.expand_path("../../../templates/tui.toml", __dir__) }
+  after { TUI::Settings.reset! }
+
   describe "#initialize" do
     it "starts disconnected" do
       expect(client.status).to eq(:disconnected)
@@ -362,7 +365,7 @@ RSpec.describe TUI::CableClient do
       end
 
       it "returns false after max attempts" do
-        client.instance_variable_set(:@reconnect_attempt, described_class::MAX_RECONNECT_ATTEMPTS)
+        client.instance_variable_set(:@reconnect_attempt, TUI::Settings.max_reconnect_attempts)
 
         result = client.send(:schedule_reconnect)
 
@@ -385,18 +388,18 @@ RSpec.describe TUI::CableClient do
     describe "#backoff_delay (private)" do
       it "returns a value between 0 and base for attempt 1" do
         delay = client.send(:backoff_delay, 1)
-        expect(delay).to be_between(0.0, described_class::BACKOFF_BASE)
+        expect(delay).to be_between(0.0, TUI::Settings.backoff_base)
       end
 
       it "returns a value up to 2^(attempt-1) * base" do
-        max_for_attempt_5 = described_class::BACKOFF_BASE * (2**4) # 16.0
+        max_for_attempt_5 = TUI::Settings.backoff_base * (2**4) # 16.0
         delay = client.send(:backoff_delay, 5)
         expect(delay).to be_between(0.0, max_for_attempt_5)
       end
 
       it "caps delay at BACKOFF_CAP" do
         delay = client.send(:backoff_delay, 100)
-        expect(delay).to be <= described_class::BACKOFF_CAP
+        expect(delay).to be <= TUI::Settings.backoff_cap
       end
     end
 
@@ -427,7 +430,7 @@ RSpec.describe TUI::CableClient do
 
         client.instance_variable_set(:@status, :subscribed)
         client.instance_variable_set(:@last_ping_at,
-          freeze_time - described_class::PING_STALE_THRESHOLD - 1)
+          freeze_time - TUI::Settings.ping_stale_threshold - 1)
 
         client.send(:check_stale_connection)
 
@@ -440,7 +443,7 @@ RSpec.describe TUI::CableClient do
 
         client.instance_variable_set(:@status, :connected)
         client.instance_variable_set(:@last_ping_at,
-          freeze_time - described_class::PING_STALE_THRESHOLD - 1)
+          freeze_time - TUI::Settings.ping_stale_threshold - 1)
 
         client.send(:check_stale_connection)
 

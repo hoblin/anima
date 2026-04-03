@@ -12,6 +12,7 @@ RSpec.describe TUI::App do
   subject(:app) { described_class.new(cable_client: cable_client) }
 
   before do
+    TUI::Settings.config_path = File.expand_path("../../../templates/tui.toml", __dir__)
     allow(cable_client).to receive(:drain_messages).and_return([])
     allow(cable_client).to receive(:speak)
     allow(cable_client).to receive(:list_sessions)
@@ -19,6 +20,8 @@ RSpec.describe TUI::App do
     allow(cable_client).to receive(:change_view_mode)
     allow(cable_client).to receive(:save_token)
   end
+
+  after { TUI::Settings.reset! }
 
   describe "#initialize" do
     it "starts on the chat screen" do
@@ -1068,14 +1071,14 @@ RSpec.describe TUI::App do
       end
 
       it "returns unmasked text when exactly TOKEN_MASK_VISIBLE length" do
-        token = "x" * TUI::App::TOKEN_MASK_VISIBLE
+        token = "x" * TUI::Settings.token_mask_visible
         expect(app.send(:mask_token, token)).to eq(token)
       end
 
       it "shows exactly TOKEN_MASK_VISIBLE characters unmasked" do
         token = "sk-ant-oat01-#{"x" * 67}"
         masked = app.send(:mask_token, token)
-        expect(masked[0...TUI::App::TOKEN_MASK_VISIBLE]).to eq(token[0...TUI::App::TOKEN_MASK_VISIBLE])
+        expect(masked[0...TUI::Settings.token_mask_visible]).to eq(token[0...TUI::Settings.token_mask_visible])
       end
     end
 

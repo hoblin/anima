@@ -103,6 +103,29 @@ RSpec.describe Anima::Installer do
       expect(config_path.read).to include('model = "custom-model"')
     end
 
+    it "creates tui.toml from template" do
+      installer.run
+
+      tui_path = tmp_home.join("tui.toml")
+      expect(tui_path).to exist
+
+      content = tui_path.read
+      expect(content).to include("[connection]")
+      expect(content).to include("[hud]")
+      expect(content).to include("[chat]")
+      expect { TomlRB.parse(content) }.not_to raise_error
+    end
+
+    it "does not overwrite existing tui.toml on re-run" do
+      FileUtils.mkdir_p(tmp_home)
+      tui_path = tmp_home.join("tui.toml")
+      tui_path.write("[hud]\nmin_width = 42\n")
+
+      installer.run
+
+      expect(tui_path.read).to include("min_width = 42")
+    end
+
     it "creates mcp.toml config file" do
       installer.run
 
