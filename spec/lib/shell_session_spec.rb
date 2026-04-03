@@ -251,7 +251,7 @@ RSpec.describe ShellSession do
     it "reports branch change without directory change" do
       Dir.mktmpdir do |tmpdir|
         shell.run("cd #{tmpdir}")
-        shell.run("git init && git commit --allow-empty -m init")
+        shell.run("git init && git config user.name Test && git config user.email test@test.com && git commit --allow-empty -m init")
         branch = "test-branch-#{SecureRandom.hex(4)}"
         result = shell.run("git checkout -b #{branch}")
         expect(result[:env_summary]).to include("Branch changed to #{branch}.")
