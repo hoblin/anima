@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "time"
+require_relative "settings"
 require_relative "cable_client"
 require_relative "input_buffer"
 require_relative "message_store"
@@ -23,9 +24,6 @@ module TUI
     MENU_LABELS = (COMMAND_KEYS.map { |key, action| "[#{key}] #{action.to_s.tr("_", " ").capitalize}" } +
       ["[\u2191] Scroll chat", "[\u2193] Return to input", "[\u2192] Sub-agents / HUD"]).freeze
 
-    # HUD occupies 1/3 of screen width, clamped to a usable minimum.
-    HUD_MIN_WIDTH = 24
-
     # Picker entry prefix width: "[N]" (3) + marker (1) + space (1) = 5
     PICKER_PREFIX_WIDTH = 5
 
@@ -38,28 +36,22 @@ module TUI
 
     # Connection status emoji indicators for the info panel.
     # Subscribed (normal state) shows only the emoji; other states add text.
-    STATUS_STYLES = {
-      disconnected: {label: "🔴 Disconnected", color: "red"},
-      connecting: {label: "🟡 Connecting", color: "yellow"},
-      connected: {label: "🟡 Connecting", color: "yellow"},
-      subscribed: {label: "🟢", color: "green"},
-      reconnecting: {label: "🟡 Reconnecting", color: "yellow"}
+    STATUS_LABELS = {
+      disconnected: "🔴 Disconnected",
+      connecting: "🟡 Connecting",
+      connected: "🟡 Connecting",
+      subscribed: "🟢",
+      reconnecting: "🟡 Reconnecting"
     }.freeze
 
-    # Number of leading characters to show unmasked in the token input.
-    # Matches the "sk-ant-oat01-" prefix (13 chars) plus one character of the
-    # secret portion so the user can verify both the token type and start of key.
-    TOKEN_MASK_VISIBLE = 14
-
-    # Maximum stars to show in the masked portion of the token.
-    # Keeps the masked display compact regardless of actual token length.
-    TOKEN_MASK_STARS = 4
-
-    # Token setup popup dimensions. Height accommodates: status line, blank,
-    # 2 instruction lines, blank, "Token:" label, input line, blank,
-    # error/success line, blank, hint line, plus top/bottom borders.
-    POPUP_HEIGHT = 14
-    POPUP_MIN_WIDTH = 44
+    # Maps connection status to semantic theme color.
+    STATUS_COLORS = {
+      disconnected: :theme_color_error,
+      connecting: :theme_color_warning,
+      connected: :theme_color_warning,
+      subscribed: :theme_color_success,
+      reconnecting: :theme_color_warning
+    }.freeze
 
     # Matches a single printable Unicode character (no control codes).
     PRINTABLE_CHAR = /\A[[:print:]]\z/
@@ -67,20 +59,9 @@ module TUI
     # Signals that trigger graceful shutdown when received from the OS.
     SHUTDOWN_SIGNALS = %w[HUP TERM INT].freeze
 
-    # How often the watchdog thread checks if the controlling terminal is alive.
-    # @see #terminal_watchdog_loop
-    TERMINAL_CHECK_INTERVAL = 0.5
-
     # Unix controlling terminal device path.
     # @see #terminal_watchdog_loop
     CONTROLLING_TERMINAL = "/dev/tty"
-
-    # Grace period for watchdog thread to exit before force-killing it.
-    WATCHDOG_SHUTDOWN_TIMEOUT = 1
-
-    # HUD scroll step sizes (lines per event).
-    HUD_SCROLL_STEP = 1
-    HUD_MOUSE_SCROLL_STEP = 2
 
     attr_reader :current_screen, :command_mode, :session_picker_active,
       :view_mode_picker_active
@@ -160,7 +141,7 @@ module TUI
       @screens[:chat].hud_hint = !@hud_visible
 
       if @hud_visible
-        hud_width = [frame.area.width / 3, HUD_MIN_WIDTH].max
+        hud_width = [frame.area.width / 3, Settings.hud_min_width].max
         content_area, sidebar = tui.split(
           frame.area,
           direction: :horizontal,
@@ -201,7 +182,7 @@ module TUI
           title: "Command",
           borders: [:all],
           border_type: :rounded,
-          border_style: {fg: "yellow"}
+          border_style: {fg: Settings.theme_border_focused}
         )
       )
       frame.render_widget(menu, area)
@@ -261,8 +242,8 @@ module TUI
 
       lines = [
         tui.line(spans: [
-          tui.span(content: "\u{1F4CB} ", style: tui.style(fg: "dark_gray")),
-          tui.span(content: session_label, style: tui.style(fg: "cyan", modifiers: [:bold]))
+          tui.span(content: "\u{1F4CB} ", style: tui.style(fg: Settings.theme_color_muted)),
+          tui.span(content: session_label, style: tui.style(fg: Settings.theme_color_info, modifiers: [:bold]))
         ]),
         hud_goals_section(tui, session),
         hud_skills_line(tui, session),
@@ -277,7 +258,7 @@ module TUI
       @hud_max_scroll = [total_height - @hud_visible_height, 0].max
       @hud_scroll_offset = @hud_scroll_offset.clamp(0, @hud_max_scroll)
 
-      border_color = @hud_focused ? "yellow" : "white"
+      border_color = @hud_focused ? Settings.theme_border_focused : Settings.theme_border_normal
 
       content = tui.paragraph(
         text: lines,
@@ -302,9 +283,9 @@ module TUI
         content_length: @hud_max_scroll,
         position: @hud_scroll_offset,
         orientation: :vertical_right,
-        thumb_style: {fg: "cyan"},
+        thumb_style: {fg: Settings.theme_scrollbar_thumb},
         track_symbol: "\u2502",
-        track_style: {fg: "dark_gray"}
+        track_style: {fg: Settings.theme_scrollbar_track}
       )
       frame.render_widget(scrollbar, area)
     end
@@ -312,37 +293,38 @@ module TUI
     # Renders the bottom status bar: connection state and model name.
     def render_hud_status_bar(frame, area, tui)
       cable_status = @cable_client.status
-      style = STATUS_STYLES.fetch(cable_status, STATUS_STYLES[:disconnected])
+      label = STATUS_LABELS.fetch(cable_status, STATUS_LABELS[:disconnected])
+      status_color = Settings.public_send(STATUS_COLORS.fetch(cable_status, :theme_color_error))
 
       status_label = if cable_status == :reconnecting
         attempt = @cable_client.reconnect_attempt
-        max = CableClient::MAX_RECONNECT_ATTEMPTS
-        "#{style[:label]} (#{attempt}/#{max})"
+        max = Settings.connection_max_reconnect_attempts
+        "#{label} (#{attempt}/#{max})"
       else
-        style[:label]
+        label
       end
 
       view_mode = @screens[:chat].view_mode
       mode_label = view_mode.capitalize
       mode_color = case view_mode
-      when "verbose" then "yellow"
-      when "debug" then "magenta"
-      else "cyan"
+      when "verbose" then Settings.theme_color_warning
+      when "debug" then Settings.theme_color_accent
+      else Settings.theme_color_info
       end
 
       bar = tui.paragraph(
         text: [
           tui.line(spans: [
-            tui.span(content: "  ", style: tui.style(fg: "dark_gray")),
-            tui.span(content: status_label, style: tui.style(fg: style[:color], modifiers: [:bold])),
-            tui.span(content: " ", style: tui.style(fg: "dark_gray")),
+            tui.span(content: "  ", style: tui.style(fg: Settings.theme_color_muted)),
+            tui.span(content: status_label, style: tui.style(fg: status_color, modifiers: [:bold])),
+            tui.span(content: " ", style: tui.style(fg: Settings.theme_color_muted)),
             tui.span(content: mode_label, style: tui.style(fg: mode_color, modifiers: [:bold]))
           ])
         ],
         block: tui.block(
           borders: [:left, :bottom, :right],
           border_type: :rounded,
-          border_style: {fg: "white"}
+          border_style: {fg: Settings.theme_border_normal}
         )
       )
       frame.render_widget(bar, area)
@@ -360,7 +342,7 @@ module TUI
       lines = [
         tui.line(spans: [tui.span(content: "")]),
         tui.line(spans: [
-          tui.span(content: "\u{1F3AF} Goals", style: tui.style(fg: "dark_gray"))
+          tui.span(content: "\u{1F3AF} Goals", style: tui.style(fg: Settings.theme_color_muted))
         ])
       ]
 
@@ -368,7 +350,7 @@ module TUI
         icon, color = goal_icon_and_color(goal)
         lines << tui.line(spans: [
           tui.span(content: "  #{icon} ", style: tui.style(fg: color)),
-          tui.span(content: goal["description"].to_s, style: tui.style(fg: "white"))
+          tui.span(content: goal["description"].to_s, style: tui.style(fg: Settings.theme_color_text))
         ])
       end
 
@@ -382,11 +364,11 @@ module TUI
     # @return [Array(String, String)] icon and color pair
     def goal_icon_and_color(goal)
       if goal["status"] == "completed"
-        [GOAL_ICON_COMPLETED, "green"]
+        [GOAL_ICON_COMPLETED, Settings.theme_color_success]
       elsif goal["sub_goals"]&.any? { |sg| sg["status"] == "completed" }
-        [GOAL_ICON_IN_PROGRESS, "yellow"]
+        [GOAL_ICON_IN_PROGRESS, Settings.theme_color_warning]
       else
-        [GOAL_ICON_ACTIVE, "cyan"]
+        [GOAL_ICON_ACTIVE, Settings.theme_color_info]
       end
     end
 
@@ -399,8 +381,8 @@ module TUI
       [
         tui.line(spans: [tui.span(content: "")]),
         tui.line(spans: [
-          tui.span(content: "\u{1F9E0} ", style: tui.style(fg: "dark_gray")),
-          tui.span(content: skills.join(", "), style: tui.style(fg: "yellow"))
+          tui.span(content: "\u{1F9E0} ", style: tui.style(fg: Settings.theme_color_muted)),
+          tui.span(content: skills.join(", "), style: tui.style(fg: Settings.theme_color_warning))
         ])
       ]
     end
@@ -414,8 +396,8 @@ module TUI
       [
         tui.line(spans: [tui.span(content: "")]),
         tui.line(spans: [
-          tui.span(content: "\u{1F4DC} ", style: tui.style(fg: "dark_gray")),
-          tui.span(content: workflow, style: tui.style(fg: "magenta"))
+          tui.span(content: "\u{1F4DC} ", style: tui.style(fg: Settings.theme_color_muted)),
+          tui.span(content: workflow, style: tui.style(fg: Settings.theme_color_accent))
         ])
       ]
     end
@@ -432,7 +414,7 @@ module TUI
       lines = [
         tui.line(spans: [tui.span(content: "")]),
         tui.line(spans: [
-          tui.span(content: "\u{1F465} #{header_label}", style: tui.style(fg: "dark_gray"))
+          tui.span(content: "\u{1F465} #{header_label}", style: tui.style(fg: Settings.theme_color_muted))
         ])
       ]
 
@@ -443,13 +425,13 @@ module TUI
 
         lines << if selected
           tui.line(spans: [
-            tui.span(content: "\u25B8 #{icon} ", style: tui.style(fg: "cyan")),
-            tui.span(content: "@#{name}", style: tui.style(fg: "cyan", modifiers: [:bold]))
+            tui.span(content: "\u25B8 #{icon} ", style: tui.style(fg: Settings.theme_color_info)),
+            tui.span(content: "@#{name}", style: tui.style(fg: Settings.theme_color_info, modifiers: [:bold]))
           ])
         else
           tui.line(spans: [
             tui.span(content: "  #{icon} ", style: tui.style(fg: color)),
-            tui.span(content: "@#{name}", style: tui.style(fg: "white"))
+            tui.span(content: "@#{name}", style: tui.style(fg: Settings.theme_color_text))
           ])
         end
       end
@@ -467,13 +449,13 @@ module TUI
     def child_icon_and_color(child)
       case child["session_state"]
       when "llm_generating"
-        [CHILD_ICON_GENERATING, "green"]
+        [CHILD_ICON_GENERATING, Settings.theme_color_success]
       when "tool_executing"
-        [CHILD_ICON_TOOL_EXECUTING, "green"]
+        [CHILD_ICON_TOOL_EXECUTING, Settings.theme_color_success]
       when "interrupting"
-        [CHILD_ICON_INTERRUPTING, "red"]
+        [CHILD_ICON_INTERRUPTING, Settings.theme_color_error]
       else
-        [CHILD_ICON_IDLE, "dark_gray"]
+        [CHILD_ICON_IDLE, Settings.theme_color_muted]
       end
     end
 
@@ -492,7 +474,7 @@ module TUI
           title: " \u{1F4CA} Token Economy ",
           borders: [:left, :top, :right],
           border_type: :rounded,
-          border_style: {fg: "white"}
+          border_style: {fg: Settings.theme_border_normal}
         )
       )
       frame.render_widget(panel, area)
@@ -522,7 +504,7 @@ module TUI
       util_5h = rate_limits["5h_utilization"]
       if util_5h
         pct = (util_5h * 100).round
-        bar = build_progress_bar(pct, 8)
+        bar = build_progress_bar(pct, Settings.theme_progress_bar_width)
         color = rate_limit_color(pct)
         reset_5h = rate_limits["5h_reset"]
         reset_label = reset_5h ? " #{format_reset_time(reset_5h)}" : ""
@@ -531,7 +513,7 @@ module TUI
           tui.span(content: "  5h ", style: tui.style(fg: color, modifiers: [:bold])),
           tui.span(content: bar, style: tui.style(fg: color)),
           tui.span(content: " #{pct.to_s.rjust(2)}%", style: tui.style(fg: color)),
-          tui.span(content: reset_label, style: tui.style(fg: "dark_gray"))
+          tui.span(content: reset_label, style: tui.style(fg: Settings.theme_color_muted))
         ])
       end
 
@@ -539,7 +521,7 @@ module TUI
       util_7d = rate_limits["7d_utilization"]
       if util_7d
         pct = (util_7d * 100).round
-        bar = build_progress_bar(pct, 8)
+        bar = build_progress_bar(pct, Settings.theme_progress_bar_width)
         color = rate_limit_color(pct)
 
         lines << tui.line(spans: [
@@ -558,7 +540,7 @@ module TUI
     def build_cache_metrics_lines(tui, stats)
       hit_rate = (stats[:cache_hit_rate] * 100).round
       color = cache_hit_color(hit_rate)
-      bar = build_progress_bar(hit_rate, 8)
+      bar = build_progress_bar(hit_rate, Settings.theme_progress_bar_width)
 
       total_cached = stats[:cache_read_input_tokens]
       saved_label = format_token_count(total_cached)
@@ -570,8 +552,8 @@ module TUI
           tui.span(content: " #{hit_rate.to_s.rjust(2)}%", style: tui.style(fg: color))
         ]),
         tui.line(spans: [
-          tui.span(content: "  \u{1F4BE} ", style: tui.style(fg: "green")),
-          tui.span(content: saved_label, style: tui.style(fg: "green"))
+          tui.span(content: "  \u{1F4BE} ", style: tui.style(fg: Settings.theme_color_success)),
+          tui.span(content: saved_label, style: tui.style(fg: Settings.theme_color_success))
         ])
       ]
 
@@ -581,7 +563,7 @@ module TUI
         sparkline = build_braille_sparkline(history)
         color = cache_hit_color(hit_rate)
         lines << tui.line(spans: [
-          tui.span(content: "     ", style: tui.style(fg: "dark_gray")),
+          tui.span(content: "     ", style: tui.style(fg: Settings.theme_color_muted)),
           tui.span(content: sparkline, style: tui.style(fg: color))
         ])
       end
@@ -627,18 +609,18 @@ module TUI
       ("\u2593" * filled) + ("\u2591" * empty)
     end
 
-    # Color for rate limit percentage (green < 70, yellow < 90, red >= 90).
+    # Color for rate limit percentage: green below warning, yellow below critical, red above.
     def rate_limit_color(pct)
-      return "red" if pct >= 90
-      return "yellow" if pct >= 70
-      "green"
+      return Settings.theme_color_error if pct >= Settings.theme_rate_limit_critical
+      return Settings.theme_color_warning if pct >= Settings.theme_rate_limit_warning
+      Settings.theme_color_success
     end
 
-    # Color for cache hit rate (green >= 70, yellow >= 30, red < 30).
+    # Color for cache hit rate: green above good, yellow above low, red below.
     def cache_hit_color(pct)
-      return "green" if pct >= 70
-      return "yellow" if pct >= 30
-      "red"
+      return Settings.theme_color_success if pct >= Settings.theme_cache_hit_good
+      return Settings.theme_color_warning if pct >= Settings.theme_cache_hit_low
+      Settings.theme_color_error
     end
 
     # Formats a reset timestamp as time remaining (e.g., "2h15m").
@@ -667,11 +649,11 @@ module TUI
     def interaction_state_line(tui)
       if @hud_focused
         tui.line(spans: [
-          tui.span(content: "HUD Scroll", style: tui.style(fg: "yellow", modifiers: [:bold]))
+          tui.span(content: "HUD Scroll", style: tui.style(fg: Settings.theme_color_warning, modifiers: [:bold]))
         ])
       elsif @screens[:chat].chat_focused
         tui.line(spans: [
-          tui.span(content: "Scrolling", style: tui.style(fg: "yellow", modifiers: [:bold]))
+          tui.span(content: "Scrolling", style: tui.style(fg: Settings.theme_color_warning, modifiers: [:bold]))
         ])
       elsif chat_loading?
         chat = @screens[:chat]
@@ -889,9 +871,9 @@ module TUI
     # Scrolls the HUD viewport with arrow/page keys.
     def handle_hud_scroll(event)
       if event.up?
-        scroll_hud_up(HUD_SCROLL_STEP)
+        scroll_hud_up(Settings.hud_scroll_step)
       elsif event.down?
-        scroll_hud_down(HUD_SCROLL_STEP)
+        scroll_hud_down(Settings.hud_scroll_step)
       elsif event.page_up?
         scroll_hud_up(@hud_visible_height)
       elsif event.page_down?
@@ -911,9 +893,9 @@ module TUI
       return false unless event.scroll_up? || event.scroll_down?
 
       if event.scroll_up?
-        scroll_hud_up(HUD_MOUSE_SCROLL_STEP)
+        scroll_hud_up(Settings.hud_mouse_scroll_step)
       else
-        scroll_hud_down(HUD_MOUSE_SCROLL_STEP)
+        scroll_hud_down(Settings.hud_mouse_scroll_step)
       end
       true
     end
@@ -1012,12 +994,10 @@ module TUI
     CHILD_STATUS_DONE = "\u2713"      # ✓
     CHILDREN_ARROW = "\u25B8"         # ▸ shown next to sessions with children
     UNNAMED_SUBAGENT_LABEL = "sub-agent"
-    SESSION_PICKER_PAGE_SIZE = 9
-    SESSION_PICKER_FETCH_LIMIT = 50
     BACK_ARROW = "\u2190"             # ←
 
     # Requests the session list from the brain and opens the picker overlay.
-    # Fetches up to SESSION_PICKER_FETCH_LIMIT sessions for client-side pagination.
+    # Fetches up to Settings.session_picker_fetch_limit sessions for client-side pagination.
     # @return [void]
     def activate_session_picker
       @session_picker_active = true
@@ -1025,7 +1005,7 @@ module TUI
       @session_picker_page = 0
       @session_picker_mode = :root
       @session_picker_parent_id = nil
-      @cable_client.list_sessions(limit: SESSION_PICKER_FETCH_LIMIT)
+      @cable_client.list_sessions(limit: Settings.session_picker_fetch_limit)
     end
 
     # Dispatches keyboard events while the session picker overlay is open.
@@ -1089,8 +1069,8 @@ module TUI
     # @return [Array<Hash>] visible items for the current page
     def session_picker_visible_items
       all = session_picker_all_items_for_mode
-      start = @session_picker_page * SESSION_PICKER_PAGE_SIZE
-      page = all[start, SESSION_PICKER_PAGE_SIZE] || []
+      start = @session_picker_page * Settings.session_picker_page_size
+      page = all[start, Settings.session_picker_page_size] || []
 
       page.map do |item|
         case @session_picker_mode
@@ -1105,13 +1085,13 @@ module TUI
     # @return [Boolean] true when more items exist beyond the current page
     def session_picker_has_more?
       total = session_picker_all_items_for_mode.size
-      ((@session_picker_page + 1) * SESSION_PICKER_PAGE_SIZE) < total
+      ((@session_picker_page + 1) * Settings.session_picker_page_size) < total
     end
 
     # @return [Integer] number of items beyond the current page
     def session_picker_remaining_count
       total = session_picker_all_items_for_mode.size
-      [total - ((@session_picker_page + 1) * SESSION_PICKER_PAGE_SIZE), 0].max
+      [total - ((@session_picker_page + 1) * Settings.session_picker_page_size), 0].max
     end
 
     # Handles Escape in the session picker. In children mode, returns to root.
@@ -1188,7 +1168,7 @@ module TUI
 
       if sessions.nil?
         lines = [tui.line(spans: [
-          tui.span(content: "Loading...", style: tui.style(fg: "yellow"))
+          tui.span(content: "Loading...", style: tui.style(fg: Settings.theme_color_warning))
         ])]
       else
         visible = session_picker_visible_items
@@ -1206,7 +1186,7 @@ module TUI
 
         if lines.empty?
           lines = [tui.line(spans: [
-            tui.span(content: "No sessions", style: tui.style(fg: "dark_gray"))
+            tui.span(content: "No sessions", style: tui.style(fg: Settings.theme_color_muted))
           ])]
         end
       end
@@ -1217,7 +1197,7 @@ module TUI
           title: session_picker_title,
           borders: [:all],
           border_type: :rounded,
-          border_style: {fg: "cyan"}
+          border_style: {fg: Settings.theme_color_info}
         )
       )
       frame.render_widget(picker, area)
@@ -1258,11 +1238,11 @@ module TUI
       label = "#{prefix}#{marker}#{arrow}#{display_name} #{count}#{child_info} #{time}"
 
       style = if selected
-        tui.style(fg: "black", bg: "cyan")
+        tui.style(fg: Settings.theme_highlight_fg, bg: Settings.theme_highlight_bg)
       elsif is_current
-        tui.style(fg: "cyan", modifiers: [:bold])
+        tui.style(fg: Settings.theme_color_info, modifiers: [:bold])
       else
-        tui.style(fg: "white")
+        tui.style(fg: Settings.theme_color_text)
       end
 
       [tui.line(spans: [tui.span(content: label, style: style)])]
@@ -1283,15 +1263,15 @@ module TUI
       prefix = hotkey ? "[#{hotkey}]" : "   "
       marker = is_current ? "*" : " "
       status = child["processing"] ? CHILD_STATUS_RUNNING : CHILD_STATUS_DONE
-      status_color = child["processing"] ? "yellow" : "green"
+      status_color = child["processing"] ? Settings.theme_color_warning : Settings.theme_color_success
       display_name = child["name"] || UNNAMED_SUBAGENT_LABEL
 
       label = "#{prefix}#{marker}#{status} #{display_name}"
 
       style = if selected
-        tui.style(fg: "black", bg: "cyan")
+        tui.style(fg: Settings.theme_highlight_fg, bg: Settings.theme_highlight_bg)
       elsif is_current
-        tui.style(fg: "cyan", modifiers: [:bold])
+        tui.style(fg: Settings.theme_color_info, modifiers: [:bold])
       else
         tui.style(fg: status_color)
       end
@@ -1306,7 +1286,7 @@ module TUI
     def format_load_more_entry(tui)
       remaining = session_picker_remaining_count
       label = "[0]  Load more (#{remaining})"
-      [tui.line(spans: [tui.span(content: label, style: tui.style(fg: "dark_gray"))])]
+      [tui.line(spans: [tui.span(content: label, style: tui.style(fg: Settings.theme_color_muted))])]
     end
 
     # -- View mode picker ----------------------------------------------
@@ -1363,7 +1343,7 @@ module TUI
           title: "View Mode",
           borders: [:all],
           border_type: :rounded,
-          border_style: {fg: "cyan"}
+          border_style: {fg: Settings.theme_color_info}
         )
       )
       frame.render_widget(picker, area)
@@ -1385,17 +1365,17 @@ module TUI
       prefix = hotkey ? "[#{hotkey}]" : "   "
       marker = is_current ? "*" : " "
 
-      selected_style = tui.style(fg: "black", bg: "cyan")
+      selected_style = tui.style(fg: Settings.theme_highlight_fg, bg: Settings.theme_highlight_bg)
 
       name_style = if selected
         selected_style
       elsif is_current
-        tui.style(fg: "cyan", modifiers: [:bold])
+        tui.style(fg: Settings.theme_color_info, modifiers: [:bold])
       else
-        tui.style(fg: "white")
+        tui.style(fg: Settings.theme_color_text)
       end
 
-      desc_style = selected ? selected_style : tui.style(fg: "dark_gray")
+      desc_style = selected ? selected_style : tui.style(fg: Settings.theme_color_muted)
 
       [
         tui.line(spans: [tui.span(content: "#{prefix}#{marker}#{mode.capitalize}", style: name_style)]),
@@ -1540,9 +1520,9 @@ module TUI
       frame.render_widget(tui.clear, popup_area)
 
       border_color = case @token_setup_status
-      when :success then "green"
-      when :error then "red"
-      else "yellow"
+      when :success then Settings.theme_color_success
+      when :error then Settings.theme_color_error
+      else Settings.theme_color_warning
       end
 
       lines = build_token_setup_lines(tui)
@@ -1571,36 +1551,36 @@ module TUI
       # Status
       status_text, status_color = token_status_display
       lines << tui.line(spans: [
-        tui.span(content: "Status: ", style: tui.style(fg: "dark_gray")),
+        tui.span(content: "Status: ", style: tui.style(fg: Settings.theme_color_muted)),
         tui.span(content: status_text, style: tui.style(fg: status_color, modifiers: [:bold]))
       ])
       lines << tui.line(spans: [tui.span(content: "")])
 
       # Instructions
       lines << tui.line(spans: [
-        tui.span(content: "Run ", style: tui.style(fg: "white")),
-        tui.span(content: "claude setup-token", style: tui.style(fg: "cyan", modifiers: [:bold])),
-        tui.span(content: " to get", style: tui.style(fg: "white"))
+        tui.span(content: "Run ", style: tui.style(fg: Settings.theme_color_text)),
+        tui.span(content: "claude setup-token", style: tui.style(fg: Settings.theme_color_info, modifiers: [:bold])),
+        tui.span(content: " to get", style: tui.style(fg: Settings.theme_color_text))
       ])
       lines << tui.line(spans: [
-        tui.span(content: "your token, then paste it here.", style: tui.style(fg: "white"))
+        tui.span(content: "your token, then paste it here.", style: tui.style(fg: Settings.theme_color_text))
       ])
       lines << tui.line(spans: [tui.span(content: "")])
 
       # Token input
       masked = mask_token(@token_input_buffer.text)
       lines << tui.line(spans: [
-        tui.span(content: "Token:", style: tui.style(fg: "white", modifiers: [:bold]))
+        tui.span(content: "Token:", style: tui.style(fg: Settings.theme_color_text, modifiers: [:bold]))
       ])
       lines << tui.line(spans: [
-        tui.span(content: "> #{masked}", style: tui.style(fg: "white"))
+        tui.span(content: "> #{masked}", style: tui.style(fg: Settings.theme_color_text))
       ])
       lines << tui.line(spans: [tui.span(content: "")])
 
       # Error or success message
       if @token_setup_error
         lines << tui.line(spans: [
-          tui.span(content: @token_setup_error, style: tui.style(fg: "red"))
+          tui.span(content: @token_setup_error, style: tui.style(fg: Settings.theme_color_error))
         ])
         lines << tui.line(spans: [tui.span(content: "")])
       end
@@ -1608,11 +1588,11 @@ module TUI
       if @token_setup_status == :success
         lines << if @token_setup_warning
           tui.line(spans: [
-            tui.span(content: "Token saved (API unavailable, validation skipped)", style: tui.style(fg: "yellow", modifiers: [:bold]))
+            tui.span(content: "Token saved (API unavailable, validation skipped)", style: tui.style(fg: Settings.theme_color_warning, modifiers: [:bold]))
           ])
         else
           tui.line(spans: [
-            tui.span(content: "Token saved and validated!", style: tui.style(fg: "green", modifiers: [:bold]))
+            tui.span(content: "Token saved and validated!", style: tui.style(fg: Settings.theme_color_success, modifiers: [:bold]))
           ])
         end
         lines << tui.line(spans: [tui.span(content: "")])
@@ -1625,7 +1605,7 @@ module TUI
       else "[Enter] Save  [Esc] Cancel"
       end
       lines << tui.line(spans: [
-        tui.span(content: hint, style: tui.style(fg: "dark_gray"))
+        tui.span(content: hint, style: tui.style(fg: Settings.theme_color_muted))
       ])
 
       lines
@@ -1635,31 +1615,31 @@ module TUI
     def token_status_display
       case @token_setup_status
       when :success
-        @token_setup_warning ? ["Saved (unverified)", "yellow"] : ["Valid", "green"]
+        @token_setup_warning ? ["Saved (unverified)", Settings.theme_color_warning] : ["Valid", Settings.theme_color_success]
       when :validating
-        ["Validating...", "yellow"]
+        ["Validating...", Settings.theme_color_warning]
       when :error
-        ["Invalid", "red"]
+        ["Invalid", Settings.theme_color_error]
       else
         if @token_input_buffer.text.empty?
-          ["Not configured", "dark_gray"]
+          ["Not configured", Settings.theme_color_muted]
         else
-          ["Ready to save", "cyan"]
+          ["Ready to save", Settings.theme_color_info]
         end
       end
     end
 
-    # Masks an Anthropic token for display: shows the first TOKEN_MASK_VISIBLE
+    # Masks an Anthropic token for display: shows the first Settings.token_dialog_mask_visible
     # characters (the prefix) and replaces the rest with stars.
     #
     # @param token [String] raw token text
     # @return [String] masked display text
     def mask_token(token)
       return "" if token.empty?
-      return token if token.length <= TOKEN_MASK_VISIBLE
+      return token if token.length <= Settings.token_dialog_mask_visible
 
-      visible = token[0...TOKEN_MASK_VISIBLE]
-      hidden_count = [token.length - TOKEN_MASK_VISIBLE, TOKEN_MASK_STARS].min
+      visible = token[0...Settings.token_dialog_mask_visible]
+      hidden_count = [token.length - Settings.token_dialog_mask_visible, Settings.token_dialog_mask_stars].min
       "#{visible}#{"*" * hidden_count}..."
     end
 
@@ -1697,7 +1677,7 @@ module TUI
     # @param area [RatatuiRuby::Rect] full terminal area
     # @return [RatatuiRuby::Rect] centered popup area
     def centered_popup_area(tui, area)
-      popup_height = [POPUP_HEIGHT, area.height - 2].min
+      popup_height = [Settings.token_dialog_popup_height, area.height - 2].min
       v_margin = [(area.height - popup_height) / 2, 0].max
 
       _, center_v, _ = tui.split(
@@ -1710,7 +1690,7 @@ module TUI
         ]
       )
 
-      popup_width = (area.width * 60 / 100).clamp(POPUP_MIN_WIDTH, area.width - 2)
+      popup_width = (area.width * 60 / 100).clamp(Settings.token_dialog_popup_min_width, area.width - 2)
       h_margin = [(area.width - popup_width) / 2, 0].max
 
       _, center, _ = tui.split(
@@ -1790,18 +1770,18 @@ module TUI
     def stop_terminal_watchdog
       return unless @watchdog_thread
 
-      @watchdog_thread.join(WATCHDOG_SHUTDOWN_TIMEOUT)
+      @watchdog_thread.join(Settings.terminal_shutdown_timeout)
       @watchdog_thread.kill if @watchdog_thread.alive?
       @watchdog_thread = nil
     end
 
-    # Opens {CONTROLLING_TERMINAL} every {TERMINAL_CHECK_INTERVAL} seconds.
+    # Opens {CONTROLLING_TERMINAL} every +terminal.check_interval+ seconds.
     # File.open (not File.stat) is required because stat only checks the
     # filesystem entry which always exists; open actually probes the device.
     # When the terminal disappears, calls {#handle_terminal_loss}.
     # Exits silently in non-TTY environments (CI, test suites).
     # @see CONTROLLING_TERMINAL
-    # @see TERMINAL_CHECK_INTERVAL
+    # @see TUI::Settings.terminal_check_interval
     # @return [void]
     def terminal_watchdog_loop
       # Empty block triggers open syscall to probe the device, then immediately closes the FD.
@@ -1814,7 +1794,7 @@ module TUI
         rescue Errno::ENXIO, Errno::EIO, Errno::ENOENT
           handle_terminal_loss
         end
-        sleep TERMINAL_CHECK_INTERVAL
+        sleep Settings.terminal_check_interval
       end
     rescue SystemCallError
       # No controlling terminal — nothing to watch (ENXIO, EIO, ENOENT, EACCES, etc.)

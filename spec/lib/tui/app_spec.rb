@@ -12,6 +12,7 @@ RSpec.describe TUI::App do
   subject(:app) { described_class.new(cable_client: cable_client) }
 
   before do
+    TUI::Settings.config_path = File.expand_path("../../../templates/tui.toml", __dir__)
     allow(cable_client).to receive(:drain_messages).and_return([])
     allow(cable_client).to receive(:speak)
     allow(cable_client).to receive(:list_sessions)
@@ -19,6 +20,8 @@ RSpec.describe TUI::App do
     allow(cable_client).to receive(:change_view_mode)
     allow(cable_client).to receive(:save_token)
   end
+
+  after { TUI::Settings.reset! }
 
   describe "#initialize" do
     it "starts on the chat screen" do
@@ -1191,14 +1194,14 @@ RSpec.describe TUI::App do
       end
 
       it "returns unmasked text when exactly TOKEN_MASK_VISIBLE length" do
-        token = "x" * TUI::App::TOKEN_MASK_VISIBLE
+        token = "x" * TUI::Settings.token_dialog_mask_visible
         expect(app.send(:mask_token, token)).to eq(token)
       end
 
       it "shows exactly TOKEN_MASK_VISIBLE characters unmasked" do
         token = "sk-ant-oat01-#{"x" * 67}"
         masked = app.send(:mask_token, token)
-        expect(masked[0...TUI::App::TOKEN_MASK_VISIBLE]).to eq(token[0...TUI::App::TOKEN_MASK_VISIBLE])
+        expect(masked[0...TUI::Settings.token_dialog_mask_visible]).to eq(token[0...TUI::Settings.token_dialog_mask_visible])
       end
     end
 
@@ -1505,36 +1508,6 @@ RSpec.describe TUI::App do
   end
 
   describe "connection status" do
-    it "defines styles for all connection states" do
-      expect(TUI::App::STATUS_STYLES.keys).to contain_exactly(
-        :disconnected, :connecting, :connected, :subscribed, :reconnecting
-      )
-    end
-
-    it "uses emoji-only label for subscribed (normal) state" do
-      expect(TUI::App::STATUS_STYLES[:subscribed][:label]).to eq("🟢")
-    end
-
-    it "uses red emoji with text for disconnected state" do
-      style = TUI::App::STATUS_STYLES[:disconnected]
-      expect(style[:label]).to eq("🔴 Disconnected")
-      expect(style[:color]).to eq("red")
-    end
-
-    it "uses yellow emoji with text for connecting states" do
-      %i[connecting connected].each do |state|
-        style = TUI::App::STATUS_STYLES[state]
-        expect(style[:label]).to eq("🟡 Connecting")
-        expect(style[:color]).to eq("yellow")
-      end
-    end
-
-    it "uses yellow emoji with text for reconnecting state" do
-      style = TUI::App::STATUS_STYLES[:reconnecting]
-      expect(style[:label]).to eq("🟡 Reconnecting")
-      expect(style[:color]).to eq("yellow")
-    end
-
     describe "#hud_skills_line" do
       let(:tui) do
         tui = double("tui")

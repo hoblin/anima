@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "logger"
+require_relative "settings"
 
 module TUI
   # Frame-level performance logger for TUI render profiling.
@@ -18,8 +19,6 @@ module TUI
   #   logger.measure(:line_count) { widget.line_count(width) }
   #   logger.end_frame
   class PerformanceLogger
-    LOG_PATH = "log/tui_performance.log"
-
     # @param enabled [Boolean] whether to actually log (no-op when false)
     def initialize(enabled: false)
       @enabled = enabled
@@ -30,7 +29,7 @@ module TUI
 
       return unless @enabled
 
-      @logger = Logger.new(LOG_PATH, 1, 5 * 1024 * 1024) # 5MB rotation
+      @logger = Logger.new(Settings.performance_log_path, 1, 5 * 1024 * 1024) # 5MB rotation
       @logger.formatter = proc { |_sev, time, _prog, msg| "#{time.strftime("%H:%M:%S.%L")} #{msg}\n" }
       @logger.info("TUI Performance Logger started — pid=#{Process.pid}")
     end

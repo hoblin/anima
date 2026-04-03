@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "settings"
+
 module TUI
   # Ephemeral notification system for the TUI, modeled after Rails flash
   # messages. Notifications render as a colored bar at the top of the
@@ -22,18 +24,19 @@ module TUI
   # @example Dismissing
   #   flash.dismiss!
   class Flash
-    AUTO_DISMISS_SECONDS = 20.0
-
-    # Flash area occupies at most 1/3 of the chat pane height.
-    MAX_HEIGHT_FRACTION = 3
-
     Entry = Struct.new(:message, :level, :created_at, keyword_init: true)
 
-    LEVEL_STYLES = {
-      error: {fg: "white", bg: "red", icon: " \u2718 "},
-      warning: {fg: "black", bg: "yellow", icon: " \u26A0 "},
-      info: {fg: "white", bg: "blue", icon: " \u2139 "}
-    }.freeze
+    LEVEL_ICONS = {error: " \u2718 ", warning: " \u26A0 ", info: " \u2139 "}.freeze
+
+    # Builds level styles from current theme settings.
+    # Called per-render so hot-reloaded theme changes take effect immediately.
+    def self.level_styles
+      {
+        error: {fg: Settings.theme_flash_error_fg, bg: Settings.theme_flash_error_bg},
+        warning: {fg: Settings.theme_flash_warning_fg, bg: Settings.theme_flash_warning_bg},
+        info: {fg: Settings.theme_flash_info_fg, bg: Settings.theme_flash_info_bg}
+      }
+    end
 
     def initialize
       @entries = []
@@ -81,7 +84,7 @@ module TUI
       expire!
       return 0 if @entries.empty?
 
-      height = [@entries.size, area.height / MAX_HEIGHT_FRACTION].min
+      height = [@entries.size, area.height / Settings.flash_max_height_fraction].min
 
       flash_area, _ = tui.split(
         area,
@@ -110,7 +113,7 @@ module TUI
 
     def expire!
       now = monotonic_now
-      @entries.reject! { |entry| now - entry.created_at > AUTO_DISMISS_SECONDS }
+      @entries.reject! { |entry| now - entry.created_at > Settings.flash_auto_dismiss_seconds }
     end
 
     def row_rect(area, index, tui)
@@ -120,10 +123,12 @@ module TUI
     end
 
     def render_entry(frame, area, entry, tui)
-      config = LEVEL_STYLES.fetch(entry.level, LEVEL_STYLES[:info])
+      styles = self.class.level_styles
+      config = styles.fetch(entry.level, styles[:info])
+      icon = LEVEL_ICONS.fetch(entry.level, LEVEL_ICONS[:info])
       style = tui.style(fg: config[:fg], bg: config[:bg], modifiers: [:bold])
 
-      text = "#{config[:icon]}#{entry.message} "
+      text = "#{icon}#{entry.message} "
       # Pad to full width so background color fills the entire row
       padded = text.ljust(area.width)
 

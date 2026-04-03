@@ -1,0 +1,209 @@
+# TUI Configuration
+#
+# Presentation settings for the Anima terminal interface.
+# Changes take effect immediately — no restart needed.
+#
+# These settings only affect the TUI client, not the brain server.
+# Brain settings live in config.toml.
+
+# ─── Connection ──────────────────────────────────────────────────
+
+[connection]
+
+# Brain server address (host:port). Override per-launch with --host flag.
+default_host = "localhost:42134"
+
+# Seconds to wait for WebSocket thread cleanup on disconnect.
+disconnect_timeout = 2
+
+# Seconds between connection status checks during connect/reconnect.
+poll_interval = 0.1
+
+# Seconds before a connection attempt is considered timed out.
+timeout = 10
+
+# Maximum reconnection attempts before giving up.
+max_reconnect_attempts = 10
+
+# Initial delay before first reconnection attempt (seconds).
+# Doubles with each subsequent attempt up to backoff_cap.
+backoff_base = 1.0
+
+# Maximum delay between reconnection attempts (seconds).
+backoff_cap = 30.0
+
+# Seconds without an Action Cable ping before the connection is stale.
+ping_stale_threshold = 6.0
+
+# ─── HUD ─────────────────────────────────────────────────────────
+
+[hud]
+
+# Minimum width (columns) for the info panel.
+# The HUD occupies 1/3 of screen width, clamped to this minimum.
+min_width = 24
+
+# Lines scrolled per keyboard arrow event.
+scroll_step = 1
+
+# Lines scrolled per mouse wheel event.
+mouse_scroll_step = 2
+
+# ─── Chat ────────────────────────────────────────────────────────
+
+[chat]
+
+# Minimum height (rows) for the text input area.
+min_input_height = 3
+
+# Lines scrolled per keyboard arrow event.
+scroll_step = 1
+
+# Lines scrolled per mouse wheel event.
+mouse_scroll_step = 2
+
+# Entries rendered before scroll target for upward scroll margin.
+viewport_back_buffer = 3
+
+# Viewports worth of lines to pre-build for smooth scrolling.
+viewport_overflow_multiplier = 2
+
+# Entries from the end before including all trailing entries.
+viewport_bottom_threshold = 10
+
+# ─── Terminal ────────────────────────────────────────────────────
+
+[terminal]
+
+# How often the watchdog checks if the controlling terminal is alive (seconds).
+check_interval = 0.5
+
+# Grace period for watchdog thread to exit before force-killing it (seconds).
+shutdown_timeout = 1
+
+# ─── Token Dialog ────────────────────────────────────────────────
+
+[token_dialog]
+
+# Leading characters shown unmasked in the token input.
+# Default 14 matches the "sk-ant-oat01-" prefix plus one secret character.
+mask_visible = 14
+
+# Maximum stars shown in the masked portion.
+mask_stars = 4
+
+# Height (rows) of the token setup popup.
+popup_height = 14
+
+# Minimum width (columns) of the token setup popup.
+popup_min_width = 44
+
+# ─── Session Picker ──────────────────────────────────────────────
+
+[session_picker]
+
+# Sessions displayed per page.
+page_size = 9
+
+# Maximum sessions fetched from the brain for client-side pagination.
+fetch_limit = 50
+
+# ─── Flash ───────────────────────────────────────────────────────
+
+[flash]
+
+# Seconds before flash notifications auto-dismiss.
+auto_dismiss_seconds = 20.0
+
+# Flash area occupies at most 1/N of the chat pane height.
+max_height_fraction = 3
+
+# ─── Input ───────────────────────────────────────────────────────
+
+[input]
+
+# Maximum character length for the text input buffer.
+max_length = 10_000
+
+# ─── Message Store ───────────────────────────────────────────────
+
+[message_store]
+
+# Maximum cache history entries for sparkline rendering.
+# Each braille character encodes 2 data points, so 200 entries
+# render as ~100 characters.
+max_cache_history = 200
+
+# ─── Theme ────────────────────────────────────────────────────────
+
+[theme]
+
+# Progress bar width in characters.
+progress_bar_width = 8
+
+# Rate limit color thresholds (percentage).
+# Below warning = green, between warning and critical = yellow, above critical = red.
+rate_limit_warning = 70
+rate_limit_critical = 90
+
+# Cache hit color thresholds (percentage).
+# Above good = green, between low and good = yellow, below low = red.
+cache_hit_good = 70
+cache_hit_low = 30
+
+# Chat message background colors (256-color palette codes).
+# 22 = dark green (#005f00), 17 = dark navy (#00005f).
+# Full palette: https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit
+user_message_bg = 22
+assistant_message_bg = 17
+
+# Scrollbar colors.
+scrollbar_thumb = "cyan"
+scrollbar_track = "dark_gray"
+
+# Semantic colors — consistent visual language across the TUI.
+# Success (connected, completed, saved), error (disconnected, failed),
+# warning (connecting, loading, in-progress), info (labels, highlights),
+# muted (de-emphasized, idle, hints), accent (tool calls, special actions).
+color_success = "green"
+color_error = "red"
+color_warning = "yellow"
+color_info = "cyan"
+color_muted = "dark_gray"
+color_accent = "magenta"
+color_text = "white"
+
+# Selection highlight (session picker, menus).
+highlight_fg = "black"
+highlight_bg = "cyan"
+
+# Flash notification colors.
+flash_error_fg = "white"
+flash_error_bg = "red"
+flash_warning_fg = "black"
+flash_warning_bg = "yellow"
+flash_info_fg = "white"
+flash_info_bg = "blue"
+
+# Token count color for expensive responses (10k-20k tokens).
+# 208 = orange in 256-color palette.
+color_expensive = 208
+
+# Tool response CRUD colors — distinguish read/create/update at a glance.
+tool_read_color = "light_blue"
+tool_create_color = "light_green"
+tool_update_color = "light_yellow"
+
+# Border colors.
+border_focused = "yellow"
+border_normal = "white"
+border_input_connected = "green"
+border_input_connecting = "yellow"
+border_input_disconnected = "dark_gray"
+
+# ─── Performance ─────────────────────────────────────────────────
+
+[performance]
+
+# File path for TUI performance debug logs (relative to working directory).
+log_path = "log/tui_performance.log"

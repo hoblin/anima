@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "settings"
+
 module TUI
   # Shared formatting helpers for timestamps and token counts.
   # Used by both the Chat screen and client-side decorators
@@ -21,21 +23,21 @@ module TUI
     # responses jump out immediately in debug mode.
     #
     # Thresholds (empirically tuned from real agent sessions):
-    #   < 1k  → dark_gray  (routine, ignorable)
-    #   < 3k  → white      (normal)
-    #   < 10k → yellow     (notable)
+    #   < 1k  → muted   (routine, ignorable)
+    #   < 3k  → text    (normal)
+    #   < 10k → warning (notable)
     #   < 20k → 208/orange (expensive)
-    #   ≥ 20k → red        (alarm — likely runaway)
+    #   ≥ 20k → error   (alarm — likely runaway)
     #
     # @param tokens [Integer] token count
     # @return [String, Integer] named color or 256-color index
     def token_count_color(tokens)
-      return "dark_gray" if tokens < 1_000
-      return "white" if tokens < 3_000
-      return "yellow" if tokens < 10_000
-      return 208 if tokens < 20_000 # orange (256-color)
+      return Settings.theme_color_muted if tokens < 1_000
+      return Settings.theme_color_text if tokens < 3_000
+      return Settings.theme_color_warning if tokens < 10_000
+      return Settings.theme_color_expensive if tokens < 20_000
 
-      "red"
+      Settings.theme_color_error
     end
 
     # Converts nanosecond-precision timestamp to human-readable HH:MM:SS.

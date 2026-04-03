@@ -6,61 +6,64 @@ require "tui/formatting"
 RSpec.describe TUI::Formatting do
   subject(:formatter) { Object.new.extend(described_class) }
 
+  before { TUI::Settings.config_path = File.expand_path("../../../templates/tui.toml", __dir__) }
+  after { TUI::Settings.reset! }
+
   describe "#token_count_color" do
-    it "returns dark_gray for tokens under 1k" do
-      expect(formatter.token_count_color(500)).to eq("dark_gray")
+    it "returns muted color for tokens under 1k" do
+      expect(formatter.token_count_color(500)).to eq(TUI::Settings.theme_color_muted)
     end
 
-    it "returns white for tokens between 1k and 3k" do
-      expect(formatter.token_count_color(1_500)).to eq("white")
+    it "returns text color for tokens between 1k and 3k" do
+      expect(formatter.token_count_color(1_500)).to eq(TUI::Settings.theme_color_text)
     end
 
-    it "returns yellow for tokens between 3k and 10k" do
-      expect(formatter.token_count_color(7_000)).to eq("yellow")
+    it "returns warning color for tokens between 3k and 10k" do
+      expect(formatter.token_count_color(7_000)).to eq(TUI::Settings.theme_color_warning)
     end
 
     it "returns orange (208) for tokens between 10k and 20k" do
-      expect(formatter.token_count_color(15_000)).to eq(208)
+      expect(formatter.token_count_color(15_000)).to eq(TUI::Settings.theme_color_expensive)
     end
 
-    it "returns red for tokens over 20k" do
-      expect(formatter.token_count_color(25_000)).to eq("red")
+    it "returns error color for tokens over 20k" do
+      expect(formatter.token_count_color(25_000)).to eq(TUI::Settings.theme_color_error)
     end
 
-    it "returns dark_gray at zero tokens" do
-      expect(formatter.token_count_color(0)).to eq("dark_gray")
+    it "returns muted color at zero tokens" do
+      expect(formatter.token_count_color(0)).to eq(TUI::Settings.theme_color_muted)
     end
 
-    it "returns dark_gray at 999 tokens (just below 1k boundary)" do
-      expect(formatter.token_count_color(999)).to eq("dark_gray")
+    it "returns muted color at 999 tokens (just below 1k boundary)" do
+      expect(formatter.token_count_color(999)).to eq(TUI::Settings.theme_color_muted)
     end
 
-    it "returns white at exactly 1000 tokens" do
-      expect(formatter.token_count_color(1_000)).to eq("white")
+    it "returns text color at exactly 1000 tokens" do
+      expect(formatter.token_count_color(1_000)).to eq(TUI::Settings.theme_color_text)
     end
 
-    it "returns white at 2999 tokens (just below 3k boundary)" do
-      expect(formatter.token_count_color(2_999)).to eq("white")
+    it "returns text color at 2999 tokens (just below 3k boundary)" do
+      expect(formatter.token_count_color(2_999)).to eq(TUI::Settings.theme_color_text)
     end
 
-    it "returns yellow at exactly 3000 tokens" do
-      expect(formatter.token_count_color(3_000)).to eq("yellow")
+    it "returns warning color at exactly 3000 tokens" do
+      expect(formatter.token_count_color(3_000)).to eq(TUI::Settings.theme_color_warning)
     end
 
-    it "returns yellow at 9999 tokens (just below 10k boundary)" do
-      expect(formatter.token_count_color(9_999)).to eq("yellow")
+    it "returns warning color at 9999 tokens (just below 10k boundary)" do
+      expect(formatter.token_count_color(9_999)).to eq(TUI::Settings.theme_color_warning)
     end
 
     it "returns orange at exactly 10000 tokens" do
-      expect(formatter.token_count_color(10_000)).to eq(208)
+      expect(formatter.token_count_color(10_000)).to eq(TUI::Settings.theme_color_expensive)
     end
 
     it "returns orange at 19999 tokens (just below 20k boundary)" do
-      expect(formatter.token_count_color(19_999)).to eq(208)
+      expect(formatter.token_count_color(19_999)).to eq(TUI::Settings.theme_color_expensive)
     end
 
-    it "returns red at exactly 20000 tokens" do
-      expect(formatter.token_count_color(20_000)).to eq("red")
+    it "returns error color at exactly 20000 tokens" do
+      expect(formatter.token_count_color(20_000)).to eq(TUI::Settings.theme_color_error)
     end
   end
 

@@ -20,30 +20,23 @@ module TUI
     class Chat
       include Formatting
 
-      MIN_INPUT_HEIGHT = 3
       PRINTABLE_CHAR = /\A[[:print:]]\z/
 
       ROLE_USER = "user"
       ROLE_ASSISTANT = "assistant"
 
-      SCROLL_STEP = 1
-      MOUSE_SCROLL_STEP = 2
-
       TOOL_ICON = "\u{1F527}"
       CHECKMARK = "\u2713"
 
-      # Viewport virtualization tuning
-      VIEWPORT_BACK_BUFFER = 3    # entries before scroll target for upward scroll margin
-      VIEWPORT_OVERFLOW_MULTIPLIER = 2 # build this many viewports worth of lines
-      VIEWPORT_BOTTOM_THRESHOLD = 10   # entries from end before we include all trailing
-
       # Background-highlighted styles for conversation roles.
       # Dark tinted backgrounds make user/assistant messages easy to scan.
-      # 22 = dark green (#005f00), 17 = dark navy (#00005f) in 256-color.
-      ROLE_STYLES = {
-        "user" => {fg: "white", bg: 22, modifiers: [:bold]},
-        "assistant" => {fg: "white", bg: 17, modifiers: [:bold]}
-      }.freeze
+      # Colors configured via [theme] user_message_bg / assistant_message_bg.
+      def self.role_styles
+        {
+          "user" => {fg: Settings.theme_color_text, bg: Settings.theme_user_message_bg, modifiers: [:bold]},
+          "assistant" => {fg: Settings.theme_color_text, bg: Settings.theme_assistant_message_bg, modifiers: [:bold]}
+        }
+      end
 
       # Intentionally duplicated from Session::VIEW_MODES to keep the TUI
       # independent of Rails. Must stay in sync when adding new modes.
@@ -282,9 +275,9 @@ module TUI
       # @return [String]
       def spinner_color
         case @session_state
-        when "llm_generating", "tool_executing" then "green"
-        when "interrupting" then "red"
-        else "dark_gray"
+        when "llm_generating", "tool_executing" then Settings.theme_color_success
+        when "interrupting" then Settings.theme_color_error
+        else Settings.theme_color_muted
         end
       end
 
@@ -598,7 +591,7 @@ module TUI
 
         # Phase 5: Paragraph widget + wrapped line count
         base_widget = @perf_logger.measure(:paragraph) {
-          tui.paragraph(text: lines, wrap: true, style: tui.style(fg: "white"))
+          tui.paragraph(text: lines, wrap: true, style: tui.style(fg: Settings.theme_color_text))
         }
         wrapped_height = @perf_logger.measure(:line_count) {
           cached_viewport_line_count(base_widget, inner_width, version)
@@ -633,9 +626,9 @@ module TUI
             content_length: @max_scroll,
             position: @scroll_offset,
             orientation: :vertical_right,
-            thumb_style: {fg: "cyan"},
+            thumb_style: {fg: Settings.theme_scrollbar_thumb},
             track_symbol: "\u2502",
-            track_style: {fg: "dark_gray"}
+            track_style: {fg: Settings.theme_scrollbar_track}
           )
           frame.render_widget(scrollbar, area)
         end
@@ -678,15 +671,15 @@ module TUI
           [spinner_line(tui)]
         elsif @session_loading
           [tui.line(spans: [
-            tui.span(content: "Loading session\u2026", style: tui.style(fg: "yellow"))
+            tui.span(content: "Loading session\u2026", style: tui.style(fg: Settings.theme_color_warning))
           ])]
         else
           [tui.line(spans: [
-            tui.span(content: "Type a message to start chatting.", style: tui.style(fg: "dark_gray"))
+            tui.span(content: "Type a message to start chatting.", style: tui.style(fg: Settings.theme_color_muted))
           ])]
         end
 
-        widget = tui.paragraph(text: lines, wrap: true, style: tui.style(fg: "white"))
+        widget = tui.paragraph(text: lines, wrap: true, style: tui.style(fg: Settings.theme_color_text))
           .with(scroll: [0, 0], block: tui.block(**chat_block_config))
         frame.render_widget(widget, area)
         @max_scroll = 0
@@ -729,12 +722,12 @@ module TUI
         entry_count = entries.size
 
         # Start a few entries before the scroll target for upward buffer
-        buf_first = [first_visible_est - VIEWPORT_BACK_BUFFER, 0].max
+        buf_first = [first_visible_est - Settings.chat_viewport_back_buffer, 0].max
 
         # Build forward until we've accumulated enough lines to fill the
         # viewport with margin. Pre-wrap count is a lower bound on visual
         # height (wrapping only adds lines), so 2x guarantees coverage.
-        target = @visible_height * VIEWPORT_OVERFLOW_MULTIPLIER
+        target = @visible_height * Settings.chat_viewport_overflow_multiplier
         lines = []
         pre_wrap_count = 0
         buf_last = buf_first
@@ -748,7 +741,7 @@ module TUI
           # the bottom. Near the bottom, always include trailing entries
           # so the viewport covers the actual end of content — otherwise
           # the last entries become unreachable.
-          break if pre_wrap_count >= target && entry_count - idx > VIEWPORT_BOTTOM_THRESHOLD
+          break if pre_wrap_count >= target && entry_count - idx > Settings.chat_viewport_bottom_threshold
         end
 
         @perf_logger.info(
@@ -857,7 +850,7 @@ module TUI
           title: "Chat",
           borders: [:all],
           border_type: :rounded,
-          border_style: @chat_focused ? {fg: "yellow"} : {fg: "cyan"}
+          border_style: @chat_focused ? {fg: Settings.theme_border_focused} : {fg: Settings.theme_color_info}
         }
         if @chat_focused
           config[:titles] = [
@@ -877,7 +870,7 @@ module TUI
         responses = counter[:responses]
         complete = calls == responses
         label = "#{TOOL_ICON} Tools: #{calls}/#{responses}#{" #{CHECKMARK}" if complete}"
-        color = complete ? "green" : "yellow"
+        color = complete ? Settings.theme_color_success : Settings.theme_color_warning
         [
           tui.line(spans: [tui.span(content: label, style: tui.style(fg: color))]),
           tui.line(spans: [tui.span(content: "")])
@@ -905,7 +898,7 @@ module TUI
         when "system_prompt"
           render_system_prompt_entry(tui, data)
         else
-          [tui.line(spans: [tui.span(content: data["content"].to_s, style: tui.style(fg: "white"))])]
+          [tui.line(spans: [tui.span(content: data["content"].to_s, style: tui.style(fg: Settings.theme_color_text))])]
         end
 
         # Tool calls and their responses are visually one unit — no separator
@@ -939,9 +932,9 @@ module TUI
         label = role_label(role)
 
         if pending
-          style = tui.style(fg: "gray")
+          style = tui.style(fg: Settings.theme_color_muted)
         else
-          role_cfg = ROLE_STYLES.fetch(role, {fg: "white"})
+          role_cfg = self.class.role_styles.fetch(role, {fg: Settings.theme_color_text})
           style = tui.style(**role_cfg)
         end
 
@@ -953,7 +946,7 @@ module TUI
 
         first_spans = if tokens && !pending
           tok_style = {fg: token_count_color(tokens)}
-          role_bg = ROLE_STYLES.dig(role, :bg)
+          role_bg = self.class.role_styles.dig(role, :bg)
           tok_style[:bg] = role_bg if role_bg
           [
             tui.span(content: ts_prefix, style: style),
@@ -977,7 +970,7 @@ module TUI
       def render_system_entry(tui, data)
         ts = data["timestamp"]
         header = ts ? "[#{format_ns_timestamp(ts)}] [system]" : "[system]"
-        style = tui.style(fg: "white")
+        style = tui.style(fg: Settings.theme_color_text)
 
         content_lines = data["content"].to_s.split("\n", -1)
         lines = [tui.line(spans: [tui.span(content: "#{header} #{content_lines.first}", style: style)])]
@@ -993,9 +986,9 @@ module TUI
       # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_system_prompt_entry(tui, data)
         tokens = data["tokens"]
-        bold_style = tui.style(fg: "magenta", modifiers: [:bold])
-        style = tui.style(fg: "magenta")
-        tool_style = tui.style(fg: "cyan")
+        bold_style = tui.style(fg: Settings.theme_color_accent, modifiers: [:bold])
+        style = tui.style(fg: Settings.theme_color_accent)
+        tool_style = tui.style(fg: Settings.theme_color_info)
 
         header_spans = [tui.span(content: "[SYSTEM] ", style: bold_style)]
         if tokens
@@ -1031,7 +1024,7 @@ module TUI
 
       def build_chat_message_lines(tui, msg)
         role = msg[:role]
-        role_cfg = ROLE_STYLES.fetch(role, {fg: "white"})
+        role_cfg = self.class.role_styles.fetch(role, {fg: Settings.theme_color_text})
         role_style = tui.style(**role_cfg)
 
         label = role_label(role)
@@ -1046,7 +1039,7 @@ module TUI
       end
 
       # Dynamically calculates input area height based on wrapped content.
-      # Clamped between MIN_INPUT_HEIGHT and 50% of available height.
+      # Clamped between Settings.chat_min_input_height and 50% of available height.
       def calculate_input_height(_tui, area_width, area_height)
         inner_width = [area_width - 2, 1].max
 
@@ -1055,8 +1048,8 @@ module TUI
         }
         desired = content_height + 2 # top + bottom border
 
-        max_height = [area_height / 2, MIN_INPUT_HEIGHT].max
-        desired.clamp(MIN_INPUT_HEIGHT, max_height)
+        max_height = [area_height / 2, Settings.chat_min_input_height].max
+        desired.clamp(Settings.chat_min_input_height, max_height)
       end
 
       def render_input(frame, area, tui)
@@ -1096,15 +1089,15 @@ module TUI
 
       def input_styles(tui, disabled)
         border_color = if disabled || @chat_focused
-          "dark_gray"
+          Settings.theme_border_input_disconnected
         elsif @session_loading
-          "yellow"
+          Settings.theme_border_input_connecting
         else
-          "green"
+          Settings.theme_border_input_connected
         end
 
         {
-          text: disabled ? tui.style(fg: "dark_gray") : tui.style(fg: "white"),
+          text: disabled ? tui.style(fg: Settings.theme_color_muted) : tui.style(fg: Settings.theme_color_text),
           border: {fg: border_color}
         }
       end
@@ -1266,10 +1259,10 @@ module TUI
       # @return [Boolean] true if the event was handled
       def handle_chat_focused_event(event)
         if event.up?
-          scroll_up(SCROLL_STEP)
+          scroll_up(Settings.chat_scroll_step)
           true
         elsif event.down?
-          scroll_down(SCROLL_STEP)
+          scroll_down(Settings.chat_scroll_step)
           true
         elsif event.home?
           scroll_up(@max_scroll)
@@ -1354,9 +1347,9 @@ module TUI
       # @return [true] always redraws after scrolling
       def handle_scroll_key(event)
         if event.up?
-          scroll_up(SCROLL_STEP)
+          scroll_up(Settings.chat_scroll_step)
         elsif event.down?
-          scroll_down(SCROLL_STEP)
+          scroll_down(Settings.chat_scroll_step)
         elsif event.page_up?
           scroll_up(@visible_height)
         elsif event.page_down?
@@ -1369,10 +1362,10 @@ module TUI
       # @return [Boolean] true if the event was a scroll wheel event
       def handle_mouse_event(event)
         if event.scroll_up?
-          scroll_up(MOUSE_SCROLL_STEP)
+          scroll_up(Settings.chat_mouse_scroll_step)
           true
         elsif event.scroll_down?
-          scroll_down(MOUSE_SCROLL_STEP)
+          scroll_down(Settings.chat_mouse_scroll_step)
           true
         else
           false

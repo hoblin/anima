@@ -15,7 +15,7 @@ module TUI
       end
 
       def response_color
-        "light_blue"
+        Settings.theme_tool_read_color
       end
     end
   end

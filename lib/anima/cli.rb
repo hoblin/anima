@@ -39,21 +39,29 @@ module Anima
       end
 
       require_relative "config_migrator"
-      result = Spinner.run("Migrating configuration...") do
+
+      result = Spinner.run("Migrating brain configuration...") do
         Anima::ConfigMigrator.new.run
       end
-
-      case result.status
-      when :not_found
+      if result.status == :not_found
         say "Config file not found. Run 'anima install' first.", :red
         exit 1
-      when :up_to_date
-        say "  Config is already up to date."
-      when :updated
-        result.additions.each do |addition|
-          say "  added [#{addition.section}] #{addition.key} = #{addition.value.inspect}"
-        end
       end
+      report_migration("Config", result)
+
+      tui_config_path = File.join(Anima::ConfigMigrator::ANIMA_HOME, "tui.toml")
+      tui_template = File.expand_path("../../templates/tui.toml", __dir__)
+      unless File.exist?(tui_config_path)
+        File.write(tui_config_path, File.read(tui_template))
+        say "  created #{tui_config_path} (new in this version)"
+      end
+      tui_result = Spinner.run("Migrating TUI configuration...") do
+        Anima::ConfigMigrator.new(
+          config_path: tui_config_path,
+          template_path: tui_template
+        ).run
+      end
+      report_migration("TUI config", tui_result)
 
       restart_service_if_active
     end
@@ -83,13 +91,15 @@ module Anima
     end
 
     desc "tui", "Launch the Anima terminal interface"
-    option :host, desc: "Brain server address (default: #{DEFAULT_HOST})"
-    option :debug, type: :boolean, default: false, desc: "Enable performance logging to log/tui_performance.log"
+    option :host, desc: "Brain server address (default: from tui.toml or #{DEFAULT_HOST})"
+    option :debug, type: :boolean, default: false, desc: "Enable performance logging"
     def tui
       require "ratatui_ruby"
+      require_relative "../tui/settings"
       require_relative "../tui/app"
 
-      host = options[:host] || DEFAULT_HOST
+      TUI::Settings.load!
+      host = options[:host] || TUI::Settings.connection_default_host
 
       say "Connecting to brain at #{host}...", :cyan
 
@@ -110,6 +120,24 @@ module Anima
     subcommand "mcp", Mcp
 
     private
+
+    # Reports the outcome of a config migration to the user.
+    #
+    # @param label [String] human-readable config name (e.g. "Config", "TUI config")
+    # @param result [Anima::ConfigMigrator::Result] migration outcome
+    # @return [void]
+    def report_migration(label, result)
+      case result.status
+      when :not_found
+        say "#{label} file not found. Run 'anima install' first.", :red
+      when :up_to_date
+        say "  #{label} is already up to date."
+      when :updated
+        result.additions.each do |addition|
+          say "  added [#{addition.section}] #{addition.key} = #{addition.value.inspect}"
+        end
+      end
+    end
 
     # Restarts the systemd user service so updated code takes effect.
     # Without this, the service continues running the old gem version

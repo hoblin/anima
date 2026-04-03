@@ -215,4 +215,71 @@ RSpec.describe Anima::ConfigMigrator do
       expect(parsed["paths"]["soul"]).to eq("#{anima_home}/soul.md")
     end
   end
+
+  describe "TUI config migration" do
+    let(:tui_config_path) { tmp_dir.join("tui.toml") }
+    let(:tui_template_path) { File.expand_path("../../../templates/tui.toml", __dir__) }
+    let(:tui_migrator) do
+      described_class.new(
+        config_path: tui_config_path.to_s,
+        template_path: tui_template_path,
+        anima_home: anima_home
+      )
+    end
+
+    def write_tui_config(content)
+      tui_config_path.write(content)
+    end
+
+    def full_tui_config
+      File.read(tui_template_path)
+    end
+
+    it "returns :up_to_date when tui.toml matches template" do
+      write_tui_config(full_tui_config)
+
+      result = tui_migrator.run
+
+      expect(result.status).to eq(:up_to_date)
+    end
+
+    it "appends a missing TUI section" do
+      config = full_tui_config.gsub(/# ─── Performance.*\z/m, "")
+      write_tui_config(config)
+
+      result = tui_migrator.run
+
+      expect(result.status).to eq(:updated)
+      expect(result.additions.map(&:section)).to include("performance")
+
+      updated = tui_config_path.read
+      expect(updated).to include("[performance]")
+      expect(updated).to include('log_path = "log/tui_performance.log"')
+    end
+
+    it "preserves user-customized TUI values" do
+      config = full_tui_config
+        .sub("min_width = 24", "min_width = 42")
+        .gsub(/# ─── Performance.*\z/m, "")
+      write_tui_config(config)
+
+      tui_migrator.run
+
+      updated = tui_config_path.read
+      expect(updated).to include("min_width = 42")
+      expect(updated).to include("[performance]")
+    end
+
+    it "produces valid TOML after TUI migration" do
+      config = full_tui_config.gsub(/# ─── Flash.*\z/m, "")
+      write_tui_config(config)
+
+      tui_migrator.run
+
+      expect { TomlRB.parse(tui_config_path.read) }.not_to raise_error
+      parsed = TomlRB.parse(tui_config_path.read)
+      expect(parsed).to have_key("flash")
+      expect(parsed).to have_key("performance")
+    end
+  end
 end

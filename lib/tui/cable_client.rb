@@ -2,6 +2,7 @@
 
 require "websocket-client-simple"
 require "json"
+require_relative "settings"
 
 module TUI
   # Action Cable WebSocket client for connecting the TUI to the brain server.
@@ -23,14 +24,6 @@ module TUI
   #   messages = client.drain_messages
   #   client.disconnect
   class CableClient
-    DISCONNECT_TIMEOUT = 2 # seconds to wait for WebSocket thread to finish
-    POLL_INTERVAL = 0.1 # seconds between connection status checks
-    CONNECTION_TIMEOUT = 10 # seconds to wait for the connecting state to advance
-    MAX_RECONNECT_ATTEMPTS = 10
-    BACKOFF_BASE = 1.0 # initial backoff delay in seconds
-    BACKOFF_CAP = 30.0 # maximum backoff delay
-    PING_STALE_THRESHOLD = 6.0 # seconds without ping before connection is stale
-
     # Message types queued for the TUI render loop via @message_queue
     MSG_TYPE_CONNECTION = "connection"
 
@@ -180,7 +173,7 @@ module TUI
         @status = :disconnected
       end
       @ws&.close
-      @ws_thread&.join(DISCONNECT_TIMEOUT)
+      @ws_thread&.join(Settings.connection_disconnect_timeout)
     end
 
     private
@@ -260,13 +253,13 @@ module TUI
       loop do
         break if @status == :disconnected
 
-        if @status == :connecting && (Time.now - connection_start) > CONNECTION_TIMEOUT
+        if @status == :connecting && (Time.now - connection_start) > Settings.connection_timeout
           on_disconnected
           break
         end
 
         check_stale_connection
-        sleep POLL_INTERVAL
+        sleep Settings.connection_poll_interval
       end
     end
 
@@ -276,7 +269,7 @@ module TUI
     def check_stale_connection
       stale = @mutex.synchronize do
         next false unless @last_ping_at && @status == :subscribed
-        (Time.now - @last_ping_at) >= PING_STALE_THRESHOLD
+        (Time.now - @last_ping_at) >= Settings.connection_ping_stale_threshold
       end
 
       on_disconnected if stale
@@ -291,12 +284,12 @@ module TUI
         @reconnect_attempt
       end
 
-      if attempt > MAX_RECONNECT_ATTEMPTS
+      if attempt > Settings.connection_max_reconnect_attempts
         @mutex.synchronize { @status = :disconnected }
         @message_queue << {
           "type" => MSG_TYPE_CONNECTION,
           "status" => STATUS_FAILED,
-          "message" => "Reconnection failed after #{MAX_RECONNECT_ATTEMPTS} attempts"
+          "message" => "Reconnection failed after #{Settings.connection_max_reconnect_attempts} attempts"
         }
         return false
       end
@@ -307,7 +300,7 @@ module TUI
         "type" => MSG_TYPE_CONNECTION,
         "status" => STATUS_RECONNECTING,
         "attempt" => attempt,
-        "max_attempts" => MAX_RECONNECT_ATTEMPTS,
+        "max_attempts" => Settings.connection_max_reconnect_attempts,
         "delay" => delay.round(1)
       }
 
@@ -321,7 +314,7 @@ module TUI
     # @param attempt [Integer] current attempt number (1-based)
     # @return [Float] delay in seconds
     def backoff_delay(attempt)
-      max_delay = [BACKOFF_CAP, BACKOFF_BASE * (2**(attempt - 1))].min
+      max_delay = [Settings.connection_backoff_cap, Settings.connection_backoff_base * (2**(attempt - 1))].min
       rand(0.0..max_delay)
     end
 

@@ -6,6 +6,9 @@ require "tui/message_store"
 RSpec.describe TUI::MessageStore do
   subject(:store) { described_class.new }
 
+  before { TUI::Settings.config_path = File.expand_path("../../../templates/tui.toml", __dir__) }
+  after { TUI::Settings.reset! }
+
   describe "#messages" do
     it "starts empty" do
       expect(store.messages).to eq([])
@@ -763,7 +766,7 @@ RSpec.describe TUI::MessageStore do
     end
 
     it "caps cache_history at MAX_CACHE_HISTORY entries" do
-      (TUI::MessageStore::MAX_CACHE_HISTORY + 10).times do |i|
+      (TUI::Settings.message_store_max_cache_history + 10).times do |i|
         store.process_event({
           "type" => "agent_message",
           "content" => "msg #{i}",
@@ -774,7 +777,7 @@ RSpec.describe TUI::MessageStore do
       end
 
       stats = store.token_economy
-      expect(stats[:cache_history].size).to eq(TUI::MessageStore::MAX_CACHE_HISTORY)
+      expect(stats[:cache_history].size).to eq(TUI::Settings.message_store_max_cache_history)
     end
 
     it "handles missing or malformed api_metrics gracefully" do

@@ -129,7 +129,8 @@ State directory (`~/.anima/`):
 ```
 ~/.anima/
 ├── soul.md          # Agent's self-authored identity (always in context)
-├── config.toml      # Main settings (hot-reloadable)
+├── config.toml      # Brain settings (hot-reloadable)
+├── tui.toml         # TUI settings (hot-reloadable)
 ├── mcp.toml         # MCP server configuration
 ├── config/
 │   └── credentials/   # Rails encrypted credentials (includes AR encryption keys)
@@ -141,7 +142,7 @@ State directory (`~/.anima/`):
 └── tmp/
 ```
 
-Updates: `anima update` — upgrades the gem, merges new config settings into your existing `config.toml` without overwriting customized values, and restarts the systemd service if it's running. Use `anima update --migrate-only` to skip the gem upgrade and only add missing config keys.
+Updates: `anima update` — upgrades the gem, merges new config settings into both `config.toml` and `tui.toml` without overwriting customized values, and restarts the systemd service if it's running. Use `anima update --migrate-only` to skip the gem upgrade and only add missing config keys.
 
 ### Authentication Setup
 
@@ -287,7 +288,9 @@ Goals form a two-level hierarchy (root goals with sub-goals) and are displayed i
 
 ### Configuration
 
-All tunable values are exposed through `~/.anima/config.toml` with hot-reload (no restart needed):
+Brain and TUI have separate config files — both hot-reloadable (no restart needed).
+
+**Brain settings** (`~/.anima/config.toml`):
 
 ```toml
 [llm]
@@ -312,6 +315,27 @@ message_window = 20
 default_view_mode = "basic"
 name_generation_interval = 30
 ```
+
+**TUI settings** (`~/.anima/tui.toml`):
+
+```toml
+[connection]
+default_host = "localhost:42134"    # Override per-launch with --host
+
+[chat]
+scroll_step = 1
+viewport_back_buffer = 3
+
+[theme]
+rate_limit_warning = 70             # Yellow at 70%
+rate_limit_critical = 90            # Red at 90%
+user_message_bg = 22                # 256-color: dark green
+assistant_message_bg = 17           # 256-color: dark navy
+scrollbar_thumb = "cyan"
+border_focused = "yellow"
+```
+
+The TUI is a standalone client with zero Rails dependency. Its settings cover connection tuning, scroll behavior, terminal watchdog, theme colors, and performance logging. See `~/.anima/tui.toml` for all available options.
 
 ## Design
 

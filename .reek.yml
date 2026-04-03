@@ -13,6 +13,7 @@ detectors:
   NilCheck:
     exclude:
       - "Anima::Settings#get"
+      - "TUI::Settings#get"
   # Rescue blocks naturally reference the error object more than self.
   # Brain transcript builds from event collection — the method's entire purpose.
   # ConfigMigrator text processing methods naturally reference local line arrays.

@@ -15,7 +15,7 @@ module TUI
       end
 
       def response_color
-        "light_green"
+        Settings.theme_tool_create_color
       end
     end
   end
