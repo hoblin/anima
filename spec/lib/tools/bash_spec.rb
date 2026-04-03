@@ -58,25 +58,6 @@ RSpec.describe Tools::Bash do
     end
   end
 
-  describe "#dynamic_schema" do
-    it "includes the shell's working directory in the description" do
-      schema = tool.dynamic_schema
-      expect(schema[:description]).to include(shell_session.pwd)
-    end
-
-    it "preserves the standard schema fields" do
-      schema = tool.dynamic_schema
-      expect(schema[:name]).to eq("bash")
-      expect(schema[:input_schema][:properties][:command]).to be_present
-      expect(schema[:input_schema][:properties][:commands]).to be_present
-    end
-
-    it "does not mutate the class-level schema" do
-      tool.dynamic_schema
-      expect(described_class.description).not_to include(shell_session.pwd)
-    end
-  end
-
   describe "#execute" do
     context "with single command" do
       it "returns stdout and exit code" do
@@ -102,7 +83,8 @@ RSpec.describe Tools::Bash do
         expect(result).to include("exit_code: 42")
       end
 
-      it "returns only exit code for silent commands" do
+      it "returns only exit code for silent commands (after env warmup)" do
+        tool.execute("command" => "true")
         result = tool.execute("command" => "true")
         expect(result).to eq("exit_code: 0")
       end
@@ -111,6 +93,17 @@ RSpec.describe Tools::Bash do
         tool.execute("command" => "cd /tmp")
         result = tool.execute("command" => "pwd")
         expect(result).to include("stdout:\n/tmp")
+      end
+
+      it "appends environment summary when directory changes" do
+        result = tool.execute("command" => "cd /tmp")
+        expect(result).to include("You are now in /tmp")
+      end
+
+      it "omits environment summary when nothing changes" do
+        tool.execute("command" => "cd /tmp")
+        result = tool.execute("command" => "echo hello")
+        expect(result).not_to include("You are now in")
       end
 
       it "preserves environment variables between calls" do

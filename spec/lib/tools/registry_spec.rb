@@ -80,7 +80,7 @@ RSpec.describe Tools::Registry do
         expect(think_schema[:input_schema][:properties][:thoughts][:maxLength]).to eq(4_000)
       end
 
-      it "uses dynamic_schema for the Bash tool" do
+      it "uses static schema for the Bash tool" do
         session = Session.create!
         shell = ShellSession.new(session_id: "registry-test-#{SecureRandom.hex(4)}")
         registry_with_ctx = described_class.new(context: {shell_session: shell, session: session})
@@ -89,7 +89,8 @@ RSpec.describe Tools::Registry do
         schemas = registry_with_ctx.schemas
         bash_schema = schemas.find { |s| s[:name] == "bash" }
 
-        expect(bash_schema[:description]).to include(shell.pwd)
+        expect(bash_schema[:description]).to eq(Tools::Bash.description)
+        expect(bash_schema[:description]).not_to include(shell.pwd)
       ensure
         shell&.finalize
       end

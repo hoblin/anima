@@ -469,11 +469,6 @@ RSpec.describe AgentLoop do
         path
       end
 
-      allow(EnvironmentProbe).to receive(:to_prompt).and_return(
-        "## Environment\n\nOS: Linux\n\nCWD: /home/test/anima\n" \
-        "Git: hoblin/anima (https://github.com/hoblin/anima)\nBranch: main"
-      )
-
       allow_any_instance_of(ShellSession).to receive(:pwd).and_return("/home/test/anima")
     end
 

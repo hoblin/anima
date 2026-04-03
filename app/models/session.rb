@@ -159,21 +159,20 @@ class Session < ApplicationRecord
   # Returns the system prompt for this session.
   # Sub-agent sessions use their stored prompt plus active skills and
   # the pinned task. Main sessions assemble a full system prompt from
-  # soul, environment, and goals. Skills and workflows are injected as
+  # soul and snapshots. Skills, workflows, and goals are injected as
   # phantom tool_use/tool_result pairs in the message stream (not here)
-  # to keep the system prompt stable for prompt caching.
+  # to keep the system prompt stable for prompt caching. Environment
+  # awareness flows through Bash tool responses.
   #
   # Sub-agent sessions still include expertise inline — they're short-lived
   # and don't benefit from prompt caching.
   #
-  # @param environment_context [String, nil] pre-assembled environment block
-  #   from {EnvironmentProbe}; injected between soul and goals sections
   # @return [String, nil] the system prompt text, or nil when nothing to inject
-  def system_prompt(environment_context: nil)
+  def system_prompt
     if sub_agent?
       [prompt, assemble_expertise_section, assemble_task_section].compact.join("\n\n")
     else
-      assemble_system_prompt(environment_context: environment_context)
+      assemble_system_prompt
     end
   end
 
@@ -242,16 +241,15 @@ class Session < ApplicationRecord
     save!
   end
 
-  # Assembles the system prompt: version preamble, soul, snapshots, and
-  # environment context. Skills, workflows, and goals flow through the
-  # message stream as phantom tool pairs, keeping the system prompt stable
+  # Assembles the system prompt: version preamble, soul, and snapshots.
+  # Skills, workflows, goals, and environment awareness flow through the
+  # message stream and tool responses, keeping the system prompt stable
   # for prompt caching.
   #
-  # @param environment_context [String, nil] pre-assembled environment block
   # @return [String] composed system prompt
-  def assemble_system_prompt(environment_context: nil)
-    [assemble_version_preamble, assemble_soul_section, assemble_snapshots_section,
-      environment_context].compact.join("\n\n")
+  def assemble_system_prompt
+    [assemble_version_preamble, assemble_soul_section, assemble_snapshots_section]
+      .compact.join("\n\n")
   end
 
   # Serializes non-evicted goals as a lightweight summary for ActionCable

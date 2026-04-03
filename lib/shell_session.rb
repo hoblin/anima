@@ -1,9 +1,20 @@
 # frozen_string_literal: true
 
 require "io/console"
+require "open3"
+require "pathname"
 require "pty"
 require "securerandom"
 require "shellwords"
+require "uri"
+
+# Immutable snapshot of the shell's environment for change detection.
+# Compared between commands to produce natural-language summaries of what
+# changed — the agent discovers its environment through Bash tool responses.
+EnvironmentSnapshot = Data.define(:pwd, :branch, :repo, :project_files) do
+  # Sentinel for "never detected" — diffs against this produce a full snapshot.
+  def self.blank = new(pwd: nil, branch: nil, repo: nil, project_files: [])
+end
 
 # Persistent shell session backed by a PTY with FIFO-based stderr separation.
 # Commands share working directory, environment variables, and shell history
@@ -11,6 +22,11 @@ require "shellwords"
 #
 # Auto-recovers from timeouts and crashes: if the shell dies, the next command
 # transparently respawns a fresh shell and restores the working directory.
+#
+# After each successful command, detects environment changes (CWD, git branch,
+# project files) and includes a natural-language summary in the result hash.
+# This replaces the old EnvironmentProbe system-prompt injection, keeping the
+# system prompt static for prompt caching.
 #
 # Uses IO.select-based deadlines instead of Timeout.timeout for all PTY reads.
 # Timeout.timeout is unsafe with PTY I/O — it uses Thread.raise which can
@@ -35,6 +51,7 @@ class ShellSession
     @alive = false
     @finalized = false
     @pwd = nil
+    @env_snapshot = nil
     @read_buffer = +""
     self.class.cleanup_orphans
     start
@@ -263,14 +280,16 @@ class ShellSession
       return {error: parts.join("\n\n")}
     end
 
-    update_pwd
+    env_summary = update_environment
     stderr = drain_stderr
 
-    {
+    result = {
       stdout: truncate(stdout),
       stderr: truncate(stderr),
       exit_code: exit_code
     }
+    result[:env_summary] = env_summary if env_summary
+    result
   rescue Errno::EIO, IOError
     @alive = false
     {error: "Shell session terminated unexpectedly"}
@@ -417,6 +436,21 @@ class ShellSession
     end
   end
 
+  # Snapshots the shell's environment and returns a natural-language summary
+  # of what changed since the last snapshot. The agent discovers its
+  # environment through these summaries in Bash tool responses.
+  #
+  # First call (nil previous snapshot) produces a full location report.
+  # Subsequent calls only mention what changed. Returns nil when nothing did.
+  #
+  # @return [String, nil] human-readable summary of environment changes
+  def update_environment
+    update_pwd
+    previous = @env_snapshot || EnvironmentSnapshot.blank
+    @env_snapshot = take_env_snapshot(previous)
+    describe_env_changes(previous, @env_snapshot)
+  end
+
   # Reads the shell's current working directory via the /proc filesystem.
   # @note Linux-only. Falls back silently on other platforms or if the
   #   process has exited.
@@ -424,6 +458,133 @@ class ShellSession
     @pwd = File.readlink("/proc/#{@pid}/cwd")
   rescue Errno::ENOENT, Errno::EACCES
     # Process exited or no access — @pwd retains its previous value
+  end
+
+  # Captures the current environment as an immutable snapshot.
+  # Re-detects git state on every call (branch can change without cd).
+  # Re-scans project files only when the working directory changed.
+  #
+  # @param previous [EnvironmentSnapshot] the last known snapshot
+  # @return [EnvironmentSnapshot]
+  def take_env_snapshot(previous)
+    branch, repo = detect_git
+    files = (@pwd != previous.pwd) ? scan_project_files : previous.project_files
+
+    EnvironmentSnapshot.new(pwd: @pwd, branch: branch, repo: repo, project_files: files)
+  end
+
+  # Detects git branch and repo name for the current working directory.
+  #
+  # @return [Array(String, String)] branch and repo name
+  # @return [Array(nil, nil)] when not inside a git repository
+  def detect_git
+    return [nil, nil] unless @pwd
+
+    _, status = Open3.capture2("git", "-C", @pwd, "rev-parse", "--is-inside-work-tree", err: File::NULL)
+    return [nil, nil] unless status.success?
+
+    branch = detect_git_branch
+    repo = detect_git_repo
+    [branch, repo]
+  rescue Errno::ENOENT
+    [nil, nil]
+  end
+
+  # @return [String, nil] current branch name
+  def detect_git_branch
+    output, = Open3.capture2("git", "-C", @pwd, "rev-parse", "--abbrev-ref", "HEAD", err: File::NULL)
+    output.strip.presence
+  end
+
+  # @return [String, nil] "owner/repo" extracted from the origin remote
+  def detect_git_repo
+    output, = Open3.capture2("git", "-C", @pwd, "remote", "get-url", "origin", err: File::NULL)
+    remote = output.strip
+    return unless remote.present?
+
+    extract_repo_name(remote)
+  end
+
+  # Scans for well-known project files in the current working directory.
+  #
+  # @return [Array<String>] sorted relative paths
+  def scan_project_files
+    return [] unless @pwd
+
+    base = Pathname.new(@pwd)
+    whitelist = Anima::Settings.project_files_whitelist
+    max_depth = Anima::Settings.project_files_max_depth
+
+    patterns = whitelist.product((0..max_depth).to_a).map do |filename, depth|
+      File.join(@pwd, Array.new(depth, "*"), filename)
+    end
+
+    patterns.flat_map { |pattern| Dir.glob(pattern) }
+      .map { |path| Pathname.new(path).relative_path_from(base).to_s }
+      .sort
+      .uniq
+  end
+
+  # Extracts owner/repo from a Git remote URL (SSH or HTTPS).
+  #
+  # @param remote_url [String] SSH or HTTPS remote URL
+  # @return [String] "owner/repo" path
+  def extract_repo_name(remote_url)
+    path = if remote_url.match?(%r{\A\w+://})
+      URI.parse(remote_url).path
+    else
+      remote_url.split(":").last
+    end
+    path.delete_prefix("/").delete_suffix(".git")
+  rescue URI::InvalidURIError
+    remote_url
+  end
+
+  # ─── Environment change description ──────────────────────────────
+
+  # Builds a natural-language summary describing what changed between two
+  # environment snapshots. Returns nil when nothing changed.
+  #
+  # @param old_snap [EnvironmentSnapshot]
+  # @param new_snap [EnvironmentSnapshot]
+  # @return [String, nil]
+  def describe_env_changes(old_snap, new_snap)
+    parts = []
+    parts << describe_location_change(old_snap, new_snap)
+    parts << describe_project_files(old_snap, new_snap)
+    parts.compact!
+    parts.empty? ? nil : parts.join("\n")
+  end
+
+  # @return [String, nil] location/branch change line
+  def describe_location_change(old_snap, new_snap)
+    if new_snap.pwd != old_snap.pwd
+      format_full_location(new_snap)
+    elsif new_snap.branch != old_snap.branch && new_snap.branch
+      "Branch changed to #{new_snap.branch}."
+    end
+  end
+
+  # @return [String, nil] project files line
+  def describe_project_files(old_snap, new_snap)
+    return unless new_snap.project_files.any?
+    return unless new_snap.pwd != old_snap.pwd || new_snap.project_files != old_snap.project_files
+
+    "Project has instructions in #{new_snap.project_files.join(", ")}."
+  end
+
+  # Formats the full location line for display in tool responses.
+  #
+  # @param snap [EnvironmentSnapshot]
+  # @return [String]
+  def format_full_location(snap)
+    parts = ["You are now in #{snap.pwd}"]
+    if snap.repo && snap.branch
+      parts << ", git repo #{snap.repo} on branch #{snap.branch}"
+    elsif snap.branch
+      parts << " on branch #{snap.branch}"
+    end
+    parts.join + "."
   end
 
   def truncate(output)
