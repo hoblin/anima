@@ -5,8 +5,8 @@ http_interactions:
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"Use
-        the web_get tool to fetch both https://example.com and https://example.org"}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":[{"type":"text","text":"Use
+        the web_get tool to fetch both https://example.com and https://example.org","cache_control":{"type":"ephemeral"}}]}],"max_tokens":8192,"tools":[{"name":"web_get","description":"Fetch
         a URL and return its contents","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["url"]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
         are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
@@ -32,7 +32,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:38:56 GMT
+      - Fri, 03 Apr 2026 06:04:17 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -40,21 +40,19 @@ http_interactions:
       Connection:
       - keep-alive
       Anthropic-Ratelimit-Unified-Status:
-      - allowed_warning
+      - allowed
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775174400'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.01'
+      - '0.07'
       Anthropic-Ratelimit-Unified-7d-Status:
-      - allowed_warning
+      - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1775196000'
+      - '1775800800'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.99'
-      Anthropic-Ratelimit-Unified-7d-Surpassed-Threshold:
-      - '0.75'
+      - '0.0'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
@@ -62,11 +60,11 @@ http_interactions:
       Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
       - '0.14'
       Anthropic-Ratelimit-Unified-Representative-Claim:
-      - seven_day
+      - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1775196000'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -80,11 +78,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1765'
+      - '1942'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=1766
+      - x-originResponse;dur=1943
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -99,14 +97,14 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxWGc2Mm9kdVVTQ1BjcVEzeDR6ZEVmeSIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxU1FDbngzVjJHTEo1TFZwQ3RVaXdDeSIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6IkknbGwgZmV0Y2ggYm90aCBVUkxzIGZvciB5b3UgdXNpbmcgdGhl
         IHdlYl9nZXQgdG9vbC4ifSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoidG9v
-        bHVfMDE3Tm8yRXlVMkU5NGNCVGZDdXMyeWgyIiwibmFtZSI6IndlYl9nZXQi
+        bHVfMDFFdFlCaUVham9EbTFyRzgxWHlOVmFlIiwibmFtZSI6IndlYl9nZXQi
         LCJpbnB1dCI6eyJ1cmwiOiJodHRwczovL2V4YW1wbGUuY29tIn0sImNhbGxl
         ciI6eyJ0eXBlIjoiZGlyZWN0In19LHsidHlwZSI6InRvb2xfdXNlIiwiaWQi
-        OiJ0b29sdV8wMVNvSFVXQzh1aFFKeDFiblZhaVMyYlUiLCJuYW1lIjoid2Vi
+        OiJ0b29sdV8wMUdMbjJvTjFvV3lNTDhDQTIzMU55ZzciLCJuYW1lIjoid2Vi
         X2dldCIsImlucHV0Ijp7InVybCI6Imh0dHBzOi8vZXhhbXBsZS5vcmcifSwi
         Y2FsbGVyIjp7InR5cGUiOiJkaXJlY3QifX1dLCJzdG9wX3JlYXNvbiI6InRv
         b2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpu
@@ -116,5 +114,5 @@ http_interactions:
         cyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90
         b2tlbnMiOjExMiwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVu
         Y2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Thu, 02 Apr 2026 21:38:56 GMT
+  recorded_at: Fri, 03 Apr 2026 06:04:17 GMT
 recorded_with: VCR 6.4.0

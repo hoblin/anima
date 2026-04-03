@@ -5,10 +5,10 @@ http_interactions:
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: "{\"model\":\"claude-haiku-4-5\",\"messages\":[{\"role\":\"user\",\"content\":\"The
+      string: "{\"model\":\"claude-haiku-4-5\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"The
         main session is working on this:\\n```\\nUser: Continue with the fix\\nAssistant:
         Sure, continuing.\\n```\\n\\nReview and take any needed actions, then call
-        everything_is_ready.\"}],\"max_tokens\":4096,\"tools\":[{\"name\":\"rename_session\",\"description\":\"Rename
+        everything_is_ready.\",\"cache_control\":{\"type\":\"ephemeral\"}}]}],\"max_tokens\":4096,\"tools\":[{\"name\":\"rename_session\",\"description\":\"Rename
         the session.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"emoji\":{\"type\":\"string\"},\"name\":{\"type\":\"string\",\"description\":\"1-3
         words.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds (default:
         180).\"}},\"required\":[\"emoji\",\"name\"]}},{\"name\":\"activate_skill\",\"description\":\"Give
@@ -108,7 +108,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 02 Apr 2026 21:22:31 GMT
+      - Fri, 03 Apr 2026 06:05:10 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -116,27 +116,25 @@ http_interactions:
       Connection:
       - keep-alive
       Anthropic-Ratelimit-Unified-Status:
-      - allowed_warning
+      - allowed
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775174400'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.01'
+      - '0.07'
       Anthropic-Ratelimit-Unified-7d-Status:
-      - allowed_warning
+      - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1775196000'
+      - '1775800800'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.99'
-      Anthropic-Ratelimit-Unified-7d-Surpassed-Threshold:
-      - '0.75'
+      - '0.0'
       Anthropic-Ratelimit-Unified-Representative-Claim:
-      - seven_day
+      - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1775196000'
+      - '1775206800'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -150,11 +148,216 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2926'
+      - '2705'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=2928
+      - x-originResponse;dur=2708
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
+        Z18wMUpWYWVjYWlGN0RGUWVmZWF1ZUZLM2kiLCJ0eXBlIjoibWVzc2FnZSIs
+        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
+        InRleHQiOiJJJ2xsIHJldmlldyB0aGUgY3VycmVudCBzdGF0ZSBhbmQgdGFr
+        ZSBhcHByb3ByaWF0ZSBhY3Rpb24uXG5cblRoZSBtYWluIHNlc3Npb24gaXMg
+        Y29udGludWluZyB3b3JrIG9uIFwidGhlIGZpeFwiIOKAlCB0aGlzIGFwcGVh
+        cnMgdG8gYmUgYSByZXN1bXB0aW9uIG9mIGFuIGV4aXN0aW5nIHRhc2suIEhv
+        d2V2ZXIsIHdpdGhvdXQgZXhwbGljaXQgY29udGV4dCBhYm91dDpcbi0gV2hh
+        dCBcInRoZSBmaXhcIiByZWZlcnMgdG9cbi0gV2hldGhlciBhIHdvcmtmbG93
+        IG9yIGdvYWwgc3RydWN0dXJlIGFscmVhZHkgZXhpc3RzXG4tIFdoYXQgZG9t
+        YWluL3NraWxsIGlzIG5lZWRlZFxuXG5JIGNhbm5vdCB0YWtlIG1lYW5pbmdm
+        dWwgYWN0aW9uLiBUaGUgc2Vzc2lvbiBuYW1lIFwi8J+UpyBFeGlzdGluZyBO
+        YW1lXCIgaXMgZ2VuZXJpYyBhbmQgZG9lc24ndCBjbGFyaWZ5IHRoZSB0YXNr
+        LlxuXG5TaW5jZSB0aGUgYWdlbnQgaGFzIGFscmVhZHkgY29uZmlybWVkIHRo
+        ZXkncmUgY29udGludWluZyB3aXRoIHdvcmsgdGhhdCdzIHByZXN1bWFibHkg
+        dHJhY2tlZCBlbHNld2hlcmUgKGluIGdvYWxzLCBhIHdvcmtmbG93LCBvciBw
+        cmV2aW91cyBjb250ZXh0KSwgYW5kIEkgaGF2ZSBubyBuZXcgZGlyZWN0aXZl
+        cyB0byBwcm9jZXNzLCB0aGUgYXBwcm9wcmlhdGUgYWN0aW9uIGlzIHRvIG1h
+        cmsgdGhlIHN5c3RlbSByZWFkeS4ifSx7InR5cGUiOiJ0b29sX3VzZSIsImlk
+        IjoidG9vbHVfMDFFWVFITnhVQUdRU1ltekw5eWNkMndaIiwibmFtZSI6ImV2
+        ZXJ5dGhpbmdfaXNfcmVhZHkiLCJpbnB1dCI6e30sImNhbGxlciI6eyJ0eXBl
+        IjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bf
+        c2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbCwidXNhZ2UiOnsi
+        aW5wdXRfdG9rZW5zIjoyNDQ1LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tl
+        bnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVh
+        dGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVy
+        YWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MTg2LCJz
+        ZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJub3Rf
+        YXZhaWxhYmxlIn19
+  recorded_at: Fri, 03 Apr 2026 06:05:10 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: "{\"model\":\"claude-haiku-4-5\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"The
+        main session is working on this:\\n```\\nUser: Continue with the fix\\nAssistant:
+        Sure, continuing.\\n```\\n\\nReview and take any needed actions, then call
+        everything_is_ready.\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll
+        review the current state and take appropriate action.\\n\\nThe main session
+        is continuing work on \\\"the fix\\\" — this appears to be a resumption of
+        an existing task. However, without explicit context about:\\n- What \\\"the
+        fix\\\" refers to\\n- Whether a workflow or goal structure already exists\\n-
+        What domain/skill is needed\\n\\nI cannot take meaningful action. The session
+        name \\\"\U0001F527 Existing Name\\\" is generic and doesn't clarify the task.\\n\\nSince
+        the agent has already confirmed they're continuing with work that's presumably
+        tracked elsewhere (in goals, a workflow, or previous context), and I have
+        no new directives to process, the appropriate action is to mark the system
+        ready.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01EYQHNxUAGQSYmzL9ycd2wZ\",\"name\":\"everything_is_ready\",\"input\":{},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01EYQHNxUAGQSYmzL9ycd2wZ\",\"content\":\"Acknowledged.
+        No changes needed.\",\"cache_control\":{\"type\":\"ephemeral\"}}]}],\"max_tokens\":4096,\"tools\":[{\"name\":\"rename_session\",\"description\":\"Rename
+        the session.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"emoji\":{\"type\":\"string\"},\"name\":{\"type\":\"string\",\"description\":\"1-3
+        words.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds (default:
+        180).\"}},\"required\":[\"emoji\",\"name\"]}},{\"name\":\"activate_skill\",\"description\":\"Give
+        the agent domain knowledge relevant to the current conversation.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"skill_name\":{\"type\":\"string\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"skill_name\"]}},{\"name\":\"deactivate_skill\",\"description\":\"Remove
+        domain knowledge that is no longer relevant.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"skill_name\":{\"type\":\"string\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"skill_name\"]}},{\"name\":\"read_workflow\",\"description\":\"Activate
+        a workflow and return its content for goal planning.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"workflow_name\":{\"type\":\"string\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"workflow_name\"]}},{\"name\":\"deactivate_workflow\",\"description\":\"Deactivate
+        the current workflow when it is complete or no longer relevant.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[]}},{\"name\":\"set_goal\",\"description\":\"Create
+        a goal or sub-goal.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\",\"description\":\"1
+        sentence.\"},\"parent_goal_id\":{\"type\":\"integer\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"description\"]}},{\"name\":\"update_goal\",\"description\":\"Refine
+        a goal's wording as understanding evolves.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"goal_id\":{\"type\":\"integer\"},\"description\":{\"type\":\"string\",\"description\":\"1
+        sentence.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds (default:
+        180).\"}},\"required\":[\"goal_id\",\"description\"]}},{\"name\":\"finish_goal\",\"description\":\"Mark
+        a goal as completed.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"goal_id\":{\"type\":\"integer\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"goal_id\"]}},{\"name\":\"everything_is_ready\",\"description\":\"Nothing
+        else to do.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[]},\"cache_control\":{\"type\":\"ephemeral\"}}],\"system\":[{\"type\":\"text\",\"text\":\"You
+        are Claude Code, Anthropic's official CLI for Claude.\"},{\"type\":\"text\",\"text\":\"You
+        manage context for the main agent — skills, goals, workflows, and session
+        names.\\nWatch the conversation and act when context needs updating.\\nCommunicate
+        only through tool calls — never output text.\\n\\n──────────────────────────────\\nSESSION
+        NAMING\\n──────────────────────────────\\nName the session when the topic
+        becomes clear. Rename if it shifts.\\nFormat: one emoji + 1-3 descriptive
+        words.\\n\\n──────────────────────────────\\nSKILL MANAGEMENT\\n──────────────────────────────\\nActivate
+        skills when the conversation signals intent — before the agent acts on it.\\nLate
+        activation means the agent works without domain knowledge.\\nDeactivate when
+        the agent moves to a different domain.\\nMultiple skills can be active at
+        once.\\n\\n──────────────────────────────\\nWORKFLOW MANAGEMENT\\n──────────────────────────────\\nActivate
+        a workflow when the user starts a multi-step task that matches one.\\nRead
+        the returned content and use judgment to create goals — not a mechanical 1:1
+        mapping.\\nAdapt to context: skip irrelevant steps, add extra steps for unfamiliar
+        areas.\\nDeactivate the workflow when it completes or the user shifts focus.\\nOnly
+        one workflow active at a time — activating a new one replaces the previous.\\n\\n──────────────────────────────\\nGOAL
+        TRACKING\\n──────────────────────────────\\nCreate a root goal when the user
+        starts a multi-step task.\\nBreak it into sub-goals as the plan becomes clear.\\nRefine
+        goal wording as understanding evolves.\\nMark goals complete when the agent
+        finishes the work they describe.\\nCompleting a root goal cascades — all sub-goals
+        are finished too.\\nNever duplicate an existing goal — check the active goals
+        list first.\\n\\n──────────────────────────────\\nCOMPLETION\\n──────────────────────────────\\nAlways
+        finish with everything_is_ready.\\nIf nothing needs attention, call it immediately.\\n\\n──────────────────────────────\\nCURRENT
+        STATE\\n──────────────────────────────\\nSession name: \U0001F527 Existing
+        Name\\nActive skills: None\\nActive workflow: None\\n\\n──────────────────────────────\\nAVAILABLE
+        SKILLS\\n──────────────────────────────\\n- activerecord — Associations, validations,
+        queries, migrations, eager loading, N+1 queries, scopes, callbacks, app/models/,
+        db/migrate/.\\n- dragonruby — 2D game development — game loops, sprites, input,
+        collisions, scenes, DRGTK, args.outputs/state/inputs.\\n- draper-decorators
+        — Decorator patterns for Rails views — presentation logic separated from models,
+        *_decorator.rb, app/decorators/.\\n- gh-issue — Issue writing with WHAT/WHY/HOW
+        framework — tickets, bug reports, feature requests, issue descriptions, unclear
+        rationale in existing issues.\\n- mcp-server — Ruby MCP server development
+        — tools, prompts, resources, transport, the mcp gem, LLM tool integrations.\\n-
+        ratatui-ruby — Terminal UI development — widgets, layouts, events, Tea MVU,
+        terminal rendering.\\n- rspec — Testing with FactoryBot — matchers, test doubles,
+        shared examples, describe/it/expect blocks, *_spec.rb files, test strategy.\\n\\n──────────────────────────────\\nAVAILABLE
+        WORKFLOWS\\n──────────────────────────────\\n- commit — Create focused git
+        commits with user approval.\\n- create_handoff — Preserve current session's
+        context, decisions, and next steps so another session can continue the work.\\n-
+        create_note — Persist findings, insights, or decisions as a note in the thoughts
+        system for future sessions.\\n- create_plan — For epics and multi-ticket efforts
+        — research the problem space and design a phased implementation strategy before
+        writing code.\\n- decompose_ticket — Decompose a feature ticket into vertical
+        slices — testable, deliverable units ordered by dependency.\\n- feature —
+        Implement a GitHub issue end-to-end: branch, research, code, test, commit,
+        PR, self-review.\\n- implement_plan — Execute an approved implementation plan
+        — work through each phase, verify success criteria before moving on.\\n- iterate_plan
+        — Revise an existing implementation plan based on feedback, new findings,
+        or changed requirements.\\n- research_codebase — Deep-dive into a large or
+        unfamiliar codebase — delegate research to parallel specialists and synthesize
+        findings.\\n- resume_handoff — Continue work left by a previous session —
+        read its handoff, verify assumptions, and pick up where it stopped.\\n- review_pr
+        — All PR review operations — review, re-review, self-review, or address reviewer
+        feedback.\\n- thoughts_init — Bootstrap ./thoughts for a new project that
+        doesn't have one yet.\\n- validate_plan — Check whether the implementation
+        satisfies the plan — compare success criteria against what was actually built.\\n\",\"cache_control\":{\"type\":\"ephemeral\"}}]}"
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Fri, 03 Apr 2026 06:05:13 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1775206800'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.07'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1775800800'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.0'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - five_hour
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1775206800'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '2726'
+      Server-Timing:
+      - x-originResponse;dur=2728
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -169,35 +372,14 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMUQ4ZmdmNGRwbWNUZHAzbTRjY1h5eTkiLCJ0eXBlIjoibWVzc2FnZSIs
-        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
-        InRleHQiOiJJIG5lZWQgbW9yZSBjb250ZXh0IHRvIGRldGVybWluZSB3aGF0
-        IGFjdGlvbnMgYXJlIG5lZWRlZC4gVGhlIHNuaXBwZXQgc2hvd3MgdGhlIHVz
-        ZXIgYXNraW5nIHRvIFwiY29udGludWUgd2l0aCB0aGUgZml4LFwiIGJ1dCBJ
-        IGRvbid0IGhhdmUgdmlzaWJpbGl0eSBpbnRvOlxuXG4xLiAqKldoYXQgZml4
-        IGlzIGluIHByb2dyZXNzPyoqICh0aGUgcHJldmlvdXMgY29udmVyc2F0aW9u
-        IGhpc3RvcnkpXG4yLiAqKldoYXQncyB0aGUgY3VycmVudCBzdGF0ZT8qKiAo
-        YWN0aXZlIGdvYWxzLCB3b3JrZmxvdywgc2tpbGxzKVxuMy4gKipXaGF0IHNo
-        b3VsZCBoYXBwZW4gbmV4dD8qKiAod2hhdCBkb2VzIFwiY29udGludWVcIiBt
-        ZWFuIGluIHRoaXMgY29udGV4dD8pXG5cblRvIGhlbHAgZWZmZWN0aXZlbHks
-        IEkgd291bGQgbmVlZDpcbi0gVGhlIGFjdGl2ZSBnb2FscyBmcm9tIHRoZSBj
-        dXJyZW50IHNlc3Npb25cbi0gQW55IGFjdGl2ZSB3b3JrZmxvd1xuLSBUaGUg
-        cmVjZW50IGNvbnZlcnNhdGlvbiBjb250ZXh0IHRoYXQgZXhwbGFpbnMgd2hh
-        dCBmaXggaXMgYmVpbmcgd29ya2VkIG9uXG5cbkNvdWxkIHlvdSBwcm92aWRl
-        IHRoaXMgaW5mb3JtYXRpb24gc28gSSBjYW4gZGV0ZXJtaW5lIHdoZXRoZXIg
-        dG86XG4tIEFjdGl2YXRlIGEgd29ya2Zsb3cgKGxpa2UgYGZlYXR1cmVgLCBg
-        aW1wbGVtZW50X3BsYW5gLCBgaXRlcmF0ZV9wbGFuYCwgZXRjLilcbi0gQWN0
-        aXZhdGUgcmVsZXZhbnQgc2tpbGxzXG4tIENyZWF0ZSBvciB1cGRhdGUgZ29h
-        bHNcbi0gU2ltcGx5IGNvbmZpcm0gZXZlcnl0aGluZyBpcyByZWFkeVxuXG5B
-        bHRlcm5hdGl2ZWx5LCBpZiB0aGUgbWFpbiBzZXNzaW9uIGlzIHNlbGYtbWFu
-        YWdpbmcgYW5kIGRvZXNuJ3QgbmVlZCBjb250ZXh0IHVwZGF0ZXMgZnJvbSBt
-        ZSwgSSBjYW4gY2FsbCBgZXZlcnl0aGluZ19pc19yZWFkeWAgbm93LiJ9XSwi
-        c3RvcF9yZWFzb24iOiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGws
-        InN0b3BfZGV0YWlscyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoy
-        NDQ1LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3Jl
-        YWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVy
-        YWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9r
-        ZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MjE3LCJzZXJ2aWNlX3RpZXIiOiJz
-        dGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJub3RfYXZhaWxhYmxlIn19
-  recorded_at: Thu, 02 Apr 2026 21:22:31 GMT
+        Z18wMUZhajhyanhQMjMzSllmend2V2l2cnYiLCJ0eXBlIjoibWVzc2FnZSIs
+        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24i
+        OiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWls
+        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyNjQ5LCJjYWNoZV9j
+        cmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9r
+        ZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRf
+        dG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0
+        cHV0X3Rva2VucyI6Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZl
+        cmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
+  recorded_at: Fri, 03 Apr 2026 06:05:13 GMT
 recorded_with: VCR 6.4.0
