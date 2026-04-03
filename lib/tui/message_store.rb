@@ -422,7 +422,7 @@ module TUI
           total = input + cache_read + cache_create
           hit_rate = (total > 0) ? cache_read.to_f / total : 0.0
           history = @token_economy[:cache_history]
-          history.shift if history.size >= Settings.max_cache_history
+          history.shift if history.size >= Settings.message_store_max_cache_history
           history << hit_rate
         end
 

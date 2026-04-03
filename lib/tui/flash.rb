@@ -32,9 +32,9 @@ module TUI
     # Called per-render so hot-reloaded theme changes take effect immediately.
     def self.level_styles
       {
-        error: {fg: Settings.flash_error_fg, bg: Settings.flash_error_bg},
-        warning: {fg: Settings.flash_warning_fg, bg: Settings.flash_warning_bg},
-        info: {fg: Settings.flash_info_fg, bg: Settings.flash_info_bg}
+        error: {fg: Settings.theme_flash_error_fg, bg: Settings.theme_flash_error_bg},
+        warning: {fg: Settings.theme_flash_warning_fg, bg: Settings.theme_flash_warning_bg},
+        info: {fg: Settings.theme_flash_info_fg, bg: Settings.theme_flash_info_bg}
       }
     end
 

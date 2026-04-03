@@ -98,7 +98,8 @@ module Anima
       require_relative "../tui/settings"
       require_relative "../tui/app"
 
-      host = options[:host] || TUI::Settings.default_host
+      TUI::Settings.load!
+      host = options[:host] || TUI::Settings.connection_default_host
 
       say "Connecting to brain at #{host}...", :cyan
 

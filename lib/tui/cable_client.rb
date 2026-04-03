@@ -173,7 +173,7 @@ module TUI
         @status = :disconnected
       end
       @ws&.close
-      @ws_thread&.join(Settings.disconnect_timeout)
+      @ws_thread&.join(Settings.connection_disconnect_timeout)
     end
 
     private
@@ -259,7 +259,7 @@ module TUI
         end
 
         check_stale_connection
-        sleep Settings.poll_interval
+        sleep Settings.connection_poll_interval
       end
     end
 
@@ -269,7 +269,7 @@ module TUI
     def check_stale_connection
       stale = @mutex.synchronize do
         next false unless @last_ping_at && @status == :subscribed
-        (Time.now - @last_ping_at) >= Settings.ping_stale_threshold
+        (Time.now - @last_ping_at) >= Settings.connection_ping_stale_threshold
       end
 
       on_disconnected if stale
@@ -284,12 +284,12 @@ module TUI
         @reconnect_attempt
       end
 
-      if attempt > Settings.max_reconnect_attempts
+      if attempt > Settings.connection_max_reconnect_attempts
         @mutex.synchronize { @status = :disconnected }
         @message_queue << {
           "type" => MSG_TYPE_CONNECTION,
           "status" => STATUS_FAILED,
-          "message" => "Reconnection failed after #{Settings.max_reconnect_attempts} attempts"
+          "message" => "Reconnection failed after #{Settings.connection_max_reconnect_attempts} attempts"
         }
         return false
       end
@@ -300,7 +300,7 @@ module TUI
         "type" => MSG_TYPE_CONNECTION,
         "status" => STATUS_RECONNECTING,
         "attempt" => attempt,
-        "max_attempts" => Settings.max_reconnect_attempts,
+        "max_attempts" => Settings.connection_max_reconnect_attempts,
         "delay" => delay.round(1)
       }
 
@@ -314,7 +314,7 @@ module TUI
     # @param attempt [Integer] current attempt number (1-based)
     # @return [Float] delay in seconds
     def backoff_delay(attempt)
-      max_delay = [Settings.backoff_cap, Settings.backoff_base * (2**(attempt - 1))].min
+      max_delay = [Settings.connection_backoff_cap, Settings.connection_backoff_base * (2**(attempt - 1))].min
       rand(0.0..max_delay)
     end
 

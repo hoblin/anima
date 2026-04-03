@@ -70,6 +70,9 @@ RSpec.describe Anima::CLI do
   end
 
   describe "tui" do
+    before { TUI::Settings.config_path = File.expand_path("../../../templates/tui.toml", __dir__) }
+    after { TUI::Settings.reset! }
+
     it "connects without a REST session fetch" do
       cable_client = instance_double(TUI::CableClient, connect: nil, disconnect: nil, status: :subscribed)
       allow(TUI::CableClient).to receive(:new).with(host: "localhost:19999").and_return(cable_client)

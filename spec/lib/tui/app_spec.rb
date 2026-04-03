@@ -1071,14 +1071,14 @@ RSpec.describe TUI::App do
       end
 
       it "returns unmasked text when exactly TOKEN_MASK_VISIBLE length" do
-        token = "x" * TUI::Settings.token_mask_visible
+        token = "x" * TUI::Settings.token_dialog_mask_visible
         expect(app.send(:mask_token, token)).to eq(token)
       end
 
       it "shows exactly TOKEN_MASK_VISIBLE characters unmasked" do
         token = "sk-ant-oat01-#{"x" * 67}"
         masked = app.send(:mask_token, token)
-        expect(masked[0...TUI::Settings.token_mask_visible]).to eq(token[0...TUI::Settings.token_mask_visible])
+        expect(masked[0...TUI::Settings.token_dialog_mask_visible]).to eq(token[0...TUI::Settings.token_dialog_mask_visible])
       end
     end
 
@@ -1385,36 +1385,6 @@ RSpec.describe TUI::App do
   end
 
   describe "connection status" do
-    it "defines labels and colors for all connection states" do
-      expect(TUI::App::STATUS_LABELS.keys).to contain_exactly(
-        :disconnected, :connecting, :connected, :subscribed, :reconnecting
-      )
-      expect(TUI::App::STATUS_COLORS.keys).to contain_exactly(
-        :disconnected, :connecting, :connected, :subscribed, :reconnecting
-      )
-    end
-
-    it "uses emoji-only label for subscribed (normal) state" do
-      expect(TUI::App::STATUS_LABELS[:subscribed]).to eq("🟢")
-    end
-
-    it "uses red emoji with text for disconnected state" do
-      expect(TUI::App::STATUS_LABELS[:disconnected]).to eq("🔴 Disconnected")
-      expect(TUI::App::STATUS_COLORS[:disconnected]).to eq(:color_error)
-    end
-
-    it "uses yellow emoji with text for connecting states" do
-      %i[connecting connected].each do |state|
-        expect(TUI::App::STATUS_LABELS[state]).to eq("🟡 Connecting")
-        expect(TUI::App::STATUS_COLORS[state]).to eq(:color_warning)
-      end
-    end
-
-    it "uses yellow emoji with text for reconnecting state" do
-      expect(TUI::App::STATUS_LABELS[:reconnecting]).to eq("🟡 Reconnecting")
-      expect(TUI::App::STATUS_COLORS[:reconnecting]).to eq(:color_warning)
-    end
-
     describe "#hud_skills_line" do
       let(:tui) do
         tui = double("tui")

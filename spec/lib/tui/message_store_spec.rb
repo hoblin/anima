@@ -766,7 +766,7 @@ RSpec.describe TUI::MessageStore do
     end
 
     it "caps cache_history at MAX_CACHE_HISTORY entries" do
-      (TUI::Settings.max_cache_history + 10).times do |i|
+      (TUI::Settings.message_store_max_cache_history + 10).times do |i|
         store.process_event({
           "type" => "agent_message",
           "content" => "msg #{i}",
@@ -777,7 +777,7 @@ RSpec.describe TUI::MessageStore do
       end
 
       stats = store.token_economy
-      expect(stats[:cache_history].size).to eq(TUI::Settings.max_cache_history)
+      expect(stats[:cache_history].size).to eq(TUI::Settings.message_store_max_cache_history)
     end
 
     it "handles missing or malformed api_metrics gracefully" do

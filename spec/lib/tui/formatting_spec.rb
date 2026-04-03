@@ -11,15 +11,15 @@ RSpec.describe TUI::Formatting do
 
   describe "#token_count_color" do
     it "returns muted color for tokens under 1k" do
-      expect(formatter.token_count_color(500)).to eq(TUI::Settings.color_muted)
+      expect(formatter.token_count_color(500)).to eq(TUI::Settings.theme_color_muted)
     end
 
     it "returns text color for tokens between 1k and 3k" do
-      expect(formatter.token_count_color(1_500)).to eq(TUI::Settings.color_text)
+      expect(formatter.token_count_color(1_500)).to eq(TUI::Settings.theme_color_text)
     end
 
     it "returns warning color for tokens between 3k and 10k" do
-      expect(formatter.token_count_color(7_000)).to eq(TUI::Settings.color_warning)
+      expect(formatter.token_count_color(7_000)).to eq(TUI::Settings.theme_color_warning)
     end
 
     it "returns orange (208) for tokens between 10k and 20k" do
@@ -27,31 +27,31 @@ RSpec.describe TUI::Formatting do
     end
 
     it "returns error color for tokens over 20k" do
-      expect(formatter.token_count_color(25_000)).to eq(TUI::Settings.color_error)
+      expect(formatter.token_count_color(25_000)).to eq(TUI::Settings.theme_color_error)
     end
 
     it "returns muted color at zero tokens" do
-      expect(formatter.token_count_color(0)).to eq(TUI::Settings.color_muted)
+      expect(formatter.token_count_color(0)).to eq(TUI::Settings.theme_color_muted)
     end
 
     it "returns muted color at 999 tokens (just below 1k boundary)" do
-      expect(formatter.token_count_color(999)).to eq(TUI::Settings.color_muted)
+      expect(formatter.token_count_color(999)).to eq(TUI::Settings.theme_color_muted)
     end
 
     it "returns text color at exactly 1000 tokens" do
-      expect(formatter.token_count_color(1_000)).to eq(TUI::Settings.color_text)
+      expect(formatter.token_count_color(1_000)).to eq(TUI::Settings.theme_color_text)
     end
 
     it "returns text color at 2999 tokens (just below 3k boundary)" do
-      expect(formatter.token_count_color(2_999)).to eq(TUI::Settings.color_text)
+      expect(formatter.token_count_color(2_999)).to eq(TUI::Settings.theme_color_text)
     end
 
     it "returns warning color at exactly 3000 tokens" do
-      expect(formatter.token_count_color(3_000)).to eq(TUI::Settings.color_warning)
+      expect(formatter.token_count_color(3_000)).to eq(TUI::Settings.theme_color_warning)
     end
 
     it "returns warning color at 9999 tokens (just below 10k boundary)" do
-      expect(formatter.token_count_color(9_999)).to eq(TUI::Settings.color_warning)
+      expect(formatter.token_count_color(9_999)).to eq(TUI::Settings.theme_color_warning)
     end
 
     it "returns orange at exactly 10000 tokens" do
@@ -63,7 +63,7 @@ RSpec.describe TUI::Formatting do
     end
 
     it "returns error color at exactly 20000 tokens" do
-      expect(formatter.token_count_color(20_000)).to eq(TUI::Settings.color_error)
+      expect(formatter.token_count_color(20_000)).to eq(TUI::Settings.theme_color_error)
     end
   end
 

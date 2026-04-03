@@ -33,8 +33,8 @@ module TUI
       # Colors configured via [theme] user_message_bg / assistant_message_bg.
       def self.role_styles
         {
-          "user" => {fg: Settings.color_text, bg: Settings.user_message_bg, modifiers: [:bold]},
-          "assistant" => {fg: Settings.color_text, bg: Settings.assistant_message_bg, modifiers: [:bold]}
+          "user" => {fg: Settings.theme_color_text, bg: Settings.theme_user_message_bg, modifiers: [:bold]},
+          "assistant" => {fg: Settings.theme_color_text, bg: Settings.theme_assistant_message_bg, modifiers: [:bold]}
         }
       end
 
@@ -275,9 +275,9 @@ module TUI
       # @return [String]
       def spinner_color
         case @session_state
-        when "llm_generating", "tool_executing" then Settings.color_success
-        when "interrupting" then Settings.color_error
-        else Settings.color_muted
+        when "llm_generating", "tool_executing" then Settings.theme_color_success
+        when "interrupting" then Settings.theme_color_error
+        else Settings.theme_color_muted
         end
       end
 
@@ -591,7 +591,7 @@ module TUI
 
         # Phase 5: Paragraph widget + wrapped line count
         base_widget = @perf_logger.measure(:paragraph) {
-          tui.paragraph(text: lines, wrap: true, style: tui.style(fg: Settings.color_text))
+          tui.paragraph(text: lines, wrap: true, style: tui.style(fg: Settings.theme_color_text))
         }
         wrapped_height = @perf_logger.measure(:line_count) {
           cached_viewport_line_count(base_widget, inner_width, version)
@@ -626,9 +626,9 @@ module TUI
             content_length: @max_scroll,
             position: @scroll_offset,
             orientation: :vertical_right,
-            thumb_style: {fg: Settings.scrollbar_thumb},
+            thumb_style: {fg: Settings.theme_scrollbar_thumb},
             track_symbol: "\u2502",
-            track_style: {fg: Settings.scrollbar_track}
+            track_style: {fg: Settings.theme_scrollbar_track}
           )
           frame.render_widget(scrollbar, area)
         end
@@ -671,15 +671,15 @@ module TUI
           [spinner_line(tui)]
         elsif @session_loading
           [tui.line(spans: [
-            tui.span(content: "Loading session\u2026", style: tui.style(fg: Settings.color_warning))
+            tui.span(content: "Loading session\u2026", style: tui.style(fg: Settings.theme_color_warning))
           ])]
         else
           [tui.line(spans: [
-            tui.span(content: "Type a message to start chatting.", style: tui.style(fg: Settings.color_muted))
+            tui.span(content: "Type a message to start chatting.", style: tui.style(fg: Settings.theme_color_muted))
           ])]
         end
 
-        widget = tui.paragraph(text: lines, wrap: true, style: tui.style(fg: Settings.color_text))
+        widget = tui.paragraph(text: lines, wrap: true, style: tui.style(fg: Settings.theme_color_text))
           .with(scroll: [0, 0], block: tui.block(**chat_block_config))
         frame.render_widget(widget, area)
         @max_scroll = 0
@@ -722,12 +722,12 @@ module TUI
         entry_count = entries.size
 
         # Start a few entries before the scroll target for upward buffer
-        buf_first = [first_visible_est - Settings.viewport_back_buffer, 0].max
+        buf_first = [first_visible_est - Settings.chat_viewport_back_buffer, 0].max
 
         # Build forward until we've accumulated enough lines to fill the
         # viewport with margin. Pre-wrap count is a lower bound on visual
         # height (wrapping only adds lines), so 2x guarantees coverage.
-        target = @visible_height * Settings.viewport_overflow_multiplier
+        target = @visible_height * Settings.chat_viewport_overflow_multiplier
         lines = []
         pre_wrap_count = 0
         buf_last = buf_first
@@ -741,7 +741,7 @@ module TUI
           # the bottom. Near the bottom, always include trailing entries
           # so the viewport covers the actual end of content — otherwise
           # the last entries become unreachable.
-          break if pre_wrap_count >= target && entry_count - idx > Settings.viewport_bottom_threshold
+          break if pre_wrap_count >= target && entry_count - idx > Settings.chat_viewport_bottom_threshold
         end
 
         @perf_logger.info(
@@ -850,7 +850,7 @@ module TUI
           title: "Chat",
           borders: [:all],
           border_type: :rounded,
-          border_style: @chat_focused ? {fg: Settings.border_focused} : {fg: Settings.color_info}
+          border_style: @chat_focused ? {fg: Settings.theme_border_focused} : {fg: Settings.theme_color_info}
         }
         if @chat_focused
           config[:titles] = [
@@ -870,7 +870,7 @@ module TUI
         responses = counter[:responses]
         complete = calls == responses
         label = "#{TOOL_ICON} Tools: #{calls}/#{responses}#{" #{CHECKMARK}" if complete}"
-        color = complete ? Settings.color_success : Settings.color_warning
+        color = complete ? Settings.theme_color_success : Settings.theme_color_warning
         [
           tui.line(spans: [tui.span(content: label, style: tui.style(fg: color))]),
           tui.line(spans: [tui.span(content: "")])
@@ -898,7 +898,7 @@ module TUI
         when "system_prompt"
           render_system_prompt_entry(tui, data)
         else
-          [tui.line(spans: [tui.span(content: data["content"].to_s, style: tui.style(fg: Settings.color_text))])]
+          [tui.line(spans: [tui.span(content: data["content"].to_s, style: tui.style(fg: Settings.theme_color_text))])]
         end
 
         # Tool calls and their responses are visually one unit — no separator
@@ -932,9 +932,9 @@ module TUI
         label = role_label(role)
 
         if pending
-          style = tui.style(fg: Settings.color_muted)
+          style = tui.style(fg: Settings.theme_color_muted)
         else
-          role_cfg = self.class.role_styles.fetch(role, {fg: Settings.color_text})
+          role_cfg = self.class.role_styles.fetch(role, {fg: Settings.theme_color_text})
           style = tui.style(**role_cfg)
         end
 
@@ -970,7 +970,7 @@ module TUI
       def render_system_entry(tui, data)
         ts = data["timestamp"]
         header = ts ? "[#{format_ns_timestamp(ts)}] [system]" : "[system]"
-        style = tui.style(fg: Settings.color_text)
+        style = tui.style(fg: Settings.theme_color_text)
 
         content_lines = data["content"].to_s.split("\n", -1)
         lines = [tui.line(spans: [tui.span(content: "#{header} #{content_lines.first}", style: style)])]
@@ -986,9 +986,9 @@ module TUI
       # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_system_prompt_entry(tui, data)
         tokens = data["tokens"]
-        bold_style = tui.style(fg: Settings.color_accent, modifiers: [:bold])
-        style = tui.style(fg: Settings.color_accent)
-        tool_style = tui.style(fg: Settings.color_info)
+        bold_style = tui.style(fg: Settings.theme_color_accent, modifiers: [:bold])
+        style = tui.style(fg: Settings.theme_color_accent)
+        tool_style = tui.style(fg: Settings.theme_color_info)
 
         header_spans = [tui.span(content: "[SYSTEM] ", style: bold_style)]
         if tokens
@@ -1024,7 +1024,7 @@ module TUI
 
       def build_chat_message_lines(tui, msg)
         role = msg[:role]
-        role_cfg = self.class.role_styles.fetch(role, {fg: Settings.color_text})
+        role_cfg = self.class.role_styles.fetch(role, {fg: Settings.theme_color_text})
         role_style = tui.style(**role_cfg)
 
         label = role_label(role)
@@ -1039,7 +1039,7 @@ module TUI
       end
 
       # Dynamically calculates input area height based on wrapped content.
-      # Clamped between Settings.min_input_height and 50% of available height.
+      # Clamped between Settings.chat_min_input_height and 50% of available height.
       def calculate_input_height(_tui, area_width, area_height)
         inner_width = [area_width - 2, 1].max
 
@@ -1048,8 +1048,8 @@ module TUI
         }
         desired = content_height + 2 # top + bottom border
 
-        max_height = [area_height / 2, Settings.min_input_height].max
-        desired.clamp(Settings.min_input_height, max_height)
+        max_height = [area_height / 2, Settings.chat_min_input_height].max
+        desired.clamp(Settings.chat_min_input_height, max_height)
       end
 
       def render_input(frame, area, tui)
@@ -1089,15 +1089,15 @@ module TUI
 
       def input_styles(tui, disabled)
         border_color = if disabled || @chat_focused
-          Settings.border_input_disconnected
+          Settings.theme_border_input_disconnected
         elsif @session_loading
-          Settings.border_input_connecting
+          Settings.theme_border_input_connecting
         else
-          Settings.border_input_connected
+          Settings.theme_border_input_connected
         end
 
         {
-          text: disabled ? tui.style(fg: Settings.color_muted) : tui.style(fg: Settings.color_text),
+          text: disabled ? tui.style(fg: Settings.theme_color_muted) : tui.style(fg: Settings.theme_color_text),
           border: {fg: border_color}
         }
       end

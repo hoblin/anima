@@ -20,7 +20,7 @@ disconnect_timeout = 2
 poll_interval = 0.1
 
 # Seconds before a connection attempt is considered timed out.
-connection_timeout = 10
+timeout = 10
 
 # Maximum reconnection attempts before giving up.
 max_reconnect_attempts = 10

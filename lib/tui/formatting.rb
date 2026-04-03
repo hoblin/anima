@@ -32,12 +32,12 @@ module TUI
     # @param tokens [Integer] token count
     # @return [String, Integer] named color or 256-color index
     def token_count_color(tokens)
-      return Settings.color_muted if tokens < 1_000
-      return Settings.color_text if tokens < 3_000
-      return Settings.color_warning if tokens < 10_000
+      return Settings.theme_color_muted if tokens < 1_000
+      return Settings.theme_color_text if tokens < 3_000
+      return Settings.theme_color_warning if tokens < 10_000
       return 208 if tokens < 20_000 # orange (256-color)
 
-      Settings.color_error
+      Settings.theme_color_error
     end
 
     # Converts nanosecond-precision timestamp to human-readable HH:MM:SS.
