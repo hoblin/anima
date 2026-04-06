@@ -2170,27 +2170,6 @@ RSpec.describe Session do
     end
   end
 
-  describe "#own_message_scope" do
-    let(:session) { Session.create! }
-
-    it "excludes messages below mneme_boundary_message_id" do
-      old = session.messages.create!(message_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 10)
-      recent = session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 2, token_count: 10)
-      session.update_column(:mneme_boundary_message_id, recent.id)
-
-      scope = session.send(:own_message_scope)
-      expect(scope).to include(recent)
-      expect(scope).not_to include(old)
-    end
-
-    it "includes all messages when boundary is nil" do
-      msg = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
-
-      scope = session.send(:own_message_scope)
-      expect(scope).to include(msg)
-    end
-  end
-
   describe "#promote_phantom_pair!" do
     let(:session) { Session.create! }
 

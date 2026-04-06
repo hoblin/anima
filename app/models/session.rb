@@ -99,8 +99,11 @@ class Session < ApplicationRecord
   end
 
   # Returns the messages currently visible in the LLM context window.
-  # Walks messages newest-first and includes them until the token budget
-  # is exhausted. Messages are full-size or excluded entirely.
+  # Walks own messages newest-first starting from the Mneme boundary and
+  # includes them until the token budget is exhausted. Older messages
+  # have been compressed into snapshots and no longer participate in the
+  # viewport. Always includes at least the newest message even if it
+  # exceeds budget. Messages are full-size or excluded entirely.
   #
   # Pending messages live in a separate table ({PendingMessage}) and never
   # appear in this viewport — they are promoted to real messages before
@@ -109,7 +112,21 @@ class Session < ApplicationRecord
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @return [Array<Message>] chronologically ordered
   def viewport_messages(token_budget: effective_token_budget)
-    select_messages(own_message_scope, budget: token_budget)
+    scope = messages.context_messages
+    scope = scope.where("messages.id >= ?", mneme_boundary_message_id) if mneme_boundary_message_id
+
+    selected = []
+    remaining = token_budget
+
+    scope.reorder(id: :desc).each do |msg|
+      cost = message_token_cost(msg)
+      break if cost > remaining && selected.any?
+
+      selected << msg
+      remaining -= cost
+    end
+
+    selected.reverse
   end
 
   # Recalculates the viewport and returns IDs of messages evicted since the
@@ -727,37 +744,6 @@ class Session < ApplicationRecord
       "session_id" => id,
       "active_workflow" => active_workflow
     })
-  end
-
-  # Scopes own messages for viewport assembly.
-  # Starts from the Mneme boundary (inclusive) — older messages have been
-  # compressed into snapshots and no longer participate in the viewport.
-  # @return [ActiveRecord::Relation]
-  def own_message_scope
-    scope = messages.context_messages
-    scope = scope.where("messages.id >= ?", mneme_boundary_message_id) if mneme_boundary_message_id
-    scope
-  end
-
-  # Walks messages newest-first, selecting until the token budget is exhausted.
-  # Always includes at least the newest message even if it exceeds budget.
-  #
-  # @param scope [ActiveRecord::Relation] message scope to select from
-  # @param budget [Integer] maximum tokens to include
-  # @return [Array<Message>] chronologically ordered
-  def select_messages(scope, budget:)
-    selected = []
-    remaining = budget
-
-    scope.reorder(id: :desc).each do |msg|
-      cost = message_token_cost(msg)
-      break if cost > remaining && selected.any?
-
-      selected << msg
-      remaining -= cost
-    end
-
-    selected.reverse
   end
 
   # @return [Integer] token cost, using cached count or heuristic estimate
