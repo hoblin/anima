@@ -61,7 +61,7 @@ module Mneme
     #
     # @return [Array<Message>] chronologically ordered (oldest first)
     def fetch_messages
-      scope = @session.messages.context_messages
+      scope = @session.messages
 
       if @from_message_id
         scope = scope.where("id >= ?", @from_message_id)

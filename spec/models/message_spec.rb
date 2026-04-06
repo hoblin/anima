@@ -105,26 +105,6 @@ RSpec.describe Message do
     end
   end
 
-  describe ".context_messages" do
-    it "returns user, agent, tool_call, and tool_response events" do
-      session.messages.create!(message_type: "user_message", payload: {content: "hi"}, timestamp: 1)
-      session.messages.create!(message_type: "agent_message", payload: {content: "hello"}, timestamp: 2)
-      session.messages.create!(message_type: "system_message", payload: {content: "boot"}, timestamp: 3)
-      session.messages.create!(message_type: "tool_call", payload: {content: "run", tool_name: "web_get"}, tool_use_id: "toolu_test1", timestamp: 4)
-      session.messages.create!(message_type: "tool_response", payload: {content: "ok", tool_name: "web_get"}, tool_use_id: "toolu_test1", timestamp: 5)
-
-      expect(Message.context_messages.pluck(:message_type)).to match_array(
-        %w[system_message user_message agent_message tool_call tool_response]
-      )
-    end
-
-    it "includes system_message events" do
-      session.messages.create!(message_type: "system_message", payload: {content: "boot"}, timestamp: 1)
-
-      expect(Message.context_messages.pluck(:message_type)).to include("system_message")
-    end
-  end
-
   describe "#llm_message?" do
     it "returns true for user_message" do
       event = Message.new(message_type: "user_message")
@@ -139,24 +119,6 @@ RSpec.describe Message do
     it "returns false for system_message" do
       event = Message.new(message_type: "system_message")
       expect(event).not_to be_llm_message
-    end
-  end
-
-  describe "#context_message?" do
-    it "returns true for user_message" do
-      expect(Message.new(message_type: "user_message")).to be_context_message
-    end
-
-    it "returns true for tool_call" do
-      expect(Message.new(message_type: "tool_call")).to be_context_message
-    end
-
-    it "returns true for tool_response" do
-      expect(Message.new(message_type: "tool_response")).to be_context_message
-    end
-
-    it "returns true for system_message" do
-      expect(Message.new(message_type: "system_message")).to be_context_message
     end
   end
 

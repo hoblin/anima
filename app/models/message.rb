@@ -25,7 +25,6 @@ class Message < ApplicationRecord
 
   TYPES = %w[system_message user_message agent_message tool_call tool_response].freeze
   LLM_TYPES = %w[user_message agent_message].freeze
-  CONTEXT_TYPES = %w[system_message user_message agent_message tool_call tool_response].freeze
   CONVERSATION_TYPES = %w[user_message agent_message system_message].freeze
   THINK_TOOL = "think"
   # Message types that require a tool_use_id to pair call with response.
@@ -64,11 +63,6 @@ class Message < ApplicationRecord
   #   @return [ActiveRecord::Relation]
   scope :llm_messages, -> { where(message_type: LLM_TYPES) }
 
-  # @!method self.context_messages
-  #   Messages included in the LLM context window (conversation + tool interactions).
-  #   @return [ActiveRecord::Relation]
-  scope :context_messages, -> { where(message_type: CONTEXT_TYPES) }
-
   # Maps message_type to the Anthropic Messages API role.
   # @return [String] "user" or "assistant"
   def api_role
@@ -78,11 +72,6 @@ class Message < ApplicationRecord
   # @return [Boolean] true if this message represents an LLM conversation turn
   def llm_message?
     message_type.in?(LLM_TYPES)
-  end
-
-  # @return [Boolean] true if this message is part of the LLM context window
-  def context_message?
-    message_type.in?(CONTEXT_TYPES)
   end
 
   # @return [Boolean] true if this is a conversation message (user/agent/system)

@@ -112,7 +112,7 @@ class Session < ApplicationRecord
   # @param token_budget [Integer] maximum tokens to include (positive)
   # @return [Array<Message>] chronologically ordered
   def viewport_messages(token_budget: effective_token_budget)
-    scope = messages.context_messages
+    scope = messages
     scope = scope.where("messages.id >= ?", mneme_boundary_message_id) if mneme_boundary_message_id
 
     selected = []

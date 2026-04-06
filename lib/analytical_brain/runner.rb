@@ -212,7 +212,6 @@ module AnalyticalBrain
     # @return [Array<Message>] most recent messages in chronological order
     def recent_messages
       @session.messages
-        .context_messages
         .reorder(id: :desc)
         .limit(Anima::Settings.analytical_brain_message_window)
         .to_a

@@ -112,7 +112,7 @@ module Tools
     # @return [Array<Message>] chronologically ordered
     def fetch_center_messages(target, target_session)
       half = CONTEXT_WINDOW / 2
-      scope = target_session.messages.context_messages
+      scope = target_session.messages
       target_id = target.id
 
       before = scope.where("id <= ?", target_id).reorder(id: :desc).limit(half + 1).to_a.reverse
