@@ -14,6 +14,7 @@ group :development do
 end
 
 group :test do
+  gem "factory_bot_rails", "~> 6.5"
   gem "fuubar"
   gem "rspec", "~> 3.0"
   gem "rspec-rails", "~> 7.0"
