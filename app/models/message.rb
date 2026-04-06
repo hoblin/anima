@@ -15,7 +15,9 @@
 # @!attribute timestamp
 #   @return [Integer] nanoseconds since epoch (Process::CLOCK_REALTIME)
 # @!attribute token_count
-#   @return [Integer] cached token count for this message's payload (0 until counted)
+#   @return [Integer] token count for this message's payload. Seeded with
+#     a local estimate on create and later refined by {CountMessageTokensJob}
+#     using the real Anthropic tokenizer. Always positive — never zero or nil.
 # @!attribute tool_use_id
 #   @return [String] ID correlating tool_call and tool_response messages
 #     (Anthropic-assigned, or a SecureRandom.uuid fallback when the API returns nil;
@@ -56,7 +58,8 @@ class Message < ApplicationRecord
   # Anthropic requires every tool_use to have a matching tool_result with the same ID
   validates :tool_use_id, presence: true, if: -> { message_type.in?(TOOL_TYPES) }
 
-  after_create :schedule_token_count, if: :llm_message?
+  before_validation :set_estimated_token_count, on: :create
+  after_create :schedule_token_count
 
   # @!method self.llm_messages
   #   Messages that represent conversation turns sent to the LLM API.
@@ -67,11 +70,6 @@ class Message < ApplicationRecord
   # @return [String] "user" or "assistant"
   def api_role
     ROLE_MAP.fetch(message_type)
-  end
-
-  # @return [Boolean] true if this message represents an LLM conversation turn
-  def llm_message?
-    message_type.in?(LLM_TYPES)
   end
 
   # @return [Boolean] true if this is a conversation message (user/agent/system)
@@ -96,6 +94,19 @@ class Message < ApplicationRecord
   end
 
   private
+
+  # Seeds {#token_count} with a local estimate before the record is saved.
+  # The background {CountMessageTokensJob} later refines this value with the
+  # real Anthropic tokenizer count. Respects an explicit positive value
+  # passed by the caller (e.g. tests that want deterministic counts) and
+  # bails out for records that don't yet have a payload — they'll fail
+  # presence validation right after this callback.
+  def set_estimated_token_count
+    return if token_count.to_i.positive?
+    return if payload.blank?
+
+    self.token_count = estimate_tokens
+  end
 
   def schedule_token_count
     CountMessageTokensJob.perform_later(id)
