@@ -80,9 +80,9 @@ def sh(cmd)
   out.strip
 end
 
-def previous_tag
-  tag = `git describe --tags --abbrev=0 HEAD 2>/dev/null`.strip
-  abort "No previous tag found in history" if tag.empty?
+def previous_tag(starting_from = "HEAD")
+  tag = `git describe --tags --abbrev=0 #{starting_from} 2>/dev/null`.strip
+  abort "No previous tag found from #{starting_from}" if tag.empty?
   tag
 end
 
@@ -90,9 +90,18 @@ def current_tag
   ENV["GITHUB_REF_NAME"] || `git describe --tags HEAD 2>/dev/null`.strip.then { |t| t.empty? ? "HEAD" : t }
 end
 
-def merged_prs_since(tag)
-  tag_date = sh("git log -1 --format=%aI #{tag}")
-  json = sh(%(gh pr list --state merged --base main --search "merged:>#{tag_date}" --limit 200 --json number,title,body,author,mergedAt))
+def real_tag?(name)
+  system("git rev-parse --verify --quiet refs/tags/#{name} > /dev/null 2>&1")
+end
+
+def tag_date(tag)
+  sh("git log -1 --format=%aI #{tag}")
+end
+
+def merged_prs(prev_tag, curr_tag)
+  prev_date = tag_date(prev_tag)
+  range = real_tag?(curr_tag) ? "#{prev_date}..#{tag_date(curr_tag)}" : ">#{prev_date}"
+  json = sh(%(gh pr list --state merged --base main --search "merged:#{range}" --limit 200 --json number,title,body,author,mergedAt))
   JSON.parse(json).sort_by { |pr| pr["mergedAt"] }
 end
 
@@ -176,9 +185,10 @@ end.parse!
 
 token = ENV["ANTHROPIC_API_KEY"] || abort("ANTHROPIC_API_KEY environment variable is not set")
 
-prev = options[:since] || previous_tag
 curr = options[:tag] || current_tag
-prs = merged_prs_since(prev)
+default_since_ref = real_tag?(curr) ? "#{curr}^" : "HEAD"
+prev = options[:since] || previous_tag(default_since_ref)
+prs = merged_prs(prev, curr)
 
 abort "No merged PRs found since #{prev} — nothing to release" if prs.empty?
 
