@@ -35,14 +35,6 @@ class Session < ApplicationRecord
   scope :root_sessions, -> { where(parent_session_id: nil) }
   scope :processing_children_of, ->(parent_id) { where(parent_session_id: parent_id, processing: true) }
 
-  # Cycles to the next view mode: basic → verbose → debug → basic.
-  #
-  # @return [String] the next view mode in the cycle
-  def next_view_mode
-    current_index = VIEW_MODES.index(view_mode) || 0
-    VIEW_MODES[(current_index + 1) % VIEW_MODES.size]
-  end
-
   # @return [Boolean] true if this session is a sub-agent (has a parent)
   def sub_agent?
     parent_session_id.present?
