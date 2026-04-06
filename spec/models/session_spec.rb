@@ -2302,6 +2302,91 @@ RSpec.describe Session do
     end
   end
 
+  describe "#viewport_messages" do
+    subject(:viewport) { session.viewport_messages(token_budget: budget) }
+
+    let(:session) { create(:session) }
+    let(:budget) { 100 }
+
+    it "returns an ActiveRecord::Relation" do
+      create(:message, :user_message, session:, token_count: 10)
+
+      expect(viewport).to be_a(ActiveRecord::Relation)
+    end
+
+    it "is chainable with further AR methods" do
+      m1 = create(:message, :user_message, session:, token_count: 10)
+      m2 = create(:message, :user_message, session:, token_count: 10)
+
+      expect(viewport.pluck(:id)).to eq([m1.id, m2.id])
+    end
+
+    context "when the session has no eligible messages" do
+      it "returns an empty relation" do
+        expect(viewport).to be_empty
+      end
+    end
+
+    context "when all messages fit within the budget" do
+      it "returns every message in chronological order" do
+        oldest = create(:message, :user_message, session:, token_count: 20)
+        middle = create(:message, :user_message, session:, token_count: 20)
+        newest = create(:message, :user_message, session:, token_count: 20)
+
+        expect(viewport.to_a).to eq([oldest, middle, newest])
+      end
+
+      it "treats every message type as eligible" do
+        first = create(:message, :user_message, session:, token_count: 10)
+        second = create(:message, :think_tool_call, session:, token_count: 10)
+        third = create(:message, :bash_tool_call, session:, token_count: 10)
+        fourth = create(:message, :bash_tool_response, session:, token_count: 10)
+
+        expect(viewport.to_a).to eq([first, second, third, fourth])
+      end
+    end
+
+    context "when cumulative cost exceeds the budget" do
+      it "drops the oldest messages walking newest-first" do
+        create(:message, :user_message, session:, token_count: 80)
+        middle = create(:message, :user_message, session:, token_count: 60)
+        newest = create(:message, :user_message, session:, token_count: 30)
+
+        # newest=30 + middle=60 = 90 ≤ 100 → both kept
+        # adding oldest (80) would push total to 170 → dropped
+        expect(viewport.to_a).to eq([middle, newest])
+      end
+
+      it "includes a message whose cumulative cost exactly equals the budget" do
+        oldest = create(:message, :user_message, session:, token_count: 30)
+        newest = create(:message, :user_message, session:, token_count: 70)
+
+        # newest=70 + oldest=30 = 100 ≤ 100 → both kept
+        expect(viewport.to_a).to eq([oldest, newest])
+      end
+    end
+
+    context "when the newest message alone exceeds the budget" do
+      it "still includes the newest message and drops everything older" do
+        create(:message, :user_message, session:, token_count: 50)
+        newest = create(:message, :user_message, session:, token_count: 200)
+
+        expect(viewport.to_a).to eq([newest])
+      end
+    end
+
+    context "when a Mneme boundary is set" do
+      it "excludes messages older than the boundary" do
+        create(:message, :user_message, session:, token_count: 10)
+        at_boundary = create(:message, :user_message, session:, token_count: 10)
+        after_boundary = create(:message, :user_message, session:, token_count: 10)
+        session.update_column(:mneme_boundary_message_id, at_boundary.id)
+
+        expect(viewport.to_a).to eq([at_boundary, after_boundary])
+      end
+    end
+  end
+
   describe "#recalculate_viewport!" do
     let(:session) { Session.create! }
 
@@ -2352,29 +2437,6 @@ RSpec.describe Session do
       session.snapshot_viewport!([1, 2])
       session.snapshot_viewport!([3, 4, 5])
       expect(session.reload.viewport_message_ids).to eq([3, 4, 5])
-    end
-  end
-
-  describe "#estimate_tokens (private)" do
-    let(:session) { Session.create! }
-
-    it "delegates to Message#estimate_tokens" do
-      event = session.messages.create!(
-        message_type: "user_message", payload: {"content" => "hello world"}, timestamp: 1
-      )
-
-      expect(session.send(:estimate_tokens, event)).to eq(event.estimate_tokens)
-    end
-
-    it "uses heuristic for tool events via Message#estimate_tokens" do
-      event = session.messages.create!(
-        message_type: "tool_call",
-        payload: {"content" => "calling", "tool_name" => "bash", "tool_input" => {"command" => "ls"}},
-        tool_use_id: "toolu_est1",
-        timestamp: 1
-      )
-
-      expect(session.send(:estimate_tokens, event)).to eq(event.estimate_tokens)
     end
   end
 

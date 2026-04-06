@@ -105,35 +105,33 @@ class Session < ApplicationRecord
     sub_agent? ? Anima::Settings.subagent_token_budget : Anima::Settings.token_budget
   end
 
-  # Returns the messages currently visible in the LLM context window.
-  # Walks own messages newest-first starting from the Mneme boundary and
-  # includes them until the token budget is exhausted. Older messages
-  # have been compressed into snapshots and no longer participate in the
-  # viewport. Always includes at least the newest message even if it
-  # exceeds budget. Messages are full-size or excluded entirely.
+  # Returns the messages currently visible in the LLM context window as a
+  # composable AR relation. Selects own messages above the Mneme boundary
+  # whose cumulative token count (walked newest-first) fits within the
+  # budget. The newest message is always included even when it alone
+  # exceeds the budget. Messages are full-size or excluded entirely.
   #
-  # Pending messages live in a separate table ({PendingMessage}) and never
-  # appear in this viewport — they are promoted to real messages before
-  # the agent processes them.
+  # The selection runs as a single SQL query using a window function
+  # ({+SUM() OVER+}). Older messages have been compressed into snapshots
+  # and no longer participate in the viewport. Pending messages live in a
+  # separate table ({PendingMessage}) and never appear here — they are
+  # promoted to real messages before the agent processes them.
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
-  # @return [Array<Message>] chronologically ordered
+  # @return [ActiveRecord::Relation<Message>] chronologically ordered by id
   def viewport_messages(token_budget: effective_token_budget)
     scope = messages
     scope = scope.where("messages.id >= ?", mneme_boundary_message_id) if mneme_boundary_message_id
 
-    selected = []
-    remaining = token_budget
+    windowed = scope.select(
+      "messages.*",
+      "SUM(token_count) OVER (ORDER BY id DESC) AS running_total"
+    )
 
-    scope.reorder(id: :desc).each do |msg|
-      cost = message_token_cost(msg)
-      break if cost > remaining && selected.any?
-
-      selected << msg
-      remaining -= cost
-    end
-
-    selected.reverse
+    Message
+      .from(Arel.sql("(#{windowed.to_sql}) AS messages"))
+      .where("running_total <= ? OR running_total = token_count", token_budget)
+      .order(:id)
   end
 
   # Recalculates the viewport and returns IDs of messages evicted since the
@@ -143,7 +141,7 @@ class Session < ApplicationRecord
   #
   # @return [Array<Integer>] IDs of messages no longer in the viewport
   def recalculate_viewport!
-    new_ids = viewport_messages.map(&:id)
+    new_ids = viewport_messages.pluck(:id)
     old_ids = viewport_message_ids
 
     evicted = old_ids - new_ids
@@ -309,7 +307,7 @@ class Session < ApplicationRecord
     pinned_budget = (token_budget * Anima::Settings.mneme_pinned_budget_fraction).to_i
     sliding_budget -= pinned_budget
 
-    window = viewport_messages(token_budget: sliding_budget)
+    window = viewport_messages(token_budget: sliding_budget).to_a
     first_message_id = window.first&.id
 
     prefix = assemble_context_prefix_messages(first_message_id, budget: pinned_budget)
@@ -753,11 +751,6 @@ class Session < ApplicationRecord
     })
   end
 
-  # @return [Integer] token cost, using cached count or heuristic estimate
-  def message_token_cost(msg)
-    (msg.token_count > 0) ? msg.token_count : estimate_tokens(msg)
-  end
-
   # Ensures every tool_call in the message list has a matching tool_response
   # (and vice versa) by removing unpaired messages. The Anthropic API requires
   # every tool_use block to have a tool_result — a missing partner causes
@@ -1088,14 +1081,5 @@ class Session < ApplicationRecord
   # @return [Integer] nanoseconds since epoch
   def now_ns
     Time.current.to_ns
-  end
-
-  # Delegates to {Message#estimate_tokens} for messages not yet counted
-  # by the background job.
-  #
-  # @param msg [Message]
-  # @return [Integer] at least 1
-  def estimate_tokens(msg)
-    msg.estimate_tokens
   end
 end

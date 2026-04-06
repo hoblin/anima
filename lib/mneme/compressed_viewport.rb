@@ -57,8 +57,6 @@ module Mneme
     # {Mneme::Runner#advance_boundary} advances past only the oldest third,
     # preserving recent conversation context in the main viewport.
     #
-    # Caches per-message token costs in @message_costs for reuse by split_into_zones.
-    #
     # @return [Array<Message>] chronologically ordered (oldest first)
     def fetch_messages
       scope = @session.messages
@@ -68,16 +66,13 @@ module Mneme
       end
 
       selected = []
-      @message_costs = {}
       remaining = @token_budget
 
       scope.reorder(id: :asc).each do |message|
-        cost = message_token_cost(message)
-        break if cost > remaining && selected.any?
+        break if message.token_count > remaining && selected.any?
 
         selected << message
-        @message_costs[message.id] = cost
-        remaining -= cost
+        remaining -= message.token_count
       end
 
       selected
@@ -89,14 +84,14 @@ module Mneme
     #
     # @return [Hash{Symbol => Array<Message>}] :eviction, :middle, :recent
     def split_into_zones(messages)
-      costs = messages.map { |message| [message, @message_costs[message.id] || message_token_cost(message)] }
-      zone_size = costs.sum(&:last) / 3.0
+      total = messages.sum(&:token_count)
+      zone_size = total / 3.0
 
       result = {eviction: [], middle: [], recent: []}
       cumulative = 0
 
-      costs.each do |message, cost|
-        cumulative += cost
+      messages.each do |message|
+        cumulative += message.token_count
         result[zone_for_cumulative(cumulative, zone_size)] << message
       end
 
@@ -195,10 +190,5 @@ module Mneme
       "[#{count} #{(count == 1) ? "tool" : "tools"} called]"
     end
 
-    # @return [Integer] token cost using cached count or heuristic
-    def message_token_cost(message)
-      cached = message.token_count
-      (cached > 0) ? cached : message.estimate_tokens
-    end
   end
 end
