@@ -40,36 +40,43 @@ class Session < ApplicationRecord
     parent_session_id.present?
   end
 
-  # Checks whether the Mneme terminal message has left the viewport and
-  # enqueues {MnemeJob} when it has. On the first message of a new session,
-  # initializes the boundary pointer.
-  #
-  # The terminal message is always a conversation message (user/agent message
-  # or think tool_call), never a bare tool_call/tool_response.
+  # Checks whether the Mneme boundary has left the viewport and enqueues
+  # {MnemeJob} when it has. Delegates initial boundary placement to
+  # {#initialize_mneme_boundary!} on the first call.
   #
   # @return [void]
   def schedule_mneme!
     return if sub_agent?
 
-    # Initialize boundary on first conversation message
     if mneme_boundary_message_id.nil?
-      first_conversation = messages
-        .where(message_type: Message::CONVERSATION_TYPES)
-        .order(:id).first
-      first_conversation ||= messages
-        .where(message_type: "tool_call")
-        .detect { |msg| msg.payload["tool_name"] == Message::THINK_TOOL }
-
-      if first_conversation
-        update_column(:mneme_boundary_message_id, first_conversation.id)
-      end
+      initialize_mneme_boundary!
       return
     end
 
-    # Check if boundary message has left the viewport
     return if viewport_message_ids.include?(mneme_boundary_message_id)
 
     MnemeJob.perform_later(id)
+  end
+
+  # Places the initial Mneme boundary at the oldest eligible message in
+  # the session — the top of the raw window, from which Mneme will start
+  # compressing downward once that message drifts out of the viewport.
+  # Eligible messages are conversation messages (user/agent/system) and
+  # think tool_calls, considered on equal footing; bare tool_call or
+  # tool_response messages are never eligible.
+  #
+  # No-op when the session has no eligible messages yet.
+  #
+  # @return [void]
+  def initialize_mneme_boundary!
+    first_id = messages
+      .where(message_type: Message::CONVERSATION_TYPES)
+      .or(messages.where(message_type: "tool_call")
+        .where("json_extract(payload, '$.tool_name') = ?", Message::THINK_TOOL))
+      .order(:id)
+      .pick(:id)
+
+    update_column(:mneme_boundary_message_id, first_id) if first_id
   end
 
   # Enqueues the analytical brain to perform background maintenance on

@@ -458,7 +458,7 @@ RSpec.describe Session do
 
     it "excludes goals from system prompt entirely" do
       session = Session.create!
-      Goal.create!(session: session, description: "Test goal")
+      Goal.create!(session:, description: "Test goal")
 
       prompt = session.system_prompt
       expect(prompt).not_to include("Current Goals")
@@ -674,14 +674,14 @@ RSpec.describe Session do
   describe "goals association" do
     it "has many goals" do
       session = Session.create!
-      goal = Goal.create!(session: session, description: "test goal")
+      goal = Goal.create!(session:, description: "test goal")
 
       expect(session.goals).to eq([goal])
     end
 
     it "destroys goals when session is destroyed" do
       session = Session.create!
-      Goal.create!(session: session, description: "doomed")
+      Goal.create!(session:, description: "doomed")
 
       expect { session.destroy }.to change(Goal, :count).by(-1)
     end
@@ -695,9 +695,9 @@ RSpec.describe Session do
     end
 
     it "returns root goals with their sub-goals" do
-      root = Goal.create!(session: session, description: "Implement auth")
-      Goal.create!(session: session, parent_goal: root, description: "Read code")
-      Goal.create!(session: session, parent_goal: root, description: "Write tests", status: "completed")
+      root = Goal.create!(session:, description: "Implement auth")
+      Goal.create!(session:, parent_goal: root, description: "Read code")
+      Goal.create!(session:, parent_goal: root, description: "Write tests", status: "completed")
 
       summary = session.goals_summary
       expect(summary.size).to eq(1)
@@ -709,8 +709,8 @@ RSpec.describe Session do
     end
 
     it "excludes sub-goals from root level" do
-      root = Goal.create!(session: session, description: "root")
-      Goal.create!(session: session, parent_goal: root, description: "child")
+      root = Goal.create!(session:, description: "root")
+      Goal.create!(session:, parent_goal: root, description: "child")
 
       summary = session.goals_summary
       expect(summary.size).to eq(1)
@@ -718,16 +718,16 @@ RSpec.describe Session do
     end
 
     it "orders root goals by created_at" do
-      first = Goal.create!(session: session, description: "first")
-      second = Goal.create!(session: session, description: "second")
+      first = Goal.create!(session:, description: "first")
+      second = Goal.create!(session:, description: "second")
 
       summary = session.goals_summary
       expect(summary.map { |g| g["id"] }).to eq([first.id, second.id])
     end
 
     it "excludes evicted root goals" do
-      Goal.create!(session: session, description: "visible")
-      Goal.create!(session: session, description: "evicted", status: "completed",
+      Goal.create!(session:, description: "visible")
+      Goal.create!(session:, description: "evicted", status: "completed",
         completed_at: 2.hours.ago, evicted_at: 1.hour.ago)
 
       summary = session.goals_summary
@@ -736,10 +736,10 @@ RSpec.describe Session do
     end
 
     it "excludes sub-goals of evicted root goals" do
-      evicted_root = Goal.create!(session: session, description: "evicted root",
+      evicted_root = Goal.create!(session:, description: "evicted root",
         status: "completed", completed_at: 2.hours.ago, evicted_at: 1.hour.ago)
-      Goal.create!(session: session, parent_goal: evicted_root, description: "orphaned child")
-      Goal.create!(session: session, description: "visible root")
+      Goal.create!(session:, parent_goal: evicted_root, description: "orphaned child")
+      Goal.create!(session:, description: "visible root")
 
       summary = session.goals_summary
       expect(summary.size).to eq(1)
@@ -776,7 +776,7 @@ RSpec.describe Session do
 
     it "works for main sessions too" do
       session = Session.create!
-      Goal.create!(session: session, description: "Build feature X")
+      Goal.create!(session:, description: "Build feature X")
 
       section = session.send(:assemble_task_section)
       expect(section).to include("Build feature X")
@@ -789,7 +789,7 @@ RSpec.describe Session do
     let(:session) { Session.create! }
 
     it "excludes goals from system prompt — they flow as phantom pairs" do
-      Goal.create!(session: session, description: "Implement feature")
+      Goal.create!(session:, description: "Implement feature")
 
       prompt = session.assemble_system_prompt
       expect(prompt).to start_with("You are running on Anima v")
@@ -799,14 +799,14 @@ RSpec.describe Session do
 
     it "system prompt is stable regardless of goal changes" do
       prompt_before = session.assemble_system_prompt
-      Goal.create!(session: session, description: "New goal")
+      Goal.create!(session:, description: "New goal")
       prompt_after = session.assemble_system_prompt
 
       expect(prompt_before).to eq(prompt_after)
     end
 
     it "does not auto-evict completed goals by message count" do
-      goal = Goal.create!(session: session, description: "Ongoing work")
+      goal = Goal.create!(session:, description: "Ongoing work")
       goal.update!(status: "completed", completed_at: Time.current)
 
       20.times do |i|
@@ -2230,6 +2230,75 @@ RSpec.describe Session do
       prompt = session.assemble_system_prompt
       expect(prompt).to include("Summary of old conversation")
       expect(prompt).to include("Recent Memory")
+    end
+  end
+
+  describe "#initialize_mneme_boundary!" do
+    subject(:initialize_boundary) { session.initialize_mneme_boundary! }
+
+    let(:session) { create(:session) }
+
+    context "without eligible messages" do
+      it "leaves the boundary unset on an empty session" do
+        expect { initialize_boundary }
+          .not_to change { session.mneme_boundary_message_id }.from(nil)
+      end
+
+      it "leaves the boundary unset when only non-think tool messages exist" do
+        create(:message, :bash_tool_call, session:)
+        create(:message, :bash_tool_response, session:)
+
+        expect { initialize_boundary }
+          .not_to change { session.mneme_boundary_message_id }.from(nil)
+      end
+    end
+
+    context "with a single eligible message" do
+      it "sets the boundary to a lone conversation message" do
+        message = create(:message, :user_message, session:)
+
+        expect { initialize_boundary }
+          .to change { session.mneme_boundary_message_id }
+          .from(nil).to(message.id)
+      end
+
+      it "sets the boundary to a lone think tool_call" do
+        thought = create(:message, :think_tool_call, session:)
+
+        expect { initialize_boundary }
+          .to change { session.mneme_boundary_message_id }
+          .from(nil).to(thought.id)
+      end
+    end
+
+    context "with multiple messages" do
+      it "picks the oldest when a conversation message comes first" do
+        first = create(:message, :user_message, session:)
+        create(:message, :think_tool_call, session:)
+
+        expect { initialize_boundary }
+          .to change { session.mneme_boundary_message_id }
+          .from(nil).to(first.id)
+      end
+
+      it "picks the oldest when a think tool_call comes first" do
+        thought = create(:message, :think_tool_call, session:)
+        create(:message, :user_message, session:)
+
+        expect { initialize_boundary }
+          .to change { session.mneme_boundary_message_id }
+          .from(nil).to(thought.id)
+      end
+
+      it "skips non-think tool messages to find an eligible message" do
+        create(:message, :bash_tool_call, session:)
+        create(:message, :bash_tool_response, session:)
+        eligible = create(:message, :user_message, session:)
+
+        expect { initialize_boundary }
+          .to change { session.mneme_boundary_message_id }
+          .from(nil).to(eligible.id)
+      end
     end
   end
 
