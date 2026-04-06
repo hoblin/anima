@@ -1,0 +1,71 @@
+name: Release Notes
+
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to update (default: latest release)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - uses: ruby/setup-ruby@6ca151fd1bfcfd6fe0c4eb6837eb0584d0134a0c # v1
+        with:
+          ruby-version: "3.4"
+
+      - name: Resolve target and previous tags
+        id: tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
+          else
+            TAG=$(gh release view --json tagName --jq .tagName)
+          fi
+
+          PREV=$(gh release list --limit 50 --json tagName --jq ".[].tagName" \
+            | grep -A1 "^${TAG}$" | tail -n1)
+
+          if [ -z "$PREV" ] || [ "$PREV" = "$TAG" ]; then
+            PREV=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)
+          fi
+
+          if [ -z "$PREV" ]; then
+            echo "No previous tag found relative to $TAG" >&2
+            exit 1
+          fi
+
+          echo "tag=$TAG"   >> "$GITHUB_OUTPUT"
+          echo "prev=$PREV" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release notes
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bin/release \
+            --since "${{ steps.tags.outputs.prev }}" \
+            --tag "${{ steps.tags.outputs.tag }}" \
+            --output release_notes.md
+
+      - name: Update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release edit "${{ steps.tags.outputs.tag }}" --notes-file release_notes.md
