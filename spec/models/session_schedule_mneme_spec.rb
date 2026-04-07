@@ -11,26 +11,23 @@ RSpec.describe Session, "#schedule_mneme!" do
     it "initializes the boundary to the first conversation message" do
       msg = create(:message, :user_message, session:)
 
-      schedule!
-
-      expect(session.reload.mneme_boundary_message_id).to eq(msg.id)
+      expect { schedule! }
+        .to change { session.reload.mneme_boundary_message_id }.from(nil).to(msg.id)
     end
 
     it "skips non-conversation tool_calls when finding the first boundary" do
       create(:message, :bash_tool_call, session:)
       user_msg = create(:message, :user_message, session:)
 
-      schedule!
-
-      expect(session.reload.mneme_boundary_message_id).to eq(user_msg.id)
+      expect { schedule! }
+        .to change { session.reload.mneme_boundary_message_id }.from(nil).to(user_msg.id)
     end
 
     it "accepts a think tool_call as boundary" do
       think = create(:message, :think_tool_call, session:)
 
-      schedule!
-
-      expect(session.reload.mneme_boundary_message_id).to eq(think.id)
+      expect { schedule! }
+        .to change { session.reload.mneme_boundary_message_id }.from(nil).to(think.id)
     end
 
     it "does not enqueue MnemeJob on initialization" do
@@ -39,10 +36,9 @@ RSpec.describe Session, "#schedule_mneme!" do
       expect { schedule! }.not_to have_enqueued_job(MnemeJob)
     end
 
-    it "does nothing when there are no eligible messages" do
-      schedule!
-
-      expect(session.reload.mneme_boundary_message_id).to be_nil
+    it "does not change boundary when there are no eligible messages" do
+      expect { schedule! }
+        .not_to change { session.reload.mneme_boundary_message_id }.from(nil)
     end
   end
 
