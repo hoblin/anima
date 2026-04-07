@@ -53,7 +53,7 @@ class Session < ApplicationRecord
       return
     end
 
-    return if viewport_message_ids.include?(mneme_boundary_message_id)
+    return if viewport_messages.where(id: mneme_boundary_message_id).exists?
 
     MnemeJob.perform_later(id)
   end
@@ -132,32 +132,6 @@ class Session < ApplicationRecord
       .from(Arel.sql("(#{windowed.to_sql}) AS messages"))
       .where("running_total <= ? OR running_total = token_count", token_budget)
       .order(:id)
-  end
-
-  # Recalculates the viewport and returns IDs of messages evicted since the
-  # last snapshot. Updates the stored viewport_message_ids atomically.
-  # Piggybacks on message broadcasts to notify clients which messages left
-  # the LLM's context window.
-  #
-  # @return [Array<Integer>] IDs of messages no longer in the viewport
-  def recalculate_viewport!
-    new_ids = viewport_messages.pluck(:id)
-    old_ids = viewport_message_ids
-
-    evicted = old_ids - new_ids
-    update_column(:viewport_message_ids, new_ids) if old_ids != new_ids
-    evicted
-  end
-
-  # Overwrites the viewport snapshot without computing evictions.
-  # Used when transmitting or broadcasting a full viewport refresh,
-  # where eviction notifications are unnecessary (clients clear their
-  # store first).
-  #
-  # @param ids [Array<Integer>] message IDs now in the viewport
-  # @return [void]
-  def snapshot_viewport!(ids)
-    update_column(:viewport_message_ids, ids)
   end
 
   # Returns skill names whose recalled content is currently visible in the

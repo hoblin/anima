@@ -3,100 +3,81 @@
 require "rails_helper"
 
 RSpec.describe Session, "#schedule_mneme!" do
-  let(:session) { Session.create! }
+  subject(:schedule!) { session.schedule_mneme! }
 
-  # Helper to create events with predetermined token counts.
-  def create_message(session, type:, content: "msg", token_count: 100, tool_name: nil, tool_input: nil)
-    payload = case type
-    when "tool_call"
-      {"content" => "Calling #{tool_name}", "tool_name" => tool_name,
-       "tool_input" => tool_input || {}, "tool_use_id" => "tu_#{SecureRandom.hex(4)}"}
-    when "tool_response"
-      {"content" => content, "tool_name" => tool_name, "tool_use_id" => "tu_#{SecureRandom.hex(4)}"}
-    else
-      {"content" => content}
+  let(:session) { create(:session) }
+
+  context "when session has no boundary" do
+    it "initializes the boundary to the first conversation message" do
+      msg = create(:message, :user_message, session:)
+
+      schedule!
+
+      expect(session.reload.mneme_boundary_message_id).to eq(msg.id)
     end
 
-    session.messages.create!(
-      message_type: type,
-      payload: payload,
-      tool_use_id: payload["tool_use_id"],
-      timestamp: Time.current.to_ns,
-      token_count: token_count
-    )
-  end
+    it "skips non-conversation tool_calls when finding the first boundary" do
+      create(:message, :bash_tool_call, session:)
+      user_msg = create(:message, :user_message, session:)
 
-  context "when session has no boundary event" do
-    it "initializes the boundary to the first conversation event" do
-      event = create_message(session, type: "user_message", content: "Hello")
+      schedule!
 
-      session.schedule_mneme!
-
-      expect(session.reload.mneme_boundary_message_id).to eq(event.id)
+      expect(session.reload.mneme_boundary_message_id).to eq(user_msg.id)
     end
 
-    it "skips tool_call events when finding the first conversation event" do
-      create_message(session, type: "tool_call", tool_name: "bash")
-      user_event = create_message(session, type: "user_message", content: "Hello")
+    it "accepts a think tool_call as boundary" do
+      think = create(:message, :think_tool_call, session:)
 
-      session.schedule_mneme!
-
-      expect(session.reload.mneme_boundary_message_id).to eq(user_event.id)
-    end
-
-    it "does not enqueue MnemeJob on initialization" do
-      create_message(session, type: "user_message", content: "Hello")
-
-      expect { session.schedule_mneme! }.not_to have_enqueued_job(MnemeJob)
-    end
-
-    it "initializes the boundary to a think event when no messages exist" do
-      think = create_message(session, type: "tool_call", tool_name: "think",
-        tool_input: {"thoughts" => "Let me think"})
-
-      session.schedule_mneme!
+      schedule!
 
       expect(session.reload.mneme_boundary_message_id).to eq(think.id)
     end
 
-    it "does nothing when there are no conversation events" do
-      session.schedule_mneme!
+    it "does not enqueue MnemeJob on initialization" do
+      create(:message, :user_message, session:)
+
+      expect { schedule! }.not_to have_enqueued_job(MnemeJob)
+    end
+
+    it "does nothing when there are no eligible messages" do
+      schedule!
 
       expect(session.reload.mneme_boundary_message_id).to be_nil
     end
   end
 
-  context "when boundary event is still in viewport" do
+  context "when boundary message is still in the viewport" do
+    let!(:boundary_msg) { create(:message, :user_message, session:) }
+
     before do
-      event = create_message(session, type: "user_message", content: "Hello")
-      session.update_column(:mneme_boundary_message_id, event.id)
-      session.update_column(:viewport_message_ids, [event.id])
+      session.update_column(:mneme_boundary_message_id, boundary_msg.id)
+      allow(session).to receive(:viewport_messages).and_return(Message.where(id: boundary_msg.id))
     end
 
     it "does not enqueue MnemeJob" do
-      expect { session.schedule_mneme! }.not_to have_enqueued_job(MnemeJob)
+      expect { schedule! }.not_to have_enqueued_job(MnemeJob)
     end
   end
 
-  context "when boundary event has left the viewport" do
+  context "when boundary message has left the viewport" do
+    let!(:boundary_msg) { create(:message, :user_message, session:) }
+    let!(:newer_msg) { create(:message, :user_message, session:) }
+
     before do
-      old_event = create_message(session, type: "user_message", content: "Old message")
-      new_event = create_message(session, type: "user_message", content: "New message")
-      session.update_column(:mneme_boundary_message_id, old_event.id)
-      # Viewport only contains the new event (old one evicted)
-      session.update_column(:viewport_message_ids, [new_event.id])
+      session.update_column(:mneme_boundary_message_id, boundary_msg.id)
+      allow(session).to receive(:viewport_messages).and_return(Message.where(id: newer_msg.id))
     end
 
     it "enqueues MnemeJob" do
-      expect { session.schedule_mneme! }.to have_enqueued_job(MnemeJob).with(session.id)
+      expect { schedule! }.to have_enqueued_job(MnemeJob).with(session.id)
     end
   end
 
   context "for sub-agent sessions" do
     it "does not schedule Mneme" do
-      parent = Session.create!
-      child = Session.create!(parent_session: parent)
-      create_message(child, type: "user_message", content: "Hello")
+      parent = create(:session)
+      child = create(:session, parent_session: parent)
+      create(:message, :user_message, session: child)
 
       expect { child.schedule_mneme! }.not_to have_enqueued_job(MnemeJob)
     end
