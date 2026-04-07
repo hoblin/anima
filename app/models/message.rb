@@ -23,8 +23,6 @@
 #     (Anthropic-assigned, or a SecureRandom.uuid fallback when the API returns nil;
 #     required for tool_call and tool_response messages)
 class Message < ApplicationRecord
-  include Message::Broadcasting
-
   TYPES = %w[system_message user_message agent_message tool_call tool_response].freeze
   LLM_TYPES = %w[user_message agent_message].freeze
   CONVERSATION_TYPES = %w[user_message agent_message system_message].freeze
@@ -60,6 +58,8 @@ class Message < ApplicationRecord
 
   before_validation :set_estimated_token_count, on: :create
   after_create :schedule_token_count
+  after_create_commit :emit_created_event
+  after_update_commit :emit_updated_event
 
   # @!method self.llm_messages
   #   Messages that represent conversation turns sent to the LLM API.
@@ -110,5 +110,13 @@ class Message < ApplicationRecord
 
   def schedule_token_count
     CountMessageTokensJob.perform_later(id)
+  end
+
+  def emit_created_event
+    Events::Bus.emit(Events::MessageCreated.new(self))
+  end
+
+  def emit_updated_event
+    Events::Bus.emit(Events::MessageUpdated.new(self))
   end
 end
