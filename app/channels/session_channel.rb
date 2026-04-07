@@ -317,7 +317,7 @@ class SessionChannel < ApplicationCable::Channel
   # Decorates a message for transmission to clients. Merges the message's
   # database ID and structured decorator output into the payload.
   # Used by {#transmit_history} and {#broadcast_viewport} for historical
-  # and viewport re-broadcast — live broadcasts use {Message::Broadcasting}.
+  # and viewport re-broadcast — live broadcasts use {Events::Subscribers::MessageBroadcaster}.
   #
   # @param message [Message] persisted message record
   # @param mode [String] view mode for decoration (default: "basic")

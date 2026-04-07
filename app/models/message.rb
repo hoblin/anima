@@ -7,6 +7,10 @@
 # Not to be confused with {Events::Base} (transient bus signals).
 # Messages persist to SQLite; events flow through the bus and are gone.
 #
+# After commit, emits {Events::MessageCreated} and {Events::MessageUpdated}
+# lifecycle events so subscribers ({Events::Subscribers::MessageBroadcaster},
+# {Events::Subscribers::MnemeScheduler}) can react without coupling.
+#
 # @!attribute message_type
 #   @return [String] one of {TYPES}: system_message, user_message,
 #     agent_message, tool_call, tool_response
