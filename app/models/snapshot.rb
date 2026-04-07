@@ -48,7 +48,6 @@ class Snapshot < ApplicationRecord
     )
   }
 
-
   # @return [Integer] token cost, using cached count or heuristic estimate
   def token_cost
     token_count.positive? ? token_count : estimate_tokens

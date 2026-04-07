@@ -189,6 +189,5 @@ module Mneme
       return if count == 0
       "[#{count} #{(count == 1) ? "tool" : "tools"} called]"
     end
-
   end
 end

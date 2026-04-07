@@ -2367,7 +2367,6 @@ RSpec.describe Session do
     end
   end
 
-
   describe "#enqueue_user_message" do
     let(:session) { Session.create! }
 

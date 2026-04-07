@@ -126,8 +126,6 @@ RSpec.describe Snapshot do
         expect(uncovered.count).to eq(1)
       end
     end
-
-
   end
 
   describe "#token_cost" do
