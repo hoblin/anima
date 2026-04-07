@@ -18,4 +18,9 @@ class SystemMessageDecorator < MessageDecorator
   def render_debug
     render_verbose
   end
+
+  # @return [String] transcript line for Mneme's eviction/context zones
+  def render_mneme
+    "message #{id} System: #{content}"
+  end
 end

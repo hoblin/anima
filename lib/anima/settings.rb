@@ -243,9 +243,9 @@ module Anima
       # @return [Integer]
       def mneme_max_tokens = get("mneme", "max_tokens")
 
-      # Fraction of the main viewport token budget allocated to Mneme's viewport.
+      # Fraction of the main token budget for Mneme's eviction zone.
       # @return [Float]
-      def mneme_viewport_fraction = get("mneme", "viewport_fraction")
+      def eviction_fraction = get("mneme", "eviction_fraction")
 
       # Fraction of the main viewport token budget reserved for L1 snapshots.
       # @return [Float]

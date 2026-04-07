@@ -2,15 +2,15 @@
 
 module Mneme
   # Orchestrates the Mneme memory department — a phantom (non-persisted) LLM loop
-  # that observes a main session's compressed viewport and creates summaries of
-  # conversation context before it evicts from the viewport.
+  # that summarizes the eviction zone before those messages drift out of the
+  # viewport.
   #
-  # Mneme is triggered when the terminal message (`mneme_boundary_message_id`) leaves
-  # the viewport. It receives a compressed viewport (no raw tool calls, zone
-  # delimiters present) and uses the `save_snapshot` tool to persist a summary.
+  # The eviction zone is the oldest slice of the conversation starting from the
+  # boundary, sized by {Anima::Settings.eviction_fraction}. The LLM sees the
+  # eviction zone (what to summarize) plus the remaining viewport (context).
   #
-  # After completing, Mneme advances the terminal message to the boundary of what
-  # it just summarized, so the cycle repeats as more messages accumulate.
+  # After completing, Mneme advances the boundary past the eviction zone so the
+  # cycle repeats as more messages accumulate.
   #
   # @example
   #   Mneme::Runner.new(session).call
@@ -30,10 +30,9 @@ module Mneme
       ──────────────────────────────
       VIEWPORT
       ──────────────────────────────
-      Three zones, oldest to newest:
+      Two sections, oldest to newest:
       - EVICTION ZONE: About to fall off — read carefully, this is your focus.
-      - MIDDLE ZONE: Aging but visible. Note context that connects to evicting events.
-      - RECENT ZONE: Fresh. Use for continuity with your summary.
+      - CONTEXT: The live viewport past the eviction zone. Use for continuity with your summary.
 
       Messages are prefixed with `message N` (database ID, used for pinning).
       Tool calls are compressed to `[N tools called]` — focus on conversation, not mechanical work.
@@ -65,133 +64,136 @@ module Mneme
       )
     end
 
-    # Runs the Mneme loop: builds compressed viewport, calls LLM, executes
-    # snapshot tool, then advances the terminal message pointer.
+    # Runs the Mneme loop: builds eviction zone + context, calls LLM,
+    # executes snapshot tool, then advances the boundary.
     #
     # @return [String, nil] the LLM's final text response (discarded),
     #   or nil if no context is available
     def call
-      viewport = build_compressed_viewport
-      compressed_text = viewport.render
+      eviction = @session.eviction_zone_messages.to_a
       sid = @session.id
 
-      if compressed_text.empty?
+      if eviction.empty?
         log.debug("session=#{sid} — no messages for Mneme, skipping")
         return
       end
 
-      llm_messages = build_messages(compressed_text)
-      system = SYSTEM_PROMPT
+      context = @session.viewport_messages.where("messages.id > ?", eviction.last.id).to_a
+      compressed_text = render_transcript(eviction, context)
 
-      log.info("session=#{sid} — running Mneme (#{viewport.messages.size} messages)")
+      llm_messages = build_messages(compressed_text)
+
+      log.info("session=#{sid} — running Mneme (#{eviction.size} eviction + #{context.size} context)")
       log.debug("compressed viewport:\n#{compressed_text}")
 
       result = @client.chat_with_tools(
         llm_messages,
-        registry: build_registry(viewport),
+        registry: build_registry(eviction),
         session_id: nil,
-        system: system
+        system: SYSTEM_PROMPT
       )
 
-      advance_boundary(viewport)
+      advance_boundary(eviction)
       log.info("session=#{sid} — Mneme done: #{result.to_s.truncate(200)}")
       result
     end
 
     private
 
-    # Builds the compressed viewport starting from the session's boundary message.
+    # Renders eviction zone and context as a Mneme transcript using
+    # message decorators. Tool calls are compressed into counters.
     #
-    # @return [Mneme::CompressedViewport]
-    def build_compressed_viewport
-      token_budget = (Anima::Settings.token_budget * Anima::Settings.mneme_viewport_fraction).to_i
-
-      CompressedViewport.new(
-        @session,
-        token_budget: token_budget,
-        from_message_id: @session.mneme_boundary_message_id
-      )
+    # @param eviction [Array<Message>] messages in the eviction zone
+    # @param context [Array<Message>] remaining viewport messages
+    # @return [String] formatted transcript with zone delimiters
+    def render_transcript(eviction, context)
+      sections = []
+      sections << "── EVICTION ZONE ──"
+      sections << render_messages(eviction)
+      sections << "── CONTEXT ──"
+      sections << render_messages(context)
+      sections.join("\n")
     end
 
-    # Frames the compressed viewport as a user message for the LLM.
+    # Renders a list of messages using decorators, compressing consecutive
+    # tool calls into `[N tools called]` counters.
     #
-    # @param compressed_text [String] the rendered compressed viewport
+    # @param messages [Array<Message>] messages to render
+    # @return [String] rendered transcript lines
+    def render_messages(messages)
+      lines = []
+      tool_count = 0
+
+      messages.each do |message|
+        rendered = MessageDecorator.for(message)&.render("mneme")
+
+        if rendered == :tool_call
+          tool_count += 1
+        else
+          lines << flush_tool_count(tool_count) if tool_count > 0
+          tool_count = 0
+          lines << rendered if rendered
+        end
+      end
+
+      lines << flush_tool_count(tool_count) if tool_count > 0
+      lines.compact.join("\n")
+    end
+
+    # @return [String] tool count summary line
+    def flush_tool_count(count)
+      "[#{count} #{(count == 1) ? "tool" : "tools"} called]"
+    end
+
+    # Frames the transcript as a user message for the LLM.
+    #
+    # @param transcript [String] the rendered eviction + context transcript
     # @return [Array<Hash>] single-element messages array
-    def build_messages(compressed_text)
+    def build_messages(transcript)
       goals_context = active_goals_section
 
       content = <<~MSG.strip
-        Here is the compressed viewport of the main session:
+        Here is the viewport of the main session:
 
-        #{compressed_text}
+        #{transcript}
         #{goals_context}
         Review the eviction zone and decide whether to save a snapshot or signal everything_ok.
       MSG
 
-      [{role: "user", content: content}]
+      [{role: "user", content:}]
     end
 
-    # Builds the tool registry with session context for SaveSnapshot.
-    # Passes the message range from the viewport so the snapshot records
-    # which messages it covers.
+    # Builds the tool registry with eviction zone range for SaveSnapshot.
     #
-    # @param viewport [Mneme::CompressedViewport]
+    # @param eviction [Array<Message>] eviction zone messages
     # @return [Tools::Registry]
-    def build_registry(viewport)
-      viewport_messages = viewport.messages
+    def build_registry(eviction)
       registry = ::Tools::Registry.new(context: {
         main_session: @session,
-        from_message_id: viewport_messages.first&.id,
-        to_message_id: viewport_messages.last&.id
+        from_message_id: eviction.first.id,
+        to_message_id: eviction.last.id
       })
       TOOLS.each { |tool| registry.register(tool) }
       registry
     end
 
-    # Advances the terminal message pointer past the zone Mneme just processed.
-    # Runs unconditionally — even when the LLM called `everything_ok` (no snapshot
-    # needed), the zone was reviewed and should be advanced past. Without this,
-    # Mneme would re-examine the same mechanical-only content on every trigger.
+    # Advances the boundary past the eviction zone to the first eligible
+    # conversation/think message after it. If the session went quiet after
+    # the zone, falls back to the last message in the eviction zone.
     #
-    # Sets the boundary to the first conversation/think message AFTER Mneme's
-    # viewport — the start of the remaining context. This creates the batch
-    # eviction cycle: the next Mneme trigger fires only after this boundary
-    # message itself falls out of the main viewport (~1/3 turnover later).
-    # Also updates the snapshot range pointers.
-    #
-    # @param viewport [Mneme::CompressedViewport]
-    def advance_boundary(viewport)
-      viewport_messages = viewport.messages
-      return if viewport_messages.empty?
+    # @param eviction [Array<Message>] eviction zone messages
+    def advance_boundary(eviction)
+      return if eviction.empty?
 
-      last_processed_id = viewport_messages.last.id
+      last_evicted_id = eviction.last.id
       new_boundary = @session.messages
-        .where("id > ?", last_processed_id)
-        .where(message_type: Message::CONVERSATION_TYPES + ["tool_call"])
+        .where("id > ?", last_evicted_id)
         .order(:id)
-        .find_each { |msg| break msg if conversation_or_think?(msg) }
+        .find { |msg| msg.conversation_or_think? }
 
-      # Fall back to the last message in Mneme's viewport when no conversation
-      # messages exist beyond it (e.g. session went quiet after the zone).
-      new_boundary ||= viewport_messages.reverse_each.find { |msg| conversation_or_think?(msg) }
-      return unless new_boundary
-
-      boundary_id = new_boundary.id
-      updates = {mneme_boundary_message_id: boundary_id}
-
-      updates[:mneme_snapshot_first_message_id] = viewport_messages.first.id unless @session.mneme_snapshot_first_message_id
-      updates[:mneme_snapshot_last_message_id] = viewport_messages.last.id
-
-      @session.update_columns(updates)
-      log.debug("session=#{@session.id} — boundary advanced to message #{boundary_id}")
-    end
-
-    # Delegates to {Message#conversation_or_think?} — single source of truth
-    # for which messages Mneme treats as conversation boundaries.
-    #
-    # @return [Boolean]
-    def conversation_or_think?(message)
-      message.conversation_or_think?
+      new_boundary ||= eviction.last
+      @session.update_column(:mneme_boundary_message_id, new_boundary.id)
+      log.debug("session=#{@session.id} — boundary advanced to message #{new_boundary.id}")
     end
 
     # Builds the active goals section for Mneme's context so it knows
@@ -211,8 +213,6 @@ module Mneme
       section
     end
 
-    # Formats a goal with sub-goals for Mneme's context.
-    #
     # @param goal [Goal] root goal with preloaded sub_goals
     # @return [String]
     def format_goal_for_mneme(goal)
@@ -224,8 +224,6 @@ module Mneme
       parts.join("\n")
     end
 
-    # Lists already-pinned message IDs so Mneme avoids redundant pinning.
-    #
     # @return [String, nil] formatted pin list, or nil when nothing is pinned
     def format_existing_pins
       pins = @session.pinned_messages.includes(:goals).order(:message_id)
@@ -235,7 +233,7 @@ module Mneme
     end
 
     # @param pin [PinnedMessage] pin with preloaded goals
-    # @return [String] formatted pin line
+    # @return [String]
     def format_pin_for_mneme(pin)
       goal_ids = pin.goals.map(&:id).join(", ")
       "  message #{pin.message_id} → goals [#{goal_ids}]"

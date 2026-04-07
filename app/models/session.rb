@@ -134,6 +134,33 @@ class Session < ApplicationRecord
       .order(:id)
   end
 
+  # Returns the messages in the Mneme eviction zone — the oldest slice of
+  # the conversation starting from the boundary, filling the eviction budget
+  # walking newest-ward. These are the messages Mneme will summarize into a
+  # snapshot before advancing the boundary past them.
+  #
+  # Mirror of {#viewport_messages} but walks oldest-first from the boundary
+  # instead of newest-first from the tail.
+  #
+  # @return [ActiveRecord::Relation<Message>] chronologically ordered by id
+  def eviction_zone_messages
+    return Message.none unless mneme_boundary_message_id
+
+    budget = (Anima::Settings.token_budget * Anima::Settings.eviction_fraction).to_i
+
+    scope = messages.where("messages.id >= ?", mneme_boundary_message_id)
+
+    windowed = scope.select(
+      "messages.*",
+      "SUM(token_count) OVER (ORDER BY id ASC) AS running_total"
+    )
+
+    Message
+      .from(Arel.sql("(#{windowed.to_sql}) AS messages"))
+      .where("running_total <= ? OR running_total = token_count", budget)
+      .order(:id)
+  end
+
   # Returns skill names whose recalled content is currently visible in the
   # viewport. Used by the analytical brain for deduplication — skills already
   # in the viewport are excluded from the activation catalog.

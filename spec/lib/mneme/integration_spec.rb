@@ -6,7 +6,7 @@ RSpec.describe "Mneme terminal event trigger integration" do
   let(:session) { create(:session) }
 
   before do
-    allow(Anima::Settings).to receive(:mneme_viewport_fraction).and_return(0.33)
+    allow(Anima::Settings).to receive(:eviction_fraction).and_return(0.33)
     allow(Anima::Settings).to receive(:mneme_max_tokens).and_return(2048)
     allow(Anima::Settings).to receive(:fast_model).and_return("claude-haiku-4-5")
   end

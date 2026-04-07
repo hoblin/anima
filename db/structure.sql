@@ -81,12 +81,13 @@ FOREIGN KEY ("session_id")
   REFERENCES "sessions" ("id")
 );
 CREATE INDEX "index_pending_messages_on_session_id" ON "pending_messages" ("session_id");
-CREATE TABLE "sessions" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL, "view_mode" varchar DEFAULT 'basic' NOT NULL, "processing" boolean DEFAULT FALSE NOT NULL, "parent_session_id" integer, "prompt" text, "granted_tools" text, "name" varchar, "active_skills" json DEFAULT '[]' NOT NULL, "active_workflow" varchar, "interrupt_requested" boolean DEFAULT FALSE NOT NULL, "mneme_boundary_message_id" integer, "mneme_snapshot_first_message_id" integer, "mneme_snapshot_last_message_id" integer, "initial_cwd" varchar, CONSTRAINT "fk_rails_045409ac27"
+CREATE TABLE "sessions" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL, "view_mode" varchar DEFAULT 'basic' NOT NULL, "processing" boolean DEFAULT FALSE NOT NULL, "parent_session_id" integer, "prompt" text, "granted_tools" text, "name" varchar, "active_skills" json DEFAULT '[]' NOT NULL, "active_workflow" varchar, "interrupt_requested" boolean DEFAULT FALSE NOT NULL, "mneme_boundary_message_id" integer, "initial_cwd" varchar, CONSTRAINT "fk_rails_045409ac27"
 FOREIGN KEY ("parent_session_id")
   REFERENCES "sessions" ("id")
 );
 CREATE INDEX "index_sessions_on_parent_session_id" ON "sessions" ("parent_session_id");
 INSERT INTO "schema_migrations" (version) VALUES
+('20260407180400'),
 ('20260407170803'),
 ('20260403080031'),
 ('20260401210935'),

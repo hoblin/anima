@@ -85,7 +85,8 @@ class MessageDecorator < ApplicationDecorator
     "basic" => :render_basic,
     "verbose" => :render_verbose,
     "debug" => :render_debug,
-    "brain" => :render_brain
+    "brain" => :render_brain,
+    "mneme" => :render_mneme
   }.freeze
   private_constant :RENDER_DISPATCH
 
@@ -127,6 +128,15 @@ class MessageDecorator < ApplicationDecorator
   # Subclasses override to provide message-type-specific formatting.
   # @return [String, nil] formatted transcript line, or nil to skip
   def render_brain
+    nil
+  end
+
+  # Mneme memory view — transcript line for eviction/context zones.
+  # Conversation and think messages return a prefixed string.
+  # Regular tool calls return +:tool_call+ (counter marker).
+  # Tool responses return +nil+ (silent).
+  # @return [String, Symbol, nil]
+  def render_mneme
     nil
   end
 
