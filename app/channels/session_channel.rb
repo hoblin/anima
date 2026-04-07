@@ -281,9 +281,6 @@ class SessionChannel < ApplicationCable::Channel
   # In debug mode, prepends the assembled system prompt as a special block.
   # Pending messages are sent last so the TUI shows them at the bottom.
   #
-  # Snapshots the viewport so subsequent message broadcasts can compute
-  # eviction diffs accurately.
-  #
   # @param session [Session] the session whose viewport to broadcast
   # @return [void]
   def broadcast_viewport(session)

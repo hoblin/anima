@@ -181,16 +181,6 @@ RSpec.describe SessionChannel, type: :channel do
       expect(changed).not_to have_key("children")
     end
 
-    it "snapshots viewport message IDs on subscription" do
-      session = Session.create!(id: session_id)
-      e1 = session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
-      e2 = session.messages.create!(message_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi"}, timestamp: 2)
-
-      subscribe(session_id: session_id)
-
-      expect(session.reload.viewport_message_ids).to eq([e1.id, e2.id])
-    end
-
     it "transmits chat history newest-first to prevent render thrashing" do
       session = Session.create!(id: session_id)
       session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
@@ -696,13 +686,6 @@ RSpec.describe SessionChannel, type: :channel do
         perform(:change_view_mode, {"view_mode" => "verbose"})
       }.to have_broadcasted_to(stream_name)
         .with(a_hash_including("rendered" => {"verbose" => a_hash_including("role" => "user", "content" => "hello", "timestamp" => 1)}))
-    end
-
-    it "snapshots viewport on view mode change" do
-      perform(:change_view_mode, {"view_mode" => "verbose"})
-
-      event_ids = session.messages.pluck(:id)
-      expect(session.reload.viewport_message_ids).to eq(event_ids)
     end
 
     it "transmits error for invalid view mode" do
