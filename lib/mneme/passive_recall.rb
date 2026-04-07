@@ -72,7 +72,7 @@ module Mneme
     # @param results [Array<Mneme::Search::Result>]
     # @return [Array<Mneme::Search::Result>]
     def filter_duplicates(results)
-      viewport_ids = @session.viewport_message_ids.to_set
+      viewport_ids = @session.viewport_messages.pluck(:id).to_set
 
       existing_recall_ids = @session.messages
         .where(message_type: "tool_call")

@@ -48,14 +48,6 @@ class Snapshot < ApplicationRecord
     )
   }
 
-  # Snapshots whose source messages have fully evicted from the sliding window.
-  # A snapshot is visible when its entire message range precedes the first
-  # message currently in the viewport.
-  #
-  # @param first_message_id [Integer] the first message ID in the sliding window
-  scope :source_messages_evicted, ->(first_message_id) {
-    where("to_message_id < ?", first_message_id)
-  }
 
   # @return [Integer] token cost, using cached count or heuristic estimate
   def token_cost

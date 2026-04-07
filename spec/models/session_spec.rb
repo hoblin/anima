@@ -1516,19 +1516,6 @@ RSpec.describe Session do
         expect(section).to include("Earlier discussion summary")
       end
 
-      it "excludes snapshots whose source events are after the boundary" do
-        e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "visible"}, timestamp: 1, token_count: 10)
-        e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "reply"}, timestamp: 2, token_count: 10)
-
-        session.snapshots.create!(text: "Should not appear", from_message_id: e1.id, to_message_id: e2.id, level: 1, token_count: 20)
-        # Boundary is at e1 — snapshot covers events at/after boundary, not evicted
-        session.update_column(:mneme_boundary_message_id, e1.id)
-
-        section = session.send(:assemble_snapshots_section)
-
-        expect(section).to be_nil
-      end
-
       it "places L2 snapshots above L1 snapshots in the section" do
         e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "old1"}, timestamp: 1, token_count: 10)
         e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old2"}, timestamp: 2, token_count: 10)

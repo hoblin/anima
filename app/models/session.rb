@@ -749,25 +749,20 @@ class Session < ApplicationRecord
   end
 
   # Assembles L1/L2 snapshots as a system prompt section.
-  # Snapshots are visible when their source messages precede the Mneme boundary
-  # (compressed in a previous run). Between Mneme runs this section is frozen,
-  # making it cache-friendly.
+  # Snapshots form a compressed timeline between the system prompt and
+  # the live viewport. The budget walk fills chronologically — when the
+  # budget overflows, the oldest snapshots drop first so the most recent
+  # ones always bridge into the viewport.
   #
   # @return [String, nil] formatted snapshot text for the system prompt, or nil
   def assemble_snapshots_section
-    reference_id = mneme_boundary_message_id || viewport_message_ids.first
-    return unless reference_id
-
-    l2_budget = (Anima::Settings.token_budget * Anima::Settings.mneme_l2_budget_fraction).to_i
-    l1_budget = (Anima::Settings.token_budget * Anima::Settings.mneme_l1_budget_fraction).to_i
-
     l2 = select_snapshots_within_budget(
-      snapshots.for_level(2).source_messages_evicted(reference_id).chronological,
-      budget: l2_budget
+      snapshots.for_level(2),
+      budget: (Anima::Settings.token_budget * Anima::Settings.mneme_l2_budget_fraction).to_i
     )
     l1 = select_snapshots_within_budget(
-      snapshots.for_level(1).not_covered_by_l2.source_messages_evicted(reference_id).chronological,
-      budget: l1_budget
+      snapshots.for_level(1).not_covered_by_l2,
+      budget: (Anima::Settings.token_budget * Anima::Settings.mneme_l1_budget_fraction).to_i
     )
 
     sections = []
@@ -776,9 +771,10 @@ class Session < ApplicationRecord
     sections.join("\n\n").presence
   end
 
-  # Walks snapshots chronologically, selecting until the token budget is exhausted.
-  # Always includes at least one snapshot even if it exceeds the budget, so the
-  # agent never loses all memory context.
+  # Walks snapshots newest-first (by to_message_id), selecting until the
+  # token budget is exhausted. Always includes the newest snapshot even
+  # if it exceeds the budget. Returns results in chronological order
+  # so they read as a timeline in the system prompt.
   #
   # @param scope [ActiveRecord::Relation] snapshot scope to select from
   # @param budget [Integer] maximum tokens to include
@@ -787,7 +783,7 @@ class Session < ApplicationRecord
     selected = []
     remaining = budget
 
-    scope.each do |snapshot|
+    scope.order(to_message_id: :desc).each do |snapshot|
       cost = snapshot.token_cost
       break if cost > remaining && selected.any?
 
@@ -795,7 +791,7 @@ class Session < ApplicationRecord
       remaining -= cost
     end
 
-    selected
+    selected.reverse
   end
 
   # Formats a list of snapshots as a labeled section for the system prompt.
