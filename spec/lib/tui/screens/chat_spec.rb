@@ -384,11 +384,11 @@ RSpec.describe TUI::Screens::Chat do
                                      "rendered" => {"basic" => {"role" => "assistant", "content" => "old reply"}}})
         message_store.process_event({"type" => "user_message", "id" => 3,
                                      "rendered" => {"basic" => {"role" => "user", "content" => "recent"}}})
+        message_store.process_event({"type" => "agent_message", "id" => 4,
+                                     "rendered" => {"basic" => {"role" => "assistant", "content" => "new reply"}}})
 
         allow(cable_client).to receive(:drain_messages).and_return([
-          {"type" => "agent_message", "id" => 4, "action" => "create",
-           "rendered" => {"basic" => {"role" => "assistant", "content" => "new reply"}},
-           "evicted_message_ids" => [1, 2]}
+          {"action" => "eviction", "evict_above_id" => 2}
         ])
         screen.send(:process_incoming_messages)
 

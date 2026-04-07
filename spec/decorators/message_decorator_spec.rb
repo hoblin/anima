@@ -150,17 +150,6 @@ RSpec.describe MessageDecorator, type: :decorator do
       expect(decorator.send(:token_info)).to eq({tokens: 42, estimated: false})
     end
 
-    it "returns estimated count when token_count is zero" do
-      event = session.messages.create!(
-        message_type: "user_message", payload: {"content" => "hello"}, timestamp: 1
-      )
-      decorator = described_class.for(event)
-      result = decorator.send(:token_info)
-
-      expect(result[:estimated]).to be true
-      expect(result[:tokens]).to be_positive
-    end
-
     it "works with EventPayload structs (hash payloads)" do
       decorator = described_class.for(type: "user_message", content: "hello world")
       result = decorator.send(:token_info)

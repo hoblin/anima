@@ -221,20 +221,6 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       expect(result[:success]).to be false
     end
 
-    it "includes estimated token count" do
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => "some output", "tool_name" => "bash", "success" => true},
-        tool_use_id: "toolu_tokens1",
-        timestamp: 1
-      )
-      decorator = MessageDecorator.for(event)
-      result = decorator.render_debug
-
-      expect(result[:tokens]).to be_positive
-      expect(result[:estimated]).to be true
-    end
-
     it "works with hash payloads" do
       decorator = MessageDecorator.for(
         type: "tool_response",

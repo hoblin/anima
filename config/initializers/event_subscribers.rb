@@ -12,6 +12,7 @@
 # after_create_commit emits MessageCreated events.
 MESSAGE_LIFECYCLE_FILTER = ->(event) { event[:name].start_with?("anima.message.") }
 MESSAGE_CREATED_FILTER = ->(event) { event[:name] == "anima.message.created" }
+EVICTION_FILTER = ->(event) { event[:name] == "anima.eviction.completed" }
 
 Rails.application.config.after_initialize do
   unless Rails.env.test?
@@ -35,5 +36,8 @@ Rails.application.config.after_initialize do
 
     # Checks whether Mneme should run after each persisted message.
     Events::Bus.subscribe(Events::Subscribers::MnemeScheduler.new, &MESSAGE_CREATED_FILTER)
+
+    # Broadcasts eviction cutoff to clients after Mneme advances the boundary.
+    Events::Bus.subscribe(Events::Subscribers::EvictionBroadcaster.new, &EVICTION_FILTER)
   end
 end

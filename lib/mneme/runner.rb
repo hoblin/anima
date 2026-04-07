@@ -188,6 +188,7 @@ module Mneme
 
       new_boundary_id ||= last_evicted_id
       @session.update_column(:mneme_boundary_message_id, new_boundary_id)
+      Events::Bus.emit(Events::EvictionCompleted.new(session_id: @session.id, evict_above_id: last_evicted_id))
       log.debug("session=#{@session.id} — boundary advanced to message #{new_boundary_id}")
     end
 

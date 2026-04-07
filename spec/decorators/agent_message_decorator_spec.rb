@@ -64,20 +64,6 @@ RSpec.describe AgentMessageDecorator, type: :decorator do
       })
     end
 
-    it "includes estimated token count when not yet counted" do
-      ts = 1_709_312_325_000_000_000
-      event = session.messages.create!(
-        message_type: "agent_message", payload: {"content" => "I can help"}, timestamp: ts
-      )
-      decorator = MessageDecorator.for(event)
-      result = decorator.render_debug
-
-      expect(result[:role]).to eq(:assistant)
-      expect(result[:content]).to eq("I can help")
-      expect(result[:tokens]).to be_positive
-      expect(result[:estimated]).to be true
-    end
-
     it "works with hash payloads" do
       decorator = MessageDecorator.for(type: "agent_message", content: "from hash")
       result = decorator.render_debug

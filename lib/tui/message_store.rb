@@ -205,24 +205,21 @@ module TUI
       end
     end
 
-    # Removes entries by their message IDs. Used when the brain reports
-    # that messages have left the LLM's viewport (context window eviction).
-    # Acquires the mutex once for the entire batch.
+    # Removes all entries with message ID <= cutoff. Used when Mneme
+    # evicts messages above the cutoff in the chat view (older messages
+    # at the top with smaller IDs).
     #
-    # @param message_ids [Array<Integer>] database IDs of messages to remove
+    # @param cutoff_id [Integer] last evicted message ID
     # @return [Integer] count of entries actually removed
-    def remove_by_ids(message_ids)
+    def remove_above(cutoff_id)
       @mutex.synchronize do
-        removed = 0
-        message_ids.each do |message_id|
-          entry = @entries_by_id.delete(message_id)
-          next unless entry
-
+        evicted = @entries.select { |e| e[:id] && e[:id] <= cutoff_id }
+        evicted.each do |entry|
           @entries.delete(entry)
-          removed += 1
+          @entries_by_id.delete(entry[:id])
         end
-        @version += 1 if removed > 0
-        removed
+        @version += 1 if evicted.any?
+        evicted.size
       end
     end
 

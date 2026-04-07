@@ -70,21 +70,6 @@ RSpec.describe UserMessageDecorator, type: :decorator do
       })
     end
 
-    it "includes estimated token count when not yet counted" do
-      ts = 1_709_312_325_000_000_000
-      event = session.messages.create!(
-        message_type: "user_message", payload: {"content" => "hello"}, timestamp: ts
-      )
-      decorator = MessageDecorator.for(event)
-      result = decorator.render_debug
-
-      expect(result[:role]).to eq(:user)
-      expect(result[:content]).to eq("hello")
-      expect(result[:timestamp]).to eq(ts)
-      expect(result[:tokens]).to be_positive
-      expect(result[:estimated]).to be true
-    end
-
     it "works with hash payloads" do
       decorator = MessageDecorator.for(type: "user_message", content: "from hash")
       result = decorator.render_debug

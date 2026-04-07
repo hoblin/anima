@@ -356,20 +356,20 @@ module TUI
             end
           end
 
-          handle_viewport_evictions(msg)
+          handle_eviction(msg) if msg["action"] == "eviction"
         end
       end
 
-      # Removes messages that left the LLM's context window. Broadcasts
-      # include `evicted_message_ids` when old messages are pushed out of the
-      # viewport by new ones.
+      # Removes messages above the eviction cutoff from the message store.
+      # Triggered by {Events::EvictionCompleted} when Mneme advances the
+      # boundary past an eviction zone.
       #
-      # @param msg [Hash] incoming WebSocket message
-      def handle_viewport_evictions(msg)
-        evicted_ids = msg["evicted_message_ids"]
-        return unless evicted_ids.is_a?(Array) && evicted_ids.any?
+      # @param msg [Hash] incoming WebSocket message with "evict_above_id"
+      def handle_eviction(msg)
+        cutoff = msg["evict_above_id"]
+        return unless cutoff
 
-        @message_store.remove_by_ids(evicted_ids)
+        @message_store.remove_above(cutoff)
       end
 
       # Renders flash messages as colored bars inside the chat frame,
