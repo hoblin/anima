@@ -555,52 +555,45 @@ RSpec.describe Session do
   end
 
   describe "#skills_in_viewport" do
-    let(:session) { Session.create! }
+    let(:session) { create(:session) }
 
     it "returns empty set when viewport has no skill messages" do
-      session.messages.create!(message_type: "user_message", payload: {"content" => "hello"}, timestamp: 1)
-      session.update_column(:viewport_message_ids, session.messages.pluck(:id))
+      msg = create(:message, :user_message, session:)
+      allow(session).to receive(:viewport_messages).and_return(Message.where(id: msg.id))
 
       expect(session.skills_in_viewport).to eq(Set.new)
     end
 
     it "returns skill names from viewport messages with source_type skill" do
-      msg = session.messages.create!(
-        message_type: "user_message",
-        payload: {"content" => "skill content", "source_type" => "skill", "source_name" => "gh-issue"},
-        timestamp: 1
-      )
-      session.update_column(:viewport_message_ids, [msg.id])
+      msg = create(:message, :user_message, session:,
+        payload: {"content" => "skill content", "source_type" => "skill", "source_name" => "gh-issue"})
+      allow(session).to receive(:viewport_messages).and_return(Message.where(id: msg.id))
 
       expect(session.skills_in_viewport).to eq(Set["gh-issue"])
     end
 
     it "excludes skill messages not in viewport" do
-      session.messages.create!(
-        message_type: "user_message",
-        payload: {"content" => "skill content", "source_type" => "skill", "source_name" => "gh-issue"},
-        timestamp: 1
-      )
-      session.update_column(:viewport_message_ids, [])
+      create(:message, :user_message, session:,
+        payload: {"content" => "skill content", "source_type" => "skill", "source_name" => "gh-issue"})
+      allow(session).to receive(:viewport_messages).and_return(Message.none)
 
       expect(session.skills_in_viewport).to eq(Set.new)
     end
   end
 
   describe "#workflow_in_viewport" do
-    let(:session) { Session.create! }
+    let(:session) { create(:session) }
 
     it "returns nil when no workflow message is in viewport" do
+      allow(session).to receive(:viewport_messages).and_return(Message.none)
+
       expect(session.workflow_in_viewport).to be_nil
     end
 
     it "returns workflow name from viewport message" do
-      msg = session.messages.create!(
-        message_type: "user_message",
-        payload: {"content" => "workflow content", "source_type" => "workflow", "source_name" => "feature"},
-        timestamp: 1
-      )
-      session.update_column(:viewport_message_ids, [msg.id])
+      msg = create(:message, :user_message, session:,
+        payload: {"content" => "workflow content", "source_type" => "workflow", "source_name" => "feature"})
+      allow(session).to receive(:viewport_messages).and_return(Message.where(id: msg.id))
 
       expect(session.workflow_in_viewport).to eq("feature")
     end

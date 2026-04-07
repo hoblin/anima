@@ -569,11 +569,8 @@ class Session < ApplicationRecord
   # @param source_type [String] "skill" or "workflow"
   # @return [Set<String>] source names present in the viewport
   def recalled_sources_in_viewport(source_type)
-    ids = viewport_message_ids
-    return Set.new if ids.empty?
-
-    messages
-      .where(id: ids, message_type: "user_message")
+    viewport_messages
+      .where(message_type: "user_message")
       .where("json_extract(payload, '$.source_type') = ?", source_type)
       .pluck(Arel.sql("json_extract(payload, '$.source_name')"))
       .to_set
