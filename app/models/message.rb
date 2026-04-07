@@ -70,6 +70,16 @@ class Message < ApplicationRecord
   #   @return [ActiveRecord::Relation]
   scope :llm_messages, -> { where(message_type: LLM_TYPES) }
 
+  # @!method self.conversation_or_think
+  #   Conversation messages (user/agent/system) and think tool_calls —
+  #   the messages Mneme treats as boundary-eligible.
+  #   @return [ActiveRecord::Relation]
+  scope :conversation_or_think, -> {
+    where(message_type: CONVERSATION_TYPES)
+      .or(where(message_type: "tool_call")
+        .where("json_extract(payload, '$.tool_name') = ?", THINK_TOOL))
+  }
+
   # Maps message_type to the Anthropic Messages API role.
   # @return [String] "user" or "assistant"
   def api_role

@@ -16,16 +16,6 @@ RSpec.describe Mneme::Runner do
   end
 
   describe "#call" do
-    it "returns nil when eviction zone is empty" do
-      expect(runner.call).to be_nil
-    end
-
-    it "does not call the LLM when eviction zone is empty" do
-      allow(client).to receive(:chat_with_tools)
-      runner.call
-      expect(client).not_to have_received(:chat_with_tools)
-    end
-
     context "with conversation messages" do
       let!(:first) { create(:message, :user_message, session:, payload: {"content" => "Tell me about Ruby"}) }
       let!(:second) { create(:message, :user_message, session:, payload: {"content" => "Ruby is great!"}) }
@@ -136,7 +126,7 @@ RSpec.describe Mneme::Runner do
 
       it "falls back to last eviction message when no messages exist beyond" do
         first = create(:message, :user_message, session:)
-        second = create(:message, :user_message, session:)
+        create(:message, :user_message, session:)
         session.update_column(:mneme_boundary_message_id, first.id)
 
         allow(client).to receive(:chat_with_tools) { "Done" }

@@ -69,13 +69,7 @@ class Session < ApplicationRecord
   #
   # @return [void]
   def initialize_mneme_boundary!
-    first_id = messages
-      .where(message_type: Message::CONVERSATION_TYPES)
-      .or(messages.where(message_type: "tool_call")
-        .where("json_extract(payload, '$.tool_name') = ?", Message::THINK_TOOL))
-      .order(:id)
-      .pick(:id)
-
+    first_id = messages.conversation_or_think.order(:id).pick(:id)
     update_column(:mneme_boundary_message_id, first_id) if first_id
   end
 

@@ -48,7 +48,8 @@ module Mneme
       (user instructions, key corrections, key decisions). Pinned messages survive eviction
       intact — use this sparingly for messages where paraphrasing would lose meaning.
 
-      If the eviction zone contains only mechanical activity, call everything_ok.
+      If the eviction zone contains only mechanical activity (tool calls, no conversation),
+      call everything_ok to advance past it without creating a snapshot.
 
       You may combine save_snapshot and attach_messages_to_goals in one turn.
     PROMPT
@@ -67,27 +68,18 @@ module Mneme
     # Runs the Mneme loop: builds eviction zone + context, calls LLM,
     # executes snapshot tool, then advances the boundary.
     #
-    # @return [String, nil] the LLM's final text response (discarded),
-    #   or nil if no context is available
+    # @return [String] the LLM's final text response (discarded)
     def call
-      eviction = @session.eviction_zone_messages.to_a
+      eviction = @session.eviction_zone_messages
+      context = @session.viewport_messages.where("messages.id > ?", eviction.last.id)
+      transcript = render_transcript(eviction, context)
       sid = @session.id
 
-      if eviction.empty?
-        log.debug("session=#{sid} — no messages for Mneme, skipping")
-        return
-      end
-
-      context = @session.viewport_messages.where("messages.id > ?", eviction.last.id).to_a
-      compressed_text = render_transcript(eviction, context)
-
-      llm_messages = build_messages(compressed_text)
-
-      log.info("session=#{sid} — running Mneme (#{eviction.size} eviction + #{context.size} context)")
-      log.debug("compressed viewport:\n#{compressed_text}")
+      log.info("session=#{sid} — running Mneme (#{eviction.count} eviction + #{context.count} context)")
+      log.debug("compressed viewport:\n#{transcript}")
 
       result = @client.chat_with_tools(
-        llm_messages,
+        build_messages(transcript),
         registry: build_registry(eviction),
         session_id: nil,
         system: SYSTEM_PROMPT
@@ -103,8 +95,8 @@ module Mneme
     # Renders eviction zone and context as a Mneme transcript using
     # message decorators. Tool calls are compressed into counters.
     #
-    # @param eviction [Array<Message>] messages in the eviction zone
-    # @param context [Array<Message>] remaining viewport messages
+    # @param eviction [ActiveRecord::Relation] messages in the eviction zone
+    # @param context [ActiveRecord::Relation] remaining viewport messages
     # @return [String] formatted transcript with zone delimiters
     def render_transcript(eviction, context)
       sections = []
@@ -115,29 +107,32 @@ module Mneme
       sections.join("\n")
     end
 
-    # Renders a list of messages using decorators, compressing consecutive
+    # Renders messages using decorators, compressing consecutive
     # tool calls into `[N tools called]` counters.
     #
-    # @param messages [Array<Message>] messages to render
+    # @param messages [ActiveRecord::Relation] messages to render
     # @return [String] rendered transcript lines
     def render_messages(messages)
       lines = []
       tool_count = 0
 
       messages.each do |message|
-        rendered = MessageDecorator.for(message)&.render("mneme")
+        rendered = MessageDecorator.for(message).render("mneme")
 
-        if rendered == :tool_call
+        case rendered
+        when :tool_call
           tool_count += 1
+        when nil
+          next
         else
           lines << flush_tool_count(tool_count) if tool_count > 0
           tool_count = 0
-          lines << rendered if rendered
+          lines << rendered
         end
       end
 
       lines << flush_tool_count(tool_count) if tool_count > 0
-      lines.compact.join("\n")
+      lines.join("\n")
     end
 
     # @return [String] tool count summary line
@@ -157,7 +152,8 @@ module Mneme
 
         #{transcript}
         #{goals_context}
-        Review the eviction zone and decide whether to save a snapshot or signal everything_ok.
+        Review the eviction zone and summarize it with save_snapshot.
+        If the zone contains only mechanical activity, call everything_ok.
       MSG
 
       [{role: "user", content:}]
@@ -165,12 +161,12 @@ module Mneme
 
     # Builds the tool registry with eviction zone range for SaveSnapshot.
     #
-    # @param eviction [Array<Message>] eviction zone messages
+    # @param eviction [ActiveRecord::Relation] eviction zone messages
     # @return [Tools::Registry]
     def build_registry(eviction)
       registry = ::Tools::Registry.new(context: {
         main_session: @session,
-        from_message_id: eviction.first.id,
+        from_message_id: @session.mneme_boundary_message_id,
         to_message_id: eviction.last.id
       })
       TOOLS.each { |tool| registry.register(tool) }
@@ -181,19 +177,18 @@ module Mneme
     # conversation/think message after it. If the session went quiet after
     # the zone, falls back to the last message in the eviction zone.
     #
-    # @param eviction [Array<Message>] eviction zone messages
+    # @param eviction [ActiveRecord::Relation] eviction zone messages
     def advance_boundary(eviction)
-      return if eviction.empty?
-
       last_evicted_id = eviction.last.id
-      new_boundary = @session.messages
+      new_boundary_id = @session.messages
+        .conversation_or_think
         .where("id > ?", last_evicted_id)
         .order(:id)
-        .find { |msg| msg.conversation_or_think? }
+        .pick(:id)
 
-      new_boundary ||= eviction.last
-      @session.update_column(:mneme_boundary_message_id, new_boundary.id)
-      log.debug("session=#{@session.id} — boundary advanced to message #{new_boundary.id}")
+      new_boundary_id ||= last_evicted_id
+      @session.update_column(:mneme_boundary_message_id, new_boundary_id)
+      log.debug("session=#{@session.id} — boundary advanced to message #{new_boundary_id}")
     end
 
     # Builds the active goals section for Mneme's context so it knows
