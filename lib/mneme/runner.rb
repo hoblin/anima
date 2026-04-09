@@ -70,22 +70,23 @@ module Mneme
     #
     # @return [String] the LLM's final text response (discarded)
     def call
-      eviction = @session.eviction_zone_messages
-      context = @session.viewport_messages.where("messages.id > ?", eviction.last.id)
+      eviction = @session.eviction_zone_messages.to_a
+      last_evicted_id = eviction.last.id
+      context = @session.viewport_messages.where("messages.id > ?", last_evicted_id).to_a
       transcript = render_transcript(eviction, context)
       sid = @session.id
 
-      log.info("session=#{sid} — running Mneme (#{eviction.count} eviction + #{context.count} context)")
+      log.info("session=#{sid} — running Mneme (#{eviction.size} eviction + #{context.size} context)")
       log.debug("compressed viewport:\n#{transcript}")
 
       result = @client.chat_with_tools(
         build_messages(transcript),
-        registry: build_registry(eviction),
+        registry: build_registry(last_evicted_id),
         session_id: nil,
         system: SYSTEM_PROMPT
       )
 
-      advance_boundary(eviction)
+      advance_boundary(last_evicted_id)
       log.info("session=#{sid} — Mneme done: #{result.to_s.truncate(200)}")
       result
     end
@@ -95,8 +96,8 @@ module Mneme
     # Renders eviction zone and context as a Mneme transcript using
     # message decorators. Tool calls are compressed into counters.
     #
-    # @param eviction [ActiveRecord::Relation] messages in the eviction zone
-    # @param context [ActiveRecord::Relation] remaining viewport messages
+    # @param eviction [Array<Message>] messages in the eviction zone
+    # @param context [Array<Message>] remaining viewport messages
     # @return [String] formatted transcript with zone delimiters
     def render_transcript(eviction, context)
       sections = []
@@ -110,7 +111,7 @@ module Mneme
     # Renders messages using decorators, compressing consecutive
     # tool calls into `[N tools called]` counters.
     #
-    # @param messages [ActiveRecord::Relation] messages to render
+    # @param messages [Array<Message>] messages to render
     # @return [String] rendered transcript lines
     def render_messages(messages)
       lines = []
@@ -161,13 +162,13 @@ module Mneme
 
     # Builds the tool registry with eviction zone range for SaveSnapshot.
     #
-    # @param eviction [ActiveRecord::Relation] eviction zone messages
+    # @param last_evicted_id [Integer] last message id in the eviction zone
     # @return [Tools::Registry]
-    def build_registry(eviction)
+    def build_registry(last_evicted_id)
       registry = ::Tools::Registry.new(context: {
         main_session: @session,
         from_message_id: @session.mneme_boundary_message_id,
-        to_message_id: eviction.last.id
+        to_message_id: last_evicted_id
       })
       TOOLS.each { |tool| registry.register(tool) }
       registry
@@ -177,9 +178,8 @@ module Mneme
     # conversation/think message after it. If the session went quiet after
     # the zone, falls back to the last message in the eviction zone.
     #
-    # @param eviction [ActiveRecord::Relation] eviction zone messages
-    def advance_boundary(eviction)
-      last_evicted_id = eviction.last.id
+    # @param last_evicted_id [Integer] last message id in the eviction zone
+    def advance_boundary(last_evicted_id)
       new_boundary_id = @session.messages
         .conversation_or_think
         .where("id > ?", last_evicted_id)

@@ -122,6 +122,9 @@ class Session < ApplicationRecord
       "SUM(token_count) OVER (ORDER BY id DESC) AS running_total"
     )
 
+    # running_total = token_count is only true for the first row walked
+    # (the newest message), so the OR clause guarantees it's always
+    # included even when its own token_count exceeds the budget.
     Message
       .from(Arel.sql("(#{windowed.to_sql}) AS messages"))
       .where("running_total <= ? OR running_total = token_count", token_budget)
@@ -149,6 +152,9 @@ class Session < ApplicationRecord
       "SUM(token_count) OVER (ORDER BY id ASC) AS running_total"
     )
 
+    # running_total = token_count is only true for the first row walked
+    # (the oldest message at the boundary), so the OR clause guarantees
+    # the zone is never empty when a boundary exists.
     Message
       .from(Arel.sql("(#{windowed.to_sql}) AS messages"))
       .where("running_total <= ? OR running_total = token_count", budget)
