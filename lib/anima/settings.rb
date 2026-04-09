@@ -259,6 +259,10 @@ module Anima
       # @return [Integer]
       def mneme_l2_snapshot_threshold = get("mneme", "l2_snapshot_threshold")
 
+      # Fraction of the viewport to evict in batch when Mneme runs.
+      # @return [Float]
+      def mneme_eviction_fraction = get("mneme", "eviction_fraction")
+
       # Fraction of the main viewport token budget reserved for pinned messages.
       # Pinned messages appear between snapshots and the sliding window.
       # @return [Float]
