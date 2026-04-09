@@ -148,20 +148,20 @@ RSpec.describe Message do
       expect(event.estimate_tokens).to eq(expected)
     end
 
-    it "returns at least 1 for empty content" do
+    it "returns zero for empty content" do
       event = session.messages.create!(
         message_type: "user_message", payload: {"content" => ""}, timestamp: 1
       )
 
-      expect(event.estimate_tokens).to eq(1)
+      expect(event.estimate_tokens).to eq(0)
     end
 
-    it "returns at least 1 for nil content" do
+    it "returns zero for nil content" do
       event = session.messages.create!(
         message_type: "user_message", payload: {"content" => nil}, timestamp: 1
       )
 
-      expect(event.estimate_tokens).to eq(1)
+      expect(event.estimate_tokens).to eq(0)
     end
   end
 

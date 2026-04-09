@@ -42,12 +42,12 @@ RSpec.describe Session, "#schedule_mneme!" do
     end
   end
 
-  context "when boundary message is still in the viewport" do
-    let!(:boundary_msg) { create(:message, :user_message, session:) }
+  context "when tokens since the boundary fit within the budget" do
+    let!(:boundary_msg) { create(:message, :user_message, session:, token_count: 10) }
 
     before do
       session.update_column(:mneme_boundary_message_id, boundary_msg.id)
-      allow(session).to receive(:viewport_messages).and_return(Message.where(id: boundary_msg.id))
+      allow(session).to receive(:effective_token_budget).and_return(1000)
     end
 
     it "does not enqueue MnemeJob" do
@@ -55,13 +55,13 @@ RSpec.describe Session, "#schedule_mneme!" do
     end
   end
 
-  context "when boundary message has left the viewport" do
-    let!(:boundary_msg) { create(:message, :user_message, session:) }
-    let!(:newer_msg) { create(:message, :user_message, session:) }
+  context "when tokens since the boundary exceed the budget" do
+    let!(:boundary_msg) { create(:message, :user_message, session:, token_count: 600) }
+    let!(:newer_msg) { create(:message, :user_message, session:, token_count: 600) }
 
     before do
       session.update_column(:mneme_boundary_message_id, boundary_msg.id)
-      allow(session).to receive(:viewport_messages).and_return(Message.where(id: newer_msg.id))
+      allow(session).to receive(:effective_token_budget).and_return(1000)
     end
 
     it "enqueues MnemeJob" do

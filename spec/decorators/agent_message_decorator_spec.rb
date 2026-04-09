@@ -52,7 +52,7 @@ RSpec.describe AgentMessageDecorator, type: :decorator do
   end
 
   describe "#render_debug" do
-    it "includes exact token count when available" do
+    it "includes stored token count" do
       ts = 1_709_312_325_000_000_000
       event = session.messages.create!(
         message_type: "agent_message", payload: {"content" => "I can help"}, timestamp: ts, token_count: 156
@@ -60,7 +60,7 @@ RSpec.describe AgentMessageDecorator, type: :decorator do
       decorator = MessageDecorator.for(event)
 
       expect(decorator.render_debug).to eq({
-        role: :assistant, content: "I can help", timestamp: ts, tokens: 156, estimated: false
+        role: :assistant, content: "I can help", timestamp: ts, tokens: 156
       })
     end
 
@@ -69,8 +69,7 @@ RSpec.describe AgentMessageDecorator, type: :decorator do
       result = decorator.render_debug
 
       expect(result[:role]).to eq(:assistant)
-      expect(result[:tokens]).to be_positive
-      expect(result[:estimated]).to be true
+      expect(result[:tokens]).to be_a(Integer)
     end
   end
 end

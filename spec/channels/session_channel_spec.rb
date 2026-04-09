@@ -903,7 +903,6 @@ RSpec.describe SessionChannel, type: :channel do
       rendered = msg.dig("rendered", "debug")
 
       expect(rendered["tokens"]).to eq(5)
-      expect(rendered["estimated"]).to be false
     end
 
     it "includes tool_use_id in debug-decorated tool calls" do

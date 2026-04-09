@@ -227,14 +227,15 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
         content: "output text",
         tool_name: "bash",
         success: true,
-        tool_use_id: "toolu_hash"
+        tool_use_id: "toolu_hash",
+        token_count: 7
       )
       result = decorator.render_debug
 
       expect(result[:role]).to eq(:tool_response)
       expect(result[:content]).to eq("output text")
       expect(result[:tool_use_id]).to eq("toolu_hash")
-      expect(result[:tokens]).to be_positive
+      expect(result[:tokens]).to eq(7)
     end
 
     context "think tool" do

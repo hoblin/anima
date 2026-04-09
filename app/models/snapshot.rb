@@ -30,7 +30,7 @@ class Snapshot < ApplicationRecord
   validates :from_message_id, presence: true
   validates :to_message_id, presence: true
   validates :level, presence: true, numericality: {greater_than: 0}
-  validates :token_count, numericality: {greater_than_or_equal_to: 0}, allow_nil: true
+  validates :token_count, numericality: {greater_than_or_equal_to: 0}
   validate :from_message_id_not_after_to_message_id
 
   scope :for_level, ->(level) { where(level: level) }
@@ -48,20 +48,10 @@ class Snapshot < ApplicationRecord
     )
   }
 
-  # @return [Integer] token cost, using cached count or heuristic estimate
-  def token_cost
-    token_count.positive? ? token_count : estimate_tokens
-  end
-
   private
 
   def from_message_id_not_after_to_message_id
     return unless from_message_id && to_message_id
     errors.add(:from_message_id, "must be <= to_message_id") if from_message_id > to_message_id
-  end
-
-  # @return [Integer] estimated token count (at least 1)
-  def estimate_tokens
-    [(text.bytesize / Message::BYTES_PER_TOKEN.to_f).ceil, 1].max
   end
 end

@@ -75,7 +75,7 @@ module Mneme
       transcript = render_transcript(eviction, context)
       sid = @session.id
 
-      log.info("session=#{sid} — running Mneme (#{eviction.count} eviction + #{context.count} context)")
+      log.info("session=#{sid} — running Mneme (#{eviction.size} eviction + #{context.size} context)")
       log.debug("compressed viewport:\n#{transcript}")
 
       result = @client.chat_with_tools(

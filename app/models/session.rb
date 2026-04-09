@@ -44,6 +44,10 @@ class Session < ApplicationRecord
   # {MnemeJob} when it has. Delegates initial boundary placement to
   # {#initialize_mneme_boundary!} on the first call.
   #
+  # The boundary has "left the viewport" when the cumulative token cost
+  # of everything from the boundary to the newest message exceeds the
+  # budget — a single SUM aggregate, no window function needed.
+  #
   # @return [void]
   def schedule_mneme!
     return if sub_agent?
@@ -53,7 +57,10 @@ class Session < ApplicationRecord
       return
     end
 
-    return if viewport_messages.where(id: mneme_boundary_message_id).exists?
+    tokens_since_boundary = messages
+      .where("messages.id >= ?", mneme_boundary_message_id)
+      .sum(:token_count)
+    return if tokens_since_boundary <= effective_token_budget
 
     MnemeJob.perform_later(id)
   end
@@ -123,7 +130,7 @@ class Session < ApplicationRecord
     )
 
     Message
-      .from(Arel.sql("(#{windowed.to_sql}) AS messages"))
+      .from(windowed, :messages)
       .where("running_total <= ? OR running_total = token_count", token_budget)
       .order(:id)
   end
@@ -150,7 +157,7 @@ class Session < ApplicationRecord
     )
 
     Message
-      .from(Arel.sql("(#{windowed.to_sql}) AS messages"))
+      .from(windowed, :messages)
       .where("running_total <= ? OR running_total = token_count", budget)
       .order(:id)
   end
@@ -805,7 +812,7 @@ class Session < ApplicationRecord
     remaining = budget
 
     scope.order(to_message_id: :desc).each do |snapshot|
-      cost = snapshot.token_cost
+      cost = snapshot.token_count
       break if cost > remaining && selected.any?
 
       selected << snapshot

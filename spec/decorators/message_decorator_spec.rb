@@ -93,7 +93,6 @@ RSpec.describe MessageDecorator, type: :decorator do
       expect(result[:role]).to eq(:user)
       expect(result[:content]).to eq("hi")
       expect(result).to have_key(:tokens)
-      expect(result).to have_key(:estimated)
     end
 
     it "raises ArgumentError for invalid mode" do
@@ -141,21 +140,13 @@ RSpec.describe MessageDecorator, type: :decorator do
   end
 
   describe "#token_info (private)" do
-    it "returns exact count when token_count is positive" do
+    it "returns the stored token count" do
       event = session.messages.create!(
         message_type: "user_message", payload: {"content" => "hello"}, timestamp: 1, token_count: 42
       )
       decorator = described_class.for(event)
 
-      expect(decorator.send(:token_info)).to eq({tokens: 42, estimated: false})
-    end
-
-    it "works with EventPayload structs (hash payloads)" do
-      decorator = described_class.for(type: "user_message", content: "hello world")
-      result = decorator.send(:token_info)
-
-      expect(result[:estimated]).to be true
-      expect(result[:tokens]).to be_positive
+      expect(decorator.send(:token_info)).to eq({tokens: 42})
     end
   end
 

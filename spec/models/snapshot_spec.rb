@@ -128,22 +128,6 @@ RSpec.describe Snapshot do
     end
   end
 
-  describe "#token_cost" do
-    it "returns cached token_count when positive" do
-      snapshot = session.snapshots.create!(
-        text: "Summary", from_message_id: 1, to_message_id: 10, level: 1, token_count: 42
-      )
-      expect(snapshot.token_cost).to eq(42)
-    end
-
-    it "estimates token count when token_count is zero" do
-      snapshot = session.snapshots.create!(
-        text: "A" * 400, from_message_id: 1, to_message_id: 10, level: 1, token_count: 0
-      )
-      expect(snapshot.token_cost).to eq(100) # 400 bytes / 4 bytes per token
-    end
-  end
-
   describe "session association" do
     it "is destroyed when the session is destroyed" do
       session.snapshots.create!(text: "Summary", from_message_id: 1, to_message_id: 10, level: 1)

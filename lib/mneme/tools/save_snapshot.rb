@@ -57,7 +57,7 @@ module Mneme
 
       # @return [Integer] estimated token count for the summary text
       def estimate_tokens(text)
-        [(text.bytesize / Message::BYTES_PER_TOKEN.to_f).ceil, 1].max
+        Message.estimate_token_count(text.bytesize)
       end
     end
   end

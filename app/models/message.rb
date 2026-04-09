@@ -46,9 +46,9 @@ class Message < ApplicationRecord
 
   # Estimates token count from a byte size using the {BYTES_PER_TOKEN} heuristic.
   # @param bytesize [Integer] number of bytes
-  # @return [Integer] estimated token count (at least 1)
+  # @return [Integer] estimated token count
   def self.estimate_token_count(bytesize)
-    [(bytesize / BYTES_PER_TOKEN.to_f).ceil, 1].max
+    (bytesize / BYTES_PER_TOKEN.to_f).ceil
   end
 
   belongs_to :session
@@ -97,7 +97,7 @@ class Message < ApplicationRecord
   # Tool messages are estimated from the full payload JSON since tool_input
   # and tool metadata contribute to token count. Messages use content only.
   #
-  # @return [Integer] estimated token count (at least 1)
+  # @return [Integer] estimated token count
   def estimate_tokens
     text = if message_type.in?(TOOL_TYPES)
       payload.to_json
