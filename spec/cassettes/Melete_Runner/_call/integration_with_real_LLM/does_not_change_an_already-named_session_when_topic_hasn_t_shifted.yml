@@ -13,13 +13,9 @@ http_interactions:
         words.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds (default:
         180).\"}},\"required\":[\"emoji\",\"name\"]}},{\"name\":\"activate_skill\",\"description\":\"Give
         the agent domain knowledge relevant to the current conversation.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"skill_name\":{\"type\":\"string\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
-        (default: 180).\"}},\"required\":[\"skill_name\"]}},{\"name\":\"deactivate_skill\",\"description\":\"Remove
-        domain knowledge that is no longer relevant.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"skill_name\":{\"type\":\"string\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
         (default: 180).\"}},\"required\":[\"skill_name\"]}},{\"name\":\"read_workflow\",\"description\":\"Activate
         a workflow and return its content for goal planning.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"workflow_name\":{\"type\":\"string\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
-        (default: 180).\"}},\"required\":[\"workflow_name\"]}},{\"name\":\"deactivate_workflow\",\"description\":\"Deactivate
-        the current workflow when it is complete or no longer relevant.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
-        (default: 180).\"}},\"required\":[]}},{\"name\":\"set_goal\",\"description\":\"Create
+        (default: 180).\"}},\"required\":[\"workflow_name\"]}},{\"name\":\"set_goal\",\"description\":\"Create
         a goal or sub-goal.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\",\"description\":\"1
         sentence.\"},\"parent_goal_id\":{\"type\":\"integer\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
         (default: 180).\"}},\"required\":[\"description\"]}},{\"name\":\"update_goal\",\"description\":\"Refine
@@ -42,18 +38,19 @@ http_interactions:
         words.\\n\\n──────────────────────────────\\nSKILL MANAGEMENT\\n──────────────────────────────\\nActivate
         a skill the moment the conversation signals its domain — before Aoide needs
         it. Late activation means she's working without the knowledge you prepared.\\n\\nAn
-        irrelevant skill is worse than none: its text crowds her context, pulling
-        her attention toward pages she has to read and then ignore. Activate only
-        what matches the work in front of her; deactivate when she moves on. Multiple
-        skills can be active at once — each one is a page she has to carry.\\n\\n──────────────────────────────\\nWORKFLOW
+        activated skill rides Aoide's viewport as a message and leaves on its own
+        when it evicts — you cannot take it back. So be careful: an irrelevant skill
+        crowds her context with text she has to read and ignore until it falls off.
+        Match each activation to the work actually in front of her. Multiple skills
+        can be active at once — each one is a page she has to carry until it evicts.\\n\\n──────────────────────────────\\nWORKFLOW
         MANAGEMENT\\n──────────────────────────────\\nActivate a workflow when Aoide
         starts a multi-step task that matches one. Read the returned content and use
         judgment to turn it into goals — not a mechanical 1:1 mapping. Adapt: skip
-        irrelevant steps, add extra ones for unfamiliar ground.\\n\\nDeactivate when
-        the workflow completes or Aoide shifts focus. Only one workflow active at
-        a time — activating a new one replaces the previous. A stale workflow is the
-        same kind of tax as a stale skill: Aoide carries its text whether she needs
-        it or not.\\n\\n──────────────────────────────\\nGOAL TRACKING\\n──────────────────────────────\\nCreate
+        irrelevant steps, add extra ones for unfamiliar ground.\\n\\nLike skills,
+        a workflow rides Aoide's viewport once activated and leaves when it evicts
+        — there is no deactivation. An irrelevant or stale workflow is text Aoide
+        carries whether she needs it or not, so only activate one when the task genuinely
+        matches.\\n\\n──────────────────────────────\\nGOAL TRACKING\\n──────────────────────────────\\nCreate
         a root goal when Aoide starts a multi-step task. Break it into sub-goals as
         the plan takes shape. Refine wording as understanding evolves. Mark goals
         complete when she finishes the work they describe — completing a root cascades
@@ -116,7 +113,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 11 Apr 2026 17:02:37 GMT
+      - Sat, 11 Apr 2026 17:46:04 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -130,13 +127,13 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1775941200'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.12'
+      - '0.19'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1776409200'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.08'
+      - '0.09'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
@@ -156,11 +153,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2481'
+      - '2791'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=2484
+      - x-originResponse;dur=2794
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -175,29 +172,28 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMTFQVnRCUHBLR2RmdW1ZU3ZXdEZZMzgiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMTNZR1JUVmpGY0syMVJqb1A3R3dkTFUiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
-        InRleHQiOiJJIG5lZWQgbW9yZSBjb250ZXh0IHRvIHByZXBhcmUgZWZmZWN0
-        aXZlbHkuIFRoZSBtZXNzYWdlIFwiQ29udGludWUgd2l0aCB0aGUgZml4XCIg
-        aXMgaW5jb21wbGV0ZSDigJQgSSBkb24ndCBrbm93OlxuXG4tICoqV2hhdCBm
-        aXg/KiogV2hhdCBwcm9ibGVtIGlzIGJlaW5nIGFkZHJlc3NlZD9cbi0gKipX
-        aGF0IGNvZGViYXNlPyoqIChSYWlscywgZ2FtZSBkZXYsIENMSSwgZXRjLilc
-        bi0gKipXaGF0J3MgdGhlIGN1cnJlbnQgc3RhdGU/KiogV2hhdCdzIGJlZW4g
-        ZG9uZSBzbyBmYXI/XG4tICoqV2hhdCdzIHRoZSBuZXh0IHN0ZXA/KiogV2hh
-        dCBkb2VzIFwiY29udGludWluZ1wiIG1lYW4gaGVyZT9cblxuV2l0aG91dCB0
-        aGlzIGluZm9ybWF0aW9uLCBJIGNhbid0IGFjdGl2YXRlIHRoZSByaWdodCBz
-        a2lsbHMsIHJlYWQgdGhlIHJlbGV2YW50IHdvcmtmbG93LCBvciBzZXQgY2xl
-        YXIgZ29hbHMuXG5cbkNhbiB5b3UgcHJvdmlkZTpcbjEuIFRoZSBpc3N1ZSBv
-        ciBwcm9ibGVtIGRlc2NyaXB0aW9uXG4yLiBXaGF0IHdvcmsgaGFzIGFscmVh
-        ZHkgYmVlbiBjb21wbGV0ZWRcbjMuIFdoYXQgQW9pZGUgaXMgd29ya2luZyBv
-        biBuZXh0XG5cbk9uY2UgSSBoYXZlIHRoYXQsIEknbGwgcHJlcGFyZSB0aGUg
-        c2NlbmUgcHJvcGVybHkuIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwi
-        c3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2Fn
-        ZSI6eyJpbnB1dF90b2tlbnMiOjI1OTcsImNhY2hlX2NyZWF0aW9uX2lucHV0
-        X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hl
-        X2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVw
-        aGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjox
-        NjMsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6
-        Im5vdF9hdmFpbGFibGUifX0=
-  recorded_at: Sat, 11 Apr 2026 17:02:37 GMT
+        InRleHQiOiJJIG5lZWQgbW9yZSBjb250ZXh0IHRvIHByZXBhcmUgcHJvcGVy
+        bHkuIFRoZSBtZXNzYWdlIFwiQ29udGludWUgd2l0aCB0aGUgZml4XCIgaXMg
+        aW5jb21wbGV0ZSDigJQgSSBkb24ndCBrbm93OlxuXG4xLiAqKldoYXQgZml4
+        KiogaXMgaW4gcHJvZ3Jlc3MgKGJ1ZyBmaXgsIGZlYXR1cmUgaW1wbGVtZW50
+        YXRpb24sIHRlc3QgZmFpbHVyZT8pXG4yLiAqKldoYXQgZG9tYWluKiogc2hl
+        J3Mgd29ya2luZyBpbiAoUmFpbHMsIGdhbWUgZGV2LCBDTEksIGV0Yz8pXG4z
+        LiAqKldoYXQgc2Vzc2lvbioqIHRoaXMgaXMgY29udGludWluZyBmcm9tIChk
+        b2VzIGEgaGFuZG9mZiBleGlzdD8pXG5cbkNhbiB5b3UgcHJvdmlkZTpcbi0g
+        QSBkZXNjcmlwdGlvbiBvZiB3aGF0J3MgYmVpbmcgZml4ZWRcbi0gVGhlIGNv
+        ZGViYXNlIG9yIGRvbWFpbiBjb250ZXh0XG4tIFdoZXRoZXIgdGhlcmUncyBh
+        biBleGlzdGluZyBoYW5kb2ZmIG9yIGdvYWwgc3RhdGUgdG8gcmVmZXJlbmNl
+        XG5cbk9uY2UgSSB1bmRlcnN0YW5kIHRoZSB3b3JrLCBJJ2xsIGFjdGl2YXRl
+        IHRoZSByaWdodCBza2lsbHMsIHdvcmtmbG93cywgYW5kIGdvYWxzIHRvIHNl
+        dCB0aGUgc2NlbmUuIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3Rv
+        cF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6
+        eyJpbnB1dF90b2tlbnMiOjI0NTIsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rv
+        a2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2Ny
+        ZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVt
+        ZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoxNDYs
+        InNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5v
+        dF9hdmFpbGFibGUifX0=
+  recorded_at: Sat, 11 Apr 2026 17:46:04 GMT
 recorded_with: VCR 6.4.0

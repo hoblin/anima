@@ -21,7 +21,7 @@ RSpec.describe Melete::Tools::ReadWorkflow do
   end
 
   describe "#execute" do
-    let(:session) { Session.create! }
+    let(:session) { create(:session) }
     let(:tool) { described_class.new(main_session: session) }
 
     it "activates a workflow and returns its full content" do
@@ -29,14 +29,14 @@ RSpec.describe Melete::Tools::ReadWorkflow do
 
       expect(result).to include("Workflow: feature")
       expect(result).to include("end-to-end")
-      expect(session.reload.active_workflow).to eq("feature")
+      expect(session.active_workflow).to eq("feature")
     end
 
     it "returns error for unknown workflow" do
       result = tool.execute({"workflow_name" => "nonexistent"})
 
       expect(result).to eq({error: "Unknown workflow: nonexistent"})
-      expect(session.reload.active_workflow).to be_nil
+      expect(session.active_workflow).to be_nil
     end
 
     it "returns error when name is blank" do
@@ -45,11 +45,12 @@ RSpec.describe Melete::Tools::ReadWorkflow do
       expect(result).to eq({error: "Workflow name cannot be blank"})
     end
 
-    it "replaces previous active workflow" do
+    it "enqueues the replacement when a different workflow is activated" do
       tool.execute({"workflow_name" => "feature"})
-      tool.execute({"workflow_name" => "commit"})
+      session.promote_pending_messages!
 
-      expect(session.reload.active_workflow).to eq("commit")
+      expect { tool.execute({"workflow_name" => "commit"}) }
+        .to change { session.pending_messages.where(source_type: "workflow").count }.by(1)
     end
 
     it "accepts context kwargs without error" do

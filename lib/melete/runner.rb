@@ -56,9 +56,9 @@ module Melete
           ──────────────────────────────
           Activate a skill the moment the conversation signals its domain — before Aoide needs it. Late activation means she's working without the knowledge you prepared.
 
-          An irrelevant skill is worse than none: its text crowds her context, pulling her attention toward pages she has to read and then ignore. Activate only what matches the work in front of her; deactivate when she moves on. Multiple skills can be active at once — each one is a page she has to carry.
+          An activated skill rides Aoide's viewport as a message and leaves on its own when it evicts — you cannot take it back. So be careful: an irrelevant skill crowds her context with text she has to read and ignore until it falls off. Match each activation to the work actually in front of her. Multiple skills can be active at once — each one is a page she has to carry until it evicts.
         PROMPT
-        tools: [Tools::ActivateSkill, Tools::DeactivateSkill]
+        tools: [Tools::ActivateSkill]
       ),
 
       workflow_management: Responsibility.new(
@@ -68,9 +68,9 @@ module Melete
           ──────────────────────────────
           Activate a workflow when Aoide starts a multi-step task that matches one. Read the returned content and use judgment to turn it into goals — not a mechanical 1:1 mapping. Adapt: skip irrelevant steps, add extra ones for unfamiliar ground.
 
-          Deactivate when the workflow completes or Aoide shifts focus. Only one workflow active at a time — activating a new one replaces the previous. A stale workflow is the same kind of tax as a stale skill: Aoide carries its text whether she needs it or not.
+          Like skills, a workflow rides Aoide's viewport once activated and leaves when it evicts — there is no deactivation. An irrelevant or stale workflow is text Aoide carries whether she needs it or not, so only activate one when the task genuinely matches.
         PROMPT
-        tools: [Tools::ReadWorkflow, Tools::DeactivateWorkflow]
+        tools: [Tools::ReadWorkflow]
       ),
 
       goal_tracking: Responsibility.new(

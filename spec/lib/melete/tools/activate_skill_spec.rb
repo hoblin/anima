@@ -21,7 +21,7 @@ RSpec.describe Melete::Tools::ActivateSkill do
   end
 
   describe "#execute" do
-    let(:session) { Session.create! }
+    let(:session) { create(:session) }
     let(:tool) { described_class.new(main_session: session) }
 
     it "activates a skill and returns confirmation" do
@@ -29,7 +29,7 @@ RSpec.describe Melete::Tools::ActivateSkill do
 
       expect(result).to include("Activated skill: gh-issue")
       expect(result).to include("Issue writing with WHAT/WHY/HOW framework")
-      expect(session.reload.active_skills).to include("gh-issue")
+      expect(session.active_skills).to include("gh-issue")
     end
 
     it "creates a skill PendingMessage on the session" do
@@ -41,7 +41,7 @@ RSpec.describe Melete::Tools::ActivateSkill do
       result = tool.execute({"skill_name" => "nonexistent"})
 
       expect(result).to eq({error: "Unknown skill: nonexistent"})
-      expect(session.reload.active_skills).to be_empty
+      expect(session.active_skills).to be_empty
     end
 
     it "returns error when name is blank" do
@@ -50,11 +50,11 @@ RSpec.describe Melete::Tools::ActivateSkill do
       expect(result).to eq({error: "Skill name cannot be blank"})
     end
 
-    it "is idempotent — does not duplicate active skill" do
-      tool.execute({"skill_name" => "gh-issue"})
+    it "is idempotent — second activation does not enqueue another PendingMessage" do
       tool.execute({"skill_name" => "gh-issue"})
 
-      expect(session.reload.active_skills.count("gh-issue")).to eq(1)
+      expect { tool.execute({"skill_name" => "gh-issue"}) }
+        .not_to change { session.pending_messages.count }
     end
 
     it "accepts context kwargs without error" do

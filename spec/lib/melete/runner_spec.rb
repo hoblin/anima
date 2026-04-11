@@ -98,12 +98,8 @@ RSpec.describe Melete::Runner do
 
       it "excludes viewport-present skills from the catalog" do
         Skills::Registry.reload!
-        msg = session.messages.create!(
-          message_type: "user_message",
-          payload: {"content" => "skill", "source_type" => "skill", "source_name" => "gh-issue"},
-          timestamp: 0
-        )
-        allow(session).to receive(:viewport_messages).and_return(Message.where(id: msg.id))
+        skill_call = create(:message, :from_melete_skill, session:, skill_name: "gh-issue")
+        allow(session).to receive(:viewport_messages).and_return(Message.where(id: skill_call.id))
 
         captured_opts = nil
         allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
@@ -114,19 +110,15 @@ RSpec.describe Melete::Runner do
         runner.call
 
         expect(captured_opts[:system]).to include("AVAILABLE SKILLS")
-        expect(captured_opts[:system]).not_to include("gh-issue")
+        expect(captured_opts[:system]).not_to include("- gh-issue —")
       end
 
       it "excludes viewport-present workflows from the catalog" do
         Workflows::Registry.reload!
         workflow_name = Workflows::Registry.instance.available_names.first
         workflow_desc = Workflows::Registry.instance.catalog[workflow_name]
-        msg = session.messages.create!(
-          message_type: "user_message",
-          payload: {"content" => "workflow", "source_type" => "workflow", "source_name" => workflow_name},
-          timestamp: 0
-        )
-        allow(session).to receive(:viewport_messages).and_return(Message.where(id: msg.id))
+        workflow_call = create(:message, :from_melete_workflow, session:, workflow_name: workflow_name)
+        allow(session).to receive(:viewport_messages).and_return(Message.where(id: workflow_call.id))
 
         captured_opts = nil
         allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
@@ -486,7 +478,7 @@ RSpec.describe Melete::Runner do
 
         runner.call
 
-        %w[activate_skill deactivate_skill read_workflow deactivate_workflow
+        %w[activate_skill read_workflow
           set_goal update_goal finish_goal everything_is_ready].each do |name|
           expect(captured_registry.registered?(name)).to be(true), "expected #{name} to be registered"
         end
@@ -587,11 +579,11 @@ RSpec.describe Melete::Runner do
 
         child_runner.call
 
-        %w[activate_skill deactivate_skill everything_is_ready].each do |name|
+        %w[activate_skill everything_is_ready].each do |name|
           expect(captured_registry.registered?(name)).to be(true), "expected #{name} to be registered"
         end
 
-        %w[set_goal update_goal finish_goal read_workflow deactivate_workflow].each do |name|
+        %w[set_goal update_goal finish_goal read_workflow].each do |name|
           expect(captured_registry.registered?(name)).to be(false), "expected #{name} NOT to be registered"
         end
       end

@@ -11,13 +11,9 @@ http_interactions:
         the session.","input_schema":{"type":"object","properties":{"emoji":{"type":"string"},"name":{"type":"string","description":"1-3
         words."},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["emoji","name"]}},{"name":"activate_skill","description":"Give
         the agent domain knowledge relevant to the current conversation.","input_schema":{"type":"object","properties":{"skill_name":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["skill_name"]}},{"name":"deactivate_skill","description":"Remove
-        domain knowledge that is no longer relevant.","input_schema":{"type":"object","properties":{"skill_name":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["skill_name"]}},{"name":"read_workflow","description":"Activate
         a workflow and return its content for goal planning.","input_schema":{"type":"object","properties":{"workflow_name":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["workflow_name"]}},{"name":"deactivate_workflow","description":"Deactivate
-        the current workflow when it is complete or no longer relevant.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":[]}},{"name":"set_goal","description":"Create
+        (default: 180)."}},"required":["workflow_name"]}},{"name":"set_goal","description":"Create
         a goal or sub-goal.","input_schema":{"type":"object","properties":{"description":{"type":"string","description":"1
         sentence."},"parent_goal_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["description"]}},{"name":"update_goal","description":"Refine
@@ -38,19 +34,20 @@ http_interactions:
         clear. Rename if it shifts.\nFormat: one emoji + 1-3 descriptive words.\n\n──────────────────────────────\nSKILL
         MANAGEMENT\n──────────────────────────────\nActivate a skill the moment the
         conversation signals its domain — before Aoide needs it. Late activation means
-        she''s working without the knowledge you prepared.\n\nAn irrelevant skill
-        is worse than none: its text crowds her context, pulling her attention toward
-        pages she has to read and then ignore. Activate only what matches the work
-        in front of her; deactivate when she moves on. Multiple skills can be active
-        at once — each one is a page she has to carry.\n\n──────────────────────────────\nWORKFLOW
+        she''s working without the knowledge you prepared.\n\nAn activated skill rides
+        Aoide''s viewport as a message and leaves on its own when it evicts — you
+        cannot take it back. So be careful: an irrelevant skill crowds her context
+        with text she has to read and ignore until it falls off. Match each activation
+        to the work actually in front of her. Multiple skills can be active at once
+        — each one is a page she has to carry until it evicts.\n\n──────────────────────────────\nWORKFLOW
         MANAGEMENT\n──────────────────────────────\nActivate a workflow when Aoide
         starts a multi-step task that matches one. Read the returned content and use
         judgment to turn it into goals — not a mechanical 1:1 mapping. Adapt: skip
-        irrelevant steps, add extra ones for unfamiliar ground.\n\nDeactivate when
-        the workflow completes or Aoide shifts focus. Only one workflow active at
-        a time — activating a new one replaces the previous. A stale workflow is the
-        same kind of tax as a stale skill: Aoide carries its text whether she needs
-        it or not.\n\n──────────────────────────────\nGOAL TRACKING\n──────────────────────────────\nCreate
+        irrelevant steps, add extra ones for unfamiliar ground.\n\nLike skills, a
+        workflow rides Aoide''s viewport once activated and leaves when it evicts
+        — there is no deactivation. An irrelevant or stale workflow is text Aoide
+        carries whether she needs it or not, so only activate one when the task genuinely
+        matches.\n\n──────────────────────────────\nGOAL TRACKING\n──────────────────────────────\nCreate
         a root goal when Aoide starts a multi-step task. Break it into sub-goals as
         the plan takes shape. Refine wording as understanding evolves. Mark goals
         complete when she finishes the work they describe — completing a root cascades
@@ -113,7 +110,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 11 Apr 2026 17:02:39 GMT
+      - Sat, 11 Apr 2026 17:46:06 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -127,13 +124,13 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1775941200'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.12'
+      - '0.19'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1776409200'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.08'
+      - '0.09'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
@@ -153,11 +150,9 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1706'
-      Vary:
-      - Accept-Encoding
+      - '823'
       Server-Timing:
-      - x-originResponse;dur=1707
+      - x-originResponse;dur=825
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -172,25 +167,19 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMVNWMjZHeXpuSDI1UW5TMndNRTdqeUgiLCJ0eXBlIjoibWVzc2FnZSIs
-        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
-        InRleHQiOiJJJ20gb2JzZXJ2aW5nIGEgbWluaW1hbCBleGNoYW5nZSB3aXRo
-        IG5vIGNsZWFyIGRvbWFpbiBvciB0YXNrIHlldC4gVGhlcmUncyBub3RoaW5n
-        IHRvIHByZXBhcmUg4oCUIG5vIHNraWxsIGRvbWFpbiBpcyBhcHBhcmVudCwg
-        bm8gd29ya2Zsb3cgbWF0Y2hlcyBhIG11bHRpLXN0ZXAgcHJvY2VzcywgYW5k
-        IG5vIGdvYWxzIGV4aXN0IHRvIHB1cnN1ZS5cblxuSSdsbCB3YWl0IGZvciB0
-        aGUgY29udmVyc2F0aW9uIHRvIHNpZ25hbCB3aGF0IHdvcmsgQW9pZGUgaXMg
-        ZG9pbmcuIn0seyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxUUNE
-        Q3U5Vm82QVVrdTIzVzJQVjllViIsIm5hbWUiOiJldmVyeXRoaW5nX2lzX3Jl
-        YWR5IiwiaW5wdXQiOnt9LCJjYWxsZXIiOnsidHlwZSI6ImRpcmVjdCJ9fV0s
-        InN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJzdG9wX3NlcXVlbmNlIjpudWxs
-        LCJzdG9wX2RldGFpbHMiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6
-        MjU4NiwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNoZV9y
-        ZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1l
-        cmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rv
-        a2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjk5LCJzZXJ2aWNlX3RpZXIiOiJz
-        dGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJub3RfYXZhaWxhYmxlIn19
-  recorded_at: Sat, 11 Apr 2026 17:02:39 GMT
+        Z18wMTdnRThUaENBZkdVRWFnM1ZRc2hwUloiLCJ0eXBlIjoibWVzc2FnZSIs
+        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidG9vbF91
+        c2UiLCJpZCI6InRvb2x1XzAxS2hlSk1ZelpKR2dxeXVITHpCeUJQZSIsIm5h
+        bWUiOiJldmVyeXRoaW5nX2lzX3JlYWR5IiwiaW5wdXQiOnt9LCJjYWxsZXIi
+        OnsidHlwZSI6ImRpcmVjdCJ9fV0sInN0b3BfcmVhc29uIjoidG9vbF91c2Ui
+        LCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGwsInVz
+        YWdlIjp7ImlucHV0X3Rva2VucyI6MjQ0MSwiY2FjaGVfY3JlYXRpb25faW5w
+        dXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2Fj
+        aGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwi
+        ZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMi
+        OjM5LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8i
+        OiJub3RfYXZhaWxhYmxlIn19
+  recorded_at: Sat, 11 Apr 2026 17:46:06 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
@@ -198,22 +187,14 @@ http_interactions:
       encoding: UTF-8
       string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":[{"type":"text","text":"Aoide
         is working on this:\n```\nUser: Hello\nAssistant: Hi\n```\n\nPrepare whatever
-        she needs for the next exchange, then call everything_is_ready."}]},{"role":"assistant","content":[{"type":"text","text":"I''m
-        observing a minimal exchange with no clear domain or task yet. There''s nothing
-        to prepare — no skill domain is apparent, no workflow matches a multi-step
-        process, and no goals exist to pursue.\n\nI''ll wait for the conversation
-        to signal what work Aoide is doing."},{"type":"tool_use","id":"toolu_01QCDCu9Vo6AUku23W2PV9eV","name":"everything_is_ready","input":{},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01QCDCu9Vo6AUku23W2PV9eV","content":"Acknowledged.
+        she needs for the next exchange, then call everything_is_ready."}]},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01KheJMYzZJGgqyuHLzByBPe","name":"everything_is_ready","input":{},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01KheJMYzZJGgqyuHLzByBPe","content":"Acknowledged.
         No changes needed.","cache_control":{"type":"ephemeral"}}]}],"max_tokens":4096,"tools":[{"name":"rename_session","description":"Rename
         the session.","input_schema":{"type":"object","properties":{"emoji":{"type":"string"},"name":{"type":"string","description":"1-3
         words."},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["emoji","name"]}},{"name":"activate_skill","description":"Give
         the agent domain knowledge relevant to the current conversation.","input_schema":{"type":"object","properties":{"skill_name":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["skill_name"]}},{"name":"deactivate_skill","description":"Remove
-        domain knowledge that is no longer relevant.","input_schema":{"type":"object","properties":{"skill_name":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["skill_name"]}},{"name":"read_workflow","description":"Activate
         a workflow and return its content for goal planning.","input_schema":{"type":"object","properties":{"workflow_name":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["workflow_name"]}},{"name":"deactivate_workflow","description":"Deactivate
-        the current workflow when it is complete or no longer relevant.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":[]}},{"name":"set_goal","description":"Create
+        (default: 180)."}},"required":["workflow_name"]}},{"name":"set_goal","description":"Create
         a goal or sub-goal.","input_schema":{"type":"object","properties":{"description":{"type":"string","description":"1
         sentence."},"parent_goal_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}},"required":["description"]}},{"name":"update_goal","description":"Refine
@@ -234,19 +215,20 @@ http_interactions:
         clear. Rename if it shifts.\nFormat: one emoji + 1-3 descriptive words.\n\n──────────────────────────────\nSKILL
         MANAGEMENT\n──────────────────────────────\nActivate a skill the moment the
         conversation signals its domain — before Aoide needs it. Late activation means
-        she''s working without the knowledge you prepared.\n\nAn irrelevant skill
-        is worse than none: its text crowds her context, pulling her attention toward
-        pages she has to read and then ignore. Activate only what matches the work
-        in front of her; deactivate when she moves on. Multiple skills can be active
-        at once — each one is a page she has to carry.\n\n──────────────────────────────\nWORKFLOW
+        she''s working without the knowledge you prepared.\n\nAn activated skill rides
+        Aoide''s viewport as a message and leaves on its own when it evicts — you
+        cannot take it back. So be careful: an irrelevant skill crowds her context
+        with text she has to read and ignore until it falls off. Match each activation
+        to the work actually in front of her. Multiple skills can be active at once
+        — each one is a page she has to carry until it evicts.\n\n──────────────────────────────\nWORKFLOW
         MANAGEMENT\n──────────────────────────────\nActivate a workflow when Aoide
         starts a multi-step task that matches one. Read the returned content and use
         judgment to turn it into goals — not a mechanical 1:1 mapping. Adapt: skip
-        irrelevant steps, add extra ones for unfamiliar ground.\n\nDeactivate when
-        the workflow completes or Aoide shifts focus. Only one workflow active at
-        a time — activating a new one replaces the previous. A stale workflow is the
-        same kind of tax as a stale skill: Aoide carries its text whether she needs
-        it or not.\n\n──────────────────────────────\nGOAL TRACKING\n──────────────────────────────\nCreate
+        irrelevant steps, add extra ones for unfamiliar ground.\n\nLike skills, a
+        workflow rides Aoide''s viewport once activated and leaves when it evicts
+        — there is no deactivation. An irrelevant or stale workflow is text Aoide
+        carries whether she needs it or not, so only activate one when the task genuinely
+        matches.\n\n──────────────────────────────\nGOAL TRACKING\n──────────────────────────────\nCreate
         a root goal when Aoide starts a multi-step task. Break it into sub-goals as
         the plan takes shape. Refine wording as understanding evolves. Mark goals
         complete when she finishes the work they describe — completing a root cascades
@@ -309,7 +291,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 11 Apr 2026 17:02:40 GMT
+      - Sat, 11 Apr 2026 17:46:07 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -323,13 +305,13 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Reset:
       - '1775941200'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.12'
+      - '0.19'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1776409200'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.08'
+      - '0.09'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
@@ -349,33 +331,33 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '602'
+      - '433'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=604
-      Cf-Cache-Status:
-      - DYNAMIC
+      - x-originResponse;dur=435
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
       X-Robots-Tag:
       - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
       Cf-Ray:
       - "<CF_RAY>"
     body:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMURRVHo5YWJVcHNLVGJONGM3QTNpVEsiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMVVVODhHYnNCRmoxaWFXcVRjYVB6Q2UiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24i
         OiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWls
-        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyNzAzLCJjYWNoZV9j
+        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyNDk4LCJjYWNoZV9j
         cmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9r
         ZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRf
         dG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0
         cHV0X3Rva2VucyI6Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZl
         cmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Sat, 11 Apr 2026 17:02:40 GMT
+  recorded_at: Sat, 11 Apr 2026 17:46:07 GMT
 recorded_with: VCR 6.4.0
