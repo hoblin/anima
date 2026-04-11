@@ -608,6 +608,25 @@ RSpec.describe Session do
       expect(session.assemble_system_prompt).to start_with("You are running on Anima v")
     end
 
+    it "includes the sisters block introducing Melete and Mneme" do
+      prompt = session.assemble_system_prompt
+
+      expect(prompt).to include("## Your Sisters")
+      expect(prompt).to include("Melete")
+      expect(prompt).to include("from_melete")
+      expect(prompt).to include("Mneme")
+      expect(prompt).to include("from_mneme")
+      expect(prompt).to include("`from_` prefix")
+    end
+
+    it "places the sisters block after the soul and before snapshots" do
+      prompt = session.assemble_system_prompt
+      sisters_idx = prompt.index("## Your Sisters")
+      preamble_idx = prompt.index("You are running on Anima v")
+
+      expect(sisters_idx).to be > preamble_idx
+    end
+
     it "does not include expertise section — skills flow through messages" do
       session.activate_skill("gh-issue")
 

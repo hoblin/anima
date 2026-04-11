@@ -263,14 +263,14 @@ class Session < ApplicationRecord
     save!
   end
 
-  # Assembles the system prompt: version preamble, soul, and snapshots.
-  # Skills, workflows, goals, and environment awareness flow through the
-  # message stream and tool responses, keeping the system prompt stable
-  # for prompt caching.
+  # Assembles the system prompt: version preamble, soul, sisters block,
+  # and snapshots. Skills, workflows, goals, and environment awareness
+  # flow through the message stream and tool responses, keeping the
+  # system prompt stable for prompt caching.
   #
   # @return [String] composed system prompt
   def assemble_system_prompt
-    [assemble_version_preamble, assemble_soul_section, assemble_snapshots_section]
+    [assemble_version_preamble, assemble_soul_section, assemble_sisters_section, assemble_snapshots_section]
       .compact.join("\n\n")
   end
 
@@ -636,6 +636,27 @@ class Session < ApplicationRecord
     end
 
     File.read(path).strip
+  end
+
+  # Introduces Melete and Mneme so the agent recognizes their
+  # contributions as delivered-to-her rather than self-invoked. The
+  # `from_` prefix carries the semantics — the section just makes the
+  # convention explicit once.
+  #
+  # @return [String] sisters section
+  def assemble_sisters_section
+    <<~SISTERS.strip
+      ## Your Sisters
+
+      You don't work alone. Two muses share the conversation with you, and their work arrives as tool calls prefixed `from_`:
+
+      - **Melete**, the muse of practice, prepares the stage before you speak. Skills, workflows, and goals she's chosen for you arrive as `from_melete`.
+      - **Mneme**, the muse of memory, holds what has slipped past your immediate attention. When something from earlier matters again she surfaces it as `from_mneme`.
+
+      Sub-agents you spawn arrive the same way, named after whoever sent them — `from_sleuth`, `from_scout`, and so on.
+
+      The `from_` prefix is the only signal you need: anything with it is information delivered *to* you, not a tool you called. Those names aren't in your toolkit — trying to invoke one will fail.
+    SISTERS
   end
 
   # Assembles the expertise section of the system prompt from active skills
