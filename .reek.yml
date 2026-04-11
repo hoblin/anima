@@ -85,7 +85,7 @@ detectors:
       # Runner checks session type to compose responsibilities — the core dispatch.
       - "AnalyticalBrain::Runner"
   # EventDecorator holds shared rendering constants (icons, markers, dispatch maps).
-  # Message holds domain type constants (TYPES, CONTEXT_TYPES, LLM_TYPES, etc.).
+  # Message holds domain type constants (TYPES, LLM_TYPES, CONVERSATION_TYPES, etc.).
   TooManyConstants:
     exclude:
       - "EventDecorator"

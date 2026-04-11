@@ -38,23 +38,6 @@ RSpec.describe Session do
     end
   end
 
-  describe "#next_view_mode" do
-    it "cycles basic → verbose" do
-      session = Session.new(view_mode: "basic")
-      expect(session.next_view_mode).to eq("verbose")
-    end
-
-    it "cycles verbose → debug" do
-      session = Session.new(view_mode: "verbose")
-      expect(session.next_view_mode).to eq("debug")
-    end
-
-    it "cycles debug → basic" do
-      session = Session.new(view_mode: "debug")
-      expect(session.next_view_mode).to eq("basic")
-    end
-  end
-
   describe "associations" do
     it "has many events ordered by id" do
       session = Session.create!
@@ -475,7 +458,7 @@ RSpec.describe Session do
 
     it "excludes goals from system prompt entirely" do
       session = Session.create!
-      Goal.create!(session: session, description: "Test goal")
+      Goal.create!(session:, description: "Test goal")
 
       prompt = session.system_prompt
       expect(prompt).not_to include("Current Goals")
@@ -572,52 +555,45 @@ RSpec.describe Session do
   end
 
   describe "#skills_in_viewport" do
-    let(:session) { Session.create! }
+    let(:session) { create(:session) }
 
     it "returns empty set when viewport has no skill messages" do
-      session.messages.create!(message_type: "user_message", payload: {"content" => "hello"}, timestamp: 1)
-      session.update_column(:viewport_message_ids, session.messages.pluck(:id))
+      msg = create(:message, :user_message, session:)
+      allow(session).to receive(:viewport_messages).and_return(Message.where(id: msg.id))
 
       expect(session.skills_in_viewport).to eq(Set.new)
     end
 
     it "returns skill names from viewport messages with source_type skill" do
-      msg = session.messages.create!(
-        message_type: "user_message",
-        payload: {"content" => "skill content", "source_type" => "skill", "source_name" => "gh-issue"},
-        timestamp: 1
-      )
-      session.update_column(:viewport_message_ids, [msg.id])
+      msg = create(:message, :user_message, session:,
+        payload: {"content" => "skill content", "source_type" => "skill", "source_name" => "gh-issue"})
+      allow(session).to receive(:viewport_messages).and_return(Message.where(id: msg.id))
 
       expect(session.skills_in_viewport).to eq(Set["gh-issue"])
     end
 
     it "excludes skill messages not in viewport" do
-      session.messages.create!(
-        message_type: "user_message",
-        payload: {"content" => "skill content", "source_type" => "skill", "source_name" => "gh-issue"},
-        timestamp: 1
-      )
-      session.update_column(:viewport_message_ids, [])
+      create(:message, :user_message, session:,
+        payload: {"content" => "skill content", "source_type" => "skill", "source_name" => "gh-issue"})
+      allow(session).to receive(:viewport_messages).and_return(Message.none)
 
       expect(session.skills_in_viewport).to eq(Set.new)
     end
   end
 
   describe "#workflow_in_viewport" do
-    let(:session) { Session.create! }
+    let(:session) { create(:session) }
 
     it "returns nil when no workflow message is in viewport" do
+      allow(session).to receive(:viewport_messages).and_return(Message.none)
+
       expect(session.workflow_in_viewport).to be_nil
     end
 
     it "returns workflow name from viewport message" do
-      msg = session.messages.create!(
-        message_type: "user_message",
-        payload: {"content" => "workflow content", "source_type" => "workflow", "source_name" => "feature"},
-        timestamp: 1
-      )
-      session.update_column(:viewport_message_ids, [msg.id])
+      msg = create(:message, :user_message, session:,
+        payload: {"content" => "workflow content", "source_type" => "workflow", "source_name" => "feature"})
+      allow(session).to receive(:viewport_messages).and_return(Message.where(id: msg.id))
 
       expect(session.workflow_in_viewport).to eq("feature")
     end
@@ -691,14 +667,14 @@ RSpec.describe Session do
   describe "goals association" do
     it "has many goals" do
       session = Session.create!
-      goal = Goal.create!(session: session, description: "test goal")
+      goal = Goal.create!(session:, description: "test goal")
 
       expect(session.goals).to eq([goal])
     end
 
     it "destroys goals when session is destroyed" do
       session = Session.create!
-      Goal.create!(session: session, description: "doomed")
+      Goal.create!(session:, description: "doomed")
 
       expect { session.destroy }.to change(Goal, :count).by(-1)
     end
@@ -712,9 +688,9 @@ RSpec.describe Session do
     end
 
     it "returns root goals with their sub-goals" do
-      root = Goal.create!(session: session, description: "Implement auth")
-      Goal.create!(session: session, parent_goal: root, description: "Read code")
-      Goal.create!(session: session, parent_goal: root, description: "Write tests", status: "completed")
+      root = Goal.create!(session:, description: "Implement auth")
+      Goal.create!(session:, parent_goal: root, description: "Read code")
+      Goal.create!(session:, parent_goal: root, description: "Write tests", status: "completed")
 
       summary = session.goals_summary
       expect(summary.size).to eq(1)
@@ -726,8 +702,8 @@ RSpec.describe Session do
     end
 
     it "excludes sub-goals from root level" do
-      root = Goal.create!(session: session, description: "root")
-      Goal.create!(session: session, parent_goal: root, description: "child")
+      root = Goal.create!(session:, description: "root")
+      Goal.create!(session:, parent_goal: root, description: "child")
 
       summary = session.goals_summary
       expect(summary.size).to eq(1)
@@ -735,16 +711,16 @@ RSpec.describe Session do
     end
 
     it "orders root goals by created_at" do
-      first = Goal.create!(session: session, description: "first")
-      second = Goal.create!(session: session, description: "second")
+      first = Goal.create!(session:, description: "first")
+      second = Goal.create!(session:, description: "second")
 
       summary = session.goals_summary
       expect(summary.map { |g| g["id"] }).to eq([first.id, second.id])
     end
 
     it "excludes evicted root goals" do
-      Goal.create!(session: session, description: "visible")
-      Goal.create!(session: session, description: "evicted", status: "completed",
+      Goal.create!(session:, description: "visible")
+      Goal.create!(session:, description: "evicted", status: "completed",
         completed_at: 2.hours.ago, evicted_at: 1.hour.ago)
 
       summary = session.goals_summary
@@ -753,10 +729,10 @@ RSpec.describe Session do
     end
 
     it "excludes sub-goals of evicted root goals" do
-      evicted_root = Goal.create!(session: session, description: "evicted root",
+      evicted_root = Goal.create!(session:, description: "evicted root",
         status: "completed", completed_at: 2.hours.ago, evicted_at: 1.hour.ago)
-      Goal.create!(session: session, parent_goal: evicted_root, description: "orphaned child")
-      Goal.create!(session: session, description: "visible root")
+      Goal.create!(session:, parent_goal: evicted_root, description: "orphaned child")
+      Goal.create!(session:, description: "visible root")
 
       summary = session.goals_summary
       expect(summary.size).to eq(1)
@@ -793,7 +769,7 @@ RSpec.describe Session do
 
     it "works for main sessions too" do
       session = Session.create!
-      Goal.create!(session: session, description: "Build feature X")
+      Goal.create!(session:, description: "Build feature X")
 
       section = session.send(:assemble_task_section)
       expect(section).to include("Build feature X")
@@ -806,7 +782,7 @@ RSpec.describe Session do
     let(:session) { Session.create! }
 
     it "excludes goals from system prompt — they flow as phantom pairs" do
-      Goal.create!(session: session, description: "Implement feature")
+      Goal.create!(session:, description: "Implement feature")
 
       prompt = session.assemble_system_prompt
       expect(prompt).to start_with("You are running on Anima v")
@@ -816,14 +792,14 @@ RSpec.describe Session do
 
     it "system prompt is stable regardless of goal changes" do
       prompt_before = session.assemble_system_prompt
-      Goal.create!(session: session, description: "New goal")
+      Goal.create!(session:, description: "New goal")
       prompt_after = session.assemble_system_prompt
 
       expect(prompt_before).to eq(prompt_after)
     end
 
     it "does not auto-evict completed goals by message count" do
-      goal = Goal.create!(session: session, description: "Ongoing work")
+      goal = Goal.create!(session:, description: "Ongoing work")
       goal.update!(status: "completed", completed_at: Time.current)
 
       20.times do |i|
@@ -1540,19 +1516,6 @@ RSpec.describe Session do
         expect(section).to include("Earlier discussion summary")
       end
 
-      it "excludes snapshots whose source events are after the boundary" do
-        e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "visible"}, timestamp: 1, token_count: 10)
-        e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "reply"}, timestamp: 2, token_count: 10)
-
-        session.snapshots.create!(text: "Should not appear", from_message_id: e1.id, to_message_id: e2.id, level: 1, token_count: 20)
-        # Boundary is at e1 — snapshot covers events at/after boundary, not evicted
-        session.update_column(:mneme_boundary_message_id, e1.id)
-
-        section = session.send(:assemble_snapshots_section)
-
-        expect(section).to be_nil
-      end
-
       it "places L2 snapshots above L1 snapshots in the section" do
         e1 = session.messages.create!(message_type: "user_message", payload: {"content" => "old1"}, timestamp: 1, token_count: 10)
         e2 = session.messages.create!(message_type: "agent_message", payload: {"content" => "old2"}, timestamp: 2, token_count: 10)
@@ -2187,27 +2150,6 @@ RSpec.describe Session do
     end
   end
 
-  describe "#own_message_scope" do
-    let(:session) { Session.create! }
-
-    it "excludes messages below mneme_boundary_message_id" do
-      old = session.messages.create!(message_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 10)
-      recent = session.messages.create!(message_type: "user_message", payload: {"content" => "recent"}, timestamp: 2, token_count: 10)
-      session.update_column(:mneme_boundary_message_id, recent.id)
-
-      scope = session.send(:own_message_scope)
-      expect(scope).to include(recent)
-      expect(scope).not_to include(old)
-    end
-
-    it "includes all messages when boundary is nil" do
-      msg = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
-
-      scope = session.send(:own_message_scope)
-      expect(scope).to include(msg)
-    end
-  end
-
   describe "#promote_phantom_pair!" do
     let(:session) { Session.create! }
 
@@ -2271,79 +2213,157 @@ RSpec.describe Session do
     end
   end
 
-  describe "#recalculate_viewport!" do
-    let(:session) { Session.create! }
+  describe "#initialize_mneme_boundary!" do
+    subject(:initialize_boundary) { session.initialize_mneme_boundary! }
 
-    it "returns empty array when viewport has not changed" do
-      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
-      session.snapshot_viewport!([event.id])
+    let(:session) { create(:session) }
 
-      expect(session.recalculate_viewport!).to eq([])
+    context "without eligible messages" do
+      it "leaves the boundary unset on an empty session" do
+        expect { initialize_boundary }
+          .not_to change { session.mneme_boundary_message_id }.from(nil)
+      end
+
+      it "leaves the boundary unset when only non-think tool messages exist" do
+        create(:message, :bash_tool_call, session:)
+        create(:message, :bash_tool_response, session:)
+
+        expect { initialize_boundary }
+          .not_to change { session.mneme_boundary_message_id }.from(nil)
+      end
     end
 
-    it "returns evicted event IDs when viewport shrinks" do
-      old = session.messages.create!(message_type: "user_message", payload: {"content" => "old"}, timestamp: 1, token_count: 100_000)
-      new_event = session.messages.create!(message_type: "agent_message", payload: {"content" => "new"}, timestamp: 2, token_count: 100_000)
-      session.update_column(:viewport_message_ids, [old.id, new_event.id])
+    context "with a single eligible message" do
+      it "sets the boundary to a lone conversation message" do
+        message = create(:message, :user_message, session:)
 
-      # Add a large event that pushes 'old' out of the viewport
-      session.messages.create!(message_type: "user_message", payload: {"content" => "big"}, timestamp: 3, token_count: 100_000)
+        expect { initialize_boundary }
+          .to change { session.mneme_boundary_message_id }
+          .from(nil).to(message.id)
+      end
 
-      evicted = session.recalculate_viewport!
-      expect(evicted).to include(old.id)
+      it "sets the boundary to a lone think tool_call" do
+        thought = create(:message, :think_tool_call, session:)
+
+        expect { initialize_boundary }
+          .to change { session.mneme_boundary_message_id }
+          .from(nil).to(thought.id)
+      end
     end
 
-    it "updates the stored viewport snapshot" do
-      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
-      session.recalculate_viewport!
+    context "with multiple messages" do
+      it "picks the oldest when a conversation message comes first" do
+        first = create(:message, :user_message, session:)
+        create(:message, :think_tool_call, session:)
 
-      expect(session.reload.viewport_message_ids).to eq([event.id])
-    end
+        expect { initialize_boundary }
+          .to change { session.mneme_boundary_message_id }
+          .from(nil).to(first.id)
+      end
 
-    it "does not write to the database when viewport is unchanged" do
-      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 10)
-      session.snapshot_viewport!([event.id])
+      it "picks the oldest when a think tool_call comes first" do
+        thought = create(:message, :think_tool_call, session:)
+        create(:message, :user_message, session:)
 
-      expect(session).not_to receive(:update_column)
-      session.recalculate_viewport!
+        expect { initialize_boundary }
+          .to change { session.mneme_boundary_message_id }
+          .from(nil).to(thought.id)
+      end
+
+      it "skips non-think tool messages to find an eligible message" do
+        create(:message, :bash_tool_call, session:)
+        create(:message, :bash_tool_response, session:)
+        eligible = create(:message, :user_message, session:)
+
+        expect { initialize_boundary }
+          .to change { session.mneme_boundary_message_id }
+          .from(nil).to(eligible.id)
+      end
     end
   end
 
-  describe "#snapshot_viewport!" do
-    let(:session) { Session.create! }
+  describe "#viewport_messages" do
+    subject(:viewport) { session.viewport_messages(token_budget: budget) }
 
-    it "stores the given event IDs" do
-      session.snapshot_viewport!([1, 2, 3])
-      expect(session.reload.viewport_message_ids).to eq([1, 2, 3])
+    let(:session) { create(:session) }
+    let(:budget) { 100 }
+
+    it "returns an ActiveRecord::Relation" do
+      create(:message, :user_message, session:, token_count: 10)
+
+      expect(viewport).to be_a(ActiveRecord::Relation)
     end
 
-    it "overwrites previous snapshot" do
-      session.snapshot_viewport!([1, 2])
-      session.snapshot_viewport!([3, 4, 5])
-      expect(session.reload.viewport_message_ids).to eq([3, 4, 5])
-    end
-  end
+    it "is chainable with further AR methods" do
+      m1 = create(:message, :user_message, session:, token_count: 10)
+      m2 = create(:message, :user_message, session:, token_count: 10)
 
-  describe "#estimate_tokens (private)" do
-    let(:session) { Session.create! }
-
-    it "delegates to Message#estimate_tokens" do
-      event = session.messages.create!(
-        message_type: "user_message", payload: {"content" => "hello world"}, timestamp: 1
-      )
-
-      expect(session.send(:estimate_tokens, event)).to eq(event.estimate_tokens)
+      expect(viewport.pluck(:id)).to eq([m1.id, m2.id])
     end
 
-    it "uses heuristic for tool events via Message#estimate_tokens" do
-      event = session.messages.create!(
-        message_type: "tool_call",
-        payload: {"content" => "calling", "tool_name" => "bash", "tool_input" => {"command" => "ls"}},
-        tool_use_id: "toolu_est1",
-        timestamp: 1
-      )
+    context "when the session has no eligible messages" do
+      it "returns an empty relation" do
+        expect(viewport).to be_empty
+      end
+    end
 
-      expect(session.send(:estimate_tokens, event)).to eq(event.estimate_tokens)
+    context "when all messages fit within the budget" do
+      it "returns every message in chronological order" do
+        oldest = create(:message, :user_message, session:, token_count: 20)
+        middle = create(:message, :user_message, session:, token_count: 20)
+        newest = create(:message, :user_message, session:, token_count: 20)
+
+        expect(viewport.to_a).to eq([oldest, middle, newest])
+      end
+
+      it "treats every message type as eligible" do
+        first = create(:message, :user_message, session:, token_count: 10)
+        second = create(:message, :think_tool_call, session:, token_count: 10)
+        third = create(:message, :bash_tool_call, session:, token_count: 10)
+        fourth = create(:message, :bash_tool_response, session:, token_count: 10)
+
+        expect(viewport.to_a).to eq([first, second, third, fourth])
+      end
+    end
+
+    context "when cumulative cost exceeds the budget" do
+      it "drops the oldest messages walking newest-first" do
+        create(:message, :user_message, session:, token_count: 80)
+        middle = create(:message, :user_message, session:, token_count: 60)
+        newest = create(:message, :user_message, session:, token_count: 30)
+
+        # newest=30 + middle=60 = 90 ≤ 100 → both kept
+        # adding oldest (80) would push total to 170 → dropped
+        expect(viewport.to_a).to eq([middle, newest])
+      end
+
+      it "includes a message whose cumulative cost exactly equals the budget" do
+        oldest = create(:message, :user_message, session:, token_count: 30)
+        newest = create(:message, :user_message, session:, token_count: 70)
+
+        # newest=70 + oldest=30 = 100 ≤ 100 → both kept
+        expect(viewport.to_a).to eq([oldest, newest])
+      end
+    end
+
+    context "when the newest message alone exceeds the budget" do
+      it "still includes the newest message and drops everything older" do
+        create(:message, :user_message, session:, token_count: 50)
+        newest = create(:message, :user_message, session:, token_count: 200)
+
+        expect(viewport.to_a).to eq([newest])
+      end
+    end
+
+    context "when a Mneme boundary is set" do
+      it "excludes messages older than the boundary" do
+        create(:message, :user_message, session:, token_count: 10)
+        at_boundary = create(:message, :user_message, session:, token_count: 10)
+        after_boundary = create(:message, :user_message, session:, token_count: 10)
+        session.update_column(:mneme_boundary_message_id, at_boundary.id)
+
+        expect(viewport.to_a).to eq([at_boundary, after_boundary])
+      end
     end
   end
 

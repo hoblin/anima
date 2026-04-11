@@ -89,7 +89,7 @@ RSpec.describe Mneme::PassiveRecall do
     it "excludes messages already in the current viewport" do
       event = create_message(session, type: "user_message",
         content: "Authentication is broken")
-      session.update_column(:viewport_message_ids, [event.id])
+      allow(session).to receive(:viewport_messages).and_return(Message.where(id: event.id))
 
       session.goals.create!(description: "Fix authentication")
       described_class.new(session).call

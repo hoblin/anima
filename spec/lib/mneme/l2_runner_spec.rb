@@ -9,7 +9,7 @@ RSpec.describe Mneme::L2Runner do
 
   before do
     allow(Anima::Settings).to receive(:token_budget).and_return(190_000)
-    allow(Anima::Settings).to receive(:mneme_viewport_fraction).and_return(0.33)
+    allow(Anima::Settings).to receive(:eviction_fraction).and_return(0.33)
     allow(Anima::Settings).to receive(:mneme_max_tokens).and_return(2048)
     allow(Anima::Settings).to receive(:fast_model).and_return("claude-haiku-4-5")
     allow(Anima::Settings).to receive(:mneme_l2_snapshot_threshold).and_return(3)

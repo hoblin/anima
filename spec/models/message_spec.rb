@@ -81,10 +81,30 @@ RSpec.describe Message do
     end
   end
 
-  describe "token_count" do
-    it "defaults to 0" do
-      event = session.messages.create!(message_type: "user_message", payload: {content: "hi"}, timestamp: 1)
-      expect(event.token_count).to eq(0)
+  describe "token_count seeding" do
+    it "is set to the local estimate before validation on create" do
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hello world"}, timestamp: 1)
+
+      # "hello world" = 11 bytes, 11/4 = 2.75, ceil = 3
+      expect(event.token_count).to eq(3)
+    end
+
+    it "respects an explicit positive value passed by the caller" do
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1, token_count: 42)
+
+      expect(event.token_count).to eq(42)
+    end
+
+    it "seeds tool_call messages from full payload JSON" do
+      event = session.messages.create!(
+        message_type: "tool_call",
+        payload: {"content" => "calling", "tool_name" => "bash", "tool_input" => {"command" => "ls"}},
+        tool_use_id: "toolu_seed1",
+        timestamp: 1
+      )
+
+      expected = (event.payload.to_json.bytesize / 4.0).ceil
+      expect(event.token_count).to eq(expected)
     end
   end
 
@@ -102,61 +122,6 @@ RSpec.describe Message do
     it "raises KeyError for non-LLM event types" do
       event = session.messages.create!(message_type: "tool_call", payload: {content: "run"}, tool_use_id: "toolu_test1", timestamp: 1)
       expect { event.api_role }.to raise_error(KeyError)
-    end
-  end
-
-  describe ".context_messages" do
-    it "returns user, agent, tool_call, and tool_response events" do
-      session.messages.create!(message_type: "user_message", payload: {content: "hi"}, timestamp: 1)
-      session.messages.create!(message_type: "agent_message", payload: {content: "hello"}, timestamp: 2)
-      session.messages.create!(message_type: "system_message", payload: {content: "boot"}, timestamp: 3)
-      session.messages.create!(message_type: "tool_call", payload: {content: "run", tool_name: "web_get"}, tool_use_id: "toolu_test1", timestamp: 4)
-      session.messages.create!(message_type: "tool_response", payload: {content: "ok", tool_name: "web_get"}, tool_use_id: "toolu_test1", timestamp: 5)
-
-      expect(Message.context_messages.pluck(:message_type)).to match_array(
-        %w[system_message user_message agent_message tool_call tool_response]
-      )
-    end
-
-    it "includes system_message events" do
-      session.messages.create!(message_type: "system_message", payload: {content: "boot"}, timestamp: 1)
-
-      expect(Message.context_messages.pluck(:message_type)).to include("system_message")
-    end
-  end
-
-  describe "#llm_message?" do
-    it "returns true for user_message" do
-      event = Message.new(message_type: "user_message")
-      expect(event).to be_llm_message
-    end
-
-    it "returns true for agent_message" do
-      event = Message.new(message_type: "agent_message")
-      expect(event).to be_llm_message
-    end
-
-    it "returns false for system_message" do
-      event = Message.new(message_type: "system_message")
-      expect(event).not_to be_llm_message
-    end
-  end
-
-  describe "#context_message?" do
-    it "returns true for user_message" do
-      expect(Message.new(message_type: "user_message")).to be_context_message
-    end
-
-    it "returns true for tool_call" do
-      expect(Message.new(message_type: "tool_call")).to be_context_message
-    end
-
-    it "returns true for tool_response" do
-      expect(Message.new(message_type: "tool_response")).to be_context_message
-    end
-
-    it "returns true for system_message" do
-      expect(Message.new(message_type: "system_message")).to be_context_message
     end
   end
 
@@ -183,20 +148,20 @@ RSpec.describe Message do
       expect(event.estimate_tokens).to eq(expected)
     end
 
-    it "returns at least 1 for empty content" do
+    it "returns zero for empty content" do
       event = session.messages.create!(
         message_type: "user_message", payload: {"content" => ""}, timestamp: 1
       )
 
-      expect(event.estimate_tokens).to eq(1)
+      expect(event.estimate_tokens).to eq(0)
     end
 
-    it "returns at least 1 for nil content" do
+    it "returns zero for nil content" do
       event = session.messages.create!(
         message_type: "user_message", payload: {"content" => nil}, timestamp: 1
       )
 
-      expect(event.estimate_tokens).to eq(1)
+      expect(event.estimate_tokens).to eq(0)
     end
   end
 
@@ -230,16 +195,34 @@ RSpec.describe Message do
   end
 
   describe "after_create callback" do
-    it "enqueues CountMessageTokensJob for LLM events" do
+    %w[user_message agent_message system_message].each do |type|
+      it "enqueues CountMessageTokensJob for #{type}" do
+        expect {
+          session.messages.create!(message_type: type, payload: {content: "hi"}, timestamp: 1)
+        }.to have_enqueued_job(CountMessageTokensJob)
+      end
+    end
+
+    it "enqueues CountMessageTokensJob for tool_call" do
       expect {
-        session.messages.create!(message_type: "user_message", payload: {content: "hi"}, timestamp: 1)
+        session.messages.create!(
+          message_type: "tool_call",
+          payload: {content: "running", tool_name: "bash", tool_input: {}},
+          tool_use_id: "toolu_after_create",
+          timestamp: 1
+        )
       }.to have_enqueued_job(CountMessageTokensJob)
     end
 
-    it "does not enqueue CountMessageTokensJob for non-LLM events" do
+    it "enqueues CountMessageTokensJob for tool_response" do
       expect {
-        session.messages.create!(message_type: "system_message", payload: {content: "boot"}, timestamp: 1)
-      }.not_to have_enqueued_job(CountMessageTokensJob)
+        session.messages.create!(
+          message_type: "tool_response",
+          payload: {content: "ok"},
+          tool_use_id: "toolu_after_create_resp",
+          timestamp: 1
+        )
+      }.to have_enqueued_job(CountMessageTokensJob)
     end
   end
 end

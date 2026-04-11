@@ -281,9 +281,6 @@ class SessionChannel < ApplicationCable::Channel
   # In debug mode, prepends the assembled system prompt as a special block.
   # Pending messages are sent last so the TUI shows them at the bottom.
   #
-  # Snapshots the viewport so subsequent message broadcasts can compute
-  # eviction diffs accurately.
-  #
   # @param session [Session] the session whose viewport to broadcast
   # @return [void]
   def broadcast_viewport(session)
@@ -298,25 +295,18 @@ class SessionChannel < ApplicationCable::Channel
     end
   end
 
-  # Loads the viewport, snapshots it for eviction tracking, and yields
-  # each message with its decorated payload in newest-first order.
-  # Newest-first prevents render thrashing during session switches: the
-  # most recent messages fill the visible viewport immediately, while
-  # older messages are inserted above the fold without visual disruption.
-  #
-  # Snapshot uses snapshot_viewport! (not recalculate_viewport!) because
-  # full viewport refreshes don't need eviction diffs — clients clear
-  # their store before rendering.
+  # Loads the viewport and yields each message with its decorated payload
+  # in newest-first order. Newest-first prevents render thrashing during
+  # session switches: the most recent messages fill the visible viewport
+  # immediately, while older messages are inserted above the fold without
+  # visual disruption.
   #
   # @param session [Session] the session whose viewport to iterate
   # @yieldparam message [Message] the persisted message record
   # @yieldparam payload [Hash] decorated payload ready for transmission
   # @return [void]
   def each_viewport_message(session)
-    viewport = session.viewport_messages
-    session.snapshot_viewport!(viewport.map(&:id))
-
-    viewport.reverse_each do |msg|
+    session.viewport_messages.reverse_each do |msg|
       yield msg, decorate_message_payload(msg, session.view_mode)
     end
   end
@@ -324,7 +314,7 @@ class SessionChannel < ApplicationCable::Channel
   # Decorates a message for transmission to clients. Merges the message's
   # database ID and structured decorator output into the payload.
   # Used by {#transmit_history} and {#broadcast_viewport} for historical
-  # and viewport re-broadcast — live broadcasts use {Message::Broadcasting}.
+  # and viewport re-broadcast — live broadcasts use {Events::Subscribers::MessageBroadcaster}.
   #
   # @param message [Message] persisted message record
   # @param mode [String] view mode for decoration (default: "basic")

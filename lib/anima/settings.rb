@@ -243,9 +243,9 @@ module Anima
       # @return [Integer]
       def mneme_max_tokens = get("mneme", "max_tokens")
 
-      # Fraction of the main viewport token budget allocated to Mneme's viewport.
+      # Fraction of the main token budget for Mneme's eviction zone.
       # @return [Float]
-      def mneme_viewport_fraction = get("mneme", "viewport_fraction")
+      def eviction_fraction = get("mneme", "eviction_fraction")
 
       # Fraction of the main viewport token budget reserved for L1 snapshots.
       # @return [Float]
@@ -258,10 +258,6 @@ module Anima
       # Number of uncovered L1 snapshots that triggers L2 compression.
       # @return [Integer]
       def mneme_l2_snapshot_threshold = get("mneme", "l2_snapshot_threshold")
-
-      # Fraction of the viewport to evict in batch when Mneme runs.
-      # @return [Float]
-      def mneme_eviction_fraction = get("mneme", "eviction_fraction")
 
       # Fraction of the main viewport token budget reserved for pinned messages.
       # Pinned messages appear between snapshots and the sliding window.

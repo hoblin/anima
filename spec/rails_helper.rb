@@ -19,6 +19,7 @@ RSpec.configure do |config|
   config.filter_rails_from_backtrace!
   config.include ActiveJob::TestHelper
   config.include ActiveSupport::Testing::TimeHelpers
+  config.include FactoryBot::Syntax::Methods
 
   # Ensure fetch_token never raises in tests. Real token for recording,
   # dummy token for replay — VCR intercepts the HTTP call either way.

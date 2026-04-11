@@ -58,7 +58,7 @@ RSpec.describe UserMessageDecorator, type: :decorator do
   end
 
   describe "#render_debug" do
-    it "includes exact token count when available" do
+    it "includes stored token count" do
       ts = 1_709_312_325_000_000_000
       event = session.messages.create!(
         message_type: "user_message", payload: {"content" => "hello"}, timestamp: ts, token_count: 42
@@ -66,23 +66,8 @@ RSpec.describe UserMessageDecorator, type: :decorator do
       decorator = MessageDecorator.for(event)
 
       expect(decorator.render_debug).to eq({
-        role: :user, content: "hello", timestamp: ts, tokens: 42, estimated: false
+        role: :user, content: "hello", timestamp: ts, tokens: 42
       })
-    end
-
-    it "includes estimated token count when not yet counted" do
-      ts = 1_709_312_325_000_000_000
-      event = session.messages.create!(
-        message_type: "user_message", payload: {"content" => "hello"}, timestamp: ts
-      )
-      decorator = MessageDecorator.for(event)
-      result = decorator.render_debug
-
-      expect(result[:role]).to eq(:user)
-      expect(result[:content]).to eq("hello")
-      expect(result[:timestamp]).to eq(ts)
-      expect(result[:tokens]).to be_positive
-      expect(result[:estimated]).to be true
     end
 
     it "works with hash payloads" do
@@ -91,8 +76,7 @@ RSpec.describe UserMessageDecorator, type: :decorator do
 
       expect(result[:role]).to eq(:user)
       expect(result[:content]).to eq("from hash")
-      expect(result[:tokens]).to be_positive
-      expect(result[:estimated]).to be true
+      expect(result[:tokens]).to be_a(Integer)
     end
   end
 end

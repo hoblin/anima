@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
-# Counts tokens in a message's payload via the Anthropic API and
-# caches the result on the message record. Enqueued automatically
-# after each LLM message is created.
+# Refines a message's {Message#token_count} with the real Anthropic
+# tokenizer count, replacing the local estimate seeded during creation.
+# Enqueued automatically after every message is created, regardless of
+# message type.
 class CountMessageTokensJob < ApplicationJob
   queue_as :default
 
@@ -12,28 +13,40 @@ class CountMessageTokensJob < ApplicationJob
   # @param message_id [Integer] the Message record to count tokens for
   def perform(message_id)
     message = Message.find(message_id)
-    return if already_counted?(message)
+    api_messages = build_api_messages(message)
+    return if api_messages.nil?
 
-    provider = Providers::Anthropic.new
-    api_messages = [{role: message.api_role, content: message.payload["content"].to_s}]
-
-    token_count = provider.count_tokens(
+    count = Providers::Anthropic.new.count_tokens(
       model: Anima::Settings.model,
       messages: api_messages
     )
 
-    # Guard against parallel jobs: reload and re-check before writing.
-    # Uses update! (not update_all) so {Message::Broadcasting} after_update_commit
-    # broadcasts the updated token count to connected clients.
-    message.reload
-    return if already_counted?(message)
-
-    message.update!(token_count: token_count)
+    message.update!(token_count: count)
   end
 
   private
 
-  def already_counted?(message)
-    message.token_count > 0
+  # Builds the messages payload to send to the count_tokens endpoint.
+  # LLM messages preserve their role for accurate tokenization. Tool
+  # messages serialize their full payload as JSON so tool_name, tool_input,
+  # and tool_use_id contribute to the count — they ride as a user message
+  # because a standalone tool_use can't be sent without its tool_result.
+  # System messages use their content as a user message.
+  #
+  # @param message [Message]
+  # @return [Array<Hash>, nil] API messages, or nil if nothing to count
+  def build_api_messages(message)
+    case message.message_type
+    when "user_message", "agent_message"
+      content = message.payload["content"].to_s
+      return nil if content.empty?
+      [{role: message.api_role, content: content}]
+    when "system_message"
+      content = message.payload["content"].to_s
+      return nil if content.empty?
+      [{role: "user", content: content}]
+    when "tool_call", "tool_response"
+      [{role: "user", content: message.payload.to_json}]
+    end
   end
 end

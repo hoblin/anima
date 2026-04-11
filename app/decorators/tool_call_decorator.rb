@@ -59,6 +59,17 @@ class ToolCallDecorator < MessageDecorator
     end
   end
 
+  # Think calls render as conversation. Regular tool calls return
+  # a +:tool_call+ marker for the counter accumulator.
+  # @return [String, Symbol] transcript line or counter marker
+  def render_mneme
+    if think?
+      "message #{id} Think: #{thoughts}"
+    else
+      :tool_call
+    end
+  end
+
   private
 
   def think?

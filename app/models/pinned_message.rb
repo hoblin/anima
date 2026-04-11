@@ -36,6 +36,6 @@ class PinnedMessage < ApplicationRecord
 
   # @return [Integer] token cost estimate for viewport budget accounting
   def token_cost
-    [(display_text.bytesize / Message::BYTES_PER_TOKEN.to_f).ceil, 1].max
+    Message.estimate_token_count(display_text.bytesize)
   end
 end

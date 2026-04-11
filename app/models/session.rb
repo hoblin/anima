@@ -35,49 +35,49 @@ class Session < ApplicationRecord
   scope :root_sessions, -> { where(parent_session_id: nil) }
   scope :processing_children_of, ->(parent_id) { where(parent_session_id: parent_id, processing: true) }
 
-  # Cycles to the next view mode: basic → verbose → debug → basic.
-  #
-  # @return [String] the next view mode in the cycle
-  def next_view_mode
-    current_index = VIEW_MODES.index(view_mode) || 0
-    VIEW_MODES[(current_index + 1) % VIEW_MODES.size]
-  end
-
   # @return [Boolean] true if this session is a sub-agent (has a parent)
   def sub_agent?
     parent_session_id.present?
   end
 
-  # Checks whether the Mneme terminal message has left the viewport and
-  # enqueues {MnemeJob} when it has. On the first message of a new session,
-  # initializes the boundary pointer.
+  # Checks whether the Mneme boundary has left the viewport and enqueues
+  # {MnemeJob} when it has. Delegates initial boundary placement to
+  # {#initialize_mneme_boundary!} on the first call.
   #
-  # The terminal message is always a conversation message (user/agent message
-  # or think tool_call), never a bare tool_call/tool_response.
+  # The boundary has "left the viewport" when the cumulative token cost
+  # of everything from the boundary to the newest message exceeds the
+  # budget — a single SUM aggregate, no window function needed.
   #
   # @return [void]
   def schedule_mneme!
     return if sub_agent?
 
-    # Initialize boundary on first conversation message
     if mneme_boundary_message_id.nil?
-      first_conversation = messages
-        .where(message_type: Message::CONVERSATION_TYPES)
-        .order(:id).first
-      first_conversation ||= messages
-        .where(message_type: "tool_call")
-        .detect { |msg| msg.payload["tool_name"] == Message::THINK_TOOL }
-
-      if first_conversation
-        update_column(:mneme_boundary_message_id, first_conversation.id)
-      end
+      initialize_mneme_boundary!
       return
     end
 
-    # Check if boundary message has left the viewport
-    return if viewport_message_ids.include?(mneme_boundary_message_id)
+    tokens_since_boundary = messages
+      .where("messages.id >= ?", mneme_boundary_message_id)
+      .sum(:token_count)
+    return if tokens_since_boundary <= effective_token_budget
 
     MnemeJob.perform_later(id)
+  end
+
+  # Places the initial Mneme boundary at the oldest eligible message in
+  # the session — the top of the raw window, from which Mneme will start
+  # compressing downward once that message drifts out of the viewport.
+  # Eligible messages are conversation messages (user/agent/system) and
+  # think tool_calls, considered on equal footing; bare tool_call or
+  # tool_response messages are never eligible.
+  #
+  # No-op when the session has no eligible messages yet.
+  #
+  # @return [void]
+  def initialize_mneme_boundary!
+    first_id = messages.conversation_or_think.order(:id).pick(:id)
+    update_column(:mneme_boundary_message_id, first_id) if first_id
   end
 
   # Enqueues the analytical brain to perform background maintenance on
@@ -106,44 +106,60 @@ class Session < ApplicationRecord
     sub_agent? ? Anima::Settings.subagent_token_budget : Anima::Settings.token_budget
   end
 
-  # Returns the messages currently visible in the LLM context window.
-  # Walks messages newest-first and includes them until the token budget
-  # is exhausted. Messages are full-size or excluded entirely.
+  # Returns the messages currently visible in the LLM context window as a
+  # composable AR relation. Selects own messages above the Mneme boundary
+  # whose cumulative token count (walked newest-first) fits within the
+  # budget. The newest message is always included even when it alone
+  # exceeds the budget. Messages are full-size or excluded entirely.
   #
-  # Pending messages live in a separate table ({PendingMessage}) and never
-  # appear in this viewport — they are promoted to real messages before
-  # the agent processes them.
+  # The selection runs as a single SQL query using a window function
+  # ({+SUM() OVER+}). Older messages have been compressed into snapshots
+  # and no longer participate in the viewport. Pending messages live in a
+  # separate table ({PendingMessage}) and never appear here — they are
+  # promoted to real messages before the agent processes them.
   #
   # @param token_budget [Integer] maximum tokens to include (positive)
-  # @return [Array<Message>] chronologically ordered
+  # @return [ActiveRecord::Relation<Message>] chronologically ordered by id
   def viewport_messages(token_budget: effective_token_budget)
-    select_messages(own_message_scope, budget: token_budget)
+    scope = messages
+    scope = scope.where("messages.id >= ?", mneme_boundary_message_id) if mneme_boundary_message_id
+
+    windowed = scope.select(
+      "messages.*",
+      "SUM(token_count) OVER (ORDER BY id DESC) AS running_total"
+    )
+
+    Message
+      .from(windowed, :messages)
+      .where("running_total <= ? OR running_total = token_count", token_budget)
+      .order(:id)
   end
 
-  # Recalculates the viewport and returns IDs of messages evicted since the
-  # last snapshot. Updates the stored viewport_message_ids atomically.
-  # Piggybacks on message broadcasts to notify clients which messages left
-  # the LLM's context window.
+  # Returns the messages in the Mneme eviction zone — the oldest slice of
+  # the conversation starting from the boundary, filling the eviction budget
+  # walking newest-ward. These are the messages Mneme will summarize into a
+  # snapshot before advancing the boundary past them.
   #
-  # @return [Array<Integer>] IDs of messages no longer in the viewport
-  def recalculate_viewport!
-    new_ids = viewport_messages.map(&:id)
-    old_ids = viewport_message_ids
-
-    evicted = old_ids - new_ids
-    update_column(:viewport_message_ids, new_ids) if old_ids != new_ids
-    evicted
-  end
-
-  # Overwrites the viewport snapshot without computing evictions.
-  # Used when transmitting or broadcasting a full viewport refresh,
-  # where eviction notifications are unnecessary (clients clear their
-  # store first).
+  # Mirror of {#viewport_messages} but walks oldest-first from the boundary
+  # instead of newest-first from the tail.
   #
-  # @param ids [Array<Integer>] message IDs now in the viewport
-  # @return [void]
-  def snapshot_viewport!(ids)
-    update_column(:viewport_message_ids, ids)
+  # @return [ActiveRecord::Relation<Message>] chronologically ordered by id
+  def eviction_zone_messages
+    return Message.none unless mneme_boundary_message_id
+
+    budget = (Anima::Settings.token_budget * Anima::Settings.eviction_fraction).to_i
+
+    scope = messages.where("messages.id >= ?", mneme_boundary_message_id)
+
+    windowed = scope.select(
+      "messages.*",
+      "SUM(token_count) OVER (ORDER BY id ASC) AS running_total"
+    )
+
+    Message
+      .from(windowed, :messages)
+      .where("running_total <= ? OR running_total = token_count", budget)
+      .order(:id)
   end
 
   # Returns skill names whose recalled content is currently visible in the
@@ -293,7 +309,7 @@ class Session < ApplicationRecord
     pinned_budget = (token_budget * Anima::Settings.mneme_pinned_budget_fraction).to_i
     sliding_budget -= pinned_budget
 
-    window = viewport_messages(token_budget: sliding_budget)
+    window = viewport_messages(token_budget: sliding_budget).to_a
     first_message_id = window.first&.id
 
     prefix = assemble_context_prefix_messages(first_message_id, budget: pinned_budget)
@@ -581,11 +597,8 @@ class Session < ApplicationRecord
   # @param source_type [String] "skill" or "workflow"
   # @return [Set<String>] source names present in the viewport
   def recalled_sources_in_viewport(source_type)
-    ids = viewport_message_ids
-    return Set.new if ids.empty?
-
-    messages
-      .where(id: ids, message_type: "user_message")
+    viewport_messages
+      .where(message_type: "user_message")
       .where("json_extract(payload, '$.source_type') = ?", source_type)
       .pluck(Arel.sql("json_extract(payload, '$.source_name')"))
       .to_set
@@ -737,42 +750,6 @@ class Session < ApplicationRecord
     })
   end
 
-  # Scopes own messages for viewport assembly.
-  # Starts from the Mneme boundary (inclusive) — older messages have been
-  # compressed into snapshots and no longer participate in the viewport.
-  # @return [ActiveRecord::Relation]
-  def own_message_scope
-    scope = messages.context_messages
-    scope = scope.where("messages.id >= ?", mneme_boundary_message_id) if mneme_boundary_message_id
-    scope
-  end
-
-  # Walks messages newest-first, selecting until the token budget is exhausted.
-  # Always includes at least the newest message even if it exceeds budget.
-  #
-  # @param scope [ActiveRecord::Relation] message scope to select from
-  # @param budget [Integer] maximum tokens to include
-  # @return [Array<Message>] chronologically ordered
-  def select_messages(scope, budget:)
-    selected = []
-    remaining = budget
-
-    scope.reorder(id: :desc).each do |msg|
-      cost = message_token_cost(msg)
-      break if cost > remaining && selected.any?
-
-      selected << msg
-      remaining -= cost
-    end
-
-    selected.reverse
-  end
-
-  # @return [Integer] token cost, using cached count or heuristic estimate
-  def message_token_cost(msg)
-    (msg.token_count > 0) ? msg.token_count : estimate_tokens(msg)
-  end
-
   # Ensures every tool_call in the message list has a matching tool_response
   # (and vice versa) by removing unpaired messages. The Anthropic API requires
   # every tool_use block to have a tool_result — a missing partner causes
@@ -800,25 +777,20 @@ class Session < ApplicationRecord
   end
 
   # Assembles L1/L2 snapshots as a system prompt section.
-  # Snapshots are visible when their source messages precede the Mneme boundary
-  # (compressed in a previous run). Between Mneme runs this section is frozen,
-  # making it cache-friendly.
+  # Snapshots form a compressed timeline between the system prompt and
+  # the live viewport. The budget walk fills chronologically — when the
+  # budget overflows, the oldest snapshots drop first so the most recent
+  # ones always bridge into the viewport.
   #
   # @return [String, nil] formatted snapshot text for the system prompt, or nil
   def assemble_snapshots_section
-    reference_id = mneme_boundary_message_id || viewport_message_ids.first
-    return unless reference_id
-
-    l2_budget = (Anima::Settings.token_budget * Anima::Settings.mneme_l2_budget_fraction).to_i
-    l1_budget = (Anima::Settings.token_budget * Anima::Settings.mneme_l1_budget_fraction).to_i
-
     l2 = select_snapshots_within_budget(
-      snapshots.for_level(2).source_messages_evicted(reference_id).chronological,
-      budget: l2_budget
+      snapshots.for_level(2),
+      budget: (Anima::Settings.token_budget * Anima::Settings.mneme_l2_budget_fraction).to_i
     )
     l1 = select_snapshots_within_budget(
-      snapshots.for_level(1).not_covered_by_l2.source_messages_evicted(reference_id).chronological,
-      budget: l1_budget
+      snapshots.for_level(1).not_covered_by_l2,
+      budget: (Anima::Settings.token_budget * Anima::Settings.mneme_l1_budget_fraction).to_i
     )
 
     sections = []
@@ -827,9 +799,10 @@ class Session < ApplicationRecord
     sections.join("\n\n").presence
   end
 
-  # Walks snapshots chronologically, selecting until the token budget is exhausted.
-  # Always includes at least one snapshot even if it exceeds the budget, so the
-  # agent never loses all memory context.
+  # Walks snapshots newest-first (by to_message_id), selecting until the
+  # token budget is exhausted. Always includes the newest snapshot even
+  # if it exceeds the budget. Returns results in chronological order
+  # so they read as a timeline in the system prompt.
   #
   # @param scope [ActiveRecord::Relation] snapshot scope to select from
   # @param budget [Integer] maximum tokens to include
@@ -838,15 +811,15 @@ class Session < ApplicationRecord
     selected = []
     remaining = budget
 
-    scope.each do |snapshot|
-      cost = snapshot.token_cost
+    scope.order(to_message_id: :desc).each do |snapshot|
+      cost = snapshot.token_count
       break if cost > remaining && selected.any?
 
       selected << snapshot
       remaining -= cost
     end
 
-    selected
+    selected.reverse
   end
 
   # Formats a list of snapshots as a labeled section for the system prompt.
@@ -1103,14 +1076,5 @@ class Session < ApplicationRecord
   # @return [Integer] nanoseconds since epoch
   def now_ns
     Time.current.to_ns
-  end
-
-  # Delegates to {Message#estimate_tokens} for messages not yet counted
-  # by the background job.
-  #
-  # @param msg [Message]
-  # @return [Integer] at least 1
-  def estimate_tokens(msg)
-    msg.estimate_tokens
   end
 end

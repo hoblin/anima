@@ -57,14 +57,14 @@ class MessageDecorator < ApplicationDecorator
   MessagePayload = Struct.new(:message_type, :payload, :timestamp, :token_count, keyword_init: true) do
     # Heuristic token estimate matching {Message#estimate_tokens} so decorators
     # can call it uniformly on both AR models and hash payloads.
-    # @return [Integer] at least 1
+    # @return [Integer]
     def estimate_tokens
       text = if message_type.to_s.in?(%w[tool_call tool_response])
         payload.to_json
       else
         payload&.dig("content").to_s
       end
-      [(text.bytesize / Message::BYTES_PER_TOKEN.to_f).ceil, 1].max
+      Message.estimate_token_count(text.bytesize)
     end
   end
 
@@ -85,7 +85,8 @@ class MessageDecorator < ApplicationDecorator
     "basic" => :render_basic,
     "verbose" => :render_verbose,
     "debug" => :render_debug,
-    "brain" => :render_brain
+    "brain" => :render_brain,
+    "mneme" => :render_mneme
   }.freeze
   private_constant :RENDER_DISPATCH
 
@@ -130,28 +131,23 @@ class MessageDecorator < ApplicationDecorator
     nil
   end
 
-  private
-
-  # Token count for display: exact count from {CountMessageTokensJob} when
-  # available, heuristic estimate otherwise. Estimated counts are flagged
-  # so the TUI can prefix them with a tilde.
-  #
-  # @return [Hash] `{tokens: Integer, estimated: Boolean}`
-  def token_info
-    count = token_count.to_i
-    if count > 0
-      {tokens: count, estimated: false}
-    else
-      {tokens: estimate_token_count, estimated: true}
-    end
+  # Mneme memory view — transcript line for eviction/context zones.
+  # Conversation and think messages return a prefixed string.
+  # Regular tool calls return +:tool_call+ (counter marker).
+  # Tool responses return +nil+ (silent).
+  # @return [String, Symbol, nil]
+  def render_mneme
+    nil
   end
 
-  # Delegates to the underlying object's heuristic token estimator.
-  # Both {Message} AR models and {MessagePayload} structs implement this.
+  private
+
+  # Token count for display: heuristic estimate seeded by Message's
+  # +before_validation+ callback, refined later by {CountMessageTokensJob}.
   #
-  # @return [Integer] at least 1
-  def estimate_token_count
-    object.estimate_tokens
+  # @return [Hash] `{tokens: Integer}`
+  def token_info
+    {tokens: token_count.to_i}
   end
 
   # Extracts display content from the message payload.

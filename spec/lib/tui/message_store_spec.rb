@@ -506,8 +506,8 @@ RSpec.describe TUI::MessageStore do
     end
   end
 
-  describe "#remove_by_ids" do
-    it "removes multiple entries in one call" do
+  describe "#remove_above" do
+    it "removes entries with id <= cutoff" do
       store.process_event({"type" => "user_message", "id" => 1,
                            "rendered" => {"basic" => {"role" => "user", "content" => "first"}}})
       store.process_event({"type" => "agent_message", "id" => 2,
@@ -515,32 +515,49 @@ RSpec.describe TUI::MessageStore do
       store.process_event({"type" => "user_message", "id" => 3,
                            "rendered" => {"basic" => {"role" => "user", "content" => "third"}}})
 
-      expect(store.remove_by_ids([1, 2])).to eq(2)
+      store.remove_above(2)
       expect(store.messages.size).to eq(1)
       expect(store.messages.first[:id]).to eq(3)
     end
 
-    it "returns zero when none of the IDs match" do
+    it "returns count of removed entries" do
       store.process_event({"type" => "user_message", "id" => 1,
-                           "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
+                           "rendered" => {"basic" => {"role" => "user", "content" => "first"}}})
+      store.process_event({"type" => "agent_message", "id" => 2,
+                           "rendered" => {"basic" => {"role" => "assistant", "content" => "second"}}})
+      store.process_event({"type" => "user_message", "id" => 3,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "third"}}})
 
-      expect(store.remove_by_ids([99, 100])).to eq(0)
-      expect(store.messages.size).to eq(1)
+      expect(store.remove_above(2)).to eq(2)
     end
 
-    it "handles empty array" do
-      expect(store.remove_by_ids([])).to eq(0)
+    it "returns zero when no entries match" do
+      store.process_event({"type" => "user_message", "id" => 10,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
+
+      expect(store.remove_above(5)).to eq(0)
+      expect(store.messages.size).to eq(1)
     end
 
     it "clears ID index so updates to removed entries are ignored" do
       store.process_event({"type" => "user_message", "id" => 1,
                            "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
-      store.remove_by_ids([1])
+      store.remove_above(1)
 
       result = store.process_event({"type" => "user_message", "id" => 1, "action" => "update",
                                     "rendered" => {"basic" => {"role" => "user", "content" => "updated"}}})
       expect(result).to be false
       expect(store.messages).to be_empty
+    end
+
+    it "increments version when entries are removed" do
+      store.process_event({"type" => "user_message", "id" => 1,
+                           "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
+      expect { store.remove_above(1) }.to change { store.version }.by(1)
+    end
+
+    it "does not increment version when no entries match" do
+      expect { store.remove_above(999) }.not_to change { store.version }
     end
   end
 
@@ -600,14 +617,14 @@ RSpec.describe TUI::MessageStore do
       expect { store.remove_by_id(999) }.not_to change { store.version }
     end
 
-    it "increments on remove_by_ids when entries are removed" do
+    it "increments on remove_above when entries are removed" do
       store.process_event({"type" => "user_message", "id" => 1,
                            "rendered" => {"basic" => {"role" => "user", "content" => "hi"}}})
-      expect { store.remove_by_ids([1]) }.to change { store.version }.by(1)
+      expect { store.remove_above(1) }.to change { store.version }.by(1)
     end
 
-    it "does not increment on remove_by_ids when no entries match" do
-      expect { store.remove_by_ids([999]) }.not_to change { store.version }
+    it "does not increment on remove_above when no entries match" do
+      expect { store.remove_above(999) }.not_to change { store.version }
     end
 
     it "increments on update_existing" do

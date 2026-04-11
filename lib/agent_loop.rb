@@ -187,8 +187,8 @@ class AgentLoop
 
   # Loads tools from configured MCP servers and adds them to the registry.
   # Warnings are emitted as system messages — visible to both the user
-  # (in verbose mode) and the LLM (via CONTEXT_TYPES) so the agent can
-  # explain config issues instead of guessing.
+  # (in verbose mode) and the LLM so the agent can explain config issues
+  # instead of guessing.
   #
   # @param registry [Tools::Registry] the registry to add MCP tools to
   # @return [void]

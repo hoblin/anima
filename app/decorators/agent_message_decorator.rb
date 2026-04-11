@@ -27,4 +27,9 @@ class AgentMessageDecorator < MessageDecorator
   def render_brain
     "Assistant: #{truncate_middle(content)}"
   end
+
+  # @return [String] transcript line for Mneme's eviction/context zones
+  def render_mneme
+    "message #{id} Assistant: #{content}"
+  end
 end

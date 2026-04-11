@@ -103,7 +103,7 @@ RSpec.describe AnalyticalBrain::Runner do
           payload: {"content" => "skill", "source_type" => "skill", "source_name" => "gh-issue"},
           timestamp: 0
         )
-        session.update_column(:viewport_message_ids, [msg.id])
+        allow(session).to receive(:viewport_messages).and_return(Message.where(id: msg.id))
 
         captured_opts = nil
         allow(client).to receive(:chat_with_tools) { |_msgs, **opts|
@@ -126,7 +126,7 @@ RSpec.describe AnalyticalBrain::Runner do
           payload: {"content" => "workflow", "source_type" => "workflow", "source_name" => workflow_name},
           timestamp: 0
         )
-        session.update_column(:viewport_message_ids, [msg.id])
+        allow(session).to receive(:viewport_messages).and_return(Message.where(id: msg.id))
 
         captured_opts = nil
         allow(client).to receive(:chat_with_tools) { |_msgs, **opts|

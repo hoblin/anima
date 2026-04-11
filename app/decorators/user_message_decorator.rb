@@ -24,4 +24,9 @@ class UserMessageDecorator < MessageDecorator
   def render_brain
     "User: #{truncate_middle(content)}"
   end
+
+  # @return [String] transcript line for Mneme's eviction/context zones
+  def render_mneme
+    "message #{id} User: #{content}"
+  end
 end
