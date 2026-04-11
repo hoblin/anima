@@ -994,7 +994,7 @@ RSpec.describe Session do
       debug = payload["rendered"]["debug"]
       expect(debug[:tools]).to eq(tools)
       # Token estimate covers both prompt and tool JSON
-      prompt_only_tokens = [("Test".bytesize / Message::BYTES_PER_TOKEN.to_f).ceil, 1].max
+      prompt_only_tokens = [TokenEstimation.estimate_token_count("Test"), 1].max
       expect(debug[:tokens]).to be > prompt_only_tokens
     end
 

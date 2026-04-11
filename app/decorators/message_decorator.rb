@@ -48,25 +48,14 @@ class MessageDecorator < ApplicationDecorator
 
   # Normalizes hash payloads into a Message-like interface so decorators
   # can use {#payload}, {#message_type}, etc. uniformly on both AR models
-  # and raw EventBus hashes.
+  # and raw EventBus hashes. Token counts ride in-band on the hash — the
+  # decorator never estimates.
   #
   # @!attribute message_type [r] the message's type (e.g. "user_message")
   # @!attribute payload [r] string-keyed hash of message data
   # @!attribute timestamp [r] nanosecond-precision timestamp
   # @!attribute token_count [r] cumulative token count
-  MessagePayload = Struct.new(:message_type, :payload, :timestamp, :token_count, keyword_init: true) do
-    # Heuristic token estimate matching {Message#estimate_tokens} so decorators
-    # can call it uniformly on both AR models and hash payloads.
-    # @return [Integer]
-    def estimate_tokens
-      text = if message_type.to_s.in?(%w[tool_call tool_response])
-        payload.to_json
-      else
-        payload&.dig("content").to_s
-      end
-      Message.estimate_token_count(text.bytesize)
-    end
-  end
+  MessagePayload = Struct.new(:message_type, :payload, :timestamp, :token_count, keyword_init: true)
 
   # Factory returning the appropriate subclass decorator for the given message.
   # Hashes are normalized via {MessagePayload} to provide a uniform interface.
@@ -142,8 +131,8 @@ class MessageDecorator < ApplicationDecorator
 
   private
 
-  # Token count for display: heuristic estimate seeded by Message's
-  # +before_validation+ callback, refined later by {CountMessageTokensJob}.
+  # Token count for display: heuristic estimate seeded by the
+  # {TokenEstimation} callback, refined later by {CountTokensJob}.
   #
   # @return [Hash] `{tokens: Integer}`
   def token_info

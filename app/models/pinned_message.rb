@@ -10,7 +10,12 @@
 #
 # @!attribute display_text
 #   @return [String] truncated message content (~200 chars) shown in the Goals section
+# @!attribute token_count
+#   @return [Integer] token count of {#display_text}. Seeded with a local
+#     estimate on create and later refined by {CountTokensJob}.
 class PinnedMessage < ApplicationRecord
+  include TokenEstimation
+
   # Display text limit — enough to recognize content, cheap on tokens.
   MAX_DISPLAY_TEXT_LENGTH = 200
 
@@ -34,8 +39,8 @@ class PinnedMessage < ApplicationRecord
     )
   }
 
-  # @return [Integer] token cost estimate for viewport budget accounting
-  def token_cost
-    Message.estimate_token_count(display_text.bytesize)
+  # @return [String] truncated display text used for token estimation and counting
+  def tokenization_text
+    display_text.to_s
   end
 end

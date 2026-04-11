@@ -107,7 +107,7 @@ module Mneme
 
       results.each do |result|
         snippet = format_snippet(result, messages_by_id)
-        cost = Message.estimate_token_count(snippet.bytesize) + TOOL_PAIR_OVERHEAD_TOKENS
+        cost = TokenEstimation.estimate_token_count(snippet) + TOOL_PAIR_OVERHEAD_TOKENS
         break if cost > remaining && count > 0
 
         @session.pending_messages.create!(
@@ -131,7 +131,7 @@ module Mneme
     def format_snippet(result, messages_by_id)
       msg = messages_by_id[result.message_id]
       session_label = msg&.session&.name || "session ##{result.session_id}"
-      content = result.snippet.truncate(Anima::Settings.recall_max_snippet_tokens * Message::BYTES_PER_TOKEN)
+      content = result.snippet.truncate(Anima::Settings.recall_max_snippet_tokens * TokenEstimation::BYTES_PER_TOKEN)
       "message #{result.message_id} (#{session_label}): #{content}"
     end
   end

@@ -414,7 +414,7 @@ class Session < ApplicationRecord
       payload: {"tool_name" => tool_name, "tool_use_id" => uid,
                 "content" => pm.content, "success" => true},
       timestamp: now,
-      token_count: Message.estimate_token_count(pm.content.bytesize)
+      token_count: TokenEstimation.estimate_token_count(pm.content)
     )
   end
 
@@ -575,9 +575,8 @@ class Session < ApplicationRecord
   # @param tools [Array<Hash>, nil] tool schemas
   # @return [Hash] payload with type, rendered debug content, and token estimate
   def self.system_prompt_payload(prompt, tools: nil)
-    total_bytes = prompt.bytesize
-    total_bytes += tools.to_json.bytesize if tools&.any?
-    tokens = Message.estimate_token_count(total_bytes)
+    tools_json = tools&.any? ? tools.to_json : ""
+    tokens = TokenEstimation.estimate_token_count(prompt.to_s + tools_json)
 
     debug = {role: :system_prompt, content: prompt, tokens: tokens, estimated: true}
     debug[:tools] = tools if tools&.any?
@@ -882,7 +881,7 @@ class Session < ApplicationRecord
     remaining = budget
 
     pins.each do |pin|
-      cost = pin.token_cost
+      cost = pin.token_count
       break if cost > remaining && selected.any?
 
       selected << pin
