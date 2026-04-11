@@ -8,11 +8,11 @@ Every AI agent today is a tool pretending to be a person. One brain doing everyt
 
 Anima is different. It's built on the premise that if you want an agent — a real one — you need to solve the problems nobody else is solving.
 
-**A brain modeled after biology, not chat.** The human brain isn't one process — it's specialized subsystems on a shared signal bus. Anima's [analytical brain](https://blog.promptmaster.pro/posts/llms-have-adhd/) runs as a separate subconscious process, managing context, skills, and goals so the main agent can stay in flow. Not two brains — a microservice architecture where each process does one job well. More subsystems are coming.
+**A brain modeled after biology, not chat.** The human brain isn't one process — it's specialized subsystems on a shared signal bus. Anima mirrors this with a triptych named after the three original Muses: **Aoide** performs (voice, reasoning, tool use), **[Melete](#melete)** prepares (skills, workflows, goals, naming), **[Mneme](#semantic-memory-mneme)** remembers (summarization, compression, recall). Three processes on the same event bus, each doing one job well. More subsystems are coming.
 
-**Context that never degrades.** Other agents fill a static array until the model gets dumb. Anima assembles a fresh viewport over an event bus every iteration. No compaction. No lossy rewriting. Endless sessions. The [dumb zone](https://github.com/humanlayer/advanced-context-engineering-for-coding-agents/blob/main/ace-fca.md) never arrives — the analytical brain curates what the agent sees in real time.
+**Context that never degrades.** Other agents fill a static array until the model gets dumb. Anima assembles a fresh viewport over an event bus every iteration. No compaction. No lossy rewriting. Endless sessions. The [dumb zone](https://github.com/humanlayer/advanced-context-engineering-for-coding-agents/blob/main/ace-fca.md) never arrives — Melete curates what Aoide sees in real time.
 
-**Memory that works like memory.** Other systems bolt on memory as an afterthought — filing cabinets the agent has to consciously open mid-task. It never does; the truck is already moving. Anima's memory department ([Mneme](#semantic-memory-mneme)) runs as a third brain process on the event bus. It summarizes what's about to leave the viewport. It compresses short-term into long-term, like biological memory consolidating during sleep. It pins critical moments to active goals so exact instructions survive where summaries would lose nuance. And it recalls — automatically, passively — surfacing relevant older memories right after the soul, right before the present. The agent doesn't decide to remember. It just remembers.
+**Memory that works like memory.** Other systems bolt on memory as an afterthought — filing cabinets the agent has to consciously open mid-task. It never does; the truck is already moving. Mneme, the muse of memory, runs as a background process on the event bus. She summarizes what's about to leave the viewport. She compresses short-term into long-term, like biological memory consolidating during sleep. She pins critical moments to active goals so exact instructions survive where summaries would lose nuance. And she recalls — automatically, passively — surfacing relevant older memories right after the soul, right before the present. Aoide doesn't decide to remember. She just remembers.
 
 **Sub-agents that know who they are.** When Anima spawns a sub-agent, it starts clean — identity, task, and nothing else. No inherited conversation history means the sub-agent works on its task, not the parent's trajectory. Context flows through explicit messages, not leaked assistant turns.
 
@@ -29,7 +29,7 @@ Your agent. Your machine. Your rules. Anima runs locally as a headless Rails 8.1
   - [Skills](#skills)
   - [Workflows](#workflows)
   - [MCP Integration](#mcp-integration)
-  - [Melete](#analytical-brain)
+  - [Melete](#melete)
   - [Configuration](#configuration)
 - [Design](#design)
   - [Three Layers](#three-layers-mirroring-biology)
@@ -58,13 +58,13 @@ Your agent. Your machine. Your rules. Anima runs locally as a headless Rails 8.1
 Anima (Ruby, Rails 8.1 headless)
 │
 │ Implemented:
-├── Nous         — main LLM (cortex: thinking, decisions, tool use)
-├── Analytical   — subconscious brain (skills, workflows, goals, naming)
+├── Aoide        — main LLM, the muse of performance (voice, reasoning, tool use)
+├── Melete       — muse of practice (skills, workflows, goals, session naming)
+├── Mneme        — muse of memory (summarization, compression, pinning, recall)
 ├── Skills       — domain knowledge bundles (Markdown, user-extensible)
 ├── Workflows    — operational recipes for multi-step tasks
 ├── MCP          — external tool integration (Model Context Protocol)
 ├── Sub-agents   — autonomous child sessions with isolated context
-├── Mneme        — memory department (summarization, compression, pinning, recall)
 │
 │ Designed:
 ├── Thymos       — hormonal/desire system (stimulus → hormone vector)
@@ -77,8 +77,8 @@ Anima (Ruby, Rails 8.1 headless)
 Brain Server (Rails + Puma)              TUI Client (RatatuiRuby)
 ├── LLM integration (Anthropic)          ├── WebSocket client
 ├── Agent loop + tool execution          ├── Terminal rendering
-├── Analytical brain (background)        └── User input capture
-├── Mneme memory department (background)
+├── Melete (background)                  └── User input capture
+├── Mneme (background)
 ├── Skills registry + activation
 ├── Workflow registry + activation
 ├── MCP client (HTTP + stdio)
@@ -201,7 +201,7 @@ Between spawn and completion, sub-agents communicate through natural text — th
 
 ### Skills
 
-Domain knowledge bundles loaded from Markdown files. Skills provide specialized expertise that the analytical brain activates based on conversation context. Skill content enters the conversation as phantom tool_use/tool_result pairs through the `PendingMessage` promotion flow — the same mechanism used for sub-agent messages. This keeps the system prompt stable for prompt caching while skills flow through the sliding window like regular messages.
+Domain knowledge bundles loaded from Markdown files. Skills provide specialized expertise that Melete activates based on conversation context. Skill content enters the conversation as phantom tool_use/tool_result pairs through the `PendingMessage` promotion flow — the same mechanism used for sub-agent messages. This keeps the system prompt stable for prompt caching while skills flow through the sliding window like regular messages.
 
 - **Built-in skills:** ActiveRecord, Draper decorators, DragonRuby, MCP server, RatatuiRuby, RSpec, GitHub issues
 - **User skills:** Drop `.md` files into `~/.anima/skills/` to add custom knowledge
@@ -213,7 +213,7 @@ Active skills are displayed in the TUI HUD panel (toggle with `C-a → h`).
 
 ### Workflows
 
-Operational recipes that describe multi-step tasks. Unlike skills (domain knowledge), workflows describe WHAT to do. The analytical brain activates a workflow when it recognizes a matching task, converts the prose into tracked goals, and deactivates it when done. Like skills, workflow content enters the conversation as phantom tool pairs through the same `PendingMessage` flow.
+Operational recipes that describe multi-step tasks. Unlike skills (domain knowledge), workflows describe WHAT to do. Melete activates a workflow when she recognizes a matching task, converts the prose into tracked goals, and deactivates it when done. Like skills, workflow content enters the conversation as phantom tool pairs through the same `PendingMessage` flow.
 
 - **Built-in workflows:** `feature`, `commit`, `create_plan`, `implement_plan`, `review_pr`, `create_note`, `research_codebase`, `decompose_ticket`, and more
 - **User workflows:** Drop `.md` files into `~/.anima/workflows/` to add custom workflows
@@ -233,7 +233,7 @@ description: "Capture findings or context as a persistent note."
 You are tasked with capturing content as a persistent note...
 ```
 
-The active workflow is shown in the TUI HUD panel with a 📜 indicator. The full lifecycle — activation, goal creation, execution, deactivation — is managed by the analytical brain using judgment, not hardcoded triggers.
+The active workflow is shown in the TUI HUD panel with a 📜 indicator. The full lifecycle — activation, goal creation, execution, deactivation — is managed by Melete using judgment, not hardcoded triggers.
 
 ### MCP Integration
 
@@ -273,18 +273,18 @@ Secrets are stored in an encrypted database table (Active Record Encryption) and
 
 ### Melete
 
-A separate LLM process that runs as the agent's subconscious — the first microservice in Anima's brain architecture. For the full motivation behind this design, see [LLMs Have ADHD: Why Your AI Agent Needs a Second Brain](https://blog.promptmaster.pro/posts/llms-have-adhd/).
+Melete — the muse of practice — is a separate LLM process that runs as Aoide's subconscious, preparing the stage so the main agent can stay in flow. The first microservice in Anima's brain architecture. For the full motivation behind this design, see [LLMs Have ADHD: Why Your AI Agent Needs a Second Brain](https://blog.promptmaster.pro/posts/llms-have-adhd/).
 
-The analytical brain observes the main conversation between turns and handles everything the main agent shouldn't interrupt its flow for:
+Melete observes the main conversation between turns and handles everything Aoide shouldn't interrupt her flow for:
 
 - **Skill activation** — activates/deactivates domain knowledge based on conversation context
 - **Workflow management** — recognizes tasks, activates matching workflows, tracks lifecycle
 - **Goal tracking** — creates root goals and sub-goals as work progresses, marks them complete, evicts finished goals from context after a configurable message threshold
 - **Session naming** — generates emoji + short name when the topic becomes clear
 
-Each of these would be a context switch for the main agent — a chore that competes with the primary task. For the analytical brain, they ARE the primary task. Two agents, each in their own flow state.
+Each of these would be a context switch for Aoide — a chore that competes with the primary task. For Melete, they ARE the primary task. Two muses, each in her own flow state.
 
-Goals form a two-level hierarchy (root goals with sub-goals) and are displayed in the TUI. The analytical brain uses a fast model (Claude Haiku 4.5) for speed and runs as a non-persisted "phantom" session.
+Goals form a two-level hierarchy (root goals with sub-goals) and are displayed in the TUI. Melete uses a fast model (Claude Haiku 4.5) for speed and runs as a non-persisted "phantom" session.
 
 ### Configuration
 
@@ -341,9 +341,9 @@ The TUI is a standalone client with zero Rails dependency. Its settings cover co
 
 ### Three Layers (mirroring biology)
 
-1. **Cortex (Nous)** — the main LLM. Thinking, decisions, tool use. Reads the system prompt (soul + skills + goals) and the event viewport. This layer is fully implemented.
+1. **Cortex (Aoide)** — the main LLM, the muse of performance. Thinking, decisions, tool use. Reads the system prompt (soul + sisters + snapshots) and the event viewport. This layer is fully implemented.
 
-2. **Endocrine system (Thymos)** [planned] — a lightweight background process. Reads recent events. Doesn't respond. Just updates hormone levels. Pure stimulus→response, like a biological gland. The analytical brain is the architectural proof that background subscribers work — Thymos plugs into the same event bus.
+2. **Endocrine system (Thymos)** [planned] — a lightweight background process. Reads recent events. Doesn't respond. Just updates hormone levels. Pure stimulus→response, like a biological gland. Melete is the architectural proof that background subscribers work — Thymos plugs into the same event bus.
 
 3. **Homeostasis** [planned] — persistent state (SQLite). Current hormone levels with decay functions. No intelligence, just state that changes over time. The cortex reads hormone state transformed into **desire descriptions** — not "longing: 87" but "you want to see them." Humans don't see cortisol levels, they feel anxiety.
 
@@ -371,9 +371,9 @@ Events fire, subscribers react, state updates. The system prompt — soul and cu
 
 Most agents treat context as an append-only array — messages go in, they never come out (until compaction destroys them). Anima has no array. There are only events persisted in SQLite, and a **viewport** assembled fresh for every LLM call.
 
-The viewport is a live query, not a log. It walks events newest-first until the token budget is exhausted. Events that fall out of the viewport aren't deleted — they're still in the database, just not visible to the model right now. The context can shrink, grow, or change composition between any two iterations. If the analytical brain marks a large accidental file read as irrelevant, it's gone from the next viewport — tokens recovered instantly.
+The viewport is a live query, not a log. It walks events newest-first until the token budget is exhausted. Events that fall out of the viewport aren't deleted — they're still in the database, just not visible to the model right now. The context can shrink, grow, or change composition between any two iterations. If Melete marks a large accidental file read as irrelevant, it's gone from the next viewport — tokens recovered instantly.
 
-This means sessions are endless. No compaction. No lossy rewriting. The model always operates in fresh, high-quality context. The [dumb zone](https://github.com/humanlayer/advanced-context-engineering-for-coding-agents/blob/main/ace-fca.md) never arrives. Meanwhile, Mneme runs as a background department — summarizing evicted events into persistent snapshots so past context is preserved, not destroyed.
+This means sessions are endless. No compaction. No lossy rewriting. The model always operates in fresh, high-quality context. The [dumb zone](https://github.com/humanlayer/advanced-context-engineering-for-coding-agents/blob/main/ace-fca.md) never arrives. Meanwhile, Mneme runs as a background muse — summarizing evicted events into persistent snapshots so past context is preserved, not destroyed.
 
 Sub-agent viewports use the same mechanism — their own events only, no parent context inheritance. The parent provides context through the task description, and the sub-agent builds its own conversation from a clean slate.
 
@@ -381,19 +381,19 @@ Sub-agent viewports use the same mechanism — their own events only, no parent 
 
 The human brain isn't a single process — it's dozens of specialized subsystems communicating through shared chemical and electrical signals. The prefrontal cortex doesn't "call" the amygdala. They both react to the same event independently, and their outputs combine.
 
-Anima mirrors this with an event-driven architecture. The analytical brain is the first subscriber — a working proof that the pattern scales. Future subscribers plug into the same bus:
+Anima mirrors this with an event-driven architecture. Melete is the first subscriber — a working proof that the pattern scales. Future subscribers plug into the same bus:
 
 ```
 Event: "tool_call_failed"
   │
-  ├── Analytical brain: update goals, check if workflow needs changing
+  ├── Melete: update goals, check if workflow needs changing
   ├── Mneme: summarize evicted context into snapshot
   ├── Thymos subscriber: frustration += 10 [planned]
   └── Psyche subscriber: update coefficient (this agent handles errors calmly) [planned]
 
 Event: "user_sent_message"
   │
-  ├── Analytical brain: activate relevant skills, name session
+  ├── Melete: activate relevant skills, name session
   ├── Mneme: check viewport eviction, fire if boundary left viewport
   ├── Thymos subscriber: oxytocin += 5 (bonding signal) [planned]
   └── Psyche subscriber: associate emotional state with topic [planned]
@@ -405,7 +405,7 @@ Each subscriber is a microservice — independent, stateless, reacting to the sa
 
 Every AI agent today has the same disability: amnesia. Context fills up, gets compacted, gets destroyed. The agent gets dumber as the conversation gets longer. When the session ends, everything is gone. Some systems bolt on memory as an afterthought — markdown files with procedures for when to save and what format to use. Filing cabinets the agent has to consciously decide to open, mid-task, while in flow. It never does. The truck is already moving.
 
-Mneme is not a filing cabinet. It's *remembering* — the way biological memory works. Continuous, automatic, layered. A third brain department running on the same event bus as the analytical brain, specializing in one job: making sure nothing important is ever truly lost.
+Mneme is not a filing cabinet. She's *remembering* — the way biological memory works. Continuous, automatic, layered. The third muse running on the same event bus as Aoide and Melete, specializing in one job: making sure nothing important is ever truly lost.
 
 **Eviction-triggered summarization** — Mneme tracks a boundary event on each session. When that event leaves the viewport, Mneme fires: it builds a compressed view of the conversation (full text for messages, `[N tools called]` counters for tool work), sends it to a fast model, and persists a snapshot. The boundary advances after each run — a self-regulating cycle that fires exactly when context is about to be lost, no sooner or later. No timer. No manual trigger. The architecture itself knows when to remember.
 
@@ -422,7 +422,7 @@ Mneme is not a filing cabinet. It's *remembering* — the way biological memory 
 
 **Goal-scoped event pinning** — some moments are too important for summaries. Exact user instructions. Key decisions. Critical corrections. Mneme pins these events to active Goals — they float above the sliding window, protected from eviction, surviving intact where compression would lose the nuance that matters. Pins are goal-scoped and many-to-many: one event can attach to multiple Goals, and cleanup is automatic via reference counting. When the last active Goal completes, the pin releases. No manual unpin, no stale pins accumulating forever.
 
-**Associative recall** — FTS5 full-text search across the entire event history, across all sessions. Two modes: *passive* recall triggers automatically when goals change — Mneme searches for relevant older context and injects it into the viewport between snapshots and the sliding window. Memories surface on their own, right after the soul, right before the present. The agent doesn't have to decide to remember — the remembering happens around it. *Active* recall via the `remember(event_id:)` tool returns a fractal-resolution window centered on a target event — full detail at the center, compressed snapshots at the edges, like eye focus with sharp fovea and blurry periphery.
+**Associative recall** — FTS5 full-text search across the entire message history, across all sessions. Two modes: *passive* recall triggers automatically when goals change — Mneme searches for relevant older context and injects it into the viewport between snapshots and the sliding window as `from_mneme` phantom pairs. Memories surface on their own, right after the soul, right before the present. Aoide doesn't have to decide to remember — the remembering happens around her. *Active* search is available to Aoide through `search_messages(query:)` (keyword sweep across long-term memory) and `view_messages(message_id:)` (fractal window around a specific message — full detail at the center, compressed snapshots at the edges, like eye focus with sharp fovea and blurry periphery).
 
 The difference from every other system: memory isn't a tool the agent uses. It's the substrate the agent thinks in. Every LLM call assembles a fresh viewport where identity comes first, then memories, then the present — the agent always knows who it is, always has access to what it learned, and never has to break flow to make that happen.
 
@@ -653,8 +653,8 @@ This single example demonstrates every core principle:
 
 - Event-driven architecture on a shared event bus
 - Dynamic viewport context assembly (endless sessions, no compaction)
-- Analytical brain (skills, workflows, goals, session naming)
-- Mneme memory department (eviction-triggered summarization, persistent snapshots, goal-scoped event pinning, associative recall)
+- Melete, muse of practice (skills, workflows, goals, session naming)
+- Mneme, muse of memory (eviction-triggered summarization, persistent snapshots, goal-scoped event pinning, associative recall)
 - 12 built-in tools + MCP integration (HTTP + stdio transports)
 - 7 built-in skills + 13 built-in workflows (user-extensible)
 - Sub-agents with isolated context (5 specialists + generic)
