@@ -10,7 +10,7 @@ RSpec.describe AgentRequestJob do
     allow(AgentLoop).to receive(:new).and_return(agent_loop)
     allow(Mcp::ClientManager).to receive(:new)
       .and_return(instance_double(Mcp::ClientManager, register_tools: []))
-    allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(false)
+    allow(Anima::Settings).to receive(:melete_blocking_on_user_message).and_return(false)
   end
 
   describe "retry configuration" do
@@ -132,7 +132,7 @@ RSpec.describe AgentRequestJob do
     end
 
     context "blocking Melete" do
-      before { allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(true) }
+      before { allow(Anima::Settings).to receive(:melete_blocking_on_user_message).and_return(true) }
 
       it "runs Melete synchronously before the agent loop when enabled" do
         session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)

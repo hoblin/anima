@@ -140,9 +140,9 @@ default_view_mode = "basic"
 # Regenerate session name every N messages.
 name_generation_interval = 30
 
-# ─── Analytical Brain ─────────────────────────────────────────
+# ─── Melete ─────────────────────────────────────────
 
-[analytical_brain]
+[melete]
 
 # Maximum tokens per analytical brain response.
 # Must accommodate multiple tool calls (rename + goals + skills + ready).

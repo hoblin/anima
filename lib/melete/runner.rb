@@ -115,7 +115,7 @@ module Melete
       @session = session
       @client = client || LLM::Client.new(
         model: Anima::Settings.fast_model,
-        max_tokens: Anima::Settings.analytical_brain_max_tokens,
+        max_tokens: Anima::Settings.melete_max_tokens,
         logger: Melete.logger
       )
     end
@@ -213,7 +213,7 @@ module Melete
     def recent_messages
       @session.messages
         .reorder(id: :desc)
-        .limit(Anima::Settings.analytical_brain_message_window)
+        .limit(Anima::Settings.melete_message_window)
         .to_a
         .reverse
     end

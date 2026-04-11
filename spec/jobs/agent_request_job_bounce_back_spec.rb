@@ -10,7 +10,7 @@ RSpec.describe AgentRequestJob, "bounce back" do
     allow(AgentLoop).to receive(:new).and_return(agent_loop)
     allow(Mcp::ClientManager).to receive(:new)
       .and_return(instance_double(Mcp::ClientManager, register_tools: []))
-    allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(false)
+    allow(Anima::Settings).to receive(:melete_blocking_on_user_message).and_return(false)
   end
 
   describe "deliver_persisted_message" do

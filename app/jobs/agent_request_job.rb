@@ -141,7 +141,7 @@ class AgentRequestJob < ApplicationJob
   # Respects the blocking_on_user_message setting and session guards
   # (skips sub-agents and sessions with too few messages).
   def run_melete_blocking(session)
-    return unless Anima::Settings.analytical_brain_blocking_on_user_message
+    return unless Anima::Settings.melete_blocking_on_user_message
     return if session.sub_agent?
 
     Melete::Runner.new(session).call

@@ -29,7 +29,7 @@ Your agent. Your machine. Your rules. Anima runs locally as a headless Rails 8.1
   - [Skills](#skills)
   - [Workflows](#workflows)
   - [MCP Integration](#mcp-integration)
-  - [Analytical Brain](#analytical-brain)
+  - [Melete](#analytical-brain)
   - [Configuration](#configuration)
 - [Design](#design)
   - [Three Layers](#three-layers-mirroring-biology)
@@ -271,7 +271,7 @@ anima mcp secrets remove linear_api_key     # Remove secret
 
 Secrets are stored in an encrypted database table (Active Record Encryption) and interpolated via `${credential:key_name}` syntax in any TOML string value.
 
-### Analytical Brain
+### Melete
 
 A separate LLM process that runs as the agent's subconscious — the first microservice in Anima's brain architecture. For the full motivation behind this design, see [LLMs Have ADHD: Why Your AI Agent Needs a Second Brain](https://blog.promptmaster.pro/posts/llms-have-adhd/).
 
@@ -306,7 +306,7 @@ subagent_token_budget = 90_000
 api = 300
 command = 30
 
-[analytical_brain]
+[melete]
 max_tokens = 4096
 blocking_on_user_message = true
 message_window = 20
