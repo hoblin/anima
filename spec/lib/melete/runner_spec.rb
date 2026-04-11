@@ -415,8 +415,6 @@ RSpec.describe Melete::Runner do
 
     context "message non-persistence", :vcr do
       it "does not create Message records during execution" do
-        skip "Cassette needs re-recording after #436 prompt rewrite — run with bin/with-llms"
-
         session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
         session.messages.create!(message_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
 
@@ -428,8 +426,6 @@ RSpec.describe Melete::Runner do
 
     context "integration with real LLM", :vcr do
       it "renames an unnamed session based on conversation topic" do
-        skip "Cassette needs re-recording after #436 prompt rewrite — run with bin/with-llms"
-
         session.messages.create!(message_type: "user_message", payload: {"content" => "Write RSpec tests for the User model validations"}, timestamp: 1)
         session.messages.create!(message_type: "agent_message", payload: {"content" => "I'll write comprehensive RSpec tests for the User model validations."}, timestamp: 2)
 
@@ -439,8 +435,6 @@ RSpec.describe Melete::Runner do
       end
 
       it "does not change an already-named session when topic hasn't shifted" do
-        skip "Cassette needs re-recording after #436 prompt rewrite — run with bin/with-llms"
-
         session.update!(name: "🔧 Existing Name")
         session.messages.create!(message_type: "user_message", payload: {"content" => "Continue with the fix"}, timestamp: 1)
         session.messages.create!(message_type: "agent_message", payload: {"content" => "Sure, continuing."}, timestamp: 2)
@@ -713,8 +707,6 @@ RSpec.describe Melete::Runner do
 
   describe "default client configuration", :vcr do
     it "uses the fast model" do
-      skip "Cassette needs re-recording after #436 prompt rewrite — run with bin/with-llms"
-
       session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
       session.messages.create!(message_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
 

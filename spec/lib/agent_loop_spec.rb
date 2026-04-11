@@ -527,8 +527,6 @@ RSpec.describe AgentLoop do
     end
 
     it "processes a message with the full production tool set and system prompt" do
-      skip "Cassette needs re-recording after #436 tool rename — run with bin/with-llms"
-
       session.create_user_message("What is the latest issue on hoblin/anima repo?")
       loop = described_class.new(session: session)
       result = loop.run
