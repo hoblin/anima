@@ -71,11 +71,12 @@ RSpec.describe Mneme::PassiveRecall do
       event = create_message(other_session, type: "user_message",
         content: "The authentication flow needs fixing.")
 
-      # Simulate an already-promoted recall
+      # Simulate an already-promoted recall. Uses the "recall_#{id}" uid
+      # format that #filter_duplicates checks against — see passive_recall.rb.
       session.messages.create!(
         message_type: "tool_call",
         tool_use_id: "recall_#{event.id}",
-        payload: {"tool_name" => "recall_memory", "tool_use_id" => "recall_#{event.id}",
+        payload: {"tool_name" => "from_mneme", "tool_use_id" => "recall_#{event.id}",
                   "tool_input" => {}, "content" => "Recalling"},
         timestamp: Time.current.to_ns
       )

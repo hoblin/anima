@@ -1944,11 +1944,11 @@ RSpec.describe Session do
       # Every phantom pair type must persist as tool_call + tool_response
       # in the DB (not user_message) so the TUI renders them correctly.
       {
-        "subagent" => {source_name: "sleuth", tool_name: "subagent_message"},
-        "skill" => {source_name: "testing", tool_name: "recall_skill"},
-        "workflow" => {source_name: "feature", tool_name: "recall_workflow"},
-        "recall" => {source_name: "42", tool_name: "recall_memory"},
-        "goal" => {source_name: "7", tool_name: "recall_goal"}
+        "subagent" => {source_name: "sleuth", tool_name: "from_sleuth"},
+        "skill" => {source_name: "testing", tool_name: "from_melete"},
+        "workflow" => {source_name: "feature", tool_name: "from_melete"},
+        "recall" => {source_name: "42", tool_name: "from_mneme"},
+        "goal" => {source_name: "7", tool_name: "from_melete"}
       }.each do |source_type, meta|
         context "with #{source_type} message" do
           let!(:pm) do
@@ -2163,7 +2163,7 @@ RSpec.describe Session do
 
     it "derives tool_use_id from tool name and pending message ID" do
       pm = session.pending_messages.create!(content: "recalled text", source_type: "recall", source_name: "42")
-      expected_uid = "recall_memory_#{pm.id}"
+      expected_uid = "from_mneme_#{pm.id}"
 
       session.promote_phantom_pair!(pm)
 
@@ -2178,7 +2178,7 @@ RSpec.describe Session do
       session.promote_phantom_pair!(pm)
 
       call = session.messages.find_by(message_type: "tool_call")
-      expect(call.payload["tool_name"]).to eq("recall_goal")
+      expect(call.payload["tool_name"]).to eq("from_melete")
     end
 
     it "stores tool input as stringified keys" do

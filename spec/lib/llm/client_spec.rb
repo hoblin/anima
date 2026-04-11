@@ -379,8 +379,8 @@ RSpec.describe LLM::Client do
         call_count = 0
         captured_messages = nil
         subagent_pair = [
-          {role: "assistant", content: [{type: "tool_use", id: "subagent_msg_1", name: "subagent_message", input: {from: "sleuth"}}]},
-          {role: "user", content: [{type: "tool_result", tool_use_id: "subagent_msg_1", content: "Found the bug"}]}
+          {role: "assistant", content: [{type: "tool_use", id: "from_sleuth_1", name: "from_sleuth", input: {from: "sleuth"}}]},
+          {role: "user", content: [{type: "tool_result", tool_use_id: "from_sleuth_1", content: "Found the bug"}]}
         ]
         between_rounds = -> { {texts: [], pairs: subagent_pair} }
 
@@ -399,7 +399,7 @@ RSpec.describe LLM::Client do
         # Sub-agent pair should appear after the tool_results message
         last_two = captured_messages.last(2)
         expect(last_two[0][:role]).to eq("assistant")
-        expect(last_two[0][:content].first[:name]).to eq("subagent_message")
+        expect(last_two[0][:content].first[:name]).to eq("from_sleuth")
         expect(last_two[1][:role]).to eq("user")
         expect(last_two[1][:content].first[:content]).to eq("Found the bug")
       end

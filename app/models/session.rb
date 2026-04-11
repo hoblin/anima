@@ -858,7 +858,7 @@ class Session < ApplicationRecord
     uid = "goal_snapshot_#{id}"
     [
       {role: "assistant", content: [
-        {type: "tool_use", id: uid, name: PendingMessage::RECALL_GOAL_TOOL, input: {}}
+        {type: "tool_use", id: uid, name: PendingMessage::MELETE_TOOL, input: {}}
       ]},
       {role: "user", content: [
         {type: "tool_result", tool_use_id: uid, content: content}

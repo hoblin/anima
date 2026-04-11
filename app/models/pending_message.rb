@@ -19,27 +19,27 @@
 # @see Session#enqueue_user_message
 # @see Session#promote_pending_messages!
 class PendingMessage < ApplicationRecord
-  # Synthetic tool names used in tool_use/tool_result pairs injected into
-  # the parent LLM conversation when non-user messages are promoted.
-  # These tools don't exist in the agent's registry — the agent sees
-  # them as its own past actions (phantom tool calls).
-  SUBAGENT_TOOL = "subagent_message"
-  RECALL_SKILL_TOOL = "recall_skill"
-  RECALL_WORKFLOW_TOOL = "recall_workflow"
-  RECALL_MEMORY_TOOL = "recall_memory"
-  RECALL_GOAL_TOOL = "recall_goal"
+  # Phantom tool names follow the `from_<sender>` convention: the prefix
+  # tells the LLM these are messages delivered to it by its sisters or
+  # sub-agents, not tools it invoked. Aoide's system prompt calls the
+  # convention out in one line and the weights do the rest.
+  MELETE_TOOL = "from_melete"
+  MNEME_TOOL = "from_mneme"
 
   # Source types that produce phantom tool_use/tool_result pairs on promotion.
   # User messages produce plain text blocks instead.
   PHANTOM_PAIR_TYPES = %w[subagent skill workflow recall goal].freeze
 
-  # Maps each phantom pair source type to its synthetic tool name.
+  # Maps each phantom pair source type to a lambda that builds its
+  # synthetic tool name. Skills, workflows, and goals all come from
+  # Melete; recalled memories come from Mneme; sub-agents encode their
+  # nickname directly into the tool name (e.g. `from_sleuth`).
   PHANTOM_TOOL_NAMES = {
-    "subagent" => SUBAGENT_TOOL,
-    "skill" => RECALL_SKILL_TOOL,
-    "workflow" => RECALL_WORKFLOW_TOOL,
-    "recall" => RECALL_MEMORY_TOOL,
-    "goal" => RECALL_GOAL_TOOL
+    "subagent" => ->(name) { "from_#{name}" },
+    "skill" => ->(_) { MELETE_TOOL },
+    "workflow" => ->(_) { MELETE_TOOL },
+    "recall" => ->(_) { MNEME_TOOL },
+    "goal" => ->(_) { MELETE_TOOL }
   }.freeze
 
   # Maps each phantom pair source type to a lambda building its tool input.
@@ -96,11 +96,12 @@ class PendingMessage < ApplicationRecord
   end
 
   # Phantom tool name for DB persistence and LLM injection.
-  # Each phantom pair source type maps to a synthetic tool name.
+  # Each phantom pair source type maps to a synthetic tool name via
+  # {PHANTOM_TOOL_NAMES} — a lambda so sub-agent names can flow through.
   #
   # @return [String] phantom tool name
   def phantom_tool_name
-    PHANTOM_TOOL_NAMES.fetch(source_type)
+    PHANTOM_TOOL_NAMES.fetch(source_type).call(source_name)
   end
 
   # Phantom tool input hash for DB persistence and LLM injection.

@@ -45,11 +45,11 @@ RSpec.describe PendingMessage, type: :model do
 
   describe "phantom tool mapping" do
     {
-      "subagent" => {source_name: "sleuth", tool: "subagent_message", input: {from: "sleuth"}},
-      "skill" => {source_name: "testing", tool: "recall_skill", input: {skill: "testing"}},
-      "workflow" => {source_name: "feature", tool: "recall_workflow", input: {workflow: "feature"}},
-      "recall" => {source_name: "42", tool: "recall_memory", input: {message_id: 42}},
-      "goal" => {source_name: "7", tool: "recall_goal", input: {goal_id: 7}}
+      "subagent" => {source_name: "sleuth", tool: "from_sleuth", input: {from: "sleuth"}},
+      "skill" => {source_name: "testing", tool: "from_melete", input: {skill: "testing"}},
+      "workflow" => {source_name: "feature", tool: "from_melete", input: {workflow: "feature"}},
+      "recall" => {source_name: "42", tool: "from_mneme", input: {message_id: 42}},
+      "goal" => {source_name: "7", tool: "from_melete", input: {goal_id: 7}}
     }.each do |source_type, meta|
       it "maps #{source_type} to #{meta[:tool]} with correct input" do
         pm = PendingMessage.new(source_type: source_type, source_name: meta[:source_name])
