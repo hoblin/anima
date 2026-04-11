@@ -41,12 +41,9 @@ module TokenEstimation
 
   # Seeds {#token_count} with a local estimate before the record is saved.
   # Respects an explicit positive value passed by the caller (e.g. tests
-  # that want deterministic counts) and bails out when the tokenization
-  # source is still blank — the record will fail presence validation
-  # immediately after this callback.
+  # that want deterministic counts).
   def set_estimated_token_count
     return if token_count.to_i.positive?
-    return if tokenization_text.blank?
 
     self.token_count = estimate_tokens
   end

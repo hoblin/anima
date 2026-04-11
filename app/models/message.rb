@@ -90,8 +90,6 @@ class Message < ApplicationRecord
   #
   # @return [String]
   def tokenization_text
-    return "" if payload.blank?
-
     if message_type.in?(TOOL_TYPES)
       payload.to_json
     else

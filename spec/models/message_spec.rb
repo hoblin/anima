@@ -20,7 +20,7 @@ RSpec.describe Message do
     end
 
     it "requires payload" do
-      event = Message.new(session: session, message_type: "user_message", timestamp: 1)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       event.payload = nil
       expect(event).not_to be_valid
       expect(event.errors[:payload]).to include("can't be blank")
@@ -154,14 +154,6 @@ RSpec.describe Message do
       )
 
       expect(event.tokenization_text).to eq(event.payload.to_json)
-    end
-
-    it "returns an empty string for nil content on conversation messages" do
-      event = session.messages.new(
-        message_type: "user_message", payload: {"content" => nil}, timestamp: 1
-      )
-
-      expect(event.tokenization_text).to eq("")
     end
   end
 

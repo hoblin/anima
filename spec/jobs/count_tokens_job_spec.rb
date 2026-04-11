@@ -44,16 +44,6 @@ RSpec.describe CountTokensJob do
       expect(pin.reload.token_count).to be > 0
     end
 
-    it "skips the API call when tokenization_text is blank" do
-      message = session.messages.new(
-        message_type: "user_message", payload: {"content" => ""}, timestamp: 1
-      )
-      message.save(validate: false)
-
-      expect(Providers::Anthropic).not_to receive(:new)
-      expect { described_class.perform_now(message) }.not_to raise_error
-    end
-
     it "discards the job when the record no longer exists" do
       expect(described_class.rescue_handlers).to include(
         satisfy { |handler| handler[0] == "ActiveRecord::RecordNotFound" }

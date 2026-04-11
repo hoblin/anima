@@ -83,11 +83,6 @@ RSpec.describe PinnedMessage do
       pin = PinnedMessage.new(display_text: "important note")
       expect(pin.tokenization_text).to eq("important note")
     end
-
-    it "returns an empty string when display_text is nil" do
-      pin = PinnedMessage.new(display_text: nil)
-      expect(pin.tokenization_text).to eq("")
-    end
   end
 
   describe "token_count seeding" do

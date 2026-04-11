@@ -13,12 +13,9 @@ class CountTokensJob < ApplicationJob
   # @param record [ActiveRecord::Base] any record responding to
   #   +#tokenization_text+ and +token_count=+
   def perform(record)
-    text = record.tokenization_text
-    return if text.blank?
-
     count = Providers::Anthropic.new.count_tokens(
       model: Anima::Settings.model,
-      messages: [{role: "user", content: text}]
+      messages: [{role: "user", content: record.tokenization_text}]
     )
 
     record.update!(token_count: count)

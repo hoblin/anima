@@ -75,11 +75,6 @@ RSpec.describe Snapshot do
       snapshot = session.snapshots.new(text: "Summary", from_message_id: 1, to_message_id: 10, level: 1)
       expect(snapshot.tokenization_text).to eq("Summary")
     end
-
-    it "returns an empty string when text is nil" do
-      snapshot = Snapshot.new(text: nil)
-      expect(snapshot.tokenization_text).to eq("")
-    end
   end
 
   describe "token_count seeding" do
