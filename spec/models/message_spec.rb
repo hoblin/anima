@@ -20,7 +20,7 @@ RSpec.describe Message do
     end
 
     it "requires payload" do
-      event = Message.new(session: session, message_type: "user_message", timestamp: 1)
+      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       event.payload = nil
       expect(event).not_to be_valid
       expect(event.errors[:payload]).to include("can't be blank")
@@ -125,43 +125,35 @@ RSpec.describe Message do
     end
   end
 
-  describe "#estimate_tokens" do
-    it "estimates tokens from content for message events" do
+  describe "#tokenization_text" do
+    it "returns the content string for conversation messages" do
       event = session.messages.create!(
         message_type: "user_message", payload: {"content" => "hello world"}, timestamp: 1
       )
 
-      # "hello world" = 11 bytes, 11/4 = 2.75, ceil = 3
-      expect(event.estimate_tokens).to eq(3)
+      expect(event.tokenization_text).to eq("hello world")
     end
 
-    it "estimates tokens from full payload JSON for tool events" do
+    it "serializes the full payload as JSON for tool_call messages" do
       event = session.messages.create!(
         message_type: "tool_call",
         payload: {"content" => "calling", "tool_name" => "bash", "tool_input" => {"command" => "ls"}},
-        tool_use_id: "toolu_test1",
+        tool_use_id: "toolu_tokenization_tc",
         timestamp: 1
       )
-      json_size = event.payload.to_json.bytesize
-      expected = (json_size / 4.0).ceil
 
-      expect(event.estimate_tokens).to eq(expected)
+      expect(event.tokenization_text).to eq(event.payload.to_json)
     end
 
-    it "returns zero for empty content" do
+    it "serializes the full payload as JSON for tool_response messages" do
       event = session.messages.create!(
-        message_type: "user_message", payload: {"content" => ""}, timestamp: 1
+        message_type: "tool_response",
+        payload: {"content" => "ok"},
+        tool_use_id: "toolu_tokenization_tr",
+        timestamp: 1
       )
 
-      expect(event.estimate_tokens).to eq(0)
-    end
-
-    it "returns zero for nil content" do
-      event = session.messages.create!(
-        message_type: "user_message", payload: {"content" => nil}, timestamp: 1
-      )
-
-      expect(event.estimate_tokens).to eq(0)
+      expect(event.tokenization_text).to eq(event.payload.to_json)
     end
   end
 
@@ -196,14 +188,14 @@ RSpec.describe Message do
 
   describe "after_create callback" do
     %w[user_message agent_message system_message].each do |type|
-      it "enqueues CountMessageTokensJob for #{type}" do
+      it "enqueues CountTokensJob for #{type}" do
         expect {
           session.messages.create!(message_type: type, payload: {content: "hi"}, timestamp: 1)
-        }.to have_enqueued_job(CountMessageTokensJob)
+        }.to have_enqueued_job(CountTokensJob)
       end
     end
 
-    it "enqueues CountMessageTokensJob for tool_call" do
+    it "enqueues CountTokensJob for tool_call" do
       expect {
         session.messages.create!(
           message_type: "tool_call",
@@ -211,10 +203,10 @@ RSpec.describe Message do
           tool_use_id: "toolu_after_create",
           timestamp: 1
         )
-      }.to have_enqueued_job(CountMessageTokensJob)
+      }.to have_enqueued_job(CountTokensJob)
     end
 
-    it "enqueues CountMessageTokensJob for tool_response" do
+    it "enqueues CountTokensJob for tool_response" do
       expect {
         session.messages.create!(
           message_type: "tool_response",
@@ -222,7 +214,7 @@ RSpec.describe Message do
           tool_use_id: "toolu_after_create_resp",
           timestamp: 1
         )
-      }.to have_enqueued_job(CountMessageTokensJob)
+      }.to have_enqueued_job(CountTokensJob)
     end
   end
 end

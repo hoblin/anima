@@ -78,15 +78,29 @@ RSpec.describe PinnedMessage do
     end
   end
 
-  describe "#token_cost" do
-    it "estimates tokens from display_text byte size" do
-      pin = PinnedMessage.new(display_text: "a" * 100)
-      expect(pin.token_cost).to eq((100.0 / Message::BYTES_PER_TOKEN).ceil)
+  describe "#tokenization_text" do
+    it "returns the pin's display_text" do
+      pin = PinnedMessage.new(display_text: "important note")
+      expect(pin.tokenization_text).to eq("important note")
+    end
+  end
+
+  describe "token_count seeding" do
+    it "seeds token_count from display_text on create" do
+      pin = PinnedMessage.create!(message: message, display_text: "a" * 100)
+      expect(pin.token_count).to eq(TokenEstimation.estimate_token_count("a" * 100))
     end
 
-    it "returns at least 1 for empty-ish text" do
-      pin = PinnedMessage.new(display_text: "hi")
-      expect(pin.token_cost).to be >= 1
+    it "respects an explicit positive value passed by the caller" do
+      pin = PinnedMessage.create!(message: message, display_text: "hi", token_count: 42)
+      expect(pin.token_count).to eq(42)
+    end
+
+    it "enqueues CountTokensJob for the pin after create" do
+      message # materialize the message first so its own job is already enqueued
+      expect {
+        PinnedMessage.create!(message: message, display_text: "test")
+      }.to have_enqueued_job(CountTokensJob).with(an_instance_of(PinnedMessage))
     end
   end
 end

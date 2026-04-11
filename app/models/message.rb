@@ -20,13 +20,15 @@
 #   @return [Integer] nanoseconds since epoch (Process::CLOCK_REALTIME)
 # @!attribute token_count
 #   @return [Integer] token count for this message's payload. Seeded with
-#     a local estimate on create and later refined by {CountMessageTokensJob}
-#     using the real Anthropic tokenizer. Always positive — never zero or nil.
+#     a local estimate on create and later refined by {CountTokensJob} using
+#     the real Anthropic tokenizer. Always positive — never zero or nil.
 # @!attribute tool_use_id
 #   @return [String] ID correlating tool_call and tool_response messages
 #     (Anthropic-assigned, or a SecureRandom.uuid fallback when the API returns nil;
 #     required for tool_call and tool_response messages)
 class Message < ApplicationRecord
+  include TokenEstimation
+
   TYPES = %w[system_message user_message agent_message tool_call tool_response].freeze
   LLM_TYPES = %w[user_message agent_message].freeze
   CONVERSATION_TYPES = %w[user_message agent_message system_message].freeze
@@ -36,20 +38,10 @@ class Message < ApplicationRecord
 
   ROLE_MAP = {"user_message" => "user", "agent_message" => "assistant"}.freeze
 
-  # Heuristic: average bytes per token for English prose.
-  BYTES_PER_TOKEN = 4
-
   # Synthetic ID for system prompt entries in the TUI message store.
   # Real message IDs are positive integers from the database, so 0
   # is safe for deduplication without collision risk.
   SYSTEM_PROMPT_ID = 0
-
-  # Estimates token count from a byte size using the {BYTES_PER_TOKEN} heuristic.
-  # @param bytesize [Integer] number of bytes
-  # @return [Integer] estimated token count
-  def self.estimate_token_count(bytesize)
-    (bytesize / BYTES_PER_TOKEN.to_f).ceil
-  end
 
   belongs_to :session
   has_many :pinned_messages, dependent: :destroy
@@ -60,8 +52,6 @@ class Message < ApplicationRecord
   # Anthropic requires every tool_use to have a matching tool_result with the same ID
   validates :tool_use_id, presence: true, if: -> { message_type.in?(TOOL_TYPES) }
 
-  before_validation :set_estimated_token_count, on: :create
-  after_create :schedule_token_count
   after_create_commit :emit_created_event
   after_update_commit :emit_updated_event
 
@@ -93,38 +83,37 @@ class Message < ApplicationRecord
       (message_type == "tool_call" && payload["tool_name"] == THINK_TOOL)
   end
 
-  # Heuristic token estimate: ~4 bytes per token for English prose.
-  # Tool messages are estimated from the full payload JSON since tool_input
-  # and tool metadata contribute to token count. Messages use content only.
+  # String fed to the token estimator and the remote tokenizer. Tool
+  # messages serialize the full payload as JSON so +tool_name+, +tool_input+,
+  # and +tool_use_id+ contribute to the count; conversation messages use
+  # the content field only.
   #
-  # @return [Integer] estimated token count
-  def estimate_tokens
-    text = if message_type.in?(TOOL_TYPES)
+  # @return [String]
+  def tokenization_text
+    if message_type.in?(TOOL_TYPES)
       payload.to_json
     else
       payload["content"].to_s
     end
-    self.class.estimate_token_count(text.bytesize)
+  end
+
+  # Draper hook: picks the concrete decorator subclass based on
+  # {#message_type}. Overrides {Draper::Decoratable#decorator_class},
+  # which would otherwise default to the abstract {MessageDecorator}
+  # base class. Called implicitly by +message.decorate+.
+  #
+  # @return [Class] a {MessageDecorator} subclass
+  def decorator_class
+    case message_type
+    when "user_message" then UserMessageDecorator
+    when "agent_message" then AgentMessageDecorator
+    when "system_message" then SystemMessageDecorator
+    when "tool_call" then ToolCallDecorator
+    when "tool_response" then ToolResponseDecorator
+    end
   end
 
   private
-
-  # Seeds {#token_count} with a local estimate before the record is saved.
-  # The background {CountMessageTokensJob} later refines this value with the
-  # real Anthropic tokenizer count. Respects an explicit positive value
-  # passed by the caller (e.g. tests that want deterministic counts) and
-  # bails out for records that don't yet have a payload — they'll fail
-  # presence validation right after this callback.
-  def set_estimated_token_count
-    return if token_count.to_i.positive?
-    return if payload.blank?
-
-    self.token_count = estimate_tokens
-  end
-
-  def schedule_token_count
-    CountMessageTokensJob.perform_later(id)
-  end
 
   def emit_created_event
     Events::Bus.emit(Events::MessageCreated.new(self))

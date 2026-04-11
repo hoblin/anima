@@ -18,8 +18,12 @@
 # @!attribute level
 #   @return [Integer] compression level (1 = from raw messages, 2 = from L1 snapshots)
 # @!attribute token_count
-#   @return [Integer] cached token count of the summary text
+#   @return [Integer] token count of the summary text. Seeded with a
+#     local estimate on create and later refined by {CountTokensJob}
+#     using the real Anthropic tokenizer.
 class Snapshot < ApplicationRecord
+  include TokenEstimation
+
   belongs_to :session
 
   # 32KB — generous upper bound (~8K tokens). The LLM tool description advises
@@ -35,6 +39,11 @@ class Snapshot < ApplicationRecord
 
   scope :for_level, ->(level) { where(level: level) }
   scope :chronological, -> { order(:from_message_id) }
+
+  # @return [String] summary text used for token estimation and remote counting
+  def tokenization_text
+    text.to_s
+  end
 
   # L1 snapshots whose message range is NOT fully contained within any L2 snapshot.
   # Used to determine which L1 snapshots are still "live" in the viewport.

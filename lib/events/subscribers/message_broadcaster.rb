@@ -23,13 +23,9 @@ module Events
         message = event[:payload][:message]
         action = ACTION_MAP.fetch(event[:payload][:type])
         session = message.session
-        decorator = MessageDecorator.for(message)
         broadcast_payload = message.payload.merge("id" => message.id, "action" => action)
         broadcast_payload["api_metrics"] = message.api_metrics if message.api_metrics.present?
-
-        if decorator
-          broadcast_payload["rendered"] = {session.view_mode => decorator.render(session.view_mode)}
-        end
+        broadcast_payload["rendered"] = {session.view_mode => message.decorate.render(session.view_mode)}
 
         ActionCable.server.broadcast("session_#{message.session_id}", broadcast_payload)
       end

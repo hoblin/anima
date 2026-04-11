@@ -3,158 +3,115 @@
 require "rails_helper"
 
 RSpec.describe MessageDecorator, type: :decorator do
-  let(:session) { Session.create! }
+  subject(:decorator) { message.decorate }
 
-  describe ".for" do
-    context "with Message AR models" do
-      it "returns UserMessageDecorator for user_message events" do
-        event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+  describe "Message#decorate" do
+    context "with a user_message" do
+      let(:message) { build_stubbed(:message, :user_message) }
 
-        expect(described_class.for(event)).to be_a(UserMessageDecorator)
-      end
-
-      it "returns AgentMessageDecorator for agent_message events" do
-        event = session.messages.create!(message_type: "agent_message", payload: {"content" => "hello"}, timestamp: 1)
-
-        expect(described_class.for(event)).to be_a(AgentMessageDecorator)
-      end
-
-      it "returns ToolCallDecorator for tool_call events" do
-        event = session.messages.create!(message_type: "tool_call", payload: {"content" => "calling bash"}, tool_use_id: "toolu_test1", timestamp: 1)
-
-        expect(described_class.for(event)).to be_a(ToolCallDecorator)
-      end
-
-      it "returns ToolResponseDecorator for tool_response events" do
-        event = session.messages.create!(message_type: "tool_response", payload: {"content" => "output"}, tool_use_id: "toolu_test2", timestamp: 1)
-
-        expect(described_class.for(event)).to be_a(ToolResponseDecorator)
-      end
-
-      it "returns SystemMessageDecorator for system_message events" do
-        event = session.messages.create!(message_type: "system_message", payload: {"content" => "boot"}, timestamp: 1)
-
-        expect(described_class.for(event)).to be_a(SystemMessageDecorator)
+      it "returns a UserMessageDecorator" do
+        expect(decorator).to be_a(UserMessageDecorator)
       end
     end
 
-    context "with hash payloads (from EventBus)" do
-      it "returns UserMessageDecorator for user_message hash" do
-        expect(described_class.for(type: "user_message", content: "hi")).to be_a(UserMessageDecorator)
-      end
+    context "with an agent_message" do
+      let(:message) { build_stubbed(:message, :agent_message) }
 
-      it "returns AgentMessageDecorator for agent_message hash" do
-        expect(described_class.for(type: "agent_message", content: "hello")).to be_a(AgentMessageDecorator)
+      it "returns an AgentMessageDecorator" do
+        expect(decorator).to be_a(AgentMessageDecorator)
       end
+    end
 
-      it "returns ToolCallDecorator for tool_call hash" do
-        expect(described_class.for(type: "tool_call", content: "calling bash")).to be_a(ToolCallDecorator)
+    context "with a system_message" do
+      let(:message) { build_stubbed(:message, :system_message) }
+
+      it "returns a SystemMessageDecorator" do
+        expect(decorator).to be_a(SystemMessageDecorator)
       end
+    end
 
-      it "returns ToolResponseDecorator for tool_response hash" do
-        expect(described_class.for(type: "tool_response", content: "output")).to be_a(ToolResponseDecorator)
+    context "with a tool_call" do
+      let(:message) { build_stubbed(:message, :bash_tool_call) }
+
+      it "returns a ToolCallDecorator" do
+        expect(decorator).to be_a(ToolCallDecorator)
       end
+    end
 
-      it "returns SystemMessageDecorator for system_message hash" do
-        expect(described_class.for(type: "system_message", content: "boot")).to be_a(SystemMessageDecorator)
-      end
+    context "with a tool_response" do
+      let(:message) { build_stubbed(:message, :bash_tool_response) }
 
-      it "returns nil for unknown event types" do
-        expect(described_class.for(type: "unknown", content: "wat")).to be_nil
-      end
-
-      it "handles string-keyed hashes" do
-        expect(described_class.for("type" => "user_message", "content" => "hi")).to be_a(UserMessageDecorator)
+      it "returns a ToolResponseDecorator" do
+        expect(decorator).to be_a(ToolResponseDecorator)
       end
     end
   end
 
   describe "#render" do
-    it "dispatches to render_basic for basic mode" do
-      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      decorator = described_class.for(event)
+    let(:message) { build_stubbed(:message, :user_message, payload: {"content" => "hi"}) }
 
+    it "dispatches to render_basic for basic mode" do
       expect(decorator.render("basic")).to eq({role: :user, content: "hi"})
     end
 
     it "dispatches to render_verbose for verbose mode" do
-      ts = 1_709_312_325_000_000_000
-      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: ts)
-      decorator = described_class.for(event)
-
-      expect(decorator.render("verbose")).to eq({role: :user, content: "hi", timestamp: ts})
+      expect(decorator.render("verbose")).to include(role: :user, content: "hi")
     end
 
     it "dispatches to render_debug for debug mode" do
-      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      decorator = described_class.for(event)
-
       result = decorator.render("debug")
-      expect(result[:role]).to eq(:user)
-      expect(result[:content]).to eq("hi")
+      expect(result).to include(role: :user, content: "hi")
       expect(result).to have_key(:tokens)
     end
 
-    it "raises ArgumentError for invalid mode" do
-      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      decorator = described_class.for(event)
+    it "dispatches to render_brain for brain mode" do
+      expect(decorator.render("brain")).to eq("User: hi")
+    end
 
+    it "raises ArgumentError for an invalid mode" do
       expect { decorator.render("hacker_mode") }.to raise_error(ArgumentError, /Invalid view mode/)
     end
 
     it "raises ArgumentError for nil mode" do
-      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      decorator = described_class.for(event)
-
       expect { decorator.render(nil) }.to raise_error(ArgumentError, /Invalid view mode/)
     end
   end
 
-  describe "#render_verbose" do
-    it "delegates to render_basic by default in base class" do
-      # Verify the base class delegation pattern — subclasses may override
-      stub_decorator = Class.new(described_class) do
+  describe "default view delegation" do
+    let(:stub_decorator_class) do
+      Class.new(described_class) do
         def render_basic
           {role: :stub, content: "stub output"}
         end
       end
-      source = described_class.send(:wrap_source, {type: "user_message", content: "hi"})
-      decorator = stub_decorator.new(source)
-
-      expect(decorator.render_verbose).to eq({role: :stub, content: "stub output"})
     end
-  end
+    let(:message) { build_stubbed(:message, :user_message) }
+    let(:stub_decorator) { stub_decorator_class.new(message) }
 
-  describe "#render_debug" do
-    it "delegates to render_basic by default in base class" do
-      stub_decorator = Class.new(described_class) do
-        def render_basic
-          {role: :stub, content: "stub output"}
-        end
-      end
-      source = described_class.send(:wrap_source, {type: "user_message", content: "hi"})
-      decorator = stub_decorator.new(source)
+    it "#render_verbose delegates to #render_basic" do
+      expect(stub_decorator.render_verbose).to eq({role: :stub, content: "stub output"})
+    end
 
-      expect(decorator.render_debug).to eq({role: :stub, content: "stub output"})
+    it "#render_debug delegates to #render_basic" do
+      expect(stub_decorator.render_debug).to eq({role: :stub, content: "stub output"})
+    end
+
+    it "#render_brain returns nil" do
+      nil_stub = Class.new(described_class) { def render_basic = nil }.new(message)
+      expect(nil_stub.render_brain).to be_nil
     end
   end
 
   describe "#token_info (private)" do
-    it "returns the stored token count" do
-      event = session.messages.create!(
-        message_type: "user_message", payload: {"content" => "hello"}, timestamp: 1, token_count: 42
-      )
-      decorator = described_class.for(event)
+    let(:message) { build_stubbed(:message, :user_message, token_count: 42) }
 
+    it "returns the stored token count" do
       expect(decorator.send(:token_info)).to eq({tokens: 42})
     end
   end
 
   describe "#truncate_lines (private)" do
-    let(:decorator) do
-      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      described_class.for(event)
-    end
+    let(:message) { build_stubbed(:message, :user_message) }
 
     it "returns text unchanged when under the limit" do
       expect(decorator.send(:truncate_lines, "line1\nline2", max_lines: 3)).to eq("line1\nline2")
@@ -177,28 +134,8 @@ RSpec.describe MessageDecorator, type: :decorator do
     end
   end
 
-  describe "#render_brain" do
-    it "returns nil by default in base class" do
-      stub_decorator = Class.new(described_class) { def render_basic = nil }
-      source = described_class.send(:wrap_source, {type: "user_message", content: "hi"})
-      decorator = stub_decorator.new(source)
-
-      expect(decorator.render_brain).to be_nil
-    end
-
-    it "dispatches via render for brain mode" do
-      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hello"}, timestamp: 1)
-      decorator = described_class.for(event)
-
-      expect(decorator.render("brain")).to eq("User: hello")
-    end
-  end
-
   describe "#truncate_middle (private)" do
-    let(:decorator) do
-      event = session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      described_class.for(event)
-    end
+    let(:message) { build_stubbed(:message, :user_message) }
 
     it "returns short text unchanged" do
       expect(decorator.send(:truncate_middle, "short text")).to eq("short text")

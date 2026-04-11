@@ -3,255 +3,191 @@
 require "rails_helper"
 
 RSpec.describe ToolResponseDecorator, type: :decorator do
-  let(:session) { Session.create! }
+  subject(:decorator) { message.decorate }
 
   describe "#render_basic" do
-    it "returns nil (hidden in basic mode)" do
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => "file.txt", "tool_name" => "bash", "success" => true},
-        tool_use_id: "toolu_basic1",
-        timestamp: 1
-      )
-      decorator = MessageDecorator.for(event)
+    context "for a regular tool response" do
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => "file.txt", "tool_name" => "bash", "success" => true})
+      end
 
-      expect(decorator.render_basic).to be_nil
+      it "returns nil (hidden in basic mode)" do
+        expect(decorator.render_basic).to be_nil
+      end
     end
 
-    it "returns nil for hash payloads" do
-      decorator = MessageDecorator.for(type: "tool_response", content: "output", tool_name: "bash")
+    context "for a think tool response" do
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => "OK", "tool_name" => "think", "success" => true})
+      end
 
-      expect(decorator.render_basic).to be_nil
-    end
-
-    it "returns nil for think tool responses" do
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => "OK", "tool_name" => "think", "success" => true},
-        tool_use_id: "toolu_think_r1",
-        timestamp: 1
-      )
-      decorator = MessageDecorator.for(event)
-
-      expect(decorator.render_basic).to be_nil
+      it "returns nil" do
+        expect(decorator.render_basic).to be_nil
+      end
     end
   end
 
   describe "#render_verbose" do
-    it "returns structured hash with success for successful output" do
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => "file.txt", "tool_name" => "bash", "success" => true},
-        tool_use_id: "toolu_verbose1",
-        timestamp: 1
-      )
-      decorator = MessageDecorator.for(event)
-
-      expect(decorator.render_verbose).to eq({
-        role: :tool_response, tool: "bash", content: "file.txt", success: true, timestamp: 1
-      })
-    end
-
-    it "returns structured hash with success false for failed tool" do
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => "command not found", "tool_name" => "bash", "success" => false},
-        tool_use_id: "toolu_verbose2",
-        timestamp: 1
-      )
-      decorator = MessageDecorator.for(event)
-
-      expect(decorator.render_verbose).to eq({
-        role: :tool_response, tool: "bash", content: "command not found", success: false, timestamp: 1
-      })
-    end
-
-    it "truncates output exceeding 3 lines" do
-      long_output = "line1\nline2\nline3\nline4\nline5"
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => long_output, "tool_name" => "bash", "success" => true},
-        tool_use_id: "toolu_verbose3",
-        timestamp: 1
-      )
-      decorator = MessageDecorator.for(event)
-      result = decorator.render_verbose
-
-      expect(result[:content]).to eq("line1\nline2\nline3\n...")
-      expect(result[:success]).to be true
-    end
-
-    it "preserves multiline output within the limit" do
-      output = "line1\nline2\nline3"
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => output, "tool_name" => "bash", "success" => true},
-        tool_use_id: "toolu_verbose4",
-        timestamp: 1
-      )
-      decorator = MessageDecorator.for(event)
-
-      expect(decorator.render_verbose[:content]).to eq("line1\nline2\nline3")
-    end
-
-    it "handles nil content" do
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => nil, "tool_name" => "bash", "success" => true},
-        tool_use_id: "toolu_verbose5",
-        timestamp: 1
-      )
-      decorator = MessageDecorator.for(event)
-
-      expect(decorator.render_verbose[:content]).to eq("")
-    end
-
-    it "handles empty content" do
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => "", "tool_name" => "bash", "success" => true},
-        tool_use_id: "toolu_verbose6",
-        timestamp: 1
-      )
-      decorator = MessageDecorator.for(event)
-
-      expect(decorator.render_verbose[:content]).to eq("")
-    end
-
-    it "defaults success to true when field is missing" do
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => "output", "tool_name" => "bash"},
-        tool_use_id: "toolu_verbose7",
-        timestamp: 1
-      )
-      decorator = MessageDecorator.for(event)
-
-      expect(decorator.render_verbose[:success]).to be true
-    end
-
-    it "works with hash payloads" do
-      decorator = MessageDecorator.for(
-        type: "tool_response",
-        content: "success output",
-        tool_name: "bash",
-        success: true
-      )
-
-      expect(decorator.render_verbose).to eq({
-        role: :tool_response, tool: "bash", content: "success output", success: true, timestamp: nil
-      })
-    end
-
-    context "think tool" do
-      it "returns nil for think responses (noise suppression)" do
-        event = session.messages.create!(
-          message_type: "tool_response",
-          payload: {"content" => "OK", "tool_name" => "think", "success" => true},
-          tool_use_id: "toolu_think_v1",
-          timestamp: 1
-        )
-        decorator = MessageDecorator.for(event)
-
-        expect(decorator.render_verbose).to be_nil
+    context "with successful output" do
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => "file.txt", "tool_name" => "bash", "success" => true},
+          timestamp: 1)
       end
 
-      it "returns nil for think responses via hash payload" do
-        decorator = MessageDecorator.for(
-          type: "tool_response",
-          content: "OK",
-          tool_name: "think",
-          success: true
-        )
+      it "returns a structured hash with success true" do
+        expect(decorator.render_verbose).to eq({
+          role: :tool_response, tool: "bash", content: "file.txt", success: true, timestamp: 1
+        })
+      end
+    end
 
+    context "with failed output" do
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => "command not found", "tool_name" => "bash", "success" => false},
+          timestamp: 1)
+      end
+
+      it "returns a structured hash with success false" do
+        expect(decorator.render_verbose).to eq({
+          role: :tool_response, tool: "bash", content: "command not found", success: false, timestamp: 1
+        })
+      end
+    end
+
+    context "with output exceeding 3 lines" do
+      let(:long_output) { "line1\nline2\nline3\nline4\nline5" }
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => long_output, "tool_name" => "bash", "success" => true},
+          timestamp: 1)
+      end
+
+      it "truncates after the third line" do
+        expect(decorator.render_verbose[:content]).to eq("line1\nline2\nline3\n...")
+      end
+    end
+
+    context "with multiline output within the limit" do
+      let(:output) { "line1\nline2\nline3" }
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => output, "tool_name" => "bash", "success" => true},
+          timestamp: 1)
+      end
+
+      it "preserves all lines" do
+        expect(decorator.render_verbose[:content]).to eq(output)
+      end
+    end
+
+    context "with nil content" do
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => nil, "tool_name" => "bash", "success" => true},
+          timestamp: 1)
+      end
+
+      it "coerces to an empty string" do
+        expect(decorator.render_verbose[:content]).to eq("")
+      end
+    end
+
+    context "with empty content" do
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => "", "tool_name" => "bash", "success" => true},
+          timestamp: 1)
+      end
+
+      it "renders an empty content field" do
+        expect(decorator.render_verbose[:content]).to eq("")
+      end
+    end
+
+    context "when success is missing from payload" do
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => "output", "tool_name" => "bash"},
+          timestamp: 1)
+      end
+
+      it "defaults success to true" do
+        expect(decorator.render_verbose[:success]).to be true
+      end
+    end
+
+    context "for a think tool response" do
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => "OK", "tool_name" => "think", "success" => true},
+          timestamp: 1)
+      end
+
+      it "returns nil for noise suppression" do
         expect(decorator.render_verbose).to be_nil
       end
     end
   end
 
   describe "#render_debug" do
-    it "returns full untruncated content" do
-      long_output = "line1\nline2\nline3\nline4\nline5"
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {
-          "content" => long_output, "tool_name" => "bash",
-          "success" => true, "tool_use_id" => "toolu_01abc123"
-        },
-        timestamp: 1,
-        tool_use_id: "toolu_01abc123"
-      )
-      decorator = MessageDecorator.for(event)
-      result = decorator.render_debug
+    context "with long output" do
+      let(:long_output) { "line1\nline2\nline3\nline4\nline5" }
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => long_output, "tool_name" => "bash", "success" => true, "tool_use_id" => "toolu_01abc123"},
+          tool_use_id: "toolu_01abc123",
+          timestamp: 1)
+      end
 
-      expect(result[:content]).to eq(long_output)
-      expect(result[:content]).not_to include("...")
-    end
-
-    it "includes tool_use_id and success indicator" do
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {
-          "content" => "output", "tool_name" => "bash",
-          "success" => true, "tool_use_id" => "toolu_xyz"
-        },
-        timestamp: 1,
-        tool_use_id: "toolu_xyz"
-      )
-      decorator = MessageDecorator.for(event)
-      result = decorator.render_debug
-
-      expect(result[:tool_use_id]).to eq("toolu_xyz")
-      expect(result[:success]).to be true
-    end
-
-    it "shows failure status" do
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {
-          "content" => "command not found", "tool_name" => "bash",
-          "success" => false, "tool_use_id" => "toolu_fail"
-        },
-        timestamp: 1,
-        tool_use_id: "toolu_fail"
-      )
-      decorator = MessageDecorator.for(event)
-      result = decorator.render_debug
-
-      expect(result[:success]).to be false
-    end
-
-    it "works with hash payloads" do
-      decorator = MessageDecorator.for(
-        type: "tool_response",
-        content: "output text",
-        tool_name: "bash",
-        success: true,
-        tool_use_id: "toolu_hash",
-        token_count: 7
-      )
-      result = decorator.render_debug
-
-      expect(result[:role]).to eq(:tool_response)
-      expect(result[:content]).to eq("output text")
-      expect(result[:tool_use_id]).to eq("toolu_hash")
-      expect(result[:tokens]).to eq(7)
-    end
-
-    context "think tool" do
-      it "shows think responses in debug mode (for completeness)" do
-        event = session.messages.create!(
-          message_type: "tool_response",
-          payload: {
-            "content" => "OK", "tool_name" => "think",
-            "success" => true, "tool_use_id" => "toolu_think_r1"
-          },
-          timestamp: 1,
-          tool_use_id: "toolu_think_r1"
-        )
-        decorator = MessageDecorator.for(event)
+      it "returns full untruncated content" do
         result = decorator.render_debug
+        expect(result[:content]).to eq(long_output)
+        expect(result[:content]).not_to include("...")
+      end
+    end
 
+    context "with a tool_use_id" do
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => "output", "tool_name" => "bash", "success" => true, "tool_use_id" => "toolu_xyz"},
+          tool_use_id: "toolu_xyz",
+          timestamp: 1)
+      end
+
+      it "includes the tool_use_id and success flag" do
+        result = decorator.render_debug
+        expect(result[:tool_use_id]).to eq("toolu_xyz")
+        expect(result[:success]).to be true
+      end
+    end
+
+    context "with a failed response" do
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => "command not found", "tool_name" => "bash", "success" => false, "tool_use_id" => "toolu_fail"},
+          tool_use_id: "toolu_fail",
+          timestamp: 1)
+      end
+
+      it "shows failure status" do
+        expect(decorator.render_debug[:success]).to be false
+      end
+    end
+
+    context "for a think tool response" do
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => "OK", "tool_name" => "think", "success" => true, "tool_use_id" => "toolu_think_r1"},
+          tool_use_id: "toolu_think_r1",
+          timestamp: 1)
+      end
+
+      it "shows the response in debug mode for completeness" do
+        result = decorator.render_debug
         expect(result[:role]).to eq(:tool_response)
         expect(result[:content]).to eq("OK")
         expect(result[:tool_use_id]).to eq("toolu_think_r1")
@@ -260,52 +196,48 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
   end
 
   describe "#render_brain" do
-    it "returns ✅ for successful tool responses" do
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => "file1.rb\nfile2.rb", "tool_name" => "bash", "success" => true},
-        tool_use_id: "toolu_brain1",
-        timestamp: 1
-      )
-      decorator = MessageDecorator.for(event)
+    context "with a successful tool response" do
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => "file1.rb\nfile2.rb", "tool_name" => "bash", "success" => true})
+      end
 
-      expect(decorator.render_brain).to eq("\u2705")
+      it "returns the success emoji" do
+        expect(decorator.render_brain).to eq("\u2705")
+      end
     end
 
-    it "returns ❌ for failed tool responses" do
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => "command not found", "tool_name" => "bash", "success" => false},
-        tool_use_id: "toolu_brain2",
-        timestamp: 1
-      )
-      decorator = MessageDecorator.for(event)
+    context "with a failed tool response" do
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => "command not found", "tool_name" => "bash", "success" => false})
+      end
 
-      expect(decorator.render_brain).to eq("\u274C")
+      it "returns the failure emoji" do
+        expect(decorator.render_brain).to eq("\u274C")
+      end
     end
 
-    it "returns nil for think tool responses" do
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => "OK", "tool_name" => "think", "success" => true},
-        tool_use_id: "toolu_brain3",
-        timestamp: 1
-      )
-      decorator = MessageDecorator.for(event)
+    context "for a think tool response" do
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => "OK", "tool_name" => "think", "success" => true})
+      end
 
-      expect(decorator.render_brain).to be_nil
+      it "returns nil" do
+        expect(decorator.render_brain).to be_nil
+      end
     end
 
-    it "defaults to ✅ when success field is missing" do
-      event = session.messages.create!(
-        message_type: "tool_response",
-        payload: {"content" => "output", "tool_name" => "bash"},
-        tool_use_id: "toolu_brain4",
-        timestamp: 1
-      )
-      decorator = MessageDecorator.for(event)
+    context "when success is missing from payload" do
+      let(:message) do
+        build_stubbed(:message, :tool_response,
+          payload: {"content" => "output", "tool_name" => "bash"})
+      end
 
-      expect(decorator.render_brain).to eq("\u2705")
+      it "defaults to the success emoji" do
+        expect(decorator.render_brain).to eq("\u2705")
+      end
     end
   end
 end

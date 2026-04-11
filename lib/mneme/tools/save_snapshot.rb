@@ -20,7 +20,7 @@ module Mneme
           properties: {
             text: {
               type: "string",
-              maxLength: Anima::Settings.mneme_max_tokens * Message::BYTES_PER_TOKEN
+              maxLength: Anima::Settings.mneme_max_tokens * TokenEstimation::BYTES_PER_TOKEN
             }
           },
           required: %w[text]
@@ -46,18 +46,10 @@ module Mneme
           text: text,
           from_message_id: @from_message_id,
           to_message_id: @to_message_id,
-          level: @level,
-          token_count: estimate_tokens(text)
+          level: @level
         )
 
         "Snapshot saved (id: #{snapshot.id}, messages #{@from_message_id}..#{@to_message_id})"
-      end
-
-      private
-
-      # @return [Integer] estimated token count for the summary text
-      def estimate_tokens(text)
-        Message.estimate_token_count(text.bytesize)
       end
     end
   end

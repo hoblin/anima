@@ -35,10 +35,11 @@ RSpec.describe Snapshot do
       expect(snapshot.errors[:from_message_id]).to include("must be <= to_message_id")
     end
 
-    it "rejects negative token_count" do
-      snapshot = session.snapshots.build(
-        text: "Summary", from_message_id: 1, to_message_id: 10, level: 1, token_count: -1
+    it "rejects negative token_count on update" do
+      snapshot = session.snapshots.create!(
+        text: "Summary", from_message_id: 1, to_message_id: 10, level: 1
       )
+      snapshot.token_count = -1
       expect(snapshot).not_to be_valid
       expect(snapshot.errors[:token_count]).to include("must be greater than or equal to 0")
     end
@@ -66,6 +67,37 @@ RSpec.describe Snapshot do
         text: "Summary", from_message_id: 1, to_message_id: 10, level: 1
       )
       expect(snapshot.session).to eq(session)
+    end
+  end
+
+  describe "#tokenization_text" do
+    it "returns the summary text" do
+      snapshot = session.snapshots.new(text: "Summary", from_message_id: 1, to_message_id: 10, level: 1)
+      expect(snapshot.tokenization_text).to eq("Summary")
+    end
+  end
+
+  describe "token_count seeding" do
+    it "seeds token_count from text on create" do
+      snapshot = session.snapshots.create!(
+        text: "a" * 100, from_message_id: 1, to_message_id: 10, level: 1
+      )
+      expect(snapshot.token_count).to eq(TokenEstimation.estimate_token_count("a" * 100))
+    end
+
+    it "respects an explicit positive value passed by the caller" do
+      snapshot = session.snapshots.create!(
+        text: "Summary", from_message_id: 1, to_message_id: 10, level: 1, token_count: 42
+      )
+      expect(snapshot.token_count).to eq(42)
+    end
+
+    it "enqueues CountTokensJob after create" do
+      expect {
+        session.snapshots.create!(
+          text: "Summary", from_message_id: 1, to_message_id: 10, level: 1
+        )
+      }.to have_enqueued_job(CountTokensJob)
     end
   end
 

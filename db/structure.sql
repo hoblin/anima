@@ -19,7 +19,7 @@ CREATE INDEX "index_messages_on_tool_use_id" ON "messages" ("tool_use_id");
 CREATE INDEX "index_messages_on_session_id" ON "messages" ("session_id");
 CREATE INDEX "index_messages_on_message_type" ON "messages" ("message_type");
 CREATE INDEX "index_messages_on_session_id_and_message_type" ON "messages" ("session_id", "message_type");
-CREATE TABLE "pinned_messages" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "message_id" integer NOT NULL, "display_text" text NOT NULL, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL, CONSTRAINT "fk_rails_4a5f237c43"
+CREATE TABLE "pinned_messages" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "message_id" integer NOT NULL, "display_text" text NOT NULL, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL, "token_count" integer DEFAULT 0 NOT NULL, CONSTRAINT "fk_rails_4a5f237c43"
 FOREIGN KEY ("message_id")
   REFERENCES "messages" ("id")
 );
@@ -87,6 +87,7 @@ FOREIGN KEY ("parent_session_id")
 );
 CREATE INDEX "index_sessions_on_parent_session_id" ON "sessions" ("parent_session_id");
 INSERT INTO "schema_migrations" (version) VALUES
+('20260411120553'),
 ('20260407180400'),
 ('20260407170803'),
 ('20260403080031'),
