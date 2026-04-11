@@ -38,7 +38,7 @@ RSpec.describe Melete::Runner do
         expect(captured_messages.length).to eq(1)
         expect(captured_messages.first[:role]).to eq("user")
         content = captured_messages.first[:content]
-        expect(content).to include("The main session is working on this:")
+        expect(content).to include("Aoide is working on this:")
         expect(content).to match(/User:.*Tell me about Ruby/m)
         expect(content).to match(/Assistant:.*Ruby is great!/m)
         expect(content).to include("call everything_is_ready")
@@ -65,7 +65,7 @@ RSpec.describe Melete::Runner do
 
         runner.call
 
-        expect(captured_opts[:system]).to include("manage context for the main agent")
+        expect(captured_opts[:system]).to include("You are Melete, the muse of practice")
         expect(captured_opts[:system]).to include("(unnamed)")
       end
 
@@ -259,7 +259,7 @@ RSpec.describe Melete::Runner do
 
         runner.call
 
-        expect(captured_messages.first[:content]).to include("take any needed actions")
+        expect(captured_messages.first[:content]).to include("Prepare whatever she needs for the next exchange")
       end
 
       it "does not register standard tools (bash, read, etc.)" do
@@ -415,6 +415,8 @@ RSpec.describe Melete::Runner do
 
     context "message non-persistence", :vcr do
       it "does not create Message records during execution" do
+        skip "Cassette needs re-recording after #436 prompt rewrite — run with bin/with-llms"
+
         session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
         session.messages.create!(message_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
 
@@ -426,6 +428,8 @@ RSpec.describe Melete::Runner do
 
     context "integration with real LLM", :vcr do
       it "renames an unnamed session based on conversation topic" do
+        skip "Cassette needs re-recording after #436 prompt rewrite — run with bin/with-llms"
+
         session.messages.create!(message_type: "user_message", payload: {"content" => "Write RSpec tests for the User model validations"}, timestamp: 1)
         session.messages.create!(message_type: "agent_message", payload: {"content" => "I'll write comprehensive RSpec tests for the User model validations."}, timestamp: 2)
 
@@ -435,6 +439,8 @@ RSpec.describe Melete::Runner do
       end
 
       it "does not change an already-named session when topic hasn't shifted" do
+        skip "Cassette needs re-recording after #436 prompt rewrite — run with bin/with-llms"
+
         session.update!(name: "🔧 Existing Name")
         session.messages.create!(message_type: "user_message", payload: {"content" => "Continue with the fix"}, timestamp: 1)
         session.messages.create!(message_type: "agent_message", payload: {"content" => "Sure, continuing."}, timestamp: 2)
@@ -528,7 +534,7 @@ RSpec.describe Melete::Runner do
         expect(captured_opts[:system]).not_to include("ACTIVE SIBLINGS")
       end
 
-      it "frames the message as main session observation" do
+      it "frames the message as Aoide at work" do
         captured_messages = nil
         allow(client).to receive(:chat_with_tools) { |msgs, **_opts|
           captured_messages = msgs
@@ -537,7 +543,7 @@ RSpec.describe Melete::Runner do
 
         runner.call
 
-        expect(captured_messages.first[:content]).to include("The main session is working on this:")
+        expect(captured_messages.first[:content]).to include("Aoide is working on this:")
       end
     end
 
@@ -656,7 +662,7 @@ RSpec.describe Melete::Runner do
         content = captured_messages.first[:content]
         expect(content).to include("A sub-agent has been spawned with this task:")
         expect(content).to include("Read lib/agent_loop.rb")
-        expect(content).to include("Assign a nickname")
+        expect(content).to include("Give the sub-agent a nickname")
       end
 
       it "includes active siblings in system prompt when siblings exist" do
@@ -707,6 +713,8 @@ RSpec.describe Melete::Runner do
 
   describe "default client configuration", :vcr do
     it "uses the fast model" do
+      skip "Cassette needs re-recording after #436 prompt rewrite — run with bin/with-llms"
+
       session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
       session.messages.create!(message_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
 

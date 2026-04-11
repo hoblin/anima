@@ -1,21 +1,22 @@
 # frozen_string_literal: true
 
 module Melete
-  # Orchestrates the analytical brain — a phantom (non-persisted) LLM loop
-  # that observes a session and performs background maintenance via tools.
+  # Orchestrates Melete — a phantom (non-persisted) LLM loop that
+  # observes the main session and prepares skills, workflows, goals,
+  # and session names so the main agent can perform cleanly.
   #
-  # The brain's capabilities are assembled from independent {Responsibility}
-  # modules, each contributing a prompt section and tools. Which modules are
-  # active depends on the session type:
+  # Melete's capabilities are assembled from independent {Responsibility}
+  # modules, each contributing a prompt section and tools. Which modules
+  # are active depends on the session type:
   #
   # * **Parent sessions** — session naming, skill/workflow/goal management
   # * **Child sessions** — sub-agent nickname assignment, skill management
-  #   (goal tracking and workflows disabled — sub-agents manage their sole goal
-  #   via mark_goal_completed)
+  #   (goal tracking and workflows disabled — sub-agents manage their sole
+  #   goal via mark_goal_completed)
   #
-  # Tools mutate the observed session directly (e.g. renaming it, activating
-  # skills), but no trace of the brain's reasoning is persisted — events are
-  # emitted into a phantom session (session_id: nil).
+  # Tools mutate the observed session directly (e.g. renaming it,
+  # activating skills), but no trace of Melete's reasoning is persisted —
+  # events are emitted into a phantom session (session_id: nil).
   #
   # @example
   #   Melete::Runner.new(session).call
@@ -29,7 +30,7 @@ module Melete
           ──────────────────────────────
           SESSION NAMING
           ──────────────────────────────
-          Name the session when the topic becomes clear. Rename if it shifts.
+          Name the session once the topic becomes clear. Rename if it shifts.
           Format: one emoji + 1-3 descriptive words.
         PROMPT
         tools: [Tools::RenameSession]
@@ -53,10 +54,9 @@ module Melete
           ──────────────────────────────
           SKILL MANAGEMENT
           ──────────────────────────────
-          Activate skills when the conversation signals intent — before the agent acts on it.
-          Late activation means the agent works without domain knowledge.
-          Deactivate when the agent moves to a different domain.
-          Multiple skills can be active at once.
+          Activate a skill the moment the conversation signals its domain — before Aoide needs it. Late activation means she's working without the knowledge you prepared.
+
+          An irrelevant skill is worse than none: its text crowds her context, pulling her attention toward pages she has to read and then ignore. Activate only what matches the work in front of her; deactivate when she moves on. Multiple skills can be active at once — each one is a page she has to carry.
         PROMPT
         tools: [Tools::ActivateSkill, Tools::DeactivateSkill]
       ),
@@ -66,11 +66,9 @@ module Melete
           ──────────────────────────────
           WORKFLOW MANAGEMENT
           ──────────────────────────────
-          Activate a workflow when the user starts a multi-step task that matches one.
-          Read the returned content and use judgment to create goals — not a mechanical 1:1 mapping.
-          Adapt to context: skip irrelevant steps, add extra steps for unfamiliar areas.
-          Deactivate the workflow when it completes or the user shifts focus.
-          Only one workflow active at a time — activating a new one replaces the previous.
+          Activate a workflow when Aoide starts a multi-step task that matches one. Read the returned content and use judgment to turn it into goals — not a mechanical 1:1 mapping. Adapt: skip irrelevant steps, add extra ones for unfamiliar ground.
+
+          Deactivate when the workflow completes or Aoide shifts focus. Only one workflow active at a time — activating a new one replaces the previous. A stale workflow is the same kind of tax as a stale skill: Aoide carries its text whether she needs it or not.
         PROMPT
         tools: [Tools::ReadWorkflow, Tools::DeactivateWorkflow]
       ),
@@ -80,29 +78,25 @@ module Melete
           ──────────────────────────────
           GOAL TRACKING
           ──────────────────────────────
-          Create a root goal when the user starts a multi-step task.
-          Break it into sub-goals as the plan becomes clear.
-          Refine goal wording as understanding evolves.
-          Mark goals complete when the agent finishes the work they describe.
-          Completing a root goal cascades — all sub-goals are finished too.
-          Never duplicate an existing goal — check the active goals list first.
+          Create a root goal when Aoide starts a multi-step task. Break it into sub-goals as the plan takes shape. Refine wording as understanding evolves. Mark goals complete when she finishes the work they describe — completing a root cascades through its sub-goals.
+
+          Check the active goals list before every set_goal call. Never duplicate an existing goal — a duplicate wastes a slot and blurs which version Aoide should track.
         PROMPT
         tools: [Tools::SetGoal, Tools::UpdateGoal, Tools::FinishGoal]
       )
     }.freeze
 
     BASE_PROMPT = <<~PROMPT
-      You manage context for the main agent — skills, goals, workflows, and session names.
-      Watch the conversation and act when context needs updating.
-      Communicate only through tool calls — never output text.
+      You are Melete, the muse of practice. You share the conversation with two sisters — Aoide, who speaks and performs, and Mneme, who holds memory. Your work is preparation: when Aoide speaks, she should have the skills she needs, the workflow in front of her, and a clear sense of what she's working toward.
+
+      Act only through tool calls. Never output text — your contribution is the scene you set, not the words you say.
     PROMPT
 
     COMPLETION_PROMPT = <<~PROMPT
       ──────────────────────────────
       COMPLETION
       ──────────────────────────────
-      Always finish with everything_is_ready.
-      If nothing needs attention, call it immediately.
+      Finish every run with everything_is_ready. If nothing needs your attention, call it immediately.
     PROMPT
 
     # Which responsibilities activate for each session type.
@@ -187,12 +181,12 @@ module Melete
 
     def build_parent_message(transcript)
       content = <<~MSG.strip
-        The main session is working on this:
+        Aoide is working on this:
         ```
         #{transcript}
         ```
 
-        Review and take any needed actions, then call everything_is_ready.
+        Prepare whatever she needs for the next exchange, then call everything_is_ready.
       MSG
       [{role: "user", content: content}]
     end
@@ -204,7 +198,7 @@ module Melete
         #{transcript}
         ```
 
-        Assign a nickname and activate relevant skills, then call everything_is_ready.
+        Give the sub-agent a nickname and activate the skills she'll need, then call everything_is_ready.
       MSG
       [{role: "user", content: content}]
     end
