@@ -8,7 +8,7 @@ Every AI agent today is a tool pretending to be a person. One brain doing everyt
 
 Anima is different. It's built on the premise that if you want an agent — a real one — you need to solve the problems nobody else is solving.
 
-**A brain modeled after biology, not chat.** The human brain isn't one process — it's specialized subsystems on a shared signal bus. Anima mirrors this with a triptych named after the three original Muses: **Aoide** performs (voice, reasoning, tool use), **[Melete](#melete)** prepares (skills, workflows, goals, naming), **[Mneme](#semantic-memory-mneme)** remembers (summarization, compression, recall). Three processes on the same event bus, each doing one job well. More subsystems are coming.
+**A brain modeled after biology, not chat.** The human brain isn't one process — it's specialized subsystems on a shared signal bus. Anima mirrors this with a triptych named after the three original Muses: **Aoide** performs (voice, reasoning, tool use), **[Melete](#preparation-as-a-second-brain-melete)** prepares (skills, workflows, goals, naming), **[Mneme](#semantic-memory-mneme)** remembers (summarization, compression, recall). Three processes on the same event bus, each doing one job well. More subsystems are coming.
 
 **Context that never degrades.** Other agents fill a static array until the model gets dumb. Anima assembles a fresh viewport over an event bus every iteration. No compaction. No lossy rewriting. Endless sessions. The [dumb zone](https://github.com/humanlayer/advanced-context-engineering-for-coding-agents/blob/main/ace-fca.md) never arrives — Melete curates what Aoide sees in real time.
 
@@ -23,20 +23,24 @@ Your agent. Your machine. Your rules. Anima runs locally as a headless Rails 8.1
 ## Table of Contents
 
 - [Architecture](#architecture)
+  - [Three Muses](#three-muses)
+- [Installation](#installation)
+  - [Distribution Model](#distribution-model)
+  - [Authentication Setup](#authentication-setup)
 - [Agent Capabilities](#agent-capabilities)
   - [Tools](#tools)
   - [Sub-Agents](#sub-agents)
   - [Skills](#skills)
   - [Workflows](#workflows)
   - [MCP Integration](#mcp-integration)
-  - [Melete](#melete)
   - [Configuration](#configuration)
 - [Design](#design)
   - [Three Layers](#three-layers-mirroring-biology)
   - [Event-Driven Design](#event-driven-design)
   - [Context as Viewport](#context-as-viewport-not-tape)
   - [Brain as Microservices](#brain-as-microservices-on-a-shared-event-bus)
-  - [Semantic Memory](#semantic-memory-mneme)
+  - [Preparation as a Second Brain (Melete)](#preparation-as-a-second-brain-melete)
+  - [Semantic Memory (Mneme)](#semantic-memory-mneme)
   - [TUI HUD & View Modes](#tui-hud--view-modes)
   - [Plugin Architecture](#plugin-architecture-planned)
 - [The Vision](#the-vision)
@@ -54,58 +58,21 @@ Your agent. Your machine. Your rules. Anima runs locally as a headless Rails 8.1
 
 ## Architecture
 
-```
-Anima (Ruby, Rails 8.1 headless)
-│
-│ Implemented:
-├── Aoide        — main LLM, the muse of performance (voice, reasoning, tool use)
-├── Melete       — muse of practice (skills, workflows, goals, session naming)
-├── Mneme        — muse of memory (summarization, compression, pinning, recall)
-├── Skills       — domain knowledge bundles (Markdown, user-extensible)
-├── Workflows    — operational recipes for multi-step tasks
-├── MCP          — external tool integration (Model Context Protocol)
-├── Sub-agents   — autonomous child sessions with isolated context
-│
-│ Designed:
-├── Thymos       — hormonal/desire system (stimulus → hormone vector)
-└── Psyche       — soul matrix (coefficient table, evolving individuality)
-```
+Anima splits into two processes. The **Brain** is persistent — it handles LLM calls, tool execution, event processing, and state. The **TUI** is a stateless client — it connects via WebSocket, renders events, captures input. If the TUI disconnects, the brain keeps running; when it reconnects, the session resumes with chat history preserved.
 
-### Runtime Architecture
+Inside the Brain, three independent LLM processes run in parallel on a shared event bus, named after the three original Muses described by Pausanias. They don't call each other — they all react to the same stream of events, and their outputs combine.
 
-```
-Brain Server (Rails + Puma)              TUI Client (RatatuiRuby)
-├── LLM integration (Anthropic)          ├── WebSocket client
-├── Agent loop + tool execution          ├── Terminal rendering
-├── Melete (background)                  └── User input capture
-├── Mneme (background)
-├── Skills registry + activation
-├── Workflow registry + activation
-├── MCP client (HTTP + stdio)
-├── Sub-agent spawning
-├── Event bus + persistence
-├── Solid Queue (background jobs)
-├── Action Cable (WebSocket server)
-└── SQLite databases                ◄── WebSocket (port 42134) ──► TUI
-```
+### Three Muses
 
-The **Brain** is the persistent service — it handles LLM calls, tool execution, event processing, and state. The **TUI** is a stateless client — it connects via WebSocket, renders events, and captures input. If TUI disconnects, the brain keeps running. TUI reconnects automatically with exponential backoff and resumes the session with chat history preserved.
+**Aoide — the performer.** The main LLM (Claude Opus 4.6), the muse of voice and performance. Thinks, decides, uses tools, talks to the user. Reads a system prompt assembled fresh every turn (soul + sisters block + snapshots) and a live **viewport** of events from the database — never a static array. Everything the agent outputs is Aoide; her sisters stay silent in her voice.
 
-### Tech Stack
+**Melete — the preparer.** A separate LLM process (Claude Haiku 4.5) that runs as Aoide's subconscious between turns. She observes the conversation and handles everything Aoide shouldn't break flow for: activating relevant skills, managing workflows, tracking goals, naming the session. The first microservice on Anima's event bus — the working proof that background subscribers scale. → [Preparation as a Second Brain (Melete)](#preparation-as-a-second-brain-melete)
 
-| Component | Technology |
-|-----------|-----------|
-| Framework | Rails 8.1 (headless — no web views, no asset pipeline) |
-| Database | SQLite (3 databases per environment: primary, queue, cable) |
-| Event system | Rails Structured Event Reporter + Action Cable bridge |
-| LLM integration | Anthropic API (Claude Opus 4.6 + Claude Haiku 4.5) |
-| External tools | Model Context Protocol (HTTP + stdio transports) |
-| Transport | Action Cable WebSocket (Solid Cable adapter) |
-| Background jobs | Solid Queue |
-| Interface | TUI via RatatuiRuby (WebSocket client) |
-| Configuration | TOML with hot-reload (`Anima::Settings`) |
-| Process management | Foreman |
-| Distribution | RubyGems (`gem install anima-core`) |
+**Mneme — the rememberer.** The third muse, running on the same event bus, specializing in one job: making sure nothing important is ever truly lost. She summarizes what's about to leave the viewport, compresses short-term memories into long-term, pins critical events to active goals, and surfaces relevant older context automatically via passive recall. Biology, not a filing cabinet. → [Semantic Memory (Mneme)](#semantic-memory-mneme)
+
+Two more subsystems are designed but not yet implemented: **Thymos** (a hormonal/desire subscriber) and **Psyche** (a coefficient matrix for evolving individuality). Both plug into the same event bus as Melete and Mneme — no orchestrator, no central loop, just more independent subscribers reacting to the same stream.
+
+## Installation
 
 ### Distribution Model
 
@@ -170,8 +137,8 @@ The agent has access to these built-in tools:
 | `spawn_specialist` | Spawn a named specialist sub-agent from the registry |
 | `spawn_subagent` | Spawn a generic child session with custom tool grants |
 | `think` | Think out loud or silently — reasoning step between tool calls |
-| `recall` | Search past conversations by keywords (FTS5). Returns ranked snippets with message IDs for drill-down |
-| `remember` | Recall full conversation context around a past message at fractal resolution |
+| `search_messages` | Keyword sweep across long-term memory (FTS5). Returns ranked snippets with message IDs for drill-down |
+| `view_messages` | Fractal window around a past message — full detail at the center, compressed snapshots at the edges |
 | `open_issue` | File a self-improvement issue when something is broken, missing, or could be better |
 | `mark_goal_completed` | Sub-agent only: signal task completion and deliver results to parent |
 
@@ -207,13 +174,13 @@ Domain knowledge bundles loaded from Markdown files. Skills provide specialized 
 - **User skills:** Drop `.md` files into `~/.anima/skills/` to add custom knowledge
 - **Override:** User skills with the same name replace built-in ones
 - **Format:** Flat files (`skill-name.md`) or directories (`skill-name/SKILL.md` with `examples/` and `references/`)
-- **Viewport deduplication:** The brain's skill catalog excludes skills already visible in the viewport, preventing redundant activation
+- **Viewport deduplication:** Melete's skill catalog excludes skills already visible in the viewport, preventing redundant activation
 
 Active skills are displayed in the TUI HUD panel (toggle with `C-a → h`).
 
 ### Workflows
 
-Operational recipes that describe multi-step tasks. Unlike skills (domain knowledge), workflows describe WHAT to do. Melete activates a workflow when she recognizes a matching task, converts the prose into tracked goals, and deactivates it when done. Like skills, workflow content enters the conversation as phantom tool pairs through the same `PendingMessage` flow.
+Operational recipes that describe multi-step tasks. Unlike skills (domain knowledge), workflows describe WHAT to do. Melete activates a workflow when she recognizes a matching task and converts the prose into tracked goals. Like skills, workflow content enters the conversation as a `from_melete` phantom pair through the `PendingMessage` flow and rides the viewport until it evicts — there is no explicit deactivation.
 
 - **Built-in workflows:** `feature`, `commit`, `create_plan`, `implement_plan`, `review_pr`, `create_note`, `research_codebase`, `decompose_ticket`, and more
 - **User workflows:** Drop `.md` files into `~/.anima/workflows/` to add custom workflows
@@ -270,21 +237,6 @@ anima mcp secrets remove linear_api_key     # Remove secret
 ```
 
 Secrets are stored in an encrypted database table (Active Record Encryption) and interpolated via `${credential:key_name}` syntax in any TOML string value.
-
-### Melete
-
-Melete — the muse of practice — is a separate LLM process that runs as Aoide's subconscious, preparing the stage so the main agent can stay in flow. The first microservice in Anima's brain architecture. For the full motivation behind this design, see [LLMs Have ADHD: Why Your AI Agent Needs a Second Brain](https://blog.promptmaster.pro/posts/llms-have-adhd/).
-
-Melete observes the main conversation between turns and handles everything Aoide shouldn't interrupt her flow for:
-
-- **Skill activation** — activates/deactivates domain knowledge based on conversation context
-- **Workflow management** — recognizes tasks, activates matching workflows, tracks lifecycle
-- **Goal tracking** — creates root goals and sub-goals as work progresses, marks them complete, evicts finished goals from context after a configurable message threshold
-- **Session naming** — generates emoji + short name when the topic becomes clear
-
-Each of these would be a context switch for Aoide — a chore that competes with the primary task. For Melete, they ARE the primary task. Two muses, each in her own flow state.
-
-Goals form a two-level hierarchy (root goals with sub-goals) and are displayed in the TUI. Melete uses a fast model (Claude Haiku 4.5) for speed and runs as a non-persisted "phantom" session.
 
 ### Configuration
 
@@ -365,7 +317,7 @@ Events flow through two channels:
 1. **In-process** — Rails Structured Event Reporter (local subscribers like Persister)
 2. **Over the wire** — Action Cable WebSocket (`Event::Broadcasting` callbacks push to connected TUI clients)
 
-Events fire, subscribers react, state updates. The system prompt — soul and current goals — is assembled fresh for each LLM call from live state, not from the event stream. Skills and workflows flow through the message stream as phantom tool pairs, keeping the system prompt stable for prompt caching. The agent's identity (soul.md) is always current, never stale.
+Events fire, subscribers react, state updates. The system prompt — soul, sisters block, and snapshots — is assembled fresh for each LLM call. Skills, workflows, and goals flow through the message stream as phantom tool pairs instead, keeping the system prompt stable for prompt caching. The agent's identity (soul.md) is always current, never stale.
 
 ### Context as Viewport, Not Tape
 
@@ -379,9 +331,7 @@ Sub-agent viewports use the same mechanism — their own events only, no parent 
 
 ### Brain as Microservices on a Shared Event Bus
 
-The human brain isn't a single process — it's dozens of specialized subsystems communicating through shared chemical and electrical signals. The prefrontal cortex doesn't "call" the amygdala. They both react to the same event independently, and their outputs combine.
-
-Anima mirrors this with an event-driven architecture. Melete is the first subscriber — a working proof that the pattern scales. Future subscribers plug into the same bus:
+The prefrontal cortex doesn't "call" the amygdala. Dozens of specialized subsystems react to the same chemical and electrical signals independently, and their outputs combine — no central coordinator, no blocking RPC, no orchestrator deciding the order of thoughts. Anima mirrors this with an event bus. Melete is the first subscriber that proves the pattern scales; Mneme is the second. Future subscribers plug into the same bus:
 
 ```
 Event: "tool_call_failed"
@@ -400,6 +350,21 @@ Event: "user_sent_message"
 ```
 
 Each subscriber is a microservice — independent, stateless, reacting to the same event bus. No orchestrator decides what to do. The architecture IS the nervous system.
+
+### Preparation as a Second Brain (Melete)
+
+Every agent today does everything with one brain. Skill selection, workflow tracking, goal management, session naming — all of it competes with the primary task for the same context window and the same attention. Each of these is a micro-task that requires the agent to stop thinking about the real work, do the bookkeeping, and try to pick up where it left off. Flow breaks on every interruption. The full motivation is in [LLMs Have ADHD: Why Your AI Agent Needs a Second Brain](https://blog.promptmaster.pro/posts/llms-have-adhd/).
+
+Melete is the answer: a second LLM process that runs between turns as Aoide's subconscious. She observes the conversation and handles everything Aoide shouldn't break flow for:
+
+- **Skill activation** — recognizes when a domain becomes relevant and activates matching skill content into Aoide's viewport. A skill rides the viewport as a `from_melete` phantom pair until it naturally evicts — there is no deactivation.
+- **Workflow management** — recognizes multi-step tasks, activates matching workflows, and tracks their lifecycle from start to finish.
+- **Goal tracking** — creates root goals and sub-goals as work progresses, marks them complete, evicts finished goals from context after a configurable message threshold.
+- **Session naming** — generates an emoji + short name the moment the topic becomes clear.
+
+Each of these would be a context switch for Aoide — a chore that competes with the primary task. For Melete, they ARE the primary task. Two muses, each in her own flow state.
+
+Goals form a two-level hierarchy (root goals with sub-goals) and are displayed in the TUI HUD. Melete uses a fast model (Claude Haiku 4.5) for speed and runs as a non-persisted "phantom" session: she emits events for activation tools but no trace of her own reasoning lands in the database. Her decisions reach Aoide only through the skills, workflows, goals, and names she leaves behind.
 
 ### Semantic Memory (Mneme)
 
