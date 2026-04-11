@@ -15,19 +15,19 @@ detectors:
       - "Anima::Settings#get"
       - "TUI::Settings#get"
   # Rescue blocks naturally reference the error object more than self.
-  # Brain transcript builds from event collection — the method's entire purpose.
+  # Melete transcript builds from event collection — the method's entire purpose.
   # ConfigMigrator text processing methods naturally reference local line arrays.
   # ToolDecorator subclasses operate on the tool result — that's the pattern.
   # Tool rescue blocks naturally reference the error object.
   FeatureEnvy:
     exclude:
-      - "AnalyticalBrainJob#perform"
-      - "AnalyticalBrain::Runner#build_messages"
+      - "MeleteJob#perform"
+      - "Melete::Runner#build_messages"
       - "Anima::ConfigMigrator"
       - "WebGetToolDecorator"
       - "Tools::WebGet#validate_and_fetch"
-      # Remember tool renders events from other objects — formatting IS the job.
-      - "Tools::Remember"
+      # ViewMessages renders events from other objects — formatting IS the job.
+      - "Tools::ViewMessages"
       # Event subscribers extract payload fields — inherent to the pattern.
       - "Events::Subscribers::SubagentMessageRouter"
       # Spawn tools orchestrate child session creation — references are the job.
@@ -35,14 +35,14 @@ detectors:
       - "Tools::SpawnSpecialist#spawn_child"
       - "Tools::SpawnSpecialist#execute"
       # Spawn helpers operate on child session — inherent to the mixin pattern.
-      - "Tools::SubagentPrompts#assign_nickname_via_brain"
+      - "Tools::SubagentPrompts#assign_nickname_via_melete"
       - "Tools::SubagentPrompts#inject_identity_context"
       # Registry dispatches to tool's threshold method — duck-typing delegation.
       - "Tools::Registry#truncation_threshold"
       # Goal tools operate on goal objects — inherent to the pattern.
-      - "AnalyticalBrain::Tools::UpdateGoal#execute"
+      - "Melete::Tools::UpdateGoal#execute"
       # Validation methods naturally reference the validated value more than self.
-      - "AnalyticalBrain::Tools::AssignNickname#validate"
+      - "Melete::Tools::AssignNickname#validate"
       # Tool execute methods naturally reference input hash and shell result hash.
       - "Tools::Bash#execute"
       - "Tools::Bash#execute_single"
@@ -58,7 +58,7 @@ detectors:
   UtilityFunction:
     public_methods_only: true
     exclude:
-      - "AnalyticalBrainJob#perform"
+      - "MeleteJob#perform"
       - "PassiveRecallJob#perform"
       - "Tools::Think#execute"
       - "TUI::Formatting"
@@ -75,7 +75,7 @@ detectors:
       - "Anima::CLI::Mcp"
       - "ShellSession"
       # Runner composes system prompt from modular sections — methods grow with responsibilities.
-      - "AnalyticalBrain::Runner"
+      - "Melete::Runner"
   # Decorators branch on tool type across 4 render modes — inherent to the pattern.
   # Installer methods each guard idempotency with config_path.exist? — by design.
   RepeatedConditional:
@@ -83,7 +83,7 @@ detectors:
       - "ToolCallDecorator"
       - "Anima::Installer"
       # Runner checks session type to compose responsibilities — the core dispatch.
-      - "AnalyticalBrain::Runner"
+      - "Melete::Runner"
   # EventDecorator holds shared rendering constants (icons, markers, dispatch maps).
   # Message holds domain type constants (TYPES, LLM_TYPES, CONVERSATION_TYPES, etc.).
   TooManyConstants:
@@ -107,16 +107,16 @@ detectors:
     exclude:
       - "Tools::WebGet#validate_and_fetch"
       # Remember tool accesses event data for formatting — inherent to rendering.
-      - "Tools::Remember"
+      - "Tools::ViewMessages"
       # Nickname validation checks parent_session for existence then queries — two calls, one guard.
-      - "AnalyticalBrain::Tools::AssignNickname#sibling_nickname_taken?"
+      - "Melete::Tools::AssignNickname#sibling_nickname_taken?"
       # Delivery method references session.id for lookup, BounceBack, and auth broadcast.
       - "AgentRequestJob#deliver_persisted_event"
   # Method length is enforced by code review, not arbitrary line counts
   # build_sections passes context through to sub-methods — inherent to assembly.
   LongParameterList:
     exclude:
-      - "Tools::Remember#build_sections"
+      - "Tools::ViewMessages#build_sections"
   # Method length is enforced by code review, not arbitrary line counts
   TooManyStatements:
     enabled: false

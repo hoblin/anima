@@ -53,7 +53,7 @@ RSpec.describe Anima::ConfigMigrator do
     context "when an entire section is missing" do
       it "appends the section with its separator comment and keys" do
         config = full_default_config.gsub(
-          /# ─── Analytical Brain.*\z/m,
+          /# ─── Melete.*\z/m,
           ""
         )
         write_config(config)
@@ -62,10 +62,10 @@ RSpec.describe Anima::ConfigMigrator do
 
         expect(result.status).to eq(:updated)
         expect(result.additions.map { |a| [a.section, a.key] }).to contain_exactly(
-          ["analytical_brain", "max_tokens"],
-          ["analytical_brain", "blocking_on_user_message"],
-          ["analytical_brain", "blocking_on_agent_message"],
-          ["analytical_brain", "message_window"],
+          ["melete", "max_tokens"],
+          ["melete", "blocking_on_user_message"],
+          ["melete", "blocking_on_agent_message"],
+          ["melete", "message_window"],
           ["mneme", "max_tokens"],
           ["mneme", "viewport_fraction"],
           ["mneme", "l1_budget_fraction"],
@@ -80,8 +80,8 @@ RSpec.describe Anima::ConfigMigrator do
         )
 
         updated = config_path.read
-        expect(updated).to include("[analytical_brain]")
-        expect(updated).to include("# ─── Analytical Brain")
+        expect(updated).to include("[melete]")
+        expect(updated).to include("# ─── Melete")
         expect(updated).to include("max_tokens = 4096")
         expect(updated).to include("message_window = 20")
         expect(updated).to include("[mneme]")
@@ -114,17 +114,17 @@ RSpec.describe Anima::ConfigMigrator do
       it "appends all missing sections" do
         config = full_default_config
           .gsub(/# ─── Paths.*# ─── Session/m, "# ─── Session")
-          .gsub(/# ─── Analytical Brain.*\z/m, "")
+          .gsub(/# ─── Melete.*\z/m, "")
         write_config(config)
 
         result = migrator.run
 
         sections = result.additions.map(&:section).uniq
-        expect(sections).to contain_exactly("paths", "analytical_brain", "mneme", "recall")
+        expect(sections).to contain_exactly("paths", "melete", "mneme", "recall")
 
         updated = config_path.read
         expect(updated).to include("[paths]")
-        expect(updated).to include("[analytical_brain]")
+        expect(updated).to include("[melete]")
         expect(updated).to include("[mneme]")
       end
     end
@@ -134,7 +134,7 @@ RSpec.describe Anima::ConfigMigrator do
         config = full_default_config
           .sub('model = "claude-opus-4-6"', 'model = "claude-haiku-4-5"')
           .sub("max_tokens = 8192", "max_tokens = 16384")
-          .gsub(/# ─── Analytical Brain.*\z/m, "")
+          .gsub(/# ─── Melete.*\z/m, "")
         write_config(config)
 
         migrator.run
@@ -142,7 +142,7 @@ RSpec.describe Anima::ConfigMigrator do
         updated = config_path.read
         expect(updated).to include('model = "claude-haiku-4-5"')
         expect(updated).to include("max_tokens = 16384")
-        expect(updated).to include("[analytical_brain]")
+        expect(updated).to include("[melete]")
       end
     end
 
@@ -188,7 +188,7 @@ RSpec.describe Anima::ConfigMigrator do
 
   describe "idempotency" do
     it "returns :up_to_date on second run" do
-      config = full_default_config.gsub(/# ─── Analytical Brain.*\z/m, "")
+      config = full_default_config.gsub(/# ─── Melete.*\z/m, "")
       write_config(config)
 
       first_result = migrator.run
@@ -203,7 +203,7 @@ RSpec.describe Anima::ConfigMigrator do
     it "produces valid TOML after migration" do
       config = full_default_config
         .gsub(/# ─── Paths.*# ─── Session/m, "# ─── Session")
-        .gsub(/# ─── Analytical Brain.*\z/m, "")
+        .gsub(/# ─── Melete.*\z/m, "")
       write_config(config)
 
       migrator.run
@@ -211,7 +211,7 @@ RSpec.describe Anima::ConfigMigrator do
       expect { TomlRB.parse(config_path.read) }.not_to raise_error
       parsed = TomlRB.parse(config_path.read)
       expect(parsed).to have_key("paths")
-      expect(parsed).to have_key("analytical_brain")
+      expect(parsed).to have_key("melete")
       expect(parsed["paths"]["soul"]).to eq("#{anima_home}/soul.md")
     end
   end

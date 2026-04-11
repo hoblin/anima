@@ -64,7 +64,7 @@ module Workflows
       @workflows[name]
     end
 
-    # Workflow names and descriptions for inclusion in the analytical brain's context.
+    # Workflow names and descriptions for inclusion in Melete's context.
     #
     # @return [Hash{String => String}] name => description
     def catalog

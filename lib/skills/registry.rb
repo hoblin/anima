@@ -69,7 +69,7 @@ module Skills
       @skills[name]
     end
 
-    # Skill names and descriptions for inclusion in the analytical brain's context.
+    # Skill names and descriptions for inclusion in Melete's context.
     #
     # @return [Hash{String => String}] name => description
     def catalog

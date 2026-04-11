@@ -3,14 +3,14 @@
 require "rails_helper"
 
 RSpec.describe AgentRequestJob do
-  let(:session) { Session.create! }
+  let(:session) { create(:session) }
   let(:agent_loop) { instance_double(AgentLoop, run: nil, finalize: nil) }
 
   before do
     allow(AgentLoop).to receive(:new).and_return(agent_loop)
     allow(Mcp::ClientManager).to receive(:new)
       .and_return(instance_double(Mcp::ClientManager, register_tools: []))
-    allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(false)
+    allow(Anima::Settings).to receive(:melete_blocking_on_user_message).and_return(false)
   end
 
   describe "retry configuration" do
@@ -67,8 +67,8 @@ RSpec.describe AgentRequestJob do
     end
 
     context "parent session broadcasts" do
-      let(:parent) { Session.create! }
-      let(:child) { Session.create!(parent_session: parent, prompt: "task") }
+      let(:parent) { create(:session) }
+      let(:child) { create(:session, :sub_agent, parent_session: parent, prompt: "task") }
 
       it "broadcasts children_updated when claiming processing" do
         child.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
@@ -131,52 +131,51 @@ RSpec.describe AgentRequestJob do
       end
     end
 
-    context "blocking analytical brain" do
-      before { allow(Anima::Settings).to receive(:analytical_brain_blocking_on_user_message).and_return(true) }
+    context "blocking Melete" do
+      before { allow(Anima::Settings).to receive(:melete_blocking_on_user_message).and_return(true) }
 
-      it "runs analytical brain synchronously before the agent loop when enabled" do
+      it "runs Melete synchronously before the agent loop when enabled" do
         session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
-        analytical_brain_ran = false
-        allow(AnalyticalBrain::Runner).to receive(:new).and_wrap_original do |method, *args|
+        melete_ran = false
+        allow(Melete::Runner).to receive(:new).and_wrap_original do |method, *args|
           runner = method.call(*args)
-          allow(runner).to receive(:call) { analytical_brain_ran = true }
+          allow(runner).to receive(:call) { melete_ran = true }
           runner
         end
 
         described_class.perform_now(session.id)
 
-        expect(analytical_brain_ran).to be true
+        expect(melete_ran).to be true
       end
 
-      it "skips blocking analytical brain for sub-agent sessions" do
-        parent = Session.create!
-        child = Session.create!(parent_session: parent, prompt: "sub-agent")
+      it "skips blocking Melete for sub-agent sessions" do
+        child = create(:session, :sub_agent)
         child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
         child.messages.create!(message_type: "agent_message", payload: {"content" => "done"}, timestamp: 2)
 
-        expect(AnalyticalBrain::Runner).not_to receive(:new)
+        expect(Melete::Runner).not_to receive(:new)
 
         described_class.perform_now(child.id)
       end
 
-      it "continues with agent loop even if analytical brain fails" do
+      it "continues with agent loop even if Melete fails" do
         session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
         session.messages.create!(message_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
 
-        allow(AnalyticalBrain::Runner).to receive(:new).and_raise(RuntimeError, "brain exploded")
+        allow(Melete::Runner).to receive(:new).and_raise(RuntimeError, "Melete exploded")
 
         expect { described_class.perform_now(session.id) }.not_to raise_error
         expect(agent_loop).to have_received(:run)
       end
     end
 
-    it "schedules analytical brain after the agent loop completes" do
+    it "schedules Melete after the agent loop completes" do
       session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
       session.messages.create!(message_type: "agent_message", payload: {"content" => "Hi!"}, timestamp: 2)
 
       expect { described_class.perform_now(session.id) }
-        .to have_enqueued_job(AnalyticalBrainJob).with(session.id)
+        .to have_enqueued_job(MeleteJob).with(session.id)
     end
 
     it "finalizes the agent loop after completion" do

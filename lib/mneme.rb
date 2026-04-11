@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-# Mneme — the memory department. Watches for viewport eviction and creates
-# summaries before context is lost. Named after the Greek Titaness of memory.
+# Mneme — the muse of memory. Watches for viewport eviction and creates
+# summaries before context is lost. One of the Three Muses: she remembers
+# while Melete prepares and Aoide performs.
 #
-# Mneme is the third event bus department alongside Nous (main agent) and
-# the Analytical Brain. It operates as a phantom LLM loop: observes the
-# main session, creates snapshots, but leaves no trace of its own reasoning.
+# Operates as a phantom LLM loop: observes the main session, creates
+# snapshots, but leaves no trace of her own reasoning.
 module Mneme
   # Dev-only logger that writes to log/mneme.log.
   # In non-development environments returns a null logger so

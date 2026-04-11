@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-# A persistent objective tracked by the analytical brain during a session.
+# A persistent objective tracked by Melete during a session.
 # Goals form a two-level hierarchy: root goals represent high-level
 # objectives (semantic episodes), while sub-goals are TODO-style steps
 # rendered as checklist items in the agent's system prompt.
 #
-# The analytical brain creates and completes goals; the main agent sees
+# Melete creates and completes goals; the main agent sees
 # them in its context window but never manages them directly.
 class Goal < ApplicationRecord
   STATUSES = %w[active completed].freeze
@@ -26,7 +26,7 @@ class Goal < ApplicationRecord
   scope :root, -> { where(parent_goal_id: nil) }
 
   # @!method self.not_evicted
-  #   Goals still visible in context (not yet evicted by the analytical brain).
+  #   Goals still visible in context (not yet evicted by Melete).
   #   @return [ActiveRecord::Relation]
   scope :not_evicted, -> { where(evicted_at: nil) }
 
@@ -56,7 +56,7 @@ class Goal < ApplicationRecord
   # the semantic episode that spawned them has ended.
   #
   # Uses +update_all+ to avoid N per-record +after_commit+ broadcasts;
-  # the caller ({AnalyticalBrain::Tools::FinishGoal}) wraps the whole
+  # the caller ({Melete::Tools::FinishGoal}) wraps the whole
   # operation in a transaction so the root goal's single broadcast
   # includes the cascaded state.
   #

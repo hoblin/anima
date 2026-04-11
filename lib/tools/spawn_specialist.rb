@@ -5,7 +5,7 @@ module Tools
   # The specialist has a predefined system prompt and tool set defined
   # in its Markdown definition file under agents/.
   #
-  # Nickname assignment is handled by the {AnalyticalBrain::Runner} which
+  # Nickname assignment is handled by the {Melete::Runner} which
   # runs synchronously at spawn time, generating a unique nickname based
   # on the task — same as generic sub-agents.
   #
@@ -100,7 +100,7 @@ module Tools
         initial_cwd: @shell_session.pwd
       )
       create_goal_with_pinned_task(child, task)
-      assign_nickname_via_brain(child)
+      assign_nickname_via_melete(child)
       child.broadcast_children_update_to_parent
       AgentRequestJob.perform_later(child.id)
       child

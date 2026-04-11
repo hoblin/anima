@@ -45,5 +45,29 @@ FactoryBot.define do
       message_type { "tool_response" }
       sequence(:tool_use_id) { |n| "tu_resp_#{n}" }
     end
+
+    trait :from_melete_skill do
+      message_type { "tool_call" }
+      transient { skill_name { "gh-issue" } }
+      sequence(:tool_use_id) { |n| "from_melete_skill_#{n}" }
+      payload do
+        {"tool_name" => PendingMessage::MELETE_TOOL,
+         "tool_input" => {"skill" => skill_name},
+         "tool_use_id" => tool_use_id,
+         "content" => "[recalled skill: #{skill_name}]"}
+      end
+    end
+
+    trait :from_melete_workflow do
+      message_type { "tool_call" }
+      transient { workflow_name { "feature" } }
+      sequence(:tool_use_id) { |n| "from_melete_workflow_#{n}" }
+      payload do
+        {"tool_name" => PendingMessage::MELETE_TOOL,
+         "tool_input" => {"workflow" => workflow_name},
+         "tool_use_id" => tool_use_id,
+         "content" => "[recalled workflow: #{workflow_name}]"}
+      end
+    end
   end
 end

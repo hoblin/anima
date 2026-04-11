@@ -15,8 +15,8 @@ RSpec.describe Tools::SpawnSpecialist do
   subject(:tool) { described_class.new(session: parent_session, shell_session: shell_session, agent_registry: agent_registry) }
 
   before do
-    # Stub the analytical brain to simulate nickname assignment
-    allow_any_instance_of(AnalyticalBrain::Runner).to receive(:call) do |runner|
+    # Stub Melete to simulate nickname assignment
+    allow_any_instance_of(Melete::Runner).to receive(:call) do |runner|
       session = runner.instance_variable_get(:@session)
       session.update!(name: "code-scout")
     end
@@ -136,7 +136,7 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(child.prompt).not_to include("Expected deliverable")
     end
 
-    it "assigns nickname via the analytical brain" do
+    it "assigns nickname via Melete" do
       tool.execute(input)
 
       child = Session.last
@@ -217,8 +217,8 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(result).not_to match(/@code-scout/)
     end
 
-    it "falls back to agent-N on brain failure and still injects identity" do
-      allow_any_instance_of(AnalyticalBrain::Runner).to receive(:call)
+    it "falls back to agent-N on Melete failure and still injects identity" do
+      allow_any_instance_of(Melete::Runner).to receive(:call)
         .and_raise(Providers::Anthropic::RateLimitError, "rate limited")
 
       tool.execute(input)

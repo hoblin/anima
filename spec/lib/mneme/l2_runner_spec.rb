@@ -110,7 +110,7 @@ RSpec.describe Mneme::L2Runner do
         runner.call
 
         expect(captured_opts[:system]).to include("Level 2")
-        expect(captured_opts[:system]).to include("compress")
+        expect(captured_opts[:system]).to match(/compress/i)
       end
     end
 

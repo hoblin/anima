@@ -89,7 +89,7 @@ Always clean up tmux sessions when done. Use `anima-test` as the session name fo
 
 **Important:** Use `./exe/anima` (not `bundle exec anima`) to test local code changes. The exe uses `require_relative` so it loads local `lib/` directly. `bundle exec` may load the installed gem version instead.
 
-Analytical brain debug log (dev only): `tail -f log/analytical_brain.log`
+Melete debug log (dev only): `tail -f log/melete.log`
 
 ## Triggering API 400 for smoke testing
 

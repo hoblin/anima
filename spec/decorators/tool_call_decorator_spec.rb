@@ -354,7 +354,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
     end
   end
 
-  describe "#render_brain" do
+  describe "#render_melete" do
     context "with a regular tool call" do
       let(:message) do
         build_stubbed(:message, :tool_call,
@@ -362,7 +362,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       end
 
       it "returns the tool name with parameters" do
-        expect(decorator.render_brain).to eq('Tool call: bash({"command":"ls -la"})')
+        expect(decorator.render_melete).to eq('Tool call: bash({"command":"ls -la"})')
       end
     end
 
@@ -374,7 +374,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       end
 
       it "returns the full think text" do
-        expect(decorator.render_brain).to eq("Think: OAuth config is wrong, not individual tests.")
+        expect(decorator.render_melete).to eq("Think: OAuth config is wrong, not individual tests.")
       end
     end
 
@@ -385,7 +385,7 @@ RSpec.describe ToolCallDecorator, type: :decorator do
       end
 
       it "renders an empty hash for parameters" do
-        expect(decorator.render_brain).to eq("Tool call: bash({})")
+        expect(decorator.render_melete).to eq("Tool call: bash({})")
       end
     end
   end

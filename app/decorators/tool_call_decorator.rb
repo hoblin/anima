@@ -50,8 +50,8 @@ class ToolCallDecorator < MessageDecorator
 
   # Think calls get full text — the agent's reasoning IS the signal.
   # Other tool calls show tool name + params (compact JSON).
-  # @return [String] transcript line for the analytical brain
-  def render_brain
+  # @return [String] transcript line for Melete
+  def render_melete
     if think?
       "Think: #{thoughts}"
     else

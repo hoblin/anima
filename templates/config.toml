@@ -140,22 +140,22 @@ default_view_mode = "basic"
 # Regenerate session name every N messages.
 name_generation_interval = 30
 
-# ─── Analytical Brain ─────────────────────────────────────────
+# ─── Melete ─────────────────────────────────────────
 
-[analytical_brain]
+[melete]
 
-# Maximum tokens per analytical brain response.
+# Maximum tokens per Melete response.
 # Must accommodate multiple tool calls (rename + goals + skills + ready).
 max_tokens = 4096
 
-# Run the analytical brain synchronously before the main agent on user messages.
+# Run Melete synchronously before the main agent on user messages.
 # Ensures activated skills are available for the current response.
 blocking_on_user_message = true
 
-# Run the analytical brain asynchronously after the main agent completes.
+# Run Melete asynchronously after the main agent completes.
 blocking_on_agent_message = false
 
-# Number of recent messages to include in the analytical brain's context window.
+# Number of recent messages to include in Melete's context window.
 message_window = 20
 
 # ─── Mneme (Memory Department) ──────────────────────────────────

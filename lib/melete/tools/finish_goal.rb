@@ -1,0 +1,67 @@
+# frozen_string_literal: true
+
+module Melete
+  module Tools
+    # Marks a goal as completed on the main session. Sets the status to
+    # "completed" and records the completion timestamp.
+    class FinishGoal < ::Tools::Base
+      include GoalMessaging
+
+      def self.tool_name = "finish_goal"
+
+      def self.description = "Mark a goal as completed."
+
+      def self.input_schema
+        {
+          type: "object",
+          properties: {
+            goal_id: {type: "integer"}
+          },
+          required: %w[goal_id]
+        }
+      end
+
+      # @param main_session [Session] the session owning the goal
+      def initialize(main_session:, **)
+        @main_session = main_session
+      end
+
+      # @param input [Hash<String, Object>] with "goal_id"
+      # @return [String] confirmation message
+      # @return [Hash] with :error key on failure
+      def execute(input)
+        goal_id = input["goal_id"]
+        goal = @main_session.goals.find_by(id: goal_id)
+        return {error: "Goal not found (id: #{goal_id})"} unless goal
+
+        complete(goal)
+      end
+
+      private
+
+      # Marks the goal as completed. Root goals cascade completion to all
+      # active sub-goals within a single transaction so the after_commit
+      # broadcast includes the fully cascaded state.
+      #
+      # Returns an error for already-completed goals so Melete
+      # learns to check status before retrying.
+      def complete(goal)
+        id = goal.id
+        desc = goal.description
+        return {error: "Goal already completed: #{desc} (id: #{id})"} if goal.completed?
+
+        released = 0
+        Goal.transaction do
+          goal.update!(status: "completed", completed_at: Time.current)
+          goal.cascade_completion! if goal.root?
+          released = goal.release_orphaned_pins!
+        end
+
+        msg = "Goal completed: #{desc} (id: #{id})"
+        msg += " (released #{released} orphaned pins)" if released > 0
+        enqueue_goal_message(goal, msg)
+        msg
+      end
+    end
+  end
+end
