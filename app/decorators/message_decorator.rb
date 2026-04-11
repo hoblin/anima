@@ -18,17 +18,12 @@
 # Subclasses must override {#render_basic}. Verbose, debug, and brain modes
 # delegate to basic until subclasses provide their own implementations.
 #
-# @example Decorate a Message AR model
-#   decorator = MessageDecorator.for(message)
-#   decorator.render_basic  #=> {role: :user, content: "hello"} or nil
+# Instantiate via +message.decorate+ — {Message#decorator_class} picks the
+# concrete subclass based on +message_type+.
 #
-# @example Render for a specific view mode
-#   decorator = MessageDecorator.for(message)
-#   decorator.render("verbose")  #=> {role: :user, content: "hello", timestamp: 1709312325000000000}
-#
-# @example Decorate a raw payload hash (from EventBus)
-#   decorator = MessageDecorator.for(type: "user_message", content: "hello")
-#   decorator.render_basic  #=> {role: :user, content: "hello"}
+# @example Decorate a message and render it
+#   decorator = message.decorate
+#   decorator.render("basic")  #=> {role: :user, content: "hello"} or nil
 class MessageDecorator < ApplicationDecorator
   delegate_all
 
@@ -36,39 +31,6 @@ class MessageDecorator < ApplicationDecorator
   RETURN_ARROW = "\u21A9"
   ERROR_ICON = "\u274C"
   MIDDLE_TRUNCATION_MARKER = "\n[...truncated...]\n"
-
-  DECORATOR_MAP = {
-    "user_message" => "UserMessageDecorator",
-    "agent_message" => "AgentMessageDecorator",
-    "tool_call" => "ToolCallDecorator",
-    "tool_response" => "ToolResponseDecorator",
-    "system_message" => "SystemMessageDecorator"
-  }.freeze
-  private_constant :DECORATOR_MAP
-
-  # Normalizes hash payloads into a Message-like interface so decorators
-  # can use {#payload}, {#message_type}, etc. uniformly on both AR models
-  # and raw EventBus hashes. Token counts ride in-band on the hash — the
-  # decorator never estimates.
-  #
-  # @!attribute message_type [r] the message's type (e.g. "user_message")
-  # @!attribute payload [r] string-keyed hash of message data
-  # @!attribute timestamp [r] nanosecond-precision timestamp
-  # @!attribute token_count [r] cumulative token count
-  MessagePayload = Struct.new(:message_type, :payload, :timestamp, :token_count, keyword_init: true)
-
-  # Factory returning the appropriate subclass decorator for the given message.
-  # Hashes are normalized via {MessagePayload} to provide a uniform interface.
-  #
-  # @param message [Message, Hash] a Message AR model or a raw payload hash
-  # @return [MessageDecorator, nil] decorated message, or nil for unknown types
-  def self.for(message)
-    source = wrap_source(message)
-    klass_name = DECORATOR_MAP[source.message_type]
-    return nil unless klass_name
-
-    klass_name.constantize.new(source)
-  end
 
   RENDER_DISPATCH = {
     "basic" => :render_basic,
@@ -81,7 +43,7 @@ class MessageDecorator < ApplicationDecorator
 
   # Dispatches to the render method for the given view mode.
   #
-  # @param mode [String] one of "basic", "verbose", "debug", "brain"
+  # @param mode [String] one of "basic", "verbose", "debug", "brain", "mneme"
   # @return [Hash, String, nil] structured message data (basic/verbose/debug),
   #   plain string (brain), or nil to hide the message
   # @raise [ArgumentError] if the mode is not a valid view mode
@@ -173,20 +135,4 @@ class MessageDecorator < ApplicationDecorator
     tail = keep - head
     "#{str[0, head]}#{MIDDLE_TRUNCATION_MARKER}#{str[-tail, tail]}"
   end
-
-  # Normalizes input to something Draper can wrap.
-  # Message AR models pass through; hashes become MessagePayload structs
-  # with string-normalized keys.
-  def self.wrap_source(message)
-    return message unless message.is_a?(Hash)
-
-    normalized = message.transform_keys(&:to_s)
-    MessagePayload.new(
-      message_type: normalized["type"].to_s,
-      payload: normalized,
-      timestamp: normalized["timestamp"],
-      token_count: normalized["token_count"]&.to_i || 0
-    )
-  end
-  private_class_method :wrap_source
 end

@@ -321,10 +321,7 @@ class SessionChannel < ApplicationCable::Channel
   # @return [Hash] payload with "id" and optional "rendered" key
   def decorate_message_payload(message, mode = "basic")
     payload = message.payload.merge("id" => message.id)
-    decorator = MessageDecorator.for(message)
-    return payload unless decorator
-
-    payload.merge("rendered" => {mode => decorator.render(mode)})
+    payload.merge("rendered" => {mode => message.decorate.render(mode)})
   end
 
   # Transmits the assembled system prompt to the subscribing client.

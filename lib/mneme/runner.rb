@@ -117,7 +117,7 @@ module Mneme
       tool_count = 0
 
       messages.each do |message|
-        rendered = MessageDecorator.for(message).render("mneme")
+        rendered = message.decorate.render("mneme")
 
         case rendered
         when :tool_call

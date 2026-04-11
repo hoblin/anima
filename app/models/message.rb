@@ -97,6 +97,22 @@ class Message < ApplicationRecord
     end
   end
 
+  # Draper hook: picks the concrete decorator subclass based on
+  # {#message_type}. Overrides {Draper::Decoratable#decorator_class},
+  # which would otherwise default to the abstract {MessageDecorator}
+  # base class. Called implicitly by +message.decorate+.
+  #
+  # @return [Class] a {MessageDecorator} subclass
+  def decorator_class
+    case message_type
+    when "user_message" then UserMessageDecorator
+    when "agent_message" then AgentMessageDecorator
+    when "system_message" then SystemMessageDecorator
+    when "tool_call" then ToolCallDecorator
+    when "tool_response" then ToolResponseDecorator
+    end
+  end
+
   private
 
   def emit_created_event

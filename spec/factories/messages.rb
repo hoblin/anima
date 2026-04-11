@@ -10,6 +10,14 @@ FactoryBot.define do
       message_type { "user_message" }
     end
 
+    trait :agent_message do
+      message_type { "agent_message" }
+    end
+
+    trait :system_message do
+      message_type { "system_message" }
+    end
+
     trait :think_tool_call do
       message_type { "tool_call" }
       payload { {"tool_name" => "think", "tool_input" => {"thoughts" => "..."}} }
@@ -26,6 +34,16 @@ FactoryBot.define do
       message_type { "tool_response" }
       payload { {"content" => "ok", "tool_name" => "bash"} }
       sequence(:tool_use_id) { |n| "tu_bash_resp_#{n}" }
+    end
+
+    trait :tool_call do
+      message_type { "tool_call" }
+      sequence(:tool_use_id) { |n| "tu_call_#{n}" }
+    end
+
+    trait :tool_response do
+      message_type { "tool_response" }
+      sequence(:tool_use_id) { |n| "tu_resp_#{n}" }
     end
   end
 end

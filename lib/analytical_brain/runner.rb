@@ -176,7 +176,7 @@ module AnalyticalBrain
       messages = recent_messages
       return [] if messages.empty?
 
-      transcript = messages.filter_map { |msg| MessageDecorator.for(msg)&.render("brain") }.join("\n")
+      transcript = messages.filter_map { |msg| msg.decorate.render("brain") }.join("\n")
 
       if @session.sub_agent?
         build_child_message(transcript)
