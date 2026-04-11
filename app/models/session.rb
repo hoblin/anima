@@ -164,7 +164,7 @@ class Session < ApplicationRecord
   #
   # @return [Array<String>] skill names in the viewport, activation order
   def skills_in_viewport
-    from_melete_input_values("skill")
+    from_melete_tool_inputs.filter_map { |input| input["skill"] }
   end
 
   # Workflow name currently present in the viewport as a `from_melete`
@@ -173,7 +173,7 @@ class Session < ApplicationRecord
   #
   # @return [String, nil] workflow name in the viewport, or nil
   def workflow_in_viewport
-    from_melete_input_values("workflow").last
+    from_melete_tool_inputs.filter_map { |input| input["workflow"] }.last
   end
 
   # Active skills — skills Aoide is currently carrying or about to carry.
@@ -532,17 +532,27 @@ class Session < ApplicationRecord
   # has in front of her. Callers invoke this after any operation that
   # changes viewport composition (phantom pair promotion, Mneme eviction).
   #
+  # Composes the viewport scan and pending_messages reads inline so the
+  # viewport window query runs once, not once per field.
+  #
   # @return [void]
   def broadcast_active_state!
+    tool_inputs = from_melete_tool_inputs
+    skills_in_view = tool_inputs.filter_map { |input| input["skill"] }
+    workflow_in_view = tool_inputs.filter_map { |input| input["workflow"] }.last
+
+    queued_skills = pending_messages.where(source_type: "skill").order(:id).pluck(:source_name)
+    pending_workflow = pending_messages.where(source_type: "workflow").order(:id).pick(:source_name)
+
     ActionCable.server.broadcast("session_#{id}", {
       "action" => "active_skills_updated",
       "session_id" => id,
-      "active_skills" => active_skills
+      "active_skills" => (skills_in_view + queued_skills).uniq
     })
     ActionCable.server.broadcast("session_#{id}", {
       "action" => "active_workflow_updated",
       "session_id" => id,
-      "active_workflow" => active_workflow
+      "active_workflow" => pending_workflow || workflow_in_view
     })
   end
 
@@ -596,21 +606,21 @@ class Session < ApplicationRecord
 
   private
 
-  # Pulls the +input_key+ field from every `from_melete` tool_call
+  # Loads the `tool_input` payloads of every `from_melete` tool_call
   # currently in the viewport, in activation order. Used to derive
   # "what skills/workflows does Aoide actually have in front of her
   # right now" directly from her viewport — no separate tracking state.
+  # One query serves both {#skills_in_viewport} and {#workflow_in_viewport}
+  # so the viewport window scan runs once per call path.
   #
-  # @param input_key [String] "skill" or "workflow"
-  # @return [Array<String>] non-nil values in message-id order
-  def from_melete_input_values(input_key)
-    path = "$.tool_input.#{input_key}"
+  # @return [Array<Hash>] tool_input hashes in message-id order
+  def from_melete_tool_inputs
     viewport_messages
       .where(message_type: "tool_call")
       .where("json_extract(payload, '$.tool_name') = ?", PendingMessage::MELETE_TOOL)
       .order(:id)
-      .pluck(Arel.sql("json_extract(payload, #{ActiveRecord::Base.connection.quote(path)})"))
-      .compact
+      .pluck(Arel.sql("json_extract(payload, '$.tool_input')"))
+      .filter_map { |json| JSON.parse(json) if json }
   end
 
   # Enqueues a recalled skill or workflow as a {PendingMessage}.
