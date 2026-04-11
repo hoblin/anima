@@ -3,7 +3,7 @@
 require "rails_helper"
 
 RSpec.describe AgentRequestJob do
-  let(:session) { Session.create! }
+  let(:session) { create(:session) }
   let(:agent_loop) { instance_double(AgentLoop, run: nil, finalize: nil) }
 
   before do
@@ -67,8 +67,8 @@ RSpec.describe AgentRequestJob do
     end
 
     context "parent session broadcasts" do
-      let(:parent) { Session.create! }
-      let(:child) { Session.create!(parent_session: parent, prompt: "task") }
+      let(:parent) { create(:session) }
+      let(:child) { create(:session, :sub_agent, parent_session: parent, prompt: "task") }
 
       it "broadcasts children_updated when claiming processing" do
         child.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
@@ -150,8 +150,7 @@ RSpec.describe AgentRequestJob do
       end
 
       it "skips blocking Melete for sub-agent sessions" do
-        parent = Session.create!
-        child = Session.create!(parent_session: parent, prompt: "sub-agent")
+        child = create(:session, :sub_agent)
         child.messages.create!(message_type: "user_message", payload: {"content" => "task"}, timestamp: 1)
         child.messages.create!(message_type: "agent_message", payload: {"content" => "done"}, timestamp: 2)
 
@@ -164,7 +163,7 @@ RSpec.describe AgentRequestJob do
         session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
         session.messages.create!(message_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
 
-        allow(Melete::Runner).to receive(:new).and_raise(RuntimeError, "brain exploded")
+        allow(Melete::Runner).to receive(:new).and_raise(RuntimeError, "Melete exploded")
 
         expect { described_class.perform_now(session.id) }.not_to raise_error
         expect(agent_loop).to have_received(:run)

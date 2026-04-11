@@ -322,6 +322,25 @@ RSpec.describe Session do
           "session_id" => session.id,
           "active_workflow" => "feature"))
     end
+
+    it "broadcasts empty state when no skills or workflows are active" do
+      expect { session.broadcast_active_state! }
+        .to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("action" => "active_skills_updated", "active_skills" => []))
+        .and have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("action" => "active_workflow_updated", "active_workflow" => nil))
+    end
+
+    it "broadcasts both skills and workflow when they coexist" do
+      session.activate_skill("gh-issue")
+      session.activate_workflow("feature")
+
+      expect { session.broadcast_active_state! }
+        .to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("action" => "active_skills_updated", "active_skills" => ["gh-issue"]))
+        .and have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("action" => "active_workflow_updated", "active_workflow" => "feature"))
+    end
   end
 
   describe "#granted_tools" do
