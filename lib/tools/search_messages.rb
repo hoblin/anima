@@ -1,25 +1,27 @@
 # frozen_string_literal: true
 
 module Tools
-  # Active memory search — keyword lookup across conversation history.
-  # Returns ranked snippets with message IDs for drill-down via {Remember}.
+  # Keyword search across long-term memory — every message Anima has
+  # ever seen, across every session. Wraps {Mneme::Search} (FTS5) and
+  # returns ranked snippets with message IDs for drill-down via
+  # {ViewMessages}.
   #
   # Two-step memory workflow:
-  #   1. `recall(query: "auth flow")` → discovers relevant messages
-  #   2. `remember(message_id: 42)` → fractal zoom into full context
+  #   1. `search_messages(query: "auth flow")` → discovers relevant messages
+  #   2. `view_messages(message_id: 42)` → fractal zoom into full context
   #
-  # Wraps {Mneme::Search} — same FTS5 engine used by passive recall,
-  # but triggered on demand by the agent instead of automatically by goals.
+  # Same FTS5 engine Mneme uses for passive recall — but this variant
+  # fires on demand when Aoide reaches for a memory herself.
   #
-  # @example Search all sessions
-  #   recall(query: "authentication flow")
+  # @example Search across all sessions
+  #   search_messages(query: "authentication flow")
   #
-  # @example Search current session only
-  #   recall(query: "OAuth config", session_only: true)
-  class Recall < Base
-    def self.tool_name = "recall"
+  # @example Restrict to the current session
+  #   search_messages(query: "OAuth config", session_only: true)
+  class SearchMessages < Base
+    def self.tool_name = "search_messages"
 
-    def self.description = "Find messages across past conversations by keywords."
+    def self.description = "Search long-term memory (past conversations) by keyword. Returns ranked message snippets with IDs — pass any ID to view_messages to see the full context around it."
 
     def self.input_schema
       {
@@ -55,7 +57,7 @@ module Tools
     private
 
     # Formats results as token-efficient, LLM-readable output.
-    # Each result includes message_id for drill-down via remember tool.
+    # Each result includes message_id for drill-down via view_messages.
     #
     # @param query [String] the original search query
     # @param results [Array<Mneme::Search::Result>] ranked search results

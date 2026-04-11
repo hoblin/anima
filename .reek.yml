@@ -26,8 +26,8 @@ detectors:
       - "Anima::ConfigMigrator"
       - "WebGetToolDecorator"
       - "Tools::WebGet#validate_and_fetch"
-      # Remember tool renders events from other objects — formatting IS the job.
-      - "Tools::Remember"
+      # ViewMessages renders events from other objects — formatting IS the job.
+      - "Tools::ViewMessages"
       # Event subscribers extract payload fields — inherent to the pattern.
       - "Events::Subscribers::SubagentMessageRouter"
       # Spawn tools orchestrate child session creation — references are the job.
@@ -107,7 +107,7 @@ detectors:
     exclude:
       - "Tools::WebGet#validate_and_fetch"
       # Remember tool accesses event data for formatting — inherent to rendering.
-      - "Tools::Remember"
+      - "Tools::ViewMessages"
       # Nickname validation checks parent_session for existence then queries — two calls, one guard.
       - "Melete::Tools::AssignNickname#sibling_nickname_taken?"
       # Delivery method references session.id for lookup, BounceBack, and auth broadcast.
@@ -116,7 +116,7 @@ detectors:
   # build_sections passes context through to sub-methods — inherent to assembly.
   LongParameterList:
     exclude:
-      - "Tools::Remember#build_sections"
+      - "Tools::ViewMessages#build_sections"
   # Method length is enforced by code review, not arbitrary line counts
   TooManyStatements:
     enabled: false

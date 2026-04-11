@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe Tools::Recall do
+RSpec.describe Tools::SearchMessages do
   let(:session) { Session.create!(name: "Current Session") }
   let(:tool) { described_class.new(session: session) }
 
@@ -25,15 +25,15 @@ RSpec.describe Tools::Recall do
   end
 
   describe ".tool_name" do
-    it { expect(described_class.tool_name).to eq("recall") }
+    it { expect(described_class.tool_name).to eq("search_messages") }
   end
 
   describe ".schema" do
     it "returns a valid Anthropic tool schema" do
       schema = described_class.schema
 
-      expect(schema[:name]).to eq("recall")
-      expect(schema[:description]).to include("past conversations")
+      expect(schema[:name]).to eq("search_messages")
+      expect(schema[:description]).to include("long-term memory")
       expect(schema[:input_schema][:required]).to include("query")
     end
   end

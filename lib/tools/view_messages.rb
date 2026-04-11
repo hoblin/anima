@@ -1,21 +1,21 @@
 # frozen_string_literal: true
 
 module Tools
-  # Fractal-resolution zoom into message history. Returns a window centered
-  # on a target message with full detail at the center and compressed context
-  # at the edges — sharp fovea, blurry periphery.
+  # Fractal-resolution window into long-term memory. Given a message_id,
+  # returns the surrounding conversation with full detail at the center
+  # and compressed snapshots at the edges — sharp fovea, blurry periphery.
   #
   # Output structure:
   #   [Previous snapshots — compressed context before]
   #   [Messages N-M — full detail, tool_responses compressed to checkmarks]
   #   [Following snapshots — compressed context after]
   #
-  # The agent discovers target messages via FTS5 search results embedded in
-  # viewport recall snippets. This tool drills down into the full context.
+  # Aoide discovers target message IDs via {SearchMessages} and drills
+  # down here to recover the full context around any moment.
   #
   # @example
-  #   remember(message_id: 42)
-  class Remember < Base
+  #   view_messages(message_id: 42)
+  class ViewMessages < Base
     # Messages around the target to include at full resolution.
     # ±10 messages provides sharp foveal detail while keeping output readable.
     CONTEXT_WINDOW = 20
@@ -26,9 +26,9 @@ module Tools
       "system_message" => "System"
     }.freeze
 
-    def self.tool_name = "remember"
+    def self.tool_name = "view_messages"
 
-    def self.description = "Recall the full conversation around a past message."
+    def self.description = "View the full conversation around a message in long-term memory. Pass a message_id — typically one returned by search_messages — to see the surrounding exchange with compressed snapshots at the edges."
 
     def self.input_schema
       {

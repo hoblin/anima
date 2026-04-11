@@ -1017,7 +1017,7 @@ RSpec.describe Session do
       schemas = session.tool_schemas
       names = schemas.map { |s| s[:name] }
 
-      expect(names).to include("bash", "read_file", "write_file", "edit_file", "web_get", "think", "remember")
+      expect(names).to include("bash", "read_file", "write_file", "edit_file", "web_get", "think", "view_messages", "search_messages")
       expect(names).to include("spawn_subagent", "spawn_specialist", "open_issue")
       expect(names).not_to include("mark_goal_completed")
     end

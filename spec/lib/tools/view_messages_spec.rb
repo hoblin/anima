@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe Tools::Remember do
+RSpec.describe Tools::ViewMessages do
   let(:session) { Session.create! }
   let(:tool) { described_class.new(session: session) }
 
@@ -25,15 +25,15 @@ RSpec.describe Tools::Remember do
   end
 
   describe ".tool_name" do
-    it { expect(described_class.tool_name).to eq("remember") }
+    it { expect(described_class.tool_name).to eq("view_messages") }
   end
 
   describe ".schema" do
     it "returns a valid Anthropic tool schema" do
       schema = described_class.schema
 
-      expect(schema[:name]).to eq("remember")
-      expect(schema[:description]).to include("conversation")
+      expect(schema[:name]).to eq("view_messages")
+      expect(schema[:description]).to include("long-term memory")
       expect(schema[:input_schema][:required]).to include("message_id")
     end
   end
