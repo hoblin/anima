@@ -49,7 +49,7 @@ class ToolResponseDecorator < MessageDecorator
   # Think responses ("OK") are noise — excluded from Melete's transcript.
   # Other tool responses are compressed to success/failure indicators only.
   # @return [String, nil] ✅ or ❌ indicator, nil for think responses
-  def render_brain
+  def render_melete
     return if think?
 
     (payload["success"] != false) ? "\u2705" : "\u274C"

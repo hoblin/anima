@@ -181,20 +181,20 @@ RSpec.describe Tools::SpawnSubagent do
     end
 
     it "runs Melete synchronously" do
-      brain_called = false
+      melete_called = false
       allow_any_instance_of(Melete::Runner).to receive(:call) do |runner|
-        brain_called = true
+        melete_called = true
         session = runner.instance_variable_get(:@session)
-        session.update!(name: "brain-named")
+        session.update!(name: "melete-named")
       end
 
       tool.execute(input)
 
-      expect(brain_called).to be true
-      expect(Session.last.name).to eq("brain-named")
+      expect(melete_called).to be true
+      expect(Session.last.name).to eq("melete-named")
     end
 
-    it "falls back to agent-N on brain failure and still injects identity" do
+    it "falls back to agent-N on Melete failure and still injects identity" do
       allow_any_instance_of(Melete::Runner).to receive(:call)
         .and_raise(Providers::Anthropic::RateLimitError, "rate limited")
 

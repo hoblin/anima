@@ -24,7 +24,7 @@ class AgentMessageDecorator < MessageDecorator
 
   # @return [String] agent message for Melete, middle-truncated
   #   if very long (preserves opening context and final conclusion)
-  def render_brain
+  def render_melete
     "Assistant: #{truncate_middle(content)}"
   end
 

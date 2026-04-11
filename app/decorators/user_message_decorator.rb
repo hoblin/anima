@@ -21,7 +21,7 @@ class UserMessageDecorator < MessageDecorator
 
   # @return [String] user message for Melete, middle-truncated
   #   if very long (preserves intent at start and conclusion at end)
-  def render_brain
+  def render_melete
     "User: #{truncate_middle(content)}"
   end
 

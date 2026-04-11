@@ -21,7 +21,7 @@ module Melete
   # @example
   #   Melete::Runner.new(session).call
   class Runner
-    # A composable unit of brain capability: a prompt section + its tools.
+    # A composable unit of Melete's capability: a prompt section + its tools.
     Responsibility = Data.define(:prompt, :tools)
 
     RESPONSIBILITIES = {
@@ -170,7 +170,7 @@ module Melete
       messages = recent_messages
       return [] if messages.empty?
 
-      transcript = messages.filter_map { |msg| msg.decorate.render("brain") }.join("\n")
+      transcript = messages.filter_map { |msg| msg.decorate.render("melete") }.join("\n")
 
       if @session.sub_agent?
         build_child_message(transcript)

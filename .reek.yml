@@ -15,7 +15,7 @@ detectors:
       - "Anima::Settings#get"
       - "TUI::Settings#get"
   # Rescue blocks naturally reference the error object more than self.
-  # Brain transcript builds from event collection — the method's entire purpose.
+  # Melete transcript builds from event collection — the method's entire purpose.
   # ConfigMigrator text processing methods naturally reference local line arrays.
   # ToolDecorator subclasses operate on the tool result — that's the pattern.
   # Tool rescue blocks naturally reference the error object.
@@ -35,7 +35,7 @@ detectors:
       - "Tools::SpawnSpecialist#spawn_child"
       - "Tools::SpawnSpecialist#execute"
       # Spawn helpers operate on child session — inherent to the mixin pattern.
-      - "Tools::SubagentPrompts#assign_nickname_via_brain"
+      - "Tools::SubagentPrompts#assign_nickname_via_melete"
       - "Tools::SubagentPrompts#inject_identity_context"
       # Registry dispatches to tool's threshold method — duck-typing delegation.
       - "Tools::Registry#truncation_threshold"

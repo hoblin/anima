@@ -100,7 +100,7 @@ module Tools
         initial_cwd: @shell_session.pwd
       )
       create_goal_with_pinned_task(child, task)
-      assign_nickname_via_brain(child)
+      assign_nickname_via_melete(child)
       child.broadcast_children_update_to_parent
       AgentRequestJob.perform_later(child.id)
       child

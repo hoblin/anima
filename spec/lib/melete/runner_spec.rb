@@ -433,7 +433,7 @@ RSpec.describe Melete::Runner do
 
         described_class.new(session).call
 
-        # Brain may or may not rename — but it should complete without error
+        # Melete may or may not rename — but it should complete without error
       end
     end
   end

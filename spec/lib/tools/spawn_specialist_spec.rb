@@ -217,7 +217,7 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(result).not_to match(/@code-scout/)
     end
 
-    it "falls back to agent-N on brain failure and still injects identity" do
+    it "falls back to agent-N on Melete failure and still injects identity" do
       allow_any_instance_of(Melete::Runner).to receive(:call)
         .and_raise(Providers::Anthropic::RateLimitError, "rate limited")
 

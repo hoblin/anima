@@ -43,8 +43,8 @@ module Melete
       # active sub-goals within a single transaction so the after_commit
       # broadcast includes the fully cascaded state.
       #
-      # Returns an error for already-completed goals so the analytical
-      # brain learns to check status before retrying.
+      # Returns an error for already-completed goals so Melete
+      # learns to check status before retrying.
       def complete(goal)
         id = goal.id
         desc = goal.description
