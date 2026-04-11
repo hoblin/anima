@@ -849,11 +849,9 @@ class Session < ApplicationRecord
     root_goals = goals.root.active.includes(:sub_goals).order(:created_at)
     return [] if root_goals.empty?
 
-    pins = pinned_messages
+    pins_scope = pinned_messages.where("pinned_messages.message_id < ?", first_message_id)
+    selected_pins = select_pins_within_budget(pins_scope, budget: budget)
       .includes(:message, :goals)
-      .where("pinned_messages.message_id < ?", first_message_id)
-
-    selected_pins = select_pins_within_budget(pins, budget: budget)
     content = render_goal_snapshot_with_pins(root_goals, selected_pins)
 
     # Uses session ID (not PendingMessage ID) because this snapshot is
@@ -869,27 +867,25 @@ class Session < ApplicationRecord
     ]
   end
 
-  # Walks pins chronologically (oldest first, by underlying message_id),
-  # selecting until the token budget is exhausted. Always includes the
-  # first pin even if it alone exceeds the budget. Mirrors
-  # {#select_snapshots_within_budget}.
+  # Selects pins within a token budget using a cumulative-sum window
+  # function — mirror of {#eviction_zone_messages} but keyed by
+  # +message_id+. Walks oldest-first and always anchors on the first
+  # pin even if it alone exceeds the budget (via
+  # +running_total = token_count+).
   #
   # @param scope [ActiveRecord::Relation] pin scope to select from
   # @param budget [Integer] maximum tokens to include
-  # @return [Array<PinnedMessage>]
+  # @return [ActiveRecord::Relation<PinnedMessage>] chronologically ordered
   def select_pins_within_budget(scope, budget:)
-    selected = []
-    remaining = budget
+    windowed = scope.select(
+      "pinned_messages.*",
+      "SUM(pinned_messages.token_count) OVER (ORDER BY pinned_messages.message_id ASC) AS running_total"
+    )
 
-    scope.order(:message_id).each do |pin|
-      cost = pin.token_count
-      break if cost > remaining && selected.any?
-
-      selected << pin
-      remaining -= cost
-    end
-
-    selected
+    PinnedMessage
+      .from(windowed, :pinned_messages)
+      .where("running_total <= ? OR running_total = token_count", budget)
+      .order(:message_id)
   end
 
   # Renders active goals with their associated pinned messages as a
