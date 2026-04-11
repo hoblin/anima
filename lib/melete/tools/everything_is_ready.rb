@@ -2,7 +2,7 @@
 
 module Melete
   module Tools
-    # Terminal tool that signals the analytical brain has completed its work.
+    # Terminal tool that signals Melete has completed its work.
     # Call this when no changes are needed — the current session state is
     # already good.
     #

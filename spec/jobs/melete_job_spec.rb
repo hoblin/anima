@@ -31,7 +31,7 @@ RSpec.describe MeleteJob do
   end
 
   describe "#perform" do
-    it "runs the analytical brain for the given session" do
+    it "runs Melete for the given session" do
       described_class.perform_now(session.id)
 
       expect(runner).to have_received(:call)

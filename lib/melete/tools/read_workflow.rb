@@ -3,7 +3,7 @@
 module Melete
   module Tools
     # Reads and activates a workflow on the main session.
-    # Returns the full workflow content so the brain can create goals from it.
+    # Returns the full workflow content so Melete can create goals from it.
     # The workflow's content enters the conversation as a phantom
     # tool_use/tool_result pair through the {PendingMessage} promotion flow.
     class ReadWorkflow < ::Tools::Base

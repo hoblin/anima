@@ -4,9 +4,9 @@ module Melete
   module Tools
     # Renames the main session with an emoji and short descriptive name.
     # Operates on the main session passed through the registry context,
-    # not on the phantom analytical brain session.
+    # not on the phantom Melete session.
     #
-    # The analytical brain calls this when a conversation's topic becomes
+    # Melete calls this when a conversation's topic becomes
     # clear or shifts significantly enough to warrant a new name.
     class RenameSession < ::Tools::Base
       def self.tool_name = "rename_session"

@@ -19,7 +19,7 @@ class UserMessageDecorator < MessageDecorator
     render_verbose.merge(token_info)
   end
 
-  # @return [String] user message for the analytical brain, middle-truncated
+  # @return [String] user message for Melete, middle-truncated
   #   if very long (preserves intent at start and conclusion at end)
   def render_brain
     "User: #{truncate_middle(content)}"

@@ -4,14 +4,14 @@ module Melete
   module Tools
     # Updates a goal's description on the main session.
     #
-    # The analytical brain creates goals early when intent is vague, then
+    # Melete creates goals early when intent is vague, then
     # refines them as the conversation clarifies scope — e.g. "implement auth"
     # becomes "implement OAuth2 middleware for API endpoints". Without this
-    # tool the brain would have to choose between keeping a stale description
+    # tool she would have to choose between keeping a stale description
     # or creating a duplicate goal.
     #
     # Completed goals cannot be updated; attempting to do so returns an error
-    # so the brain learns to check status before calling this tool.
+    # so she learns to check status before calling this tool.
     class UpdateGoal < ::Tools::Base
       include GoalMessaging
 

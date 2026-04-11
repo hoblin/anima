@@ -9,7 +9,7 @@ RSpec.describe Tools::SpawnSubagent do
   subject(:tool) { described_class.new(session: parent_session, shell_session: shell_session) }
 
   before do
-    # Stub the analytical brain to simulate nickname assignment
+    # Stub Melete to simulate nickname assignment
     allow_any_instance_of(Melete::Runner).to receive(:call) do |runner|
       session = runner.instance_variable_get(:@session)
       session.update!(name: "loop-sleuth")
@@ -173,14 +173,14 @@ RSpec.describe Tools::SpawnSubagent do
       expect(result).not_to match(/@loop-sleuth/)
     end
 
-    it "assigns nickname via the analytical brain" do
+    it "assigns nickname via Melete" do
       tool.execute(input)
 
       child = Session.last
       expect(child.name).to eq("loop-sleuth")
     end
 
-    it "runs the analytical brain synchronously" do
+    it "runs Melete synchronously" do
       brain_called = false
       allow_any_instance_of(Melete::Runner).to receive(:call) do |runner|
         brain_called = true

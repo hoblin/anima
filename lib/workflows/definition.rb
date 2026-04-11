@@ -7,10 +7,10 @@ module Workflows
 
   # A workflow parsed from a Markdown definition file.
   # YAML frontmatter holds metadata; the Markdown body contains free-form
-  # instructions that the analytical brain reads and converts into goals.
+  # instructions that Melete reads and converts into goals.
   #
   # Workflows are operational recipes — they describe WHAT to do step by
-  # step. The analytical brain uses judgment to decompose workflow prose
+  # step. Melete uses judgment to decompose workflow prose
   # into tracked goals based on the user's specific context.
   #
   # @example Workflow file format
@@ -25,7 +25,7 @@ module Workflows
     # @return [String] unique workflow identifier used in read_workflow(name: "...")
     attr_reader :name
 
-    # @return [String] description shown to the analytical brain for relevance matching
+    # @return [String] description shown to Melete for relevance matching
     attr_reader :description
 
     # @return [String] workflow content (Markdown body) — free-form instructions

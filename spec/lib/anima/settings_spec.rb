@@ -62,7 +62,7 @@ RSpec.describe Anima::Settings do
       expect(described_class.name_generation_interval).to eq(30)
     end
 
-    it "reads analytical brain settings" do
+    it "reads Melete settings" do
       expect(described_class.melete_max_tokens).to eq(128)
       expect(described_class.melete_blocking_on_user_message).to be true
       expect(described_class.melete_blocking_on_agent_message).to be false

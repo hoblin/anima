@@ -51,7 +51,7 @@ module Tools
     end
 
     # Creates a child session with a clean context (no parent history),
-    # runs the analytical brain to assign a nickname, persists the task
+    # runs Melete to assign a nickname, persists the task
     # as a pinned user message, and queues background processing.
     # Returns immediately after brain completes (blocking for ~200ms).
     #

@@ -162,7 +162,7 @@ class Session < ApplicationRecord
   end
 
   # Returns skill names whose recalled content is currently visible in the
-  # viewport. Used by the analytical brain for deduplication — skills already
+  # viewport. Used by Melete for deduplication — skills already
   # in the viewport are excluded from the activation catalog.
   #
   # @return [Set<String>] skill names present in the viewport
@@ -603,7 +603,7 @@ class Session < ApplicationRecord
   end
 
   # Enqueues a recalled skill or workflow as a {PendingMessage}.
-  # Always goes through the pending queue because the analytical brain
+  # Always goes through the pending queue because Melete
   # only runs during processing. The message enters the conversation
   # through the normal promotion flow as a phantom tool_use/tool_result pair.
   #

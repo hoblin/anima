@@ -22,7 +22,7 @@ class AgentMessageDecorator < MessageDecorator
     render_verbose.merge(token_info)
   end
 
-  # @return [String] agent message for the analytical brain, middle-truncated
+  # @return [String] agent message for Melete, middle-truncated
   #   if very long (preserves opening context and final conclusion)
   def render_brain
     "Assistant: #{truncate_middle(content)}"

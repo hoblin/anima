@@ -114,7 +114,7 @@ module Melete
       )
     end
 
-    # Runs the analytical brain loop. Builds context from the session's
+    # Runs Melete's loop. Builds context from the session's
     # recent messages, calls the LLM with the session-appropriate tool set,
     # and executes any tool calls against the session.
     #
@@ -244,7 +244,7 @@ module Melete
       SECTION
     end
 
-    # Shows sibling nicknames already in use so the brain avoids collisions
+    # Shows sibling nicknames already in use so Melete avoids collisions
     # at prompt level (the tool also validates at execution time).
     #
     # @return [String, nil] sibling names section, or nil for parent sessions
@@ -266,11 +266,11 @@ module Melete
     end
 
     # Skills already visible in the viewport are excluded from the catalog
-    # so the brain doesn't re-activate them. When a skill evicts from the
-    # viewport, it reappears here and the brain can re-inject if relevant.
+    # so Melete doesn't re-activate them. When a skill evicts from the
+    # viewport, it reappears here and she can re-inject if relevant.
     #
     # @see Session#skills_in_viewport
-    # @return [String] available skills list for the analytical brain
+    # @return [String] available skills list for Melete
     def skills_catalog_section
       present = @session.skills_in_viewport
       catalog = Skills::Registry.instance.catalog.except(*present)
@@ -290,7 +290,7 @@ module Melete
     # Workflows already visible in the viewport are excluded from the catalog.
     #
     # @see Session#workflow_in_viewport
-    # @return [String] available workflows list for the analytical brain
+    # @return [String] available workflows list for Melete
     def workflows_catalog_section
       present = @session.workflow_in_viewport
       catalog = Workflows::Registry.instance.catalog.reject { |name, _| name == present }
@@ -307,13 +307,13 @@ module Melete
       SECTION
     end
 
-    # @return [String, nil] active goals for the brain's own context,
-    #   so it knows what already exists and avoids duplicating
+    # @return [String, nil] active goals for Melete's own context,
+    #   so she knows what already exists and avoids duplicating
     def active_goals_section
       root_goals = @session.goals.root.includes(:sub_goals).active.order(:created_at)
       return if root_goals.empty?
 
-      lines = root_goals.map { |goal| format_goal_for_brain(goal) }
+      lines = root_goals.map { |goal| format_goal_for_melete(goal) }
       <<~SECTION
         ──────────────────────────────
         ACTIVE GOALS
@@ -323,14 +323,14 @@ module Melete
     end
 
     # Formats a root goal and its sub-goals as a markdown checklist
-    # with IDs so the brain can reference them in finish_goal calls.
+    # with IDs so Melete can reference them in finish_goal calls.
     #
     # @example
     #   "- Implement feature X (id: 42)\n  - [x] Read code (id: 43)\n  - [ ] Write tests (id: 44)"
     #
     # @param goal [Goal] root goal with preloaded sub_goals
-    # @return [String] goal formatted as markdown checklist for brain context
-    def format_goal_for_brain(goal)
+    # @return [String] goal formatted as markdown checklist for Melete's context
+    def format_goal_for_melete(goal)
       parts = ["- #{goal.description} (id: #{goal.id})"]
       goal.sub_goals.sort_by(&:created_at).each do |sub|
         checkbox = (sub.status == "completed") ? "[x]" : "[ ]"
@@ -339,7 +339,7 @@ module Melete
       parts.join("\n")
     end
 
-    # @return [Logger] dev-only analytical brain logger
+    # @return [Logger] dev-only Melete logger
     def log = Melete.logger
 
     # @return [Tools::Registry] registry with tools from active responsibilities

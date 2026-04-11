@@ -3,7 +3,7 @@
 module Melete
   module Tools
     # Shared helper for goal tools that enqueue phantom pair messages
-    # when the analytical brain creates, updates, or completes a goal.
+    # when Melete creates, updates, or completes a goal.
     #
     # Including classes must set +@main_session+ to the owning {Session}.
     module GoalMessaging

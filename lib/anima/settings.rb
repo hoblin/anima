@@ -221,19 +221,19 @@ module Anima
 
       # ─── Melete ─────────────────────────────────────────
 
-      # Maximum tokens per analytical brain response.
+      # Maximum tokens per Melete response.
       # @return [Integer]
       def melete_max_tokens = get("melete", "max_tokens")
 
-      # Run the analytical brain synchronously before the main agent on user messages.
+      # Run Melete synchronously before the main agent on user messages.
       # @return [Boolean]
       def melete_blocking_on_user_message = get("melete", "blocking_on_user_message")
 
-      # Run the analytical brain asynchronously after the main agent completes.
+      # Run Melete asynchronously after the main agent completes.
       # @return [Boolean]
       def melete_blocking_on_agent_message = get("melete", "blocking_on_agent_message")
 
-      # Number of recent messages to include in the analytical brain's context window.
+      # Number of recent messages to include in Melete's context window.
       # @return [Integer]
       def melete_message_window = get("melete", "message_window")
 

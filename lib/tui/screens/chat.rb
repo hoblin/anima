@@ -449,7 +449,7 @@ module TUI
         @session_info[:name] = msg["name"]
       end
 
-      # Updates the active skills list when the analytical brain activates or
+      # Updates the active skills list when Melete activates or
       # deactivates skills. Only applies to the current session.
       def handle_active_skills_updated(msg)
         return unless msg["session_id"] == @session_info[:id]
@@ -457,7 +457,7 @@ module TUI
         @session_info[:active_skills] = msg["active_skills"] || []
       end
 
-      # Updates the active workflow when the analytical brain activates or
+      # Updates the active workflow when Melete activates or
       # deactivates a workflow. Only applies to the current session.
       def handle_active_workflow_updated(msg)
         return unless msg["session_id"] == @session_info[:id]
@@ -465,7 +465,7 @@ module TUI
         @session_info[:active_workflow] = msg["active_workflow"]
       end
 
-      # Updates the goals list when the analytical brain creates or
+      # Updates the goals list when Melete creates or
       # completes goals. Only applies to the current session.
       def handle_goals_updated(msg)
         return unless msg["session_id"] == @session_info[:id]

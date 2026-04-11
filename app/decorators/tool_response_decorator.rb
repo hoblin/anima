@@ -46,7 +46,7 @@ class ToolResponseDecorator < MessageDecorator
     }.merge(token_info)
   end
 
-  # Think responses ("OK") are noise — excluded from the brain's transcript.
+  # Think responses ("OK") are noise — excluded from Melete's transcript.
   # Other tool responses are compressed to success/failure indicators only.
   # @return [String, nil] ✅ or ❌ indicator, nil for think responses
   def render_brain

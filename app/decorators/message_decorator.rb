@@ -1,19 +1,19 @@
 # frozen_string_literal: true
 
 # Base decorator for {Message} records, providing multi-resolution rendering
-# for the TUI and analytical brain. Each message type has a dedicated subclass
+# for the TUI and Melete. Each message type has a dedicated subclass
 # that implements rendering methods for each view mode:
 #
 # - **basic** / **verbose** / **debug** — TUI display modes returning structured hashes
-# - **brain** — analytical brain transcript returning plain strings (or nil to skip)
+# - **brain** — Melete transcript lines as plain strings (or nil to skip)
 #
 # TUI decorators return structured hashes (not pre-formatted strings) so that
 # the TUI can style and lay out content based on semantic role, without
 # fragile regex parsing. The TUI receives structured data via ActionCable
 # and formats it for display.
 #
-# Brain mode returns condensed single-line strings for the analytical brain's
-# message transcript. Returns nil to exclude a message from the brain's view.
+# Brain mode returns condensed single-line strings for Melete's
+# message transcript. Returns nil to exclude a message from her view.
 #
 # Subclasses must override {#render_basic}. Verbose, debug, and brain modes
 # delegate to basic until subclasses provide their own implementations.
@@ -74,8 +74,8 @@ class MessageDecorator < ApplicationDecorator
     render_basic
   end
 
-  # Analytical brain view — condensed single-line string for the brain's
-  # message transcript. Returns nil to exclude from the brain's context.
+  # Melete view — condensed single-line string for her message
+  # transcript. Returns nil to exclude from her context.
   # Subclasses override to provide message-type-specific formatting.
   # @return [String, nil] formatted transcript line, or nil to skip
   def render_brain

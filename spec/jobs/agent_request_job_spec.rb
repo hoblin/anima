@@ -160,7 +160,7 @@ RSpec.describe AgentRequestJob do
         described_class.perform_now(child.id)
       end
 
-      it "continues with agent loop even if analytical brain fails" do
+      it "continues with agent loop even if Melete fails" do
         session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
         session.messages.create!(message_type: "agent_message", payload: {"content" => "Hi"}, timestamp: 2)
 
@@ -171,7 +171,7 @@ RSpec.describe AgentRequestJob do
       end
     end
 
-    it "schedules analytical brain after the agent loop completes" do
+    it "schedules Melete after the agent loop completes" do
       session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
       session.messages.create!(message_type: "agent_message", payload: {"content" => "Hi!"}, timestamp: 2)
 
