@@ -852,9 +852,8 @@ class Session < ApplicationRecord
     pins = pinned_messages
       .includes(:message, :goals)
       .where("pinned_messages.message_id < ?", first_message_id)
-      .order("pinned_messages.message_id")
 
-    selected_pins = select_pins_within_budget(pins, budget)
+    selected_pins = select_pins_within_budget(pins, budget: budget)
     content = render_goal_snapshot_with_pins(root_goals, selected_pins)
 
     # Uses session ID (not PendingMessage ID) because this snapshot is
@@ -870,17 +869,19 @@ class Session < ApplicationRecord
     ]
   end
 
-  # Walks pinned messages chronologically, selecting until the token budget
-  # is exhausted. Always includes at least one pin.
+  # Walks pins chronologically (oldest first, by underlying message_id),
+  # selecting until the token budget is exhausted. Always includes the
+  # first pin even if it alone exceeds the budget. Mirrors
+  # {#select_snapshots_within_budget}.
   #
-  # @param pins [Array<PinnedMessage>]
-  # @param budget [Integer]
+  # @param scope [ActiveRecord::Relation] pin scope to select from
+  # @param budget [Integer] maximum tokens to include
   # @return [Array<PinnedMessage>]
-  def select_pins_within_budget(pins, budget)
+  def select_pins_within_budget(scope, budget:)
     selected = []
     remaining = budget
 
-    pins.each do |pin|
+    scope.order(:message_id).each do |pin|
       cost = pin.token_count
       break if cost > remaining && selected.any?
 
