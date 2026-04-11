@@ -56,7 +56,7 @@ class Goal < ApplicationRecord
   # the semantic episode that spawned them has ended.
   #
   # Uses +update_all+ to avoid N per-record +after_commit+ broadcasts;
-  # the caller ({AnalyticalBrain::Tools::FinishGoal}) wraps the whole
+  # the caller ({Melete::Tools::FinishGoal}) wraps the whole
   # operation in a transaction so the root goal's single broadcast
   # includes the cascaded state.
   #

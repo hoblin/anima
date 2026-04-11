@@ -7,7 +7,7 @@ module Tools
   # Runs via {AgentRequestJob} and communicates with the parent through
   # natural text messages routed by {Events::Subscribers::SubagentMessageRouter}.
   #
-  # Nickname assignment is handled by the {AnalyticalBrain::Runner} which
+  # Nickname assignment is handled by the {Melete::Runner} which
   # runs synchronously at spawn time — the same brain that manages skills,
   # goals, and workflows for the main session.
   #

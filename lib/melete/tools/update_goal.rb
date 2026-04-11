@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module AnalyticalBrain
+module Melete
   module Tools
     # Updates a goal's description on the main session.
     #

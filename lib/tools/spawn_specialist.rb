@@ -5,7 +5,7 @@ module Tools
   # The specialist has a predefined system prompt and tool set defined
   # in its Markdown definition file under agents/.
   #
-  # Nickname assignment is handled by the {AnalyticalBrain::Runner} which
+  # Nickname assignment is handled by the {Melete::Runner} which
   # runs synchronously at spawn time, generating a unique nickname based
   # on the task — same as generic sub-agents.
   #

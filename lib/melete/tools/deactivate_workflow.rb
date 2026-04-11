@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module AnalyticalBrain
+module Melete
   module Tools
     # Deactivates the current workflow on the main session.
     # The workflow's recalled message stays in the conversation and

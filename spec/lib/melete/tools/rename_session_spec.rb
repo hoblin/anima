@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe AnalyticalBrain::Tools::RenameSession do
+RSpec.describe Melete::Tools::RenameSession do
   describe ".tool_name" do
     it { expect(described_class.tool_name).to eq("rename_session") }
   end

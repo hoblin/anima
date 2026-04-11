@@ -10,7 +10,7 @@ RSpec.describe Tools::SpawnSubagent do
 
   before do
     # Stub the analytical brain to simulate nickname assignment
-    allow_any_instance_of(AnalyticalBrain::Runner).to receive(:call) do |runner|
+    allow_any_instance_of(Melete::Runner).to receive(:call) do |runner|
       session = runner.instance_variable_get(:@session)
       session.update!(name: "loop-sleuth")
     end
@@ -182,7 +182,7 @@ RSpec.describe Tools::SpawnSubagent do
 
     it "runs the analytical brain synchronously" do
       brain_called = false
-      allow_any_instance_of(AnalyticalBrain::Runner).to receive(:call) do |runner|
+      allow_any_instance_of(Melete::Runner).to receive(:call) do |runner|
         brain_called = true
         session = runner.instance_variable_get(:@session)
         session.update!(name: "brain-named")
@@ -195,7 +195,7 @@ RSpec.describe Tools::SpawnSubagent do
     end
 
     it "falls back to agent-N on brain failure and still injects identity" do
-      allow_any_instance_of(AnalyticalBrain::Runner).to receive(:call)
+      allow_any_instance_of(Melete::Runner).to receive(:call)
         .and_raise(Providers::Anthropic::RateLimitError, "rate limited")
 
       tool.execute(input)

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module AnalyticalBrain
+module Melete
   module Tools
     # Shared helper for goal tools that enqueue phantom pair messages
     # when the analytical brain creates, updates, or completes a goal.

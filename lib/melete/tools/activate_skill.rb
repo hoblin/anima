@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module AnalyticalBrain
+module Melete
   module Tools
     # Activates a domain knowledge skill on the main session.
     # The skill's content enters the conversation as a phantom

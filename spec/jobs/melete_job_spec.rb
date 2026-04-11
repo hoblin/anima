@@ -2,12 +2,12 @@
 
 require "rails_helper"
 
-RSpec.describe AnalyticalBrainJob do
+RSpec.describe MeleteJob do
   let(:session) { Session.create! }
-  let(:runner) { instance_double(AnalyticalBrain::Runner, call: nil) }
+  let(:runner) { instance_double(Melete::Runner, call: nil) }
 
   before do
-    allow(AnalyticalBrain::Runner).to receive(:new).and_return(runner)
+    allow(Melete::Runner).to receive(:new).and_return(runner)
   end
 
   describe "retry configuration" do

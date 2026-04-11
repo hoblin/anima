@@ -80,15 +80,14 @@ class Session < ApplicationRecord
     update_column(:mneme_boundary_message_id, first_id) if first_id
   end
 
-  # Enqueues the analytical brain to perform background maintenance on
-  # this session. Currently handles session naming; future phases add
-  # skill activation, goal tracking, and memory.
-  #
-  # Runs after the first exchange and periodically as the conversation
-  # evolves, so the name stays relevant to the current topic.
+  # Enqueues Melete — the muse of practice — to perform background
+  # maintenance on this session: skill activation, goal tracking,
+  # session naming. Runs after the first exchange and periodically as
+  # the conversation evolves, so the name stays relevant to the
+  # current topic.
   #
   # @return [void]
-  def schedule_analytical_brain!
+  def schedule_melete!
     return if sub_agent?
 
     count = messages.llm_messages.count
@@ -96,7 +95,7 @@ class Session < ApplicationRecord
     # Already named — only regenerate at interval boundaries (30, 60, 90, …)
     return if name.present? && (count % Anima::Settings.name_generation_interval != 0)
 
-    AnalyticalBrainJob.perform_later(id)
+    MeleteJob.perform_later(id)
   end
 
   # Token budget appropriate for this session type.

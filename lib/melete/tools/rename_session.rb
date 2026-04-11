@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module AnalyticalBrain
+module Melete
   module Tools
     # Renames the main session with an emoji and short descriptive name.
     # Operates on the main session passed through the registry context,

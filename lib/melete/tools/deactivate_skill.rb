@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module AnalyticalBrain
+module Melete
   module Tools
     # Deactivates a domain knowledge skill on the main session.
     # The skill's recalled message stays in the conversation and

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module AnalyticalBrain
+module Melete
   module Tools
     # Reads and activates a workflow on the main session.
     # Returns the full workflow content so the brain can create goals from it.

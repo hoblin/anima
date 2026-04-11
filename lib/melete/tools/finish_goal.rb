@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module AnalyticalBrain
+module Melete
   module Tools
     # Marks a goal as completed on the main session. Sets the status to
     # "completed" and records the completion timestamp.

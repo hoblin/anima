@@ -56,7 +56,7 @@ class AgentRequestJob < ApplicationJob
     # Atomic: only one job processes a session at a time.
     return unless claim_processing(session_id)
 
-    run_analytical_brain_blocking(session)
+    run_melete_blocking(session)
 
     agent_loop = AgentLoop.new(session: session)
 
@@ -73,7 +73,7 @@ class AgentRequestJob < ApplicationJob
       agent_loop.run
     end
 
-    session.schedule_analytical_brain!
+    session.schedule_melete!
   ensure
     release_processing(session_id)
     clear_interrupt(session_id)
@@ -137,20 +137,20 @@ class AgentRequestJob < ApplicationJob
     )
   end
 
-  # Runs the analytical brain synchronously before the main agent loop.
+  # Runs Melete synchronously before the main agent loop.
   # Respects the blocking_on_user_message setting and session guards
   # (skips sub-agents and sessions with too few messages).
-  def run_analytical_brain_blocking(session)
+  def run_melete_blocking(session)
     return unless Anima::Settings.analytical_brain_blocking_on_user_message
     return if session.sub_agent?
 
-    AnalyticalBrain::Runner.new(session).call
+    Melete::Runner.new(session).call
   rescue => error
-    # The analytical brain is best-effort: skill activation enhances the
-    # response but the main agent must still reply even if it fails.
+    # Melete is best-effort: skill activation enhances the response but
+    # the main agent must still reply even if she fails.
     msg = "FAILED (blocking) session=#{session.id}: #{error.class}: #{error.message}"
-    Rails.logger.error("Analytical brain #{msg}")
-    AnalyticalBrain.logger.error("#{msg}\n#{error.backtrace&.first(10)&.join("\n")}")
+    Rails.logger.error("Melete #{msg}")
+    Melete.logger.error("#{msg}\n#{error.backtrace&.first(10)&.join("\n")}")
   end
 
   # Sets the session's processing flag atomically. Returns true if this

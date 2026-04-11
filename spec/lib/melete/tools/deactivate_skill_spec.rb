@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe AnalyticalBrain::Tools::DeactivateSkill do
+RSpec.describe Melete::Tools::DeactivateSkill do
   before { Skills::Registry.reload! }
 
   describe ".tool_name" do

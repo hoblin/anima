@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe AnalyticalBrain::Tools::AssignNickname do
+RSpec.describe Melete::Tools::AssignNickname do
   describe ".tool_name" do
     it { expect(described_class.tool_name).to eq("assign_nickname") }
   end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module AnalyticalBrain
+module Melete
   # Orchestrates the analytical brain — a phantom (non-persisted) LLM loop
   # that observes a session and performs background maintenance via tools.
   #
@@ -18,7 +18,7 @@ module AnalyticalBrain
   # emitted into a phantom session (session_id: nil).
   #
   # @example
-  #   AnalyticalBrain::Runner.new(session).call
+  #   Melete::Runner.new(session).call
   class Runner
     # A composable unit of brain capability: a prompt section + its tools.
     Responsibility = Data.define(:prompt, :tools)
@@ -116,7 +116,7 @@ module AnalyticalBrain
       @client = client || LLM::Client.new(
         model: Anima::Settings.fast_model,
         max_tokens: Anima::Settings.analytical_brain_max_tokens,
-        logger: AnalyticalBrain.logger
+        logger: Melete.logger
       )
     end
 
@@ -346,7 +346,7 @@ module AnalyticalBrain
     end
 
     # @return [Logger] dev-only analytical brain logger
-    def log = AnalyticalBrain.logger
+    def log = Melete.logger
 
     # @return [Tools::Registry] registry with tools from active responsibilities
     def build_registry

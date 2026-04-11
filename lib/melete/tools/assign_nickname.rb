@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module AnalyticalBrain
+module Melete
   module Tools
     # Assigns a static nickname to a sub-agent session.
     # Operates on the session passed through the registry context.
@@ -9,7 +9,7 @@ module AnalyticalBrain
     # an error on collision so the LLM can pick another name naturally,
     # without programmatic suffixes.
     #
-    # @see AnalyticalBrain::Runner — invokes this tool for child sessions
+    # @see Melete::Runner — invokes this tool for child sessions
     class AssignNickname < ::Tools::Base
       # Lowercase hyphenated words: "loop-sleuth", "api-scout", "test-fixer"
       NICKNAME_PATTERN = /\A[a-z][a-z0-9]*(-[a-z0-9]+)*\z/

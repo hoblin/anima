@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe AnalyticalBrain::Tools::ReadWorkflow do
+RSpec.describe Melete::Tools::ReadWorkflow do
   before { Workflows::Registry.reload! }
 
   describe ".tool_name" do

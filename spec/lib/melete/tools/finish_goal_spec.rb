@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe AnalyticalBrain::Tools::FinishGoal do
+RSpec.describe Melete::Tools::FinishGoal do
   describe ".tool_name" do
     it { expect(described_class.tool_name).to eq("finish_goal") }
   end

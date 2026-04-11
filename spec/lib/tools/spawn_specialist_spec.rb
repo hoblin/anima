@@ -16,7 +16,7 @@ RSpec.describe Tools::SpawnSpecialist do
 
   before do
     # Stub the analytical brain to simulate nickname assignment
-    allow_any_instance_of(AnalyticalBrain::Runner).to receive(:call) do |runner|
+    allow_any_instance_of(Melete::Runner).to receive(:call) do |runner|
       session = runner.instance_variable_get(:@session)
       session.update!(name: "code-scout")
     end
@@ -218,7 +218,7 @@ RSpec.describe Tools::SpawnSpecialist do
     end
 
     it "falls back to agent-N on brain failure and still injects identity" do
-      allow_any_instance_of(AnalyticalBrain::Runner).to receive(:call)
+      allow_any_instance_of(Melete::Runner).to receive(:call)
         .and_raise(Providers::Anthropic::RateLimitError, "rate limited")
 
       tool.execute(input)

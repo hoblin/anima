@@ -36,7 +36,7 @@ module Tools
     # Identity injection runs in +ensure+ so it applies to both
     # brain-assigned and fallback nicknames.
     def assign_nickname_via_brain(child)
-      AnalyticalBrain::Runner.new(child).call
+      Melete::Runner.new(child).call
       child.reload
     rescue => error
       Rails.logger.warn("Sub-agent nickname assignment failed: #{error.message}")

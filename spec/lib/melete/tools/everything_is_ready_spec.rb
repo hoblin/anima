@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe AnalyticalBrain::Tools::EverythingIsReady do
+RSpec.describe Melete::Tools::EverythingIsReady do
   describe ".tool_name" do
     it { expect(described_class.tool_name).to eq("everything_is_ready") }
   end

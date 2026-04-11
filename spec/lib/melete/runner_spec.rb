@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe AnalyticalBrain::Runner do
+RSpec.describe Melete::Runner do
   let(:session) { Session.create! }
   let(:client) { instance_double(LLM::Client) }
   let(:runner) { described_class.new(session, client: client) }

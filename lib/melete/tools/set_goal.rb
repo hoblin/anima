@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module AnalyticalBrain
+module Melete
   module Tools
     # Creates a goal on the main session. Root goals represent high-level
     # objectives (semantic episodes); sub-goals are TODO-style steps within
