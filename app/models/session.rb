@@ -607,7 +607,7 @@ class Session < ApplicationRecord
   def from_melete_messages
     viewport_messages
       .where(message_type: "tool_call")
-      .where("json_extract(payload, '$.tool_name') LIKE ?", "from_melete_%")
+      .where("json_extract(payload, '$.tool_name') GLOB ?", "from_melete_*")
       .order(:id)
   end
 

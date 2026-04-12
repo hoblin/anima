@@ -512,6 +512,122 @@ RSpec.describe Session do
     end
   end
 
+  describe "#from_melete_messages" do
+    subject(:from_melete_messages) { session.send(:from_melete_messages) }
+
+    let(:session) { create(:session) }
+
+    before { allow(session).to receive(:viewport_messages).and_return(viewport) }
+
+    context "with an empty viewport" do
+      let(:viewport) { Message.none }
+
+      it "returns an ActiveRecord relation" do
+        expect(from_melete_messages).to be_a(ActiveRecord::Relation)
+      end
+
+      it "returns no messages" do
+        expect(from_melete_messages).to be_empty
+      end
+    end
+
+    context "with from_melete_skill tool calls" do
+      let(:skill) { create(:message, :from_melete_skill, session:) }
+      let(:viewport) { Message.where(id: skill.id) }
+
+      it "includes them" do
+        expect(from_melete_messages).to contain_exactly(skill)
+      end
+    end
+
+    context "with from_melete_workflow tool calls" do
+      let(:workflow) { create(:message, :from_melete_workflow, session:) }
+      let(:viewport) { Message.where(id: workflow.id) }
+
+      it "includes them" do
+        expect(from_melete_messages).to contain_exactly(workflow)
+      end
+    end
+
+    context "with from_melete_goal tool calls" do
+      let(:goal) { create(:message, :from_melete_goal, session:) }
+      let(:viewport) { Message.where(id: goal.id) }
+
+      it "includes them" do
+        expect(from_melete_messages).to contain_exactly(goal)
+      end
+    end
+
+    context "with from_mneme tool calls" do
+      let(:mneme) do
+        create(:message, :tool_call, session:, payload: {
+          "tool_name" => PendingMessage::MNEME_TOOL,
+          "tool_input" => {"message_id" => 1},
+          "tool_use_id" => "from_mneme_1",
+          "content" => "recalled"
+        })
+      end
+      let(:viewport) { Message.where(id: mneme.id) }
+
+      it "excludes them" do
+        expect(from_melete_messages).to be_empty
+      end
+    end
+
+    context "with subagent tool calls" do
+      let(:subagent) do
+        create(:message, :tool_call, session:, payload: {
+          "tool_name" => "from_sleuth",
+          "tool_input" => {"from" => "sleuth"},
+          "tool_use_id" => "from_sleuth_1",
+          "content" => "result"
+        })
+      end
+      let(:viewport) { Message.where(id: subagent.id) }
+
+      it "excludes them" do
+        expect(from_melete_messages).to be_empty
+      end
+    end
+
+    context "with non-tool_call message types" do
+      let(:user_msg) { create(:message, :user_message, session:) }
+      let(:skill) { create(:message, :from_melete_skill, session:) }
+      let(:viewport) { Message.where(id: [user_msg.id, skill.id]) }
+
+      it "excludes them and keeps only melete tool calls" do
+        expect(from_melete_messages).to contain_exactly(skill)
+      end
+    end
+
+    context "with a subagent nicknamed to resemble melete" do
+      let(:impostor) do
+        create(:message, :tool_call, session:, payload: {
+          "tool_name" => "from_melete-spy",
+          "tool_input" => {"from" => "melete-spy"},
+          "tool_use_id" => "from_melete-spy_1",
+          "content" => "spy result"
+        })
+      end
+      let(:viewport) { Message.where(id: impostor.id) }
+
+      it "excludes them — underscores in the query are literal, not wildcards" do
+        expect(from_melete_messages).to be_empty
+      end
+    end
+
+    context "with mixed melete contributions" do
+      let(:skill) { create(:message, :from_melete_skill, session:, skill_name: "rspec") }
+      let(:workflow) { create(:message, :from_melete_workflow, session:, workflow_name: "feature") }
+      let(:goal) { create(:message, :from_melete_goal, session:) }
+      let(:viewport) { Message.where(id: [skill.id, workflow.id, goal.id]) }
+
+      it "returns them in activation (id) order" do
+        expect(from_melete_messages.pluck(:id)).to eq([skill.id, workflow.id, goal.id])
+      end
+    end
+  end
+
   describe "#skills_in_viewport" do
     let(:session) { create(:session) }
 
