@@ -89,7 +89,8 @@ class SessionChannel < ApplicationCable::Channel
   #
   # @param _data [Hash] unused
   def interrupt_execution(_data)
-    updated = Session.where(id: @current_session_id, processing: true)
+    updated = Session.where(id: @current_session_id)
+      .where(aasm_state: [:awaiting, :executing])
       .update_all(interrupt_requested: true)
 
     return unless updated > 0
@@ -219,11 +220,11 @@ class SessionChannel < ApplicationCable::Channel
       "goals" => session.goals_summary
     }
 
-    children = session.child_sessions.order(:created_at).select(:id, :name, :processing)
+    children = session.child_sessions.order(:created_at).select(:id, :name, :aasm_state)
     if children.any?
       payload["children"] = children.map { |child|
-        state = child.processing? ? "llm_generating" : "idle"
-        {"id" => child.id, "name" => child.name, "processing" => child.processing?, "session_state" => state}
+        state = child.idle? ? "idle" : "llm_generating"
+        {"id" => child.id, "name" => child.name, "aasm_state" => child.aasm_state, "session_state" => state}
       }
     end
 
@@ -389,7 +390,7 @@ class SessionChannel < ApplicationCable::Channel
       {
         id: child.id,
         name: child.name,
-        processing: child.processing?,
+        aasm_state: child.aasm_state,
         message_count: counts[child.id] || 0,
         created_at: child.created_at.iso8601
       }

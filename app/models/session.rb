@@ -13,7 +13,7 @@ class Session < ApplicationRecord
 
   VIEW_MODES = %w[basic verbose debug].freeze
 
-  aasm do
+  aasm whiny_transitions: false, no_direct_assignment: true do
     state :idle, initial: true
     state :awaiting
     state :executing
@@ -63,7 +63,9 @@ class Session < ApplicationRecord
 
   scope :recent, ->(limit = 10) { order(updated_at: :desc).limit(limit) }
   scope :root_sessions, -> { where(parent_session_id: nil) }
-  scope :processing_children_of, ->(parent_id) { where(parent_session_id: parent_id).where.not(aasm_state: "idle") }
+  scope :processing_children_of, ->(parent_id) {
+    where(parent_session_id: parent_id).where(aasm_state: [:awaiting, :executing])
+  }
 
   # @return [Boolean] true if this session is a sub-agent (has a parent)
   def sub_agent?
