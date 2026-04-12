@@ -1,46 +1,53 @@
-CREATE TABLE "schema_migrations" ("version" varchar NOT NULL PRIMARY KEY);
-CREATE TABLE "ar_internal_metadata" ("key" varchar NOT NULL PRIMARY KEY, "value" varchar, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL);
-CREATE TABLE "goals" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "session_id" integer NOT NULL, "parent_goal_id" integer, "description" text NOT NULL, "status" varchar DEFAULT 'active' NOT NULL, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL, "completed_at" datetime(6), "evicted_at" datetime(6), CONSTRAINT "fk_rails_874b7534ae"
-FOREIGN KEY ("session_id")
-  REFERENCES "sessions" ("id")
-, CONSTRAINT "fk_rails_feeb9df31e"
+CREATE TABLE "secrets" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "created_at" datetime(6) NOT NULL, "key" varchar NOT NULL, "namespace" varchar NOT NULL, "updated_at" datetime(6) NOT NULL, "value" text NOT NULL);
+CREATE UNIQUE INDEX "index_secrets_on_namespace_and_key" ON "secrets" ("namespace", "key");
+CREATE TABLE "goals" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "completed_at" datetime(6), "created_at" datetime(6) NOT NULL, "description" text NOT NULL, "evicted_at" datetime(6), "parent_goal_id" integer, "session_id" integer NOT NULL, "status" varchar DEFAULT 'active' NOT NULL, "updated_at" datetime(6) NOT NULL, CONSTRAINT "fk_rails_feeb9df31e"
 FOREIGN KEY ("parent_goal_id")
   REFERENCES "goals" ("id")
+, CONSTRAINT "fk_rails_874b7534ae"
+FOREIGN KEY ("session_id")
+  REFERENCES "sessions" ("id")
 );
-CREATE INDEX "index_goals_on_session_id" ON "goals" ("session_id");
 CREATE INDEX "index_goals_on_parent_goal_id" ON "goals" ("parent_goal_id");
 CREATE INDEX "index_goals_on_session_id_and_status" ON "goals" ("session_id", "status");
-CREATE TABLE "messages" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "session_id" integer NOT NULL, "message_type" varchar NOT NULL, "payload" json DEFAULT '{}' NOT NULL, "timestamp" integer(8) NOT NULL, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL, "token_count" integer DEFAULT 0 NOT NULL, "tool_use_id" varchar, "status" varchar, "api_metrics" json, CONSTRAINT "fk_rails_1ee2a92df0"
+CREATE INDEX "index_goals_on_session_id" ON "goals" ("session_id");
+CREATE TABLE "pending_messages" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "content" text NOT NULL, "created_at" datetime(6) NOT NULL, "session_id" integer NOT NULL, "source_name" varchar, "source_type" varchar DEFAULT 'user' NOT NULL, "updated_at" datetime(6) NOT NULL, CONSTRAINT "fk_rails_007242365b"
+FOREIGN KEY ("session_id")
+  REFERENCES "sessions" ("id")
+);
+CREATE INDEX "index_pending_messages_on_session_id" ON "pending_messages" ("session_id");
+CREATE TABLE "schema_migrations" ("version" varchar NOT NULL PRIMARY KEY);
+CREATE TABLE "ar_internal_metadata" ("key" varchar NOT NULL PRIMARY KEY, "value" varchar, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL);
+CREATE TABLE "messages" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "api_metrics" json, "created_at" datetime(6) NOT NULL, "message_type" varchar NOT NULL, "payload" json DEFAULT '{}' NOT NULL, "session_id" integer NOT NULL, "status" varchar, "timestamp" integer(8) NOT NULL, "token_count" integer DEFAULT 0 NOT NULL, "tool_use_id" varchar, "updated_at" datetime(6) NOT NULL, CONSTRAINT "fk_rails_1ee2a92df0"
 FOREIGN KEY ("session_id")
   REFERENCES "sessions" ("id")
 );
 CREATE INDEX "index_messages_on_session_id_and_status" ON "messages" ("session_id", "status");
-CREATE INDEX "index_messages_on_tool_use_id" ON "messages" ("tool_use_id");
 CREATE INDEX "index_messages_on_session_id" ON "messages" ("session_id");
+CREATE INDEX "index_messages_on_tool_use_id" ON "messages" ("tool_use_id");
 CREATE INDEX "index_messages_on_message_type" ON "messages" ("message_type");
 CREATE INDEX "index_messages_on_session_id_and_message_type" ON "messages" ("session_id", "message_type");
-CREATE TABLE "pinned_messages" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "message_id" integer NOT NULL, "display_text" text NOT NULL, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL, "token_count" integer DEFAULT 0 NOT NULL, CONSTRAINT "fk_rails_4a5f237c43"
+CREATE TABLE "pinned_messages" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "created_at" datetime(6) NOT NULL, "display_text" text NOT NULL, "message_id" integer NOT NULL, "updated_at" datetime(6) NOT NULL, "token_count" integer DEFAULT 0 NOT NULL, CONSTRAINT "fk_rails_4a5f237c43"
 FOREIGN KEY ("message_id")
   REFERENCES "messages" ("id")
 );
 CREATE UNIQUE INDEX "index_pinned_messages_on_message_id" ON "pinned_messages" ("message_id");
-CREATE TABLE "goal_pinned_messages" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "goal_id" integer NOT NULL, "pinned_message_id" integer NOT NULL, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL, CONSTRAINT "fk_rails_fb51bfeebe"
-FOREIGN KEY ("pinned_message_id")
-  REFERENCES "pinned_messages" ("id")
-, CONSTRAINT "fk_rails_689fd4bf8a"
+CREATE TABLE "goal_pinned_messages" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "created_at" datetime(6) NOT NULL, "goal_id" integer NOT NULL, "pinned_message_id" integer NOT NULL, "updated_at" datetime(6) NOT NULL, CONSTRAINT "fk_rails_689fd4bf8a"
 FOREIGN KEY ("goal_id")
   REFERENCES "goals" ("id")
+, CONSTRAINT "fk_rails_fb51bfeebe"
+FOREIGN KEY ("pinned_message_id")
+  REFERENCES "pinned_messages" ("id")
 );
 CREATE INDEX "index_goal_pinned_messages_on_goal_id" ON "goal_pinned_messages" ("goal_id");
-CREATE INDEX "index_goal_pinned_messages_on_pinned_message_id" ON "goal_pinned_messages" ("pinned_message_id");
 CREATE UNIQUE INDEX "index_goal_pinned_messages_on_goal_id_and_pinned_message_id" ON "goal_pinned_messages" ("goal_id", "pinned_message_id");
-CREATE TABLE "snapshots" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "session_id" integer NOT NULL, "text" text NOT NULL, "from_message_id" integer NOT NULL, "to_message_id" integer NOT NULL, "level" integer DEFAULT 1 NOT NULL, "token_count" integer DEFAULT 0 NOT NULL, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL, CONSTRAINT "fk_rails_eb2ad51db9"
+CREATE INDEX "index_goal_pinned_messages_on_pinned_message_id" ON "goal_pinned_messages" ("pinned_message_id");
+CREATE TABLE "snapshots" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "created_at" datetime(6) NOT NULL, "from_message_id" integer NOT NULL, "level" integer DEFAULT 1 NOT NULL, "session_id" integer NOT NULL, "text" text NOT NULL, "to_message_id" integer NOT NULL, "token_count" integer DEFAULT 0 NOT NULL, "updated_at" datetime(6) NOT NULL, CONSTRAINT "fk_rails_eb2ad51db9"
 FOREIGN KEY ("session_id")
   REFERENCES "sessions" ("id")
 );
-CREATE INDEX "index_snapshots_on_session_id" ON "snapshots" ("session_id");
-CREATE INDEX "index_snapshots_on_session_id_and_level" ON "snapshots" ("session_id", "level");
 CREATE INDEX "index_snapshots_on_session_and_event_range" ON "snapshots" ("session_id", "from_message_id", "to_message_id");
+CREATE INDEX "index_snapshots_on_session_id_and_level" ON "snapshots" ("session_id", "level");
+CREATE INDEX "index_snapshots_on_session_id" ON "snapshots" ("session_id");
 CREATE VIRTUAL TABLE messages_fts USING fts5(
   searchable_text,
   content='',
@@ -73,20 +80,14 @@ WHEN OLD.message_type IN ('user_message', 'agent_message', 'system_message')
 BEGIN
   DELETE FROM messages_fts WHERE rowid = OLD.id;
 END;
-CREATE TABLE "secrets" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "namespace" varchar NOT NULL, "key" varchar NOT NULL, "value" text NOT NULL, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL);
-CREATE UNIQUE INDEX "index_secrets_on_namespace_and_key" ON "secrets" ("namespace", "key");
-CREATE INDEX "index_goals_on_evicted_at" ON "goals" ("evicted_at");
-CREATE TABLE "pending_messages" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "session_id" integer NOT NULL, "content" text NOT NULL, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL, "source_type" varchar DEFAULT 'user' NOT NULL, "source_name" varchar, CONSTRAINT "fk_rails_007242365b"
-FOREIGN KEY ("session_id")
-  REFERENCES "sessions" ("id")
-);
-CREATE INDEX "index_pending_messages_on_session_id" ON "pending_messages" ("session_id");
-CREATE TABLE "sessions" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL, "view_mode" varchar DEFAULT 'basic' NOT NULL, "processing" boolean DEFAULT FALSE NOT NULL, "parent_session_id" integer, "prompt" text, "granted_tools" text, "name" varchar, "interrupt_requested" boolean DEFAULT FALSE NOT NULL, "mneme_boundary_message_id" integer, "initial_cwd" varchar, CONSTRAINT "fk_rails_045409ac27"
+CREATE TABLE "sessions" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "created_at" datetime(6) NOT NULL, "granted_tools" text, "interrupt_requested" boolean DEFAULT FALSE NOT NULL, "mneme_boundary_message_id" integer, "name" varchar, "parent_session_id" integer, "prompt" text, "recalled_message_ids" json DEFAULT '[]' NOT NULL, "updated_at" datetime(6) NOT NULL, "view_mode" varchar DEFAULT 'basic' NOT NULL, "initial_cwd" varchar, "aasm_state" varchar DEFAULT 'idle' NOT NULL, CONSTRAINT "fk_rails_045409ac27"
 FOREIGN KEY ("parent_session_id")
   REFERENCES "sessions" ("id")
 );
+CREATE UNIQUE INDEX "index_sessions_on_parent_and_name_unique" ON "sessions" ("parent_session_id", "name") WHERE name IS NOT NULL;
 CREATE INDEX "index_sessions_on_parent_session_id" ON "sessions" ("parent_session_id");
 INSERT INTO "schema_migrations" (version) VALUES
+('20260412110625'),
 ('20260411172926'),
 ('20260411120553'),
 ('20260407180400'),
