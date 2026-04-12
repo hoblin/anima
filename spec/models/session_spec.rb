@@ -230,14 +230,14 @@ RSpec.describe Session do
         .to have_enqueued_job(MeleteJob).with(session.id)
     end
 
-    it "does not enqueue for sub-agent sessions" do
+    it "enqueues for sub-agent sessions (skills and naming)" do
       parent = Session.create!
       child = Session.create!(parent_session: parent, prompt: "task")
       child.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       child.messages.create!(message_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
 
       expect { child.schedule_melete! }
-        .not_to have_enqueued_job(MeleteJob)
+        .to have_enqueued_job(MeleteJob).with(child.id)
     end
 
     it "does not enqueue for sessions with fewer than 2 messages" do
@@ -528,28 +528,28 @@ RSpec.describe Session do
   describe "#skills_in_viewport" do
     let(:session) { create(:session) }
 
-    it "returns an empty array when viewport has no from_melete calls" do
+    it "returns an empty array when viewport has no from_melete_skill calls" do
       unrelated = create(:message, :user_message, session:)
       allow(session).to receive(:viewport_messages).and_return(Message.where(id: unrelated.id))
 
       expect(session.skills_in_viewport).to eq([])
     end
 
-    it "extracts skill names from from_melete tool_call messages" do
+    it "extracts skill names from from_melete_skill tool_call messages" do
       skill_call = create(:message, :from_melete_skill, session:, skill_name: "gh-issue")
       allow(session).to receive(:viewport_messages).and_return(Message.where(id: skill_call.id))
 
       expect(session.skills_in_viewport).to eq(["gh-issue"])
     end
 
-    it "excludes from_melete calls that are not in the viewport" do
+    it "excludes from_melete_skill calls that are not in the viewport" do
       create(:message, :from_melete_skill, session:, skill_name: "gh-issue")
       allow(session).to receive(:viewport_messages).and_return(Message.none)
 
       expect(session.skills_in_viewport).to eq([])
     end
 
-    it "ignores from_melete calls that carry a workflow payload" do
+    it "ignores from_melete_workflow calls" do
       workflow_call = create(:message, :from_melete_workflow, session:, workflow_name: "feature")
       allow(session).to receive(:viewport_messages).and_return(Message.where(id: workflow_call.id))
 
@@ -574,7 +574,7 @@ RSpec.describe Session do
       expect(session.workflow_in_viewport).to be_nil
     end
 
-    it "extracts the workflow name from a from_melete call" do
+    it "extracts the workflow name from a from_melete_workflow call" do
       workflow_call = create(:message, :from_melete_workflow, session:, workflow_name: "feature")
       allow(session).to receive(:viewport_messages).and_return(Message.where(id: workflow_call.id))
 
@@ -604,7 +604,7 @@ RSpec.describe Session do
 
       expect(prompt).to include("## Your Sisters")
       expect(prompt).to include("Melete")
-      expect(prompt).to include("from_melete")
+      expect(prompt).to include("from_melete_skill")
       expect(prompt).to include("Mneme")
       expect(prompt).to include("from_mneme")
       expect(prompt).to include("`from_` prefix")
@@ -1884,10 +1884,10 @@ RSpec.describe Session do
       # in the DB (not user_message) so the TUI renders them correctly.
       {
         "subagent" => {source_name: "sleuth", tool_name: "from_sleuth"},
-        "skill" => {source_name: "testing", tool_name: "from_melete"},
-        "workflow" => {source_name: "feature", tool_name: "from_melete"},
+        "skill" => {source_name: "testing", tool_name: "from_melete_skill"},
+        "workflow" => {source_name: "feature", tool_name: "from_melete_workflow"},
         "recall" => {source_name: "42", tool_name: "from_mneme"},
-        "goal" => {source_name: "7", tool_name: "from_melete"}
+        "goal" => {source_name: "7", tool_name: "from_melete_goal"}
       }.each do |source_type, meta|
         context "with #{source_type} message" do
           let!(:pm) do
@@ -2117,7 +2117,7 @@ RSpec.describe Session do
       session.promote_phantom_pair!(pm)
 
       call = session.messages.find_by(message_type: "tool_call")
-      expect(call.payload["tool_name"]).to eq("from_melete")
+      expect(call.payload["tool_name"]).to eq("from_melete_goal")
     end
 
     it "stores tool input as stringified keys" do

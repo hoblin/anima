@@ -79,18 +79,17 @@ class Session < ApplicationRecord
   end
 
   # Enqueues Melete — the muse of practice — to perform background
-  # maintenance on this session: skill activation, goal tracking,
-  # session naming. Runs after the first exchange and periodically as
-  # the conversation evolves, so the name stays relevant to the
-  # current topic.
+  # maintenance on this session. Main sessions get naming, skills,
+  # workflows, and goals; sub-agents get naming and skills only
+  # (responsibilities are selected in {Melete::Runner}).
+  #
+  # Fires after the first exchange, then throttled to interval
+  # boundaries once the session has a name.
   #
   # @return [void]
   def schedule_melete!
-    return if sub_agent?
-
     count = messages.llm_messages.count
     return if count < 2
-    # Already named — only regenerate at interval boundaries (30, 60, 90, …)
     return if name.present? && (count % Anima::Settings.name_generation_interval != 0)
 
     MeleteJob.perform_later(id)
@@ -159,21 +158,27 @@ class Session < ApplicationRecord
       .order(:id)
   end
 
-  # Names of skills currently present in the viewport as `from_melete`
-  # phantom tool_call messages, in activation (message id) order.
+  # Names of skills currently present in the viewport as
+  # `from_melete_skill` phantom tool_call messages, in activation order.
   #
   # @return [Array<String>] skill names in the viewport, activation order
   def skills_in_viewport
-    from_melete_tool_inputs.filter_map { |input| input["skill"] }
+    from_melete_messages
+      .where("json_extract(payload, '$.tool_name') = ?", PendingMessage::MELETE_SKILL_TOOL)
+      .pluck(Arel.sql("json_extract(payload, '$.tool_input.skill')"))
+      .compact
   end
 
-  # Workflow name currently present in the viewport as a `from_melete`
-  # phantom tool_call message, if any. The most recent activation wins
-  # when multiple are visible.
+  # Workflow name currently present in the viewport as a
+  # `from_melete_workflow` phantom tool_call message, if any. The most
+  # recent activation wins when multiple are visible.
   #
   # @return [String, nil] workflow name in the viewport, or nil
   def workflow_in_viewport
-    from_melete_tool_inputs.filter_map { |input| input["workflow"] }.last
+    from_melete_messages
+      .where("json_extract(payload, '$.tool_name') = ?", PendingMessage::MELETE_WORKFLOW_TOOL)
+      .reorder(id: :desc)
+      .pick(Arel.sql("json_extract(payload, '$.tool_input.workflow')"))
   end
 
   # Active skills — skills Aoide is currently carrying or about to carry.
@@ -193,7 +198,7 @@ class Session < ApplicationRecord
   #
   # @return [String, nil]
   def active_workflow
-    pending = pending_messages.where(source_type: "workflow").order(:id).pick(:source_name)
+    pending = pending_messages.where(source_type: "workflow").order(id: :desc).pick(:source_name)
     pending || workflow_in_viewport
   end
 
@@ -215,7 +220,7 @@ class Session < ApplicationRecord
   end
 
   # Activates a skill on this session by enqueuing its content as a
-  # {PendingMessage} that promotes to a `from_melete` phantom tool pair.
+  # {PendingMessage} that promotes to a `from_melete_skill` phantom pair.
   # Skips re-activation while the previous phantom pair is still in the
   # viewport — Aoide already has the skill text in front of her.
   #
@@ -233,8 +238,8 @@ class Session < ApplicationRecord
   end
 
   # Activates a workflow on this session by enqueuing its content as a
-  # {PendingMessage} that promotes to a `from_melete` phantom tool pair.
-  # Workflows are main-session only — sub-agents can't activate them.
+  # {PendingMessage} that promotes to a `from_melete_workflow` phantom
+  # tool pair. Workflows are main-session only.
   # Skips re-activation while the previous phantom pair is still in the
   # viewport.
   #
@@ -532,27 +537,17 @@ class Session < ApplicationRecord
   # has in front of her. Callers invoke this after any operation that
   # changes viewport composition (phantom pair promotion, Mneme eviction).
   #
-  # Composes the viewport scan and pending_messages reads inline so the
-  # viewport window query runs once, not once per field.
-  #
   # @return [void]
   def broadcast_active_state!
-    tool_inputs = from_melete_tool_inputs
-    skills_in_view = tool_inputs.filter_map { |input| input["skill"] }
-    workflow_in_view = tool_inputs.filter_map { |input| input["workflow"] }.last
-
-    queued_skills = pending_messages.where(source_type: "skill").order(:id).pluck(:source_name)
-    pending_workflow = pending_messages.where(source_type: "workflow").order(:id).pick(:source_name)
-
     ActionCable.server.broadcast("session_#{id}", {
       "action" => "active_skills_updated",
       "session_id" => id,
-      "active_skills" => (skills_in_view + queued_skills).uniq
+      "active_skills" => active_skills
     })
     ActionCable.server.broadcast("session_#{id}", {
       "action" => "active_workflow_updated",
       "session_id" => id,
-      "active_workflow" => pending_workflow || workflow_in_view
+      "active_workflow" => active_workflow
     })
   end
 
@@ -606,21 +601,17 @@ class Session < ApplicationRecord
 
   private
 
-  # Loads the `tool_input` payloads of every `from_melete` tool_call
-  # currently in the viewport, in activation order. Used to derive
-  # "what skills/workflows does Aoide actually have in front of her
-  # right now" directly from her viewport — no separate tracking state.
-  # One query serves both {#skills_in_viewport} and {#workflow_in_viewport}
-  # so the viewport window scan runs once per call path.
+  # Returns `from_melete_*` tool_call messages currently in the viewport
+  # as a composable AR relation. Used by {#skills_in_viewport} and
+  # {#workflow_in_viewport} to derive active state with additional
+  # `.where` clauses on the tool name suffix.
   #
-  # @return [Array<Hash>] tool_input hashes in message-id order
-  def from_melete_tool_inputs
+  # @return [ActiveRecord::Relation<Message>] chronologically ordered
+  def from_melete_messages
     viewport_messages
       .where(message_type: "tool_call")
-      .where("json_extract(payload, '$.tool_name') = ?", PendingMessage::MELETE_TOOL)
+      .where("json_extract(payload, '$.tool_name') LIKE ?", "from_melete_%")
       .order(:id)
-      .pluck(Arel.sql("json_extract(payload, '$.tool_input')"))
-      .filter_map { |json| JSON.parse(json) if json }
   end
 
   # Enqueues a recalled skill or workflow as a {PendingMessage}.
@@ -671,7 +662,7 @@ class Session < ApplicationRecord
 
       You don't work alone. Two muses share the conversation with you, and their work arrives as tool calls prefixed `from_`:
 
-      - **Melete**, the muse of practice, prepares the stage before you speak. Skills, workflows, and goals she's chosen for you arrive as `from_melete`.
+      - **Melete**, the muse of practice, prepares the stage before you speak. Her contributions arrive as `from_melete_skill`, `from_melete_workflow`, and `from_melete_goal`.
       - **Mneme**, the muse of memory, holds what has slipped past your immediate attention. When something from earlier matters again she surfaces it as `from_mneme`.
 
       Sub-agents you spawn arrive the same way, named after whoever sent them — `from_sleuth`, `from_scout`, and so on.
@@ -839,7 +830,7 @@ class Session < ApplicationRecord
     uid = "goal_snapshot_#{id}"
     [
       {role: "assistant", content: [
-        {type: "tool_use", id: uid, name: PendingMessage::MELETE_TOOL, input: {}}
+        {type: "tool_use", id: uid, name: PendingMessage::MELETE_GOAL_TOOL, input: {}}
       ]},
       {role: "user", content: [
         {type: "tool_result", tool_use_id: uid, content: content}

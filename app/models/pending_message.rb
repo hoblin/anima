@@ -21,9 +21,11 @@
 class PendingMessage < ApplicationRecord
   # Phantom tool names follow the `from_<sender>` convention: the prefix
   # tells the LLM these are messages delivered to it by its sisters or
-  # sub-agents, not tools it invoked. Aoide's system prompt calls the
-  # convention out in one line and the weights do the rest.
-  MELETE_TOOL = "from_melete"
+  # sub-agents, not tools it invoked. Melete's contributions carry the
+  # type in the suffix so the viewport query can filter by kind.
+  MELETE_SKILL_TOOL = "from_melete_skill"
+  MELETE_WORKFLOW_TOOL = "from_melete_workflow"
+  MELETE_GOAL_TOOL = "from_melete_goal"
   MNEME_TOOL = "from_mneme"
 
   # Source types that produce phantom tool_use/tool_result pairs on promotion.
@@ -31,15 +33,15 @@ class PendingMessage < ApplicationRecord
   PHANTOM_PAIR_TYPES = %w[subagent skill workflow recall goal].freeze
 
   # Maps each phantom pair source type to a lambda that builds its
-  # synthetic tool name. Skills, workflows, and goals all come from
-  # Melete; recalled memories come from Mneme; sub-agents encode their
-  # nickname directly into the tool name (e.g. `from_sleuth`).
+  # synthetic tool name. Each Melete contribution carries the type in
+  # its suffix; recalled memories come from Mneme; sub-agents encode
+  # their nickname directly (e.g. `from_sleuth`).
   PHANTOM_TOOL_NAMES = {
     "subagent" => ->(name) { "from_#{name}" },
-    "skill" => ->(_) { MELETE_TOOL },
-    "workflow" => ->(_) { MELETE_TOOL },
+    "skill" => ->(_) { MELETE_SKILL_TOOL },
+    "workflow" => ->(_) { MELETE_WORKFLOW_TOOL },
     "recall" => ->(_) { MNEME_TOOL },
-    "goal" => ->(_) { MELETE_TOOL }
+    "goal" => ->(_) { MELETE_GOAL_TOOL }
   }.freeze
 
   # Maps each phantom pair source type to a lambda building its tool input.

@@ -71,14 +71,14 @@ http_interactions:
         developer running specs. That''s all I need to know.\n\n## Your Sisters\n\nYou
         don''t work alone. Two muses share the conversation with you, and their work
         arrives as tool calls prefixed `from_`:\n\n- **Melete**, the muse of practice,
-        prepares the stage before you speak. Skills, workflows, and goals she''s chosen
-        for you arrive as `from_melete`.\n- **Mneme**, the muse of memory, holds what
-        has slipped past your immediate attention. When something from earlier matters
-        again she surfaces it as `from_mneme`.\n\nSub-agents you spawn arrive the
-        same way, named after whoever sent them — `from_sleuth`, `from_scout`, and
-        so on.\n\nThe `from_` prefix is the only signal you need: anything with it
-        is information delivered *to* you, not a tool you called. Those names aren''t
-        in your toolkit — trying to invoke one will fail.","cache_control":{"type":"ephemeral"}}]}'
+        prepares the stage before you speak. Her contributions arrive as `from_melete_skill`,
+        `from_melete_workflow`, and `from_melete_goal`.\n- **Mneme**, the muse of
+        memory, holds what has slipped past your immediate attention. When something
+        from earlier matters again she surfaces it as `from_mneme`.\n\nSub-agents
+        you spawn arrive the same way, named after whoever sent them — `from_sleuth`,
+        `from_scout`, and so on.\n\nThe `from_` prefix is the only signal you need:
+        anything with it is information delivered *to* you, not a tool you called.
+        Those names aren''t in your toolkit — trying to invoke one will fail.","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -100,7 +100,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 11 Apr 2026 17:02:17 GMT
+      - Sun, 12 Apr 2026 10:18:08 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -112,27 +112,27 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775941200'
+      - '1776006000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.12'
+      - '0.0'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1776409200'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.08'
+      - '0.17'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
       - '1776420000'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
-      - '0.01'
+      - '0.02'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1775941200'
+      - '1776006000'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -146,44 +146,46 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2308'
+      - '1990'
+      Vary:
+      - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=2310
-      Cf-Cache-Status:
-      - DYNAMIC
+      - x-originResponse;dur=1991
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
       X-Robots-Tag:
       - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
       Cf-Ray:
       - "<CF_RAY>"
     body:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxVWhiOFJCaHJLUzRQMW9WbVRZdmdteiIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxUHFnRllaNFAyWmtuQ2tqUDdlWEFyOSIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6IkknbGwgaGVscCB5b3UgZmluZCB0aGUgbGF0ZXN0IGlzc3VlIG9u
         IHRoZSBob2JsaW4vYW5pbWEgcmVwb3NpdG9yeS4gTGV0IG1lIGZldGNoIHRo
         YXQgaW5mb3JtYXRpb24gZm9yIHlvdS4ifSx7InR5cGUiOiJ0b29sX3VzZSIs
-        ImlkIjoidG9vbHVfMDFKTVVvenRGUVRRdHRvMUZlNEhpQWdZIiwibmFtZSI6
+        ImlkIjoidG9vbHVfMDFZRm9hcXdhbVQzZEt6OHV0eW13UGRXIiwibmFtZSI6
         IndlYl9nZXQiLCJpbnB1dCI6eyJ1cmwiOiJodHRwczovL2FwaS5naXRodWIu
-        Y29tL3JlcG9zL2hvYmxpbi9hbmltYS9pc3N1ZXM/c3RhdGU9YWxsJnNvcnQ9
-        Y3JlYXRlZCZkaXJlY3Rpb249ZGVzYyZwZXJfcGFnZT0xIn0sImNhbGxlciI6
-        eyJ0eXBlIjoiZGlyZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIs
-        InN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbCwidXNh
-        Z2UiOnsiaW5wdXRfdG9rZW5zIjozLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90
-        b2tlbnMiOjIzMTAsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNo
-        ZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjoyMzEw
-        LCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2Vu
-        cyI6MTEzLCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9n
-        ZW8iOiJub3RfYXZhaWxhYmxlIn19
+        Y29tL3JlcG9zL2hvYmxpbi9hbmltYS9pc3N1ZXM/c3RhdGU9b3BlbiZzb3J0
+        PWNyZWF0ZWQmZGlyZWN0aW9uPWRlc2MmcGVyX3BhZ2U9MSJ9LCJjYWxsZXIi
+        OnsidHlwZSI6ImRpcmVjdCJ9fV0sInN0b3BfcmVhc29uIjoidG9vbF91c2Ui
+        LCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGwsInVz
+        YWdlIjp7ImlucHV0X3Rva2VucyI6MywiY2FjaGVfY3JlYXRpb25faW5wdXRf
+        dG9rZW5zIjoyMzIwLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2Fj
+        aGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MjMy
+        MCwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tl
+        bnMiOjExMywic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2Vf
+        Z2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
   recorded_at: Sun, 29 Mar 2026 12:30:00 GMT
 - request:
     method: get
-    uri: https://api.github.com/repos/hoblin/anima/issues?direction=desc&per_page=1&sort=created&state=all
+    uri: https://api.github.com/repos/hoblin/anima/issues?direction=desc&per_page=1&sort=created&state=open
     body:
       encoding: US-ASCII
       string: ''
@@ -200,7 +202,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 11 Apr 2026 17:02:17 GMT
+      - Sun, 12 Apr 2026 10:18:09 GMT
       Content-Type:
       - application/json; charset=utf-8
       Cache-Control:
@@ -208,11 +210,11 @@ http_interactions:
       Vary:
       - Accept,Accept-Encoding, Accept, X-Requested-With
       Etag:
-      - W/"196c7fd1f876e89c90fe93ae782b4192c9a6a7dfa2239a65abb911488a1c2893"
+      - W/"bf76a70b8a78174fe280c34a599f6f4f44b81eabe12d4d8621476c2dcc7b9c4a"
       X-Github-Media-Type:
       - github.v3; format=json
       Link:
-      - <https://api.github.com/repositories/1171062522/issues?state=all&sort=created&direction=desc&per_page=1&after=Y3Vyc29yOnYyOpLPAAABnX1rqYjO_QiIXw%3D%3D&page=2>;
+      - <https://api.github.com/repositories/1171062522/issues?state=open&sort=created&direction=desc&per_page=1&after=Y3Vyc29yOnYyOpLPAAABnX1rqYjO_QiIXw%3D%3D&page=2>;
         rel="next"
       X-Github-Api-Version-Selected:
       - '2022-11-28'
@@ -248,11 +250,11 @@ http_interactions:
       X-Ratelimit-Resource:
       - core
       X-Ratelimit-Reset:
-      - '1775930537'
-      Transfer-Encoding:
-      - chunked
+      - '1775992688'
+      Content-Length:
+      - '12353'
       X-Github-Request-Id:
-      - E80A:380A1D:69ADA1D:5CB8BB7:69DA7E99
+      - E84F:11DAB1:1A6F900:165C691:69DB7160
     body:
       encoding: ASCII-8BIT
       base64_string: |
@@ -289,74 +291,248 @@ http_interactions:
         aHViLmNvbS91c2Vycy9ob2JsaW4vcmVjZWl2ZWRfZXZlbnRzIiwidHlwZSI6
         IlVzZXIiLCJ1c2VyX3ZpZXdfdHlwZSI6InB1YmxpYyIsInNpdGVfYWRtaW4i
         OmZhbHNlfSwibGFiZWxzIjpbXSwic3RhdGUiOiJvcGVuIiwibG9ja2VkIjpm
-        YWxzZSwiYXNzaWduZWVzIjpbXSwibWlsZXN0b25lIjpudWxsLCJjb21tZW50
-        cyI6MCwiY3JlYXRlZF9hdCI6IjIwMjYtMDQtMTFUMTY6NDE6NDFaIiwidXBk
-        YXRlZF9hdCI6IjIwMjYtMDQtMTFUMTY6NTg6MzVaIiwiY2xvc2VkX2F0Ijpu
-        dWxsLCJhc3NpZ25lZSI6bnVsbCwiYXV0aG9yX2Fzc29jaWF0aW9uIjoiT1dO
-        RVIiLCJhY3RpdmVfbG9ja19yZWFzb24iOm51bGwsImRyYWZ0Ijp0cnVlLCJw
-        dWxsX3JlcXVlc3QiOnsidXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS9y
-        ZXBvcy9ob2JsaW4vYW5pbWEvcHVsbHMvNDQ1IiwiaHRtbF91cmwiOiJodHRw
-        czovL2dpdGh1Yi5jb20vaG9ibGluL2FuaW1hL3B1bGwvNDQ1IiwiZGlmZl91
-        cmwiOiJodHRwczovL2dpdGh1Yi5jb20vaG9ibGluL2FuaW1hL3B1bGwvNDQ1
-        LmRpZmYiLCJwYXRjaF91cmwiOiJodHRwczovL2dpdGh1Yi5jb20vaG9ibGlu
-        L2FuaW1hL3B1bGwvNDQ1LnBhdGNoIiwibWVyZ2VkX2F0IjpudWxsfSwiYm9k
-        eSI6IkNsb3NlcyAjNDM2LlxuXG5Ccm9rZW4gaW50byA4IHNsaWNlcywgb25l
-        IGNvbW1pdCBlYWNoIOKAlCB0aGUgY29tbWl0IGxpc3QgdGVsbHMgdGhlIG1l
-        Y2hhbmljYWwgc3RvcnkuIFRoaW5ncyB3b3J0aCBrbm93aW5nIHRoYXQgYXJl
-        bid0IGluIHRoZSBkaWZmOlxuXG4qKk5hbWluZyBkZWNpc2lvbnMgbWFkZSB3
-        aXRoIHlvdSBkdXJpbmcgdGhlIHNlc3Npb24qKlxuLSBBb2lkZSdzIG1lbW9y
-        eSB0b29sczogYHNlYXJjaF9tZXNzYWdlc2AgLyBgdmlld19tZXNzYWdlc2Ag
-        KHlvdXIgY2FsbCwgbm90IHRoZSBicmFpbnN0b3JtJ3MpLiBEZXNjcmlwdGlv
-        bnMgZXhwbGljaXRseSBtZW50aW9uIFwibG9uZy10ZXJtIG1lbW9yeVwiLlxu
-        LSBgZnJvbV9gIHByZWZpeCBpcyB1bmlmb3JtIGFjcm9zcyBzaXN0ZXJzIGFu
+        YWxzZSwiYXNzaWduZWVzIjpbeyJsb2dpbiI6ImhvYmxpbiIsImlkIjoyODA5
+        MCwibm9kZV9pZCI6Ik1EUTZWWE5sY2pJNE1Ea3ciLCJhdmF0YXJfdXJsIjoi
+        aHR0cHM6Ly9hdmF0YXJzLmdpdGh1YnVzZXJjb250ZW50LmNvbS91LzI4MDkw
+        P3Y9NCIsImdyYXZhdGFyX2lkIjoiIiwidXJsIjoiaHR0cHM6Ly9hcGkuZ2l0
+        aHViLmNvbS91c2Vycy9ob2JsaW4iLCJodG1sX3VybCI6Imh0dHBzOi8vZ2l0
+        aHViLmNvbS9ob2JsaW4iLCJmb2xsb3dlcnNfdXJsIjoiaHR0cHM6Ly9hcGku
+        Z2l0aHViLmNvbS91c2Vycy9ob2JsaW4vZm9sbG93ZXJzIiwiZm9sbG93aW5n
+        X3VybCI6Imh0dHBzOi8vYXBpLmdpdGh1Yi5jb20vdXNlcnMvaG9ibGluL2Zv
+        bGxvd2luZ3svb3RoZXJfdXNlcn0iLCJnaXN0c191cmwiOiJodHRwczovL2Fw
+        aS5naXRodWIuY29tL3VzZXJzL2hvYmxpbi9naXN0c3svZ2lzdF9pZH0iLCJz
+        dGFycmVkX3VybCI6Imh0dHBzOi8vYXBpLmdpdGh1Yi5jb20vdXNlcnMvaG9i
+        bGluL3N0YXJyZWR7L293bmVyfXsvcmVwb30iLCJzdWJzY3JpcHRpb25zX3Vy
+        bCI6Imh0dHBzOi8vYXBpLmdpdGh1Yi5jb20vdXNlcnMvaG9ibGluL3N1YnNj
+        cmlwdGlvbnMiLCJvcmdhbml6YXRpb25zX3VybCI6Imh0dHBzOi8vYXBpLmdp
+        dGh1Yi5jb20vdXNlcnMvaG9ibGluL29yZ3MiLCJyZXBvc191cmwiOiJodHRw
+        czovL2FwaS5naXRodWIuY29tL3VzZXJzL2hvYmxpbi9yZXBvcyIsImV2ZW50
+        c191cmwiOiJodHRwczovL2FwaS5naXRodWIuY29tL3VzZXJzL2hvYmxpbi9l
+        dmVudHN7L3ByaXZhY3l9IiwicmVjZWl2ZWRfZXZlbnRzX3VybCI6Imh0dHBz
+        Oi8vYXBpLmdpdGh1Yi5jb20vdXNlcnMvaG9ibGluL3JlY2VpdmVkX2V2ZW50
+        cyIsInR5cGUiOiJVc2VyIiwidXNlcl92aWV3X3R5cGUiOiJwdWJsaWMiLCJz
+        aXRlX2FkbWluIjpmYWxzZX1dLCJtaWxlc3RvbmUiOm51bGwsImNvbW1lbnRz
+        IjowLCJjcmVhdGVkX2F0IjoiMjAyNi0wNC0xMVQxNjo0MTo0MVoiLCJ1cGRh
+        dGVkX2F0IjoiMjAyNi0wNC0xMlQwOToyNjo1MFoiLCJjbG9zZWRfYXQiOm51
+        bGwsImFzc2lnbmVlIjp7ImxvZ2luIjoiaG9ibGluIiwiaWQiOjI4MDkwLCJu
+        b2RlX2lkIjoiTURRNlZYTmxjakk0TURrdyIsImF2YXRhcl91cmwiOiJodHRw
+        czovL2F2YXRhcnMuZ2l0aHVidXNlcmNvbnRlbnQuY29tL3UvMjgwOTA/dj00
+        IiwiZ3JhdmF0YXJfaWQiOiIiLCJ1cmwiOiJodHRwczovL2FwaS5naXRodWIu
+        Y29tL3VzZXJzL2hvYmxpbiIsImh0bWxfdXJsIjoiaHR0cHM6Ly9naXRodWIu
+        Y29tL2hvYmxpbiIsImZvbGxvd2Vyc191cmwiOiJodHRwczovL2FwaS5naXRo
+        dWIuY29tL3VzZXJzL2hvYmxpbi9mb2xsb3dlcnMiLCJmb2xsb3dpbmdfdXJs
+        IjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4vZm9sbG93
+        aW5ney9vdGhlcl91c2VyfSIsImdpc3RzX3VybCI6Imh0dHBzOi8vYXBpLmdp
+        dGh1Yi5jb20vdXNlcnMvaG9ibGluL2dpc3Rzey9naXN0X2lkfSIsInN0YXJy
+        ZWRfdXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4v
+        c3RhcnJlZHsvb3duZXJ9ey9yZXBvfSIsInN1YnNjcmlwdGlvbnNfdXJsIjoi
+        aHR0cHM6Ly9hcGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4vc3Vic2NyaXB0
+        aW9ucyIsIm9yZ2FuaXphdGlvbnNfdXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHVi
+        LmNvbS91c2Vycy9ob2JsaW4vb3JncyIsInJlcG9zX3VybCI6Imh0dHBzOi8v
+        YXBpLmdpdGh1Yi5jb20vdXNlcnMvaG9ibGluL3JlcG9zIiwiZXZlbnRzX3Vy
+        bCI6Imh0dHBzOi8vYXBpLmdpdGh1Yi5jb20vdXNlcnMvaG9ibGluL2V2ZW50
+        c3svcHJpdmFjeX0iLCJyZWNlaXZlZF9ldmVudHNfdXJsIjoiaHR0cHM6Ly9h
+        cGkuZ2l0aHViLmNvbS91c2Vycy9ob2JsaW4vcmVjZWl2ZWRfZXZlbnRzIiwi
+        dHlwZSI6IlVzZXIiLCJ1c2VyX3ZpZXdfdHlwZSI6InB1YmxpYyIsInNpdGVf
+        YWRtaW4iOmZhbHNlfSwiYXV0aG9yX2Fzc29jaWF0aW9uIjoiT1dORVIiLCJh
+        Y3RpdmVfbG9ja19yZWFzb24iOm51bGwsImRyYWZ0IjpmYWxzZSwicHVsbF9y
+        ZXF1ZXN0Ijp7InVybCI6Imh0dHBzOi8vYXBpLmdpdGh1Yi5jb20vcmVwb3Mv
+        aG9ibGluL2FuaW1hL3B1bGxzLzQ0NSIsImh0bWxfdXJsIjoiaHR0cHM6Ly9n
+        aXRodWIuY29tL2hvYmxpbi9hbmltYS9wdWxsLzQ0NSIsImRpZmZfdXJsIjoi
+        aHR0cHM6Ly9naXRodWIuY29tL2hvYmxpbi9hbmltYS9wdWxsLzQ0NS5kaWZm
+        IiwicGF0Y2hfdXJsIjoiaHR0cHM6Ly9naXRodWIuY29tL2hvYmxpbi9hbmlt
+        YS9wdWxsLzQ0NS5wYXRjaCIsIm1lcmdlZF9hdCI6bnVsbH0sImJvZHkiOiJD
+        bG9zZXMgIzQzNi5cblxuVGhlIGJyYWluc3Rvcm0gbm90ZSAoYHRob3VnaHRz
+        L3NoYXJlZC9ub3Rlcy8yMDI2LTA0LTExL3RocmVlLW11c2VzLW1lbGV0ZS1h
+        b2lkZS1tbmVtZS5tZGApIGRlc2NyaWJlZCBmaXZlIHRoaW5nczogcmVuYW1l
+        IEFuYWx5dGljYWxCcmFpbiDihpIgTWVsZXRlLCByZXdyaXRlIE1lbGV0ZSdz
+        IGFuZCBNbmVtZSdzIHN5c3RlbSBwcm9tcHRzIGluIHRoZWlyIG93biB2b2lj
+        ZXMsIGFkZCB0aGUgYGZyb21fYCBwaGFudG9tLXRvb2wgcHJlZml4IGNvbnZl
+        bnRpb24sIHJlbmFtZSBBb2lkZSdzIG1lbW9yeSB0b29scywgYW5kIGFkZCBh
+        IFNpc3RlcnMgYmxvY2sgdG8gdGhlIG1haW4gc3lzdGVtIHByb21wdC4gRXZl
+        cnl0aGluZyBpbiB0aGF0IG5vdGUgbGFuZGVkLiBBIGhhbmRmdWwgb2Ygc2lk
+        ZXF1ZXN0cyBsYW5kZWQgd2l0aCBpdCDigJQgd29ydGggYSBzZXBhcmF0ZSBs
+        aXN0aW5nIGJlY2F1c2Ugbm9uZSBvZiB0aGVtIGFyZSBpbiB0aGUgYnJhaW5z
+        dG9ybSBhbmQgdGhlIFBSIGRlc2NyaXB0aW9uIHNob3VsZG4ndCBhc2sgcmV2
+        aWV3ZXJzIHRvIHNwb3QgdGhlbSBtaWQtZGlmZi5cblxuIyMgU2xpY2VzIGlu
+        IHRoZSBicmFpbnN0b3JtXG4xLiBgQW5hbHl0aWNhbEJyYWluIOKGkiBNZWxl
+        dGVgIG1lY2hhbmljYWwgcmVuYW1lIChtb2R1bGUsIGpvYiwgc3BlY3MsIGxv
+        ZyBwYXRocywgY2Fzc2V0dGUgZGlycylcbjIuIGBbYW5hbHl0aWNhbF9icmFp
+        bl0g4oaSIFttZWxldGVdYCBjb25maWcgc2VjdGlvbiArIFNldHRpbmdzIGFj
+        Y2Vzc29yc1xuMy4gYGZyb21fYCBwcmVmaXggY29udmVudGlvbiBmb3IgcGhh
+        bnRvbSB0b29sIG5hbWVzIChgcmVjYWxsX21lbW9yeSDihpIgZnJvbV9tbmVt
+        ZWA7IHNraWxsL3dvcmtmbG93L2dvYWwg4oaSIGBmcm9tX21lbGV0ZWA7IGBz
+        dWJhZ2VudF9tZXNzYWdlIOKGkiBmcm9tX3tuaWNrbmFtZX1gIGR5bmFtaWMg
+        dmlhIGxhbWJkYSlcbjQuIGBUb29sczo6UmVjYWxsYCAvIGBUb29sczo6UmVt
+        ZW1iZXJgIOKGkiBgVG9vbHM6OlNlYXJjaE1lc3NhZ2VzYCAvIGBUb29sczo6
+        Vmlld01lc3NhZ2VzYFxuNS4gU2lzdGVycyBibG9jayBhZGRlZCB0byBBb2lk
+        ZSdzIG1haW4tc2Vzc2lvbiBzeXN0ZW0gcHJvbXB0IChhZnRlciBTT1VMLCBi
+        ZWZvcmUgc25hcHNob3RzKVxuNi4gTWVsZXRlJ3Mgc3lzdGVtIHByb21wdCBy
+        ZXdyaXR0ZW4gaW4gaGVyIHZvaWNlIOKAlCByb2xlIGJlZm9yZSBydWxlcywg
+        dGF4IGZyYW1pbmcgZm9yIGlycmVsZXZhbnQgYWN0aXZhdGlvblxuNy4gTW5l
+        bWUncyBMMSArIEwyIHN5c3RlbSBwcm9tcHRzIHJld3JpdHRlbiBpbiBoZXIg
+        dm9pY2UgKHNhbWUgdGF4IGZyYW1pbmcpXG5cbiMjIFNpZGVxdWVzdHMgdGhl
+        IGJyYWluc3Rvcm0gZGlkIG5vdCBkZXNjcmliZVxuTGFuZGVkIGR1cmluZyBp
+        bXBsZW1lbnRhdGlvbiBvbmNlIHRoZSBuZXcgbWVudGFsIG1vZGVsIGNsaWNr
+        ZWQuIE1vc3Qgb2YgdGhlbSBmZWxsIG91dCBvZiBhIHNpbmdsZSByZWFsaXNh
+        dGlvbjogaWYgTWVsZXRlJ3MgYWN0aXZhdGlvbnMgcmlkZSB0aGUgdmlld3Bv
+        cnQgYXMgYGZyb21fbWVsZXRlYCBwaGFudG9tIHBhaXJzIGFuZCBuYXR1cmFs
+        bHkgZXZpY3QsIHRoZW4gXCJhY3RpdmVcIiBpcyBqdXN0ICoqd2hhdCdzIGlu
+        IHRoZSB2aWV3cG9ydCByaWdodCBub3cqKiDigJQgbm8gc2VwYXJhdGUgc3Rh
+        dGUsIG5vIGRlYWN0aXZhdGlvbiwgbm8gc3luYy5cblxuLSAqKkRyb3BwZWQg
+        YGFjdGl2ZV9za2lsbHNgIC8gYGFjdGl2ZV93b3JrZmxvd2AgREIgY29sdW1u
+        cyoqIChtaWdyYXRpb24gYDIwMjYwNDExMTcyOTI2X3JlbW92ZV9hY3RpdmVf
+        c2tpbGxzX2FuZF93b3JrZmxvd19mcm9tX3Nlc3Npb25zYCkuIFRoZXkgd2Vy
+        ZSBtYWludGFpbmVkIGJ5IEFSIGNhbGxiYWNrcyB0byBtaXJyb3Igdmlld3Bv
+        cnQgY29udGVudHMuIE5vdyBkZXJpdmVkIGRpcmVjdGx5LlxuLSAqKmBTZXNz
+        aW9uI2FjdGl2ZV9za2lsbHNgIC8gYCNhY3RpdmVfd29ya2Zsb3dgIGFyZSBt
+        ZXRob2RzKiog4oCUIHVuaW9uIG9mIHBlbmRpbmcgYFBlbmRpbmdNZXNzYWdl
+        YCByZWNvcmRzIChzb3VyY2VfdHlwZSBgc2tpbGxgL2B3b3JrZmxvd2ApIGFu
+        ZCBpbi12aWV3cG9ydCBgZnJvbV9tZWxldGVgIHBoYW50b20gcGFpcnMsIHJl
+        YWQgb2ZmIHRoZSB2aWV3cG9ydCBvbiBkZW1hbmQuXG4tICoqRGVsZXRlZCBg
+        RGVhY3RpdmF0ZVNraWxsYCAvIGBEZWFjdGl2YXRlV29ya2Zsb3dgIHRvb2xz
+        KiogYW5kIHRoZSBwYWlyZWQgYFNlc3Npb24jZGVhY3RpdmF0ZV9za2lsbGAg
+        LyBgI2RlYWN0aXZhdGVfd29ya2Zsb3dgIG1ldGhvZHMuIERlYWN0aXZhdGlv
+        biBpcyBubyBsb25nZXIgYSB0aGluZyBNZWxldGUgY2FuIGRvIOKAlCBhIHNr
+        aWxsIHJpZGVzIHRoZSB2aWV3cG9ydCB1bnRpbCBpdCBuYXR1cmFsbHkgZXZp
+        Y3RzLlxuLSAqKktpbGxlZCBgU2Vzc2lvbiNhc3NlbWJsZV9leHBlcnRpc2Vf
+        c2VjdGlvbmAqKiDigJQgc3ViLWFnZW50cyBub3cgcmVjZWl2ZSBza2lsbHMg
+        dGhyb3VnaCBwaGFudG9tIHBhaXIgcHJvbW90aW9uIGxpa2UgbWFpbiBzZXNz
+        aW9uczsgbm8gc2VwYXJhdGUgZXhwZXJ0aXNlIGFzc2VtYmx5IHBhdGguXG4t
+        ICoqTmV3IGV2ZW50cyArIHN1YnNjcmliZXIgZm9yIEhVRCByZWZyZXNoOioq
+        IGBFdmVudHM6OlNraWxsQWN0aXZhdGVkYCwgYEV2ZW50czo6V29ya2Zsb3dB
+        Y3RpdmF0ZWRgLCBhbmQgYEV2ZW50czo6U3Vic2NyaWJlcnM6OkFjdGl2ZVN0
+        YXRlQnJvYWRjYXN0ZXJgIHdoaWNoIHN1YnNjcmliZXMgdG8gdGhvc2UgdHdv
+        IHBsdXMgdGhlIGV4aXN0aW5nIGBFdmVudHM6OkV2aWN0aW9uQ29tcGxldGVk
+        YCBhbmQgY2FsbHMgYHNlc3Npb24uYnJvYWRjYXN0X2FjdGl2ZV9zdGF0ZSFg
+        IG9uIGVhY2guIFJlcGxhY2VzIHRoZSBBUiBgYWZ0ZXJfdXBkYXRlX2NvbW1p
+        dGAgY2FsbGJhY2tzIHRoYXQgdXNlZCB0byBicm9hZGNhc3Qgb24gY29sdW1u
+        IGNoYW5nZXMuXG4tICoqRml4ZWQgYSBsYXRlbnQgYnVnIGluIHRoZSBvbGQg
+        YHJlY2FsbGVkX3NvdXJjZXNfaW5fdmlld3BvcnRgIGhlbHBlcioqIOKAlCBp
+        dCB3YXMgcXVlcnlpbmcgYHVzZXJfbWVzc2FnZWAgKyBgc291cmNlX3R5cGU6
+        IFwic2tpbGxcImAsIGJ1dCB0aGUgYXJjaGl0ZWN0dXJlIG1vdmVkIHRvIGB0
+        b29sX2NhbGxgICsgYGZyb21fbWVsZXRlYCArIGB0b29sX2lucHV0LnNraWxs
+        YCBsb25nIGFnby4gVGhlIG9sZCBoZWxwZXIgaGFkIGJlZW4gc2lsZW50bHkg
+        cmV0dXJuaW5nIG5vdGhpbmcuIFJlcGxhY2VkIHdpdGggYFNlc3Npb24jZnJv
+        bV9tZWxldGVfdG9vbF9pbnB1dHNgIHdoaWNoIHJlYWRzIHRoZSByZWFsIHBo
+        YW50b20tcGFpciBzaGFwZS5cblxuIyMgTmFtaW5nIGRlY2lzaW9ucyBtYWRl
+        IGluLXNlc3Npb25cbi0gKipBb2lkZSdzIG1lbW9yeSB0b29sczoqKiBgc2Vh
+        cmNoX21lc3NhZ2VzYCAvIGB2aWV3X21lc3NhZ2VzYCAoY2hvc2VuIGluLXNl
+        c3Npb24sIG5vdCBpbiB0aGUgYnJhaW5zdG9ybSkuIERlc2NyaXB0aW9ucyBl
+        eHBsaWNpdGx5IG1lbnRpb24gXCJsb25nLXRlcm0gbWVtb3J5XCIuXG4tICoq
+        YGZyb21fYCBwcmVmaXggaXMgdW5pZm9ybSoqIGFjcm9zcyBzaXN0ZXJzIGFu
         ZCBzdWItYWdlbnRzIOKAlCBza2lsbHMsIHdvcmtmbG93cywgZ29hbHMgYWxs
         IGNvbGxhcHNlIHRvIGBmcm9tX21lbGV0ZWA7IHN1Yi1hZ2VudHMgZW5jb2Rl
         IHRoZSBuaWNrbmFtZSBhcyBgZnJvbV97bmFtZX1gIHZpYSBhIGxhbWJkYSBp
-        biBgUEhBTlRPTV9UT09MX05BTUVTYC5cblxuKipTaXN0ZXJzIGJsb2NrLCBv
-        bmUgbm9uLW9idmlvdXMgY2hvaWNlOioqIGRvZXMgbm90IHNheSBcIllvdSBh
-        cmUgQW9pZGVcIi4gVGhlIHRlc3Qgc291bCBmaXh0dXJlIChhbmQgeW91ciBy
-        ZWFsIHNvdWwubWQpIHNheXMgXCJNeSBuYW1lIGlzIEFuaW1hXCIg4oCUIHRo
-        ZSBzZWN0aW9uIGlzIGZyYW1lZCBmcm9tIHRoZSByZWFkZXIncyBQT1Ygc28g
-        aWRlbnRpdHkgc3RheXMgc291bCdzIGpvYi4gSWYgeW91IHdhbnQgdGhlIG5h
-        bWUgc3VyZmFjZWQgaW4gQW9pZGUncyBwcm9tcHQsIHNvdWwgaXMgd2hlcmUg
-        aXQgYmVsb25ncy5cblxuKipDYXNzZXR0ZXMqKlxuLSBgOnZjcmAgY2Fzc2V0
-        dGVzIHdob3NlIHJlcXVlc3QgYm9kaWVzIGVuY29kZSB0aGUgbmV3IHRvb2wg
-        c2NoZW1hcyBvciBwcm9tcHRzIGFyZSBtYXJrZWQgYHNraXBgIHdpdGggYSBj
-        bGVhciByZWFzb247IHRoZXkgbmVlZCByZS1yZWNvcmRpbmcgdmlhIGBiaW4v
-        d2l0aC1sbG1zYC4gRml2ZSBvZiB0aGVtLCBhbGwgbGlzdGVkIGluIHRoZSBz
-        a2lwIG1lc3NhZ2VzLlxuLSBPbmUgbm9uLXJlLXJlY29yZGFibGUgY2Fzc2V0
-        dGUgKGBQcm92aWRlcnNfQW50aHJvcGljLy4uLl81Mjlfb3ZlcmxvYWQueW1s
-        YCkgd2FzIHJld3JpdHRlbiBpbiBwbGFjZSB3aXRoIGEgcnVieSBzY3JpcHQg
-        c28gdGhlIHJlcXVlc3QgYm9keSBtYXRjaGVzIGxpdmUgY29kZSDigJQgeW91
-        IHNob3VsZCBzYW5pdHktY2hlY2sgdGhhdCB0aGUgcmV3cml0ZSBsYW5kZWQg
-        Y29ycmVjdGx5LlxuLSBgTW5lbWU6OlJ1bm5lcmAgYW5kIGBNbmVtZTo6TDJS
-        dW5uZXJgIGludGVncmF0aW9uIGNhc3NldHRlcyB1c2UgYG1hdGNoX3JlcXVl
-        c3RzX29uOiBbOm1ldGhvZCwgOnVyaV1gIGFuZCByZXBsYXkgdW5jaGFuZ2Vk
-        LlxuXG4qKkxhdGVudCBidWcgZmxhZ2dlZCwgbm90IGZpeGVkKipcbmBNbmVt
-        ZTo6UGFzc2l2ZVJlY2FsbCNmaWx0ZXJfZHVwbGljYXRlc2AgKGBsaWIvbW5l
-        bWUvcGFzc2l2ZV9yZWNhbGwucmI6NzctOTRgKSBkZWR1cGVzIHByb21vdGVk
-        IHJlY2FsbHMgYnkgYHRvb2xfdXNlX2lkYCwgYnV0IGNoZWNrcyBgXCJyZWNh
-        bGxfI3ttZXNzYWdlX2lkfVwiYCBhZ2FpbnN0IGtleXMgdGhhdCBhcmUgYWN0
-        dWFsbHkgYFwiZnJvbV9tbmVtZV8je3BtLmlkfVwiYCAoYW5kIHdlcmUgYFwi
-        cmVjYWxsX21lbW9yeV8je3BtLmlkfVwiYCBiZWZvcmUpLiBUaGUgdGVzdCBh
-        dCBgcGFzc2l2ZV9yZWNhbGxfc3BlYy5yYjo3NS04MmAgb25seSBwYXNzZXMg
-        YmVjYXVzZSB0aGUgZml4dHVyZSBmYWJyaWNhdGVzIHRoZSBjaGVjay1zdHJp
-        bmcgZm9ybWF0IGJ5IGhhbmQuIFBlbmRpbmctbWVzc2FnZSBkZWR1cCB3b3Jr
-        czsgcHJvbW90ZWQtcmVjYWxsIGRlZHVwIGhhcyBuZXZlciB3b3JrZWQuIE91
-        dCBvZiBzY29wZSBmb3IgIzQzNiDigJQgd29ydGggaXRzIG93biB0aWNrZXQu
-        XG5cbioqRm9sbG93LXVwIGZvciB5b3UqKlxuUmUtcmVjb3JkIHRoZSBmaXZl
-        IHNraXBwZWQgY2Fzc2V0dGVzIHdpdGggYGJpbi93aXRoLWxsbXMgYnVuZGxl
-        IGV4ZWMgcnNwZWMgPHBhdGg+OjxsaW5lPmAgYWZ0ZXIgYWNjZXB0aW5nIHRo
-        ZSByZW5hbWUuXG5cbvCfpJYgR2VuZXJhdGVkIHdpdGggW0NsYXVkZSBDb2Rl
-        XShodHRwczovL2NsYXVkZS5jb20vY2xhdWRlLWNvZGUpIiwiY2xvc2VkX2J5
-        IjpudWxsLCJyZWFjdGlvbnMiOnsidXJsIjoiaHR0cHM6Ly9hcGkuZ2l0aHVi
-        LmNvbS9yZXBvcy9ob2JsaW4vYW5pbWEvaXNzdWVzLzQ0NS9yZWFjdGlvbnMi
-        LCJ0b3RhbF9jb3VudCI6MCwiKzEiOjAsIi0xIjowLCJsYXVnaCI6MCwiaG9v
-        cmF5IjowLCJjb25mdXNlZCI6MCwiaGVhcnQiOjAsInJvY2tldCI6MCwiZXll
-        cyI6MH0sInRpbWVsaW5lX3VybCI6Imh0dHBzOi8vYXBpLmdpdGh1Yi5jb20v
-        cmVwb3MvaG9ibGluL2FuaW1hL2lzc3Vlcy80NDUvdGltZWxpbmUiLCJwZXJm
-        b3JtZWRfdmlhX2dpdGh1Yl9hcHAiOm51bGwsInN0YXRlX3JlYXNvbiI6bnVs
-        bH1d
+        biBgUEhBTlRPTV9UT09MX05BTUVTYC5cbi0gKipTaXN0ZXJzIGJsb2NrIGRv
+        ZXMgbm90IHNheSBcIllvdSBhcmUgQW9pZGVcIi4qKiBUaGUgdGVzdCBzb3Vs
+        IGZpeHR1cmUgKGFuZCB0aGUgcmVhbCBgc291bC5tZGApIHNheSBcIk15IG5h
+        bWUgaXMgQW5pbWFcIiDigJQgdGhlIHNlY3Rpb24gaXMgZnJhbWVkIGZyb20g
+        dGhlIHJlYWRlcidzIFBPViBzbyBpZGVudGl0eSBzdGF5cyBzb3VsJ3Mgam9i
+        LiBUaGUgYXN5bW1ldHJ5IChBb2lkZSdzIG5hbWUgYXBwZWFycyBpbiBoZXIg
+        c2lzdGVycycgcHJvbXB0cyBidXQgbm90IGluIGhlciBvd24gc291bCkgaXMg
+        aW50ZW50aW9uYWw6IGBBb2lkZWAgY2FycmllcyB0aGUgc2VtYW50aWMgd2Vp
+        Z2h0IGZvciBoZXIgc2lzdGVycyB0aGUgc2FtZSB3YXkgTW5lbWUgYW5kIE1l
+        bGV0ZSBjYXJyeSBpdCBmb3IgaGVyLiBJZiB0aGUgbmFtZSBuZWVkcyB0byBy
+        ZWFjaCBBb2lkZSdzIG93biBwcm9tcHQsIHNvdWwgaXMgd2hlcmUgaXQgYmVs
+        b25ncy5cblxuIyMgU2VsZi1yZXZpZXcgZm9sbG93LXVwc1xuQWRkZWQgYXQg
+        dGhlIGVuZCBvZiB0aGUgc2Vzc2lvbiBhZnRlciBhIGZ1bGwgc2VsZi1yZXZp
+        ZXcgcGFzczpcbi0gKipDb21wbGV0ZWQgdGhlIGBicmFpbmAg4oaSIGBtZWxl
+        dGVgIHJlbmFtZS4qKiBgYjBiZWUxYWAgb25seSBzY3J1YmJlZCBZQVJEIGFu
+        ZCBjb25maWcgc3RyaW5nczsgdGhlIGRlY29yYXRvciBgcmVuZGVyX2JyYWlu
+        YCBtb2RlLCBgVG9vbHM6OlN1YmFnZW50UHJvbXB0cyNhc3NpZ25fbmlja25h
+        bWVfdmlhX2JyYWluYCwgYW5kIGEgaGFuZGZ1bCBvZiBjb21tZW50cyBzdGls
+        bCBtZWFudCBNZWxldGUuIFJlbmFtZWQgZXZlcnl3aGVyZSB0aGF0IG1lYW50
+        IE1lbGV0ZSAoZGVjb3JhdG9ycywgTWVsZXRlIHJ1bm5lciwgc3Bhd24gaGVs
+        cGVycywgYC5yZWVrLnltbGAsIHNwZWNzKSB3aGlsZSBsZWF2aW5nIHRoZSBc
+        ImJyYWluIHNlcnZlclwiIC8gXCJCcmFpbiB2cyBUVUlcIiBpbmZyYXN0cnVj
+        dHVyZSBsYW5ndWFnZSBpbnRhY3QuXG4tICoqUGVyZiBmaXggZm9yIGBicm9h
+        ZGNhc3RfYWN0aXZlX3N0YXRlIWAqKiDigJQgZWFjaCBjYWxsIHJhbiB0aGUg
+        dmlld3BvcnQgd2luZG93IHF1ZXJ5IHR3aWNlIChvbmNlIGZvciBza2lsbHMs
+        IG9uY2UgZm9yIHdvcmtmbG93KS4gYGZyb21fbWVsZXRlX2lucHV0X3ZhbHVl
+        cyhrZXkpYCBiZWNhbWUgYGZyb21fbWVsZXRlX3Rvb2xfaW5wdXRzYCB3aGlj
+        aCBwdWxscyBmdWxsIGB0b29sX2lucHV0YCBoYXNoZXMgaW4gb25lIHBsdWNr
+        OyBgc2tpbGxzX2luX3ZpZXdwb3J0YCBhbmQgYHdvcmtmbG93X2luX3ZpZXdw
+        b3J0YCBwaWNrIGZpZWxkcyBpbiBSdWJ5LiBgYnJvYWRjYXN0X2FjdGl2ZV9z
+        dGF0ZSFgIGxvYWRzIHRoZSB0b29sX2lucHV0cyBvbmNlIGFuZCBjb21wb3Nl
+        cyBib3RoIGJyb2FkY2FzdHMgaW5saW5lLlxuLSAqKlRlc3QgaHlnaWVuZToq
+        KiBhZGRlZCBgc3BlYy9ldmVudHMvc3Vic2NyaWJlcnMvYWN0aXZlX3N0YXRl
+        X2Jyb2FkY2FzdGVyX3NwZWMucmJgIChuZXcgc3Vic2NyaWJlciBoYWQgemVy
+        byBjb3ZlcmFnZSk7IHN3aXRjaGVkIGBzcGVjL2pvYnMvYWdlbnRfcmVxdWVz
+        dF9qb2Jfc3BlYy5yYmAgdG8gdGhlIGA6c3ViX2FnZW50YCBmYWN0b3J5IHRy
+        YWl0IGluc3RlYWQgb2YgaGFuZC1yb2xsaW5nIGBTZXNzaW9uLmNyZWF0ZSEo
+        cGFyZW50X3Nlc3Npb246IOKApilgOyBhZGRlZCBlZGdlLWNhc2UgY292ZXJh
+        Z2UgZm9yIGBicm9hZGNhc3RfYWN0aXZlX3N0YXRlIWAgKGVtcHR5IHZpZXdw
+        b3J0LCBib3RoIHNraWxscyArIHdvcmtmbG93IGFjdGl2ZSBzaW11bHRhbmVv
+        dXNseSkuXG5cbiMjIENhc3NldHRlc1xuLSBGaXZlIGludGVncmF0aW9uIGNh
+        c3NldHRlcyBpbnZhbGlkYXRlZCBieSB0aGUgdG9vbC1zY2hlbWEgYW5kIHN5
+        c3RlbS1wcm9tcHQgY2hhbmdlcyB3ZXJlIHJlLXJlY29yZGVkIHZpYSBgYmlu
+        L3dpdGgtbGxtc2AgKGAwNDkzYzAxYCkuIFJlcGxheSBjbGVhbmx5LlxuLSBP
+        bmUgbm9uLXJlLXJlY29yZGFibGUgZXJyb3IgY2Fzc2V0dGUgKGBQcm92aWRl
+        cnNfQW50aHJvcGljLy4uLl81Mjlfb3ZlcmxvYWQueW1sYCkgd2FzIHJld3Jp
+        dHRlbiBpbiBwbGFjZSB3aXRoIGEgcnVieSBzY3JpcHQgc28gdGhlIHJlcXVl
+        c3QgYm9keSBtYXRjaGVzIGxpdmUgY29kZSDigJQgd29ydGggYSBzYW5pdHkt
+        Y2hlY2sgdG8gY29uZmlybSB0aGUgcmV3cml0ZSBsYW5kZWQgY29ycmVjdGx5
+        LlxuLSBgTW5lbWU6OlJ1bm5lcmAgYW5kIGBNbmVtZTo6TDJSdW5uZXJgIGlu
+        dGVncmF0aW9uIGNhc3NldHRlcyB1c2UgYG1hdGNoX3JlcXVlc3RzX29uOiBb
+        Om1ldGhvZCwgOnVyaV1gIGFuZCByZXBsYXkgdW5jaGFuZ2VkLlxuXG4jIyBM
+        YXRlbnQgYnVnIGZsYWdnZWQsIG5vdCBmaXhlZFxuYE1uZW1lOjpQYXNzaXZl
+        UmVjYWxsI2ZpbHRlcl9kdXBsaWNhdGVzYCAoYGxpYi9tbmVtZS9wYXNzaXZl
+        X3JlY2FsbC5yYjo3Ny05NGApIGRlZHVwZXMgcHJvbW90ZWQgcmVjYWxscyBi
+        eSBgdG9vbF91c2VfaWRgLCBidXQgdGhlIGNoZWNrIGtleSBpcyBgXCJyZWNh
+        bGxfI3ttZXNzYWdlX2lkfVwiYCB3aGlsZSByZWFsIHByb21vdGVkIHJlY2Fs
+        bHMgdXNlIGBcImZyb21fbW5lbWVfI3twbS5pZH1cImAgKGFuZCB3ZXJlIGBc
+        InJlY2FsbF9tZW1vcnlfI3twbS5pZH1cImAgYmVmb3JlKS4gVGhlIHRlc3Qg
+        YXQgYHNwZWMvbGliL21uZW1lL3Bhc3NpdmVfcmVjYWxsX3NwZWMucmI6NzUt
+        ODJgIG9ubHkgcGFzc2VzIGJlY2F1c2UgdGhlIGZpeHR1cmUgZmFicmljYXRl
+        cyB0aGUgY2hlY2stc3RyaW5nIGZvcm1hdCBieSBoYW5kLiBQZW5kaW5nLW1l
+        c3NhZ2UgZGVkdXAgd29ya3M7IHByb21vdGVkLXJlY2FsbCBkZWR1cCBoYXMg
+        bmV2ZXIgd29ya2VkLiBPdXQgb2Ygc2NvcGUgZm9yICM0MzYg4oCUIHdvcnRo
+        IGl0cyBvd24gdGlja2V0LlxuXG7wn6SWIEdlbmVyYXRlZCB3aXRoIFtDbGF1
+        ZGUgQ29kZV0oaHR0cHM6Ly9jbGF1ZGUuY29tL2NsYXVkZS1jb2RlKVxuXG48
+        IS0tIENVUlNPUl9TVU1NQVJZIC0tPlxuLS0tXG5cbj4gWyFOT1RFXVxuPiAq
+        Kk1lZGl1bSBSaXNrKipcbj4gTWVkaXVtIHJpc2sgYmVjYXVzZSBpdCBjaGFu
+        Z2VzIGNvcmUgc2Vzc2lvbiBzdGF0ZSBkZXJpdmF0aW9uIChhY3RpdmUgc2tp
+        bGxzL3dvcmtmbG93KSBhbmQgcmVuYW1lcyBidWlsdC1pbiB0b29scyBhbmQg
+        YmFja2dyb3VuZCBqb2JzLCB3aGljaCBjYW4gYWZmZWN0IFRVSSBIVUQgdXBk
+        YXRlcywgcHJvbXB0IGFzc2VtYmx5LCBhbmQgbWVtb3J5L3NraWxsL3dvcmtm
+        bG93IGluamVjdGlvbiBiZWhhdmlvci5cbj4gXG4+ICoqT3ZlcnZpZXcqKlxu
+        PiBSZWJyYW5kcyB0aGUg4oCcYW5hbHl0aWNhbCBicmFpbuKAnSBzdWJzeXN0
+        ZW0gYXMgKipNZWxldGUqKiBhY3Jvc3MgdGhlIGNvZGViYXNlIChqb2JzLCBy
+        dW5uZXJzLCBzZXR0aW5ncywgbG9ncywgZGVjb3JhdG9ycywgZG9jcykgYW5k
+        IHVwZGF0ZXMgTWVsZXRlL01uZW1lIHByb21wdHMgdG8gcmVmbGVjdCB0aGUg
+        bmV3IFRocmVlIE11c2VzIG1vZGVsLlxuPiBcbj4gU3dpdGNoZXMgcGhhbnRv
+        bSB0b29sIGluamVjdGlvbiB0byBhIHVuaWZpZWQgYGZyb21fPHNlbmRlcj5g
+        IGNvbnZlbnRpb246IHNraWxscy93b3JrZmxvd3MvZ29hbHMgbm93IHByb21v
+        dGUgYXMgYGZyb21fbWVsZXRlYCwgcGFzc2l2ZSByZWNhbGwgcHJvbW90ZXMg
+        YXMgYGZyb21fbW5lbWVgLCBhbmQgc3ViLWFnZW50IG1lc3NhZ2VzIGJlY29t
+        ZSBgZnJvbV88bmlja25hbWU+YC4gVGhpcyBhbHNvIGRyb3BzIHBlcnNpc3Rl
+        ZCBgc2Vzc2lvbnMuYWN0aXZlX3NraWxsc2AvYGFjdGl2ZV93b3JrZmxvd2Ag
+        KG1pZ3JhdGlvbikgaW4gZmF2b3Igb2YgZGVyaXZpbmcg4oCcYWN0aXZl4oCd
+        IHN0YXRlIGZyb20gdmlld3BvcnQgYGZyb21fbWVsZXRlYCB0b29sIGNhbGxz
+        IHBsdXMgcXVldWVkIGBQZW5kaW5nTWVzc2FnZWBzLCBhbmQgcmVwbGFjZXMg
+        QVIgY2FsbGJhY2sgYnJvYWRjYXN0aW5nIHdpdGggZXZlbnQtZHJpdmVuIGBT
+        a2lsbEFjdGl2YXRlZGAvYFdvcmtmbG93QWN0aXZhdGVkYCArIGBBY3RpdmVT
+        dGF0ZUJyb2FkY2FzdGVyYC5cbj4gXG4+IFJlbmFtZXMgQW9pZGXigJlzIG1l
+        bW9yeSB0b29scyBmcm9tIGByZWNhbGxgL2ByZW1lbWJlcmAgdG8gYHNlYXJj
+        aF9tZXNzYWdlc2AvYHZpZXdfbWVzc2FnZXNgLCB1cGRhdGVzIHRoZSBkZWZh
+        dWx0IHRvb2xzZXQgYWNjb3JkaW5nbHksIGFuZCByZW1vdmVzIGV4cGxpY2l0
+        IHNraWxsL3dvcmtmbG93IGRlYWN0aXZhdGlvbiB0b29saW5nIChza2lsbHMv
+        d29ya2Zsb3dzIG5vdyBleHBpcmUgbmF0dXJhbGx5IHZpYSB2aWV3cG9ydCBl
+        dmljdGlvbikuXG4+IFxuPiA8c3VwPlJldmlld2VkIGJ5IFtDdXJzb3IgQnVn
+        Ym90XShodHRwczovL2N1cnNvci5jb20vYnVnYm90KSBmb3IgY29tbWl0IDI1
+        ZjM1MDU1ZDc2ZGQzYTEzMzNlZjU2N2ZkNjk4OTA5MDVlNzdkMzUuIEJ1Z2Jv
+        dCBpcyBzZXQgdXAgZm9yIGF1dG9tYXRlZCBjb2RlIHJldmlld3Mgb24gdGhp
+        cyByZXBvLiBDb25maWd1cmUgW2hlcmVdKGh0dHBzOi8vd3d3LmN1cnNvci5j
+        b20vZGFzaGJvYXJkL2J1Z2JvdCkuPC9zdXA+XG48IS0tIC9DVVJTT1JfU1VN
+        TUFSWSAtLT4iLCJjbG9zZWRfYnkiOm51bGwsInJlYWN0aW9ucyI6eyJ1cmwi
+        OiJodHRwczovL2FwaS5naXRodWIuY29tL3JlcG9zL2hvYmxpbi9hbmltYS9p
+        c3N1ZXMvNDQ1L3JlYWN0aW9ucyIsInRvdGFsX2NvdW50IjowLCIrMSI6MCwi
+        LTEiOjAsImxhdWdoIjowLCJob29yYXkiOjAsImNvbmZ1c2VkIjowLCJoZWFy
+        dCI6MCwicm9ja2V0IjowLCJleWVzIjowfSwidGltZWxpbmVfdXJsIjoiaHR0
+        cHM6Ly9hcGkuZ2l0aHViLmNvbS9yZXBvcy9ob2JsaW4vYW5pbWEvaXNzdWVz
+        LzQ0NS90aW1lbGluZSIsInBlcmZvcm1lZF92aWFfZ2l0aHViX2FwcCI6bnVs
+        bCwic3RhdGVfcmVhc29uIjpudWxsfV0=
   recorded_at: Sun, 29 Mar 2026 12:30:00 GMT
 - request:
     method: post
@@ -366,13 +542,13 @@ http_interactions:
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":[{"type":"text","text":"Sun
         Mar 29 12:30\nWhat is the latest issue on hoblin/anima repo?"}]},{"role":"assistant","content":[{"type":"text","text":"I''ll
         help you find the latest issue on the hoblin/anima repository. Let me fetch
-        that information for you."},{"type":"tool_use","id":"toolu_01JMUoztFQTQtto1Fe4HiAgY","name":"web_get","input":{"url":"https://api.github.com/repos/hoblin/anima/issues?state=all\u0026sort=created\u0026direction=desc\u0026per_page=1"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01JMUoztFQTQtto1Fe4HiAgY","content":"[Converted:
+        that information for you."},{"type":"tool_use","id":"toolu_01YFoaqwamT3dKz8utymwPdW","name":"web_get","input":{"url":"https://api.github.com/repos/hoblin/anima/issues?state=open\u0026sort=created\u0026direction=desc\u0026per_page=1"},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01YFoaqwamT3dKz8utymwPdW","content":"[Converted:
         JSON → TOON]\n\n[1]:\n  - url: \"https://api.github.com/repos/hoblin/anima/issues/445\"\n    repository_url:
         \"https://api.github.com/repos/hoblin/anima\"\n    labels_url: \"https://api.github.com/repos/hoblin/anima/issues/445/labels{/name}\"\n    comments_url:
         \"https://api.github.com/repos/hoblin/anima/issues/445/comments\"\n    events_url:
         \"https://api.github.com/repos/hoblin/anima/issues/445/events\"\n    html_url:
         \"https://github.com/hoblin/anima/pull/445\"\n    id: 4245194847\n\n---\n⚠️
-        Response truncated (68 lines total — web_get output displays first/last 10
+        Response truncated (88 lines total — web_get output displays first/last 10
         lines). Full output saved to: /tmp/tool_result_stable.txt\nUse `read_file`
         tool with offset/limit to inspect specific sections.\n---\n\n      \"-1\":
         0\n      laugh: 0\n      hooray: 0\n      confused: 0\n      heart: 0\n      rocket:
@@ -442,14 +618,14 @@ http_interactions:
         developer running specs. That''s all I need to know.\n\n## Your Sisters\n\nYou
         don''t work alone. Two muses share the conversation with you, and their work
         arrives as tool calls prefixed `from_`:\n\n- **Melete**, the muse of practice,
-        prepares the stage before you speak. Skills, workflows, and goals she''s chosen
-        for you arrive as `from_melete`.\n- **Mneme**, the muse of memory, holds what
-        has slipped past your immediate attention. When something from earlier matters
-        again she surfaces it as `from_mneme`.\n\nSub-agents you spawn arrive the
-        same way, named after whoever sent them — `from_sleuth`, `from_scout`, and
-        so on.\n\nThe `from_` prefix is the only signal you need: anything with it
-        is information delivered *to* you, not a tool you called. Those names aren''t
-        in your toolkit — trying to invoke one will fail.","cache_control":{"type":"ephemeral"}}]}'
+        prepares the stage before you speak. Her contributions arrive as `from_melete_skill`,
+        `from_melete_workflow`, and `from_melete_goal`.\n- **Mneme**, the muse of
+        memory, holds what has slipped past your immediate attention. When something
+        from earlier matters again she surfaces it as `from_mneme`.\n\nSub-agents
+        you spawn arrive the same way, named after whoever sent them — `from_sleuth`,
+        `from_scout`, and so on.\n\nThe `from_` prefix is the only signal you need:
+        anything with it is information delivered *to* you, not a tool you called.
+        Those names aren''t in your toolkit — trying to invoke one will fail.","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -471,7 +647,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 11 Apr 2026 17:02:19 GMT
+      - Sun, 12 Apr 2026 10:18:11 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -483,27 +659,27 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775941200'
+      - '1776006000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.12'
+      - '0.0'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1776409200'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.08'
+      - '0.17'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
       - '1776420000'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
-      - '0.01'
+      - '0.02'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1775941200'
+      - '1776006000'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -517,38 +693,37 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1539'
-      Vary:
-      - Accept-Encoding
+      - '1652'
       Server-Timing:
-      - x-originResponse;dur=1546
-      Cf-Cache-Status:
-      - DYNAMIC
+      - x-originResponse;dur=1656
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
       X-Robots-Tag:
       - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
       Cf-Ray:
       - "<CF_RAY>"
     body:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxWVNYaEVMRkp2UjZmaTJkVlZCTjdYYSIsInR5cGUiOiJtZXNzYWdlIiwi
-        cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0b29sX3Vz
-        ZSIsImlkIjoidG9vbHVfMDFBcFFvbmNTanVOTUNjQTdLRWlNb3R1IiwibmFt
-        ZSI6InJlYWRfZmlsZSIsImlucHV0Ijp7InBhdGgiOiIvdG1wL3Rvb2xfcmVz
-        dWx0X3N0YWJsZS50eHQifSwiY2FsbGVyIjp7InR5cGUiOiJkaXJlY3QifX1d
-        LCJzdG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVs
-        bCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMi
-        OjYsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6NDYxLCJjYWNoZV9y
-        ZWFkX2lucHV0X3Rva2VucyI6MjMxMCwiY2FjaGVfY3JlYXRpb24iOnsiZXBo
-        ZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6NDYxLCJlcGhlbWVyYWxfMWhfaW5w
-        dXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6NjIsInNlcnZpY2VfdGll
-        ciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFpbGFibGUi
-        fX0=
+        XzAxU2hSQVp2Q1BnS3NzUnVld2s1Z0pNUiIsInR5cGUiOiJtZXNzYWdlIiwi
+        cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
+        dGV4dCI6IkxldCBtZSBnZXQgdGhlIGZ1bGwgZGV0YWlscyBvZiB0aGlzIGxh
+        dGVzdCBpc3N1ZToifSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoidG9vbHVf
+        MDE0NTdHUEFZSjRTZ21ocW5UQWszaXZCIiwibmFtZSI6InJlYWRfZmlsZSIs
+        ImlucHV0Ijp7InBhdGgiOiIvdG1wL3Rvb2xfcmVzdWx0X3N0YWJsZS50eHQi
+        fSwiY2FsbGVyIjp7InR5cGUiOiJkaXJlY3QifX1dLCJzdG9wX3JlYXNvbiI6
+        InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxz
+        IjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjYsImNhY2hlX2NyZWF0
+        aW9uX2lucHV0X3Rva2VucyI6NDYxLCJjYWNoZV9yZWFkX2lucHV0X3Rva2Vu
+        cyI6MjMyMCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0
+        X3Rva2VucyI6NDYxLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwi
+        b3V0cHV0X3Rva2VucyI6NzQsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwi
+        aW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFpbGFibGUifX0=
   recorded_at: Sun, 29 Mar 2026 12:30:00 GMT
 - request:
     method: post
@@ -558,19 +733,20 @@ http_interactions:
       string: "{\"model\":\"claude-sonnet-4-20250514\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Sun
         Mar 29 12:30\\nWhat is the latest issue on hoblin/anima repo?\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll
         help you find the latest issue on the hoblin/anima repository. Let me fetch
-        that information for you.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01JMUoztFQTQtto1Fe4HiAgY\",\"name\":\"web_get\",\"input\":{\"url\":\"https://api.github.com/repos/hoblin/anima/issues?state=all\\u0026sort=created\\u0026direction=desc\\u0026per_page=1\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01JMUoztFQTQtto1Fe4HiAgY\",\"content\":\"[Converted:
+        that information for you.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01YFoaqwamT3dKz8utymwPdW\",\"name\":\"web_get\",\"input\":{\"url\":\"https://api.github.com/repos/hoblin/anima/issues?state=open\\u0026sort=created\\u0026direction=desc\\u0026per_page=1\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01YFoaqwamT3dKz8utymwPdW\",\"content\":\"[Converted:
         JSON → TOON]\\n\\n[1]:\\n  - url: \\\"https://api.github.com/repos/hoblin/anima/issues/445\\\"\\n
         \   repository_url: \\\"https://api.github.com/repos/hoblin/anima\\\"\\n    labels_url:
         \\\"https://api.github.com/repos/hoblin/anima/issues/445/labels{/name}\\\"\\n
         \   comments_url: \\\"https://api.github.com/repos/hoblin/anima/issues/445/comments\\\"\\n
         \   events_url: \\\"https://api.github.com/repos/hoblin/anima/issues/445/events\\\"\\n
         \   html_url: \\\"https://github.com/hoblin/anima/pull/445\\\"\\n    id: 4245194847\\n\\n---\\n⚠️
-        Response truncated (68 lines total — web_get output displays first/last 10
+        Response truncated (88 lines total — web_get output displays first/last 10
         lines). Full output saved to: /tmp/tool_result_stable.txt\\nUse `read_file`
         tool with offset/limit to inspect specific sections.\\n---\\n\\n      \\\"-1\\\":
         0\\n      laugh: 0\\n      hooray: 0\\n      confused: 0\\n      heart: 0\\n
         \     rocket: 0\\n      eyes: 0\\n    timeline_url: \\\"https://api.github.com/repos/hoblin/anima/issues/445/timeline\\\"\\n
-        \   performed_via_github_app: null\\n    state_reason: null\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01ApQoncSjuNMCcA7KEiMotu\",\"name\":\"read_file\",\"input\":{\"path\":\"/tmp/tool_result_stable.txt\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01ApQoncSjuNMCcA7KEiMotu\",\"content\":\"[Converted:
+        \   performed_via_github_app: null\\n    state_reason: null\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Let
+        me get the full details of this latest issue:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01457GPAYJ4SgmhqnTAk3ivB\",\"name\":\"read_file\",\"input\":{\"path\":\"/tmp/tool_result_stable.txt\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01457GPAYJ4SgmhqnTAk3ivB\",\"content\":\"[Converted:
         JSON → TOON]\\n\\n[1]:\\n  - url: \\\"https://api.github.com/repos/hoblin/anima/issues/445\\\"\\n
         \   repository_url: \\\"https://api.github.com/repos/hoblin/anima\\\"\\n    labels_url:
         \\\"https://api.github.com/repos/hoblin/anima/issues/445/labels{/name}\\\"\\n
@@ -591,43 +767,135 @@ http_interactions:
         \\\"https://api.github.com/users/hoblin/events{/privacy}\\\"\\n      received_events_url:
         \\\"https://api.github.com/users/hoblin/received_events\\\"\\n      type:
         User\\n      user_view_type: public\\n      site_admin: false\\n    labels[0]:\\n
-        \   state: open\\n    locked: false\\n    assignees[0]:\\n    milestone: null\\n
-        \   comments: 0\\n    created_at: \\\"2026-04-11T16:41:41Z\\\"\\n    updated_at:
-        \\\"2026-04-11T16:58:35Z\\\"\\n    closed_at: null\\n    assignee: null\\n
-        \   author_association: OWNER\\n    active_lock_reason: null\\n    draft:
-        true\\n    pull_request:\\n      url: \\\"https://api.github.com/repos/hoblin/anima/pulls/445\\\"\\n
+        \   state: open\\n    locked: false\\n    assignees[1]{login,id,node_id,avatar_url,gravatar_id,url,html_url,followers_url,following_url,gists_url,starred_url,subscriptions_url,organizations_url,repos_url,events_url,received_events_url,type,user_view_type,site_admin}:\\n
+        \     hoblin,28090,MDQ6VXNlcjI4MDkw,\\\"https://avatars.githubusercontent.com/u/28090?v=4\\\",\\\"\\\",\\\"https://api.github.com/users/hoblin\\\",\\\"https://github.com/hoblin\\\",\\\"https://api.github.com/users/hoblin/followers\\\",\\\"https://api.github.com/users/hoblin/following{/other_user}\\\",\\\"https://api.github.com/users/hoblin/gists{/gist_id}\\\",\\\"https://api.github.com/users/hoblin/starred{/owner}{/repo}\\\",\\\"https://api.github.com/users/hoblin/subscriptions\\\",\\\"https://api.github.com/users/hoblin/orgs\\\",\\\"https://api.github.com/users/hoblin/repos\\\",\\\"https://api.github.com/users/hoblin/events{/privacy}\\\",\\\"https://api.github.com/users/hoblin/received_events\\\",User,public,false\\n
+        \   milestone: null\\n    comments: 0\\n    created_at: \\\"2026-04-11T16:41:41Z\\\"\\n
+        \   updated_at: \\\"2026-04-12T09:26:50Z\\\"\\n    closed_at: null\\n    assignee:\\n
+        \     login: hoblin\\n      id: 28090\\n      node_id: MDQ6VXNlcjI4MDkw\\n
+        \     avatar_url: \\\"https://avatars.githubusercontent.com/u/28090?v=4\\\"\\n
+        \     gravatar_id: \\\"\\\"\\n      url: \\\"https://api.github.com/users/hoblin\\\"\\n
+        \     html_url: \\\"https://github.com/hoblin\\\"\\n      followers_url: \\\"https://api.github.com/users/hoblin/followers\\\"\\n
+        \     following_url: \\\"https://api.github.com/users/hoblin/following{/other_user}\\\"\\n
+        \     gists_url: \\\"https://api.github.com/users/hoblin/gists{/gist_id}\\\"\\n
+        \     starred_url: \\\"https://api.github.com/users/hoblin/starred{/owner}{/repo}\\\"\\n
+        \     subscriptions_url: \\\"https://api.github.com/users/hoblin/subscriptions\\\"\\n
+        \     organizations_url: \\\"https://api.github.com/users/hoblin/orgs\\\"\\n
+        \     repos_url: \\\"https://api.github.com/users/hoblin/repos\\\"\\n      events_url:
+        \\\"https://api.github.com/users/hoblin/events{/privacy}\\\"\\n      received_events_url:
+        \\\"https://api.github.com/users/hoblin/received_events\\\"\\n      type:
+        User\\n      user_view_type: public\\n      site_admin: false\\n    author_association:
+        OWNER\\n    active_lock_reason: null\\n    draft: false\\n    pull_request:\\n
+        \     url: \\\"https://api.github.com/repos/hoblin/anima/pulls/445\\\"\\n
         \     html_url: \\\"https://github.com/hoblin/anima/pull/445\\\"\\n      diff_url:
         \\\"https://github.com/hoblin/anima/pull/445.diff\\\"\\n      patch_url: \\\"https://github.com/hoblin/anima/pull/445.patch\\\"\\n
-        \     merged_at: null\\n    body: \\\"Closes #436.\\\\n\\\\nBroken into 8
-        slices, one commit each — the commit list tells the mechanical story. Things
-        worth knowing that aren't in the diff:\\\\n\\\\n**Naming decisions made with
-        you during the session**\\\\n- Aoide's memory tools: `search_messages` / `view_messages`
-        (your call, not the brainstorm's). Descriptions explicitly mention \\\\\\\"long-term
-        memory\\\\\\\".\\\\n- `from_` prefix is uniform across sisters and sub-agents
+        \     merged_at: null\\n    body: \\\"Closes #436.\\\\n\\\\nThe brainstorm
+        note (`thoughts/shared/notes/2026-04-11/three-muses-melete-aoide-mneme.md`)
+        described five things: rename AnalyticalBrain → Melete, rewrite Melete's and
+        Mneme's system prompts in their own voices, add the `from_` phantom-tool prefix
+        convention, rename Aoide's memory tools, and add a Sisters block to the main
+        system prompt. Everything in that note landed. A handful of sidequests landed
+        with it — worth a separate listing because none of them are in the brainstorm
+        and the PR description shouldn't ask reviewers to spot them mid-diff.\\\\n\\\\n##
+        Slices in the brainstorm\\\\n1. `AnalyticalBrain → Melete` mechanical rename
+        (module, job, specs, log paths, cassette dirs)\\\\n2. `[analytical_brain]
+        → [melete]` config section + Settings accessors\\\\n3. `from_` prefix convention
+        for phantom tool names (`recall_memory → from_mneme`; skill/workflow/goal
+        → `from_melete`; `subagent_message → from_{nickname}` dynamic via lambda)\\\\n4.
+        `Tools::Recall` / `Tools::Remember` → `Tools::SearchMessages` / `Tools::ViewMessages`\\\\n5.
+        Sisters block added to Aoide's main-session system prompt (after SOUL, before
+        snapshots)\\\\n6. Melete's system prompt rewritten in her voice — role before
+        rules, tax framing for irrelevant activation\\\\n7. Mneme's L1 + L2 system
+        prompts rewritten in her voice (same tax framing)\\\\n\\\\n## Sidequests the
+        brainstorm did not describe\\\\nLanded during implementation once the new
+        mental model clicked. Most of them fell out of a single realisation: if Melete's
+        activations ride the viewport as `from_melete` phantom pairs and naturally
+        evict, then \\\\\\\"active\\\\\\\" is just **what's in the viewport right
+        now** — no separate state, no deactivation, no sync.\\\\n\\\\n- **Dropped
+        `active_skills` / `active_workflow` DB columns** (migration `20260411172926_remove_active_skills_and_workflow_from_sessions`).
+        They were maintained by AR callbacks to mirror viewport contents. Now derived
+        directly.\\\\n- **`Session#active_skills` / `#active_workflow` are methods**
+        — union of pending `PendingMessage` records (source_type `skill`/`workflow`)
+        and in-viewport `from_melete` phantom pairs, read off the viewport on demand.\\\\n-
+        **Deleted `DeactivateSkill` / `DeactivateWorkflow` tools** and the paired
+        `Session#deactivate_skill` / `#deactivate_workflow` methods. Deactivation
+        is no longer a thing Melete can do — a skill rides the viewport until it naturally
+        evicts.\\\\n- **Killed `Session#assemble_expertise_section`** — sub-agents
+        now receive skills through phantom pair promotion like main sessions; no separate
+        expertise assembly path.\\\\n- **New events + subscriber for HUD refresh:**
+        `Events::SkillActivated`, `Events::WorkflowActivated`, and `Events::Subscribers::ActiveStateBroadcaster`
+        which subscribes to those two plus the existing `Events::EvictionCompleted`
+        and calls `session.broadcast_active_state!` on each. Replaces the AR `after_update_commit`
+        callbacks that used to broadcast on column changes.\\\\n- **Fixed a latent
+        bug in the old `recalled_sources_in_viewport` helper** — it was querying `user_message`
+        + `source_type: \\\\\\\"skill\\\\\\\"`, but the architecture moved to `tool_call`
+        + `from_melete` + `tool_input.skill` long ago. The old helper had been silently
+        returning nothing. Replaced with `Session#from_melete_tool_inputs` which reads
+        the real phantom-pair shape.\\\\n\\\\n## Naming decisions made in-session\\\\n-
+        **Aoide's memory tools:** `search_messages` / `view_messages` (chosen in-session,
+        not in the brainstorm). Descriptions explicitly mention \\\\\\\"long-term
+        memory\\\\\\\".\\\\n- **`from_` prefix is uniform** across sisters and sub-agents
         — skills, workflows, goals all collapse to `from_melete`; sub-agents encode
-        the nickname as `from_{name}` via a lambda in `PHANTOM_TOOL_NAMES`.\\\\n\\\\n**Sisters
-        block, one non-obvious choice:** does not say \\\\\\\"You are Aoide\\\\\\\".
-        The test soul fixture (and your real soul.md) says \\\\\\\"My name is Anima\\\\\\\"
-        — the section is framed from the reader's POV so identity stays soul's job.
-        If you want the name surfaced in Aoide's prompt, soul is where it belongs.\\\\n\\\\n**Cassettes**\\\\n-
-        `:vcr` cassettes whose request bodies encode the new tool schemas or prompts
-        are marked `skip` with a clear reason; they need re-recording via `bin/with-llms`.
-        Five of them, all listed in the skip messages.\\\\n- One non-re-recordable
-        cassette (`Providers_Anthropic/..._529_overload.yml`) was rewritten in place
-        with a ruby script so the request body matches live code — you should sanity-check
-        that the rewrite landed correctly.\\\\n- `Mneme::Runner` and `Mneme::L2Runner`
-        integration cassettes use `match_requests_on: [:method, :uri]` and replay
-        unchanged.\\\\n\\\\n**Latent bug flagged, not fixed**\\\\n`Mneme::PassiveRecall#filter_duplicates`
-        (`lib/mneme/passive_recall.rb:77-94`) dedupes promoted recalls by `tool_use_id`,
-        but checks `\\\\\\\"recall_#{message_id}\\\\\\\"` against keys that are actually
-        `\\\\\\\"from_mneme_#{pm.id}\\\\\\\"` (and were `\\\\\\\"recall_memory_#{pm.id}\\\\\\\"`
-        before). The test at `passive_recall_spec.rb:75-82` only passes because the
-        fixture fabricates the check-string format by hand. Pending-message dedup
-        works; promoted-recall dedup has never worked. Out of scope for #436 — worth
-        its own ticket.\\\\n\\\\n**Follow-up for you**\\\\nRe-record the five skipped
-        cassettes with `bin/with-llms bundle exec rspec \\u003cpath\\u003e:\\u003cline\\u003e`
-        after accepting the rename.\\\\n\\\\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\\\"\\n
-        \   closed_by: null\\n    reactions:\\n      url: \\\"https://api.github.com/repos/hoblin/anima/issues/445/reactions\\\"\\n
+        the nickname as `from_{name}` via a lambda in `PHANTOM_TOOL_NAMES`.\\\\n-
+        **Sisters block does not say \\\\\\\"You are Aoide\\\\\\\".** The test soul
+        fixture (and the real `soul.md`) say \\\\\\\"My name is Anima\\\\\\\" — the
+        section is framed from the reader's POV so identity stays soul's job. The
+        asymmetry (Aoide's name appears in her sisters' prompts but not in her own
+        soul) is intentional: `Aoide` carries the semantic weight for her sisters
+        the same way Mneme and Melete carry it for her. If the name needs to reach
+        Aoide's own prompt, soul is where it belongs.\\\\n\\\\n## Self-review follow-ups\\\\nAdded
+        at the end of the session after a full self-review pass:\\\\n- **Completed
+        the `brain` → `melete` rename.** `b0bee1a` only scrubbed YARD and config strings;
+        the decorator `render_brain` mode, `Tools::SubagentPrompts#assign_nickname_via_brain`,
+        and a handful of comments still meant Melete. Renamed everywhere that meant
+        Melete (decorators, Melete runner, spawn helpers, `.reek.yml`, specs) while
+        leaving the \\\\\\\"brain server\\\\\\\" / \\\\\\\"Brain vs TUI\\\\\\\" infrastructure
+        language intact.\\\\n- **Perf fix for `broadcast_active_state!`** — each call
+        ran the viewport window query twice (once for skills, once for workflow).
+        `from_melete_input_values(key)` became `from_melete_tool_inputs` which pulls
+        full `tool_input` hashes in one pluck; `skills_in_viewport` and `workflow_in_viewport`
+        pick fields in Ruby. `broadcast_active_state!` loads the tool_inputs once
+        and composes both broadcasts inline.\\\\n- **Test hygiene:** added `spec/events/subscribers/active_state_broadcaster_spec.rb`
+        (new subscriber had zero coverage); switched `spec/jobs/agent_request_job_spec.rb`
+        to the `:sub_agent` factory trait instead of hand-rolling `Session.create!(parent_session:
+        …)`; added edge-case coverage for `broadcast_active_state!` (empty viewport,
+        both skills + workflow active simultaneously).\\\\n\\\\n## Cassettes\\\\n-
+        Five integration cassettes invalidated by the tool-schema and system-prompt
+        changes were re-recorded via `bin/with-llms` (`0493c01`). Replay cleanly.\\\\n-
+        One non-re-recordable error cassette (`Providers_Anthropic/..._529_overload.yml`)
+        was rewritten in place with a ruby script so the request body matches live
+        code — worth a sanity-check to confirm the rewrite landed correctly.\\\\n-
+        `Mneme::Runner` and `Mneme::L2Runner` integration cassettes use `match_requests_on:
+        [:method, :uri]` and replay unchanged.\\\\n\\\\n## Latent bug flagged, not
+        fixed\\\\n`Mneme::PassiveRecall#filter_duplicates` (`lib/mneme/passive_recall.rb:77-94`)
+        dedupes promoted recalls by `tool_use_id`, but the check key is `\\\\\\\"recall_#{message_id}\\\\\\\"`
+        while real promoted recalls use `\\\\\\\"from_mneme_#{pm.id}\\\\\\\"` (and
+        were `\\\\\\\"recall_memory_#{pm.id}\\\\\\\"` before). The test at `spec/lib/mneme/passive_recall_spec.rb:75-82`
+        only passes because the fixture fabricates the check-string format by hand.
+        Pending-message dedup works; promoted-recall dedup has never worked. Out of
+        scope for #436 — worth its own ticket.\\\\n\\\\n\U0001F916 Generated with
+        [Claude Code](https://claude.com/claude-code)\\\\n\\\\n\\u003c!-- CURSOR_SUMMARY
+        --\\u003e\\\\n---\\\\n\\\\n\\u003e [!NOTE]\\\\n\\u003e **Medium Risk**\\\\n\\u003e
+        Medium risk because it changes core session state derivation (active skills/workflow)
+        and renames built-in tools and background jobs, which can affect TUI HUD updates,
+        prompt assembly, and memory/skill/workflow injection behavior.\\\\n\\u003e
+        \\\\n\\u003e **Overview**\\\\n\\u003e Rebrands the “analytical brain” subsystem
+        as **Melete** across the codebase (jobs, runners, settings, logs, decorators,
+        docs) and updates Melete/Mneme prompts to reflect the new Three Muses model.\\\\n\\u003e
+        \\\\n\\u003e Switches phantom tool injection to a unified `from_\\u003csender\\u003e`
+        convention: skills/workflows/goals now promote as `from_melete`, passive recall
+        promotes as `from_mneme`, and sub-agent messages become `from_\\u003cnickname\\u003e`.
+        This also drops persisted `sessions.active_skills`/`active_workflow` (migration)
+        in favor of deriving “active” state from viewport `from_melete` tool calls
+        plus queued `PendingMessage`s, and replaces AR callback broadcasting with
+        event-driven `SkillActivated`/`WorkflowActivated` + `ActiveStateBroadcaster`.\\\\n\\u003e
+        \\\\n\\u003e Renames Aoide’s memory tools from `recall`/`remember` to `search_messages`/`view_messages`,
+        updates the default toolset accordingly, and removes explicit skill/workflow
+        deactivation tooling (skills/workflows now expire naturally via viewport eviction).\\\\n\\u003e
+        \\\\n\\u003e \\u003csup\\u003eReviewed by [Cursor Bugbot](https://cursor.com/bugbot)
+        for commit 25f35055d76dd3a1333ef567fd69890905e77d35. Bugbot is set up for
+        automated code reviews on this repo. Configure [here](https://www.cursor.com/dashboard/bugbot).\\u003c/sup\\u003e\\\\n\\u003c!--
+        /CURSOR_SUMMARY --\\u003e\\\"\\n    closed_by: null\\n    reactions:\\n      url:
+        \\\"https://api.github.com/repos/hoblin/anima/issues/445/reactions\\\"\\n
         \     total_count: 0\\n      \\\"+1\\\": 0\\n      \\\"-1\\\": 0\\n      laugh:
         0\\n      hooray: 0\\n      confused: 0\\n      heart: 0\\n      rocket: 0\\n
         \     eyes: 0\\n    timeline_url: \\\"https://api.github.com/repos/hoblin/anima/issues/445/timeline\\\"\\n
@@ -697,10 +965,10 @@ http_interactions:
         My Human\\n\\nA developer running specs. That's all I need to know.\\n\\n##
         Your Sisters\\n\\nYou don't work alone. Two muses share the conversation with
         you, and their work arrives as tool calls prefixed `from_`:\\n\\n- **Melete**,
-        the muse of practice, prepares the stage before you speak. Skills, workflows,
-        and goals she's chosen for you arrive as `from_melete`.\\n- **Mneme**, the
-        muse of memory, holds what has slipped past your immediate attention. When
-        something from earlier matters again she surfaces it as `from_mneme`.\\n\\nSub-agents
+        the muse of practice, prepares the stage before you speak. Her contributions
+        arrive as `from_melete_skill`, `from_melete_workflow`, and `from_melete_goal`.\\n-
+        **Mneme**, the muse of memory, holds what has slipped past your immediate
+        attention. When something from earlier matters again she surfaces it as `from_mneme`.\\n\\nSub-agents
         you spawn arrive the same way, named after whoever sent them — `from_sleuth`,
         `from_scout`, and so on.\\n\\nThe `from_` prefix is the only signal you need:
         anything with it is information delivered *to* you, not a tool you called.
@@ -726,7 +994,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 11 Apr 2026 17:02:27 GMT
+      - Sun, 12 Apr 2026 10:18:19 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -738,27 +1006,27 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775941200'
+      - '1776006000'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.12'
+      - '0.0'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1776409200'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.08'
+      - '0.18'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
       - '1776420000'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
-      - '0.01'
+      - '0.02'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1775941200'
+      - '1776006000'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -772,54 +1040,60 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '7017'
+      - '7254'
+      Vary:
+      - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=7019
-      Cf-Cache-Status:
-      - DYNAMIC
+      - x-originResponse;dur=7256
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
       X-Robots-Tag:
       - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
       Cf-Ray:
       - "<CF_RAY>"
     body:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxVmVLb25Rc3F5a1l5VzhrdFl1YlpGNyIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxRWg0OUFCOTdoeUhKYzNhOWRpUGNUMSIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
         dGV4dCI6IkJhc2VkIG9uIHRoZSBHaXRIdWIgQVBJIHJlc3BvbnNlLCB0aGUg
         bGF0ZXN0IGlzc3VlIG9uIHRoZSBob2JsaW4vYW5pbWEgcmVwb3NpdG9yeSBp
-        czpcblxuKipQdWxsIFJlcXVlc3QgIzQ0NSoqOiBcIiM0MzYgcmVmYWN0b3I6
-        IHRoZSBUaHJlZSBNdXNlcyDigJQgTWVsZXRlLCBNbmVtZSwgQW9pZGVcIlxu
-        XG4qKkRldGFpbHM6Kipcbi0gKipTdGF0ZSoqOiBPcGVuIChkcmFmdClcbi0g
-        KipDcmVhdGVkKio6IEFwcmlsIDExLCAyMDI2IGF0IDE2OjQxOjQxIFVUQ1xu
-        LSAqKkF1dGhvcioqOiBob2JsaW4gKHJlcG9zaXRvcnkgb3duZXIpXG4tICoq
-        VHlwZSoqOiBUaGlzIGlzIGFjdHVhbGx5IGEgcHVsbCByZXF1ZXN0LCBub3Qg
-        YSByZWd1bGFyIGlzc3VlXG5cbioqU3VtbWFyeToqKlxuVGhpcyBpcyBhIHJl
-        ZmFjdG9yaW5nIFBSIHRoYXQgYWRkcmVzc2VzIGlzc3VlICM0MzYuIEl0IGlt
-        cGxlbWVudHMgXCJ0aGUgVGhyZWUgTXVzZXNcIiBjb25jZXB0LCBpbnRyb2R1
-        Y2luZyB0aHJlZSBjb21wb25lbnRzIG5hbWVkIE1lbGV0ZSwgTW5lbWUsIGFu
-        ZCBBb2lkZS4gVGhlIFBSIGlzIGJyb2tlbiBpbnRvIDggY29tbWl0cyBhbmQg
-        aW5jbHVkZXM6XG5cbi0gTmV3IG5hbWluZyBjb252ZW50aW9ucyBmb3IgQW9p
-        ZGUncyBtZW1vcnkgdG9vbHMgKGBzZWFyY2hfbWVzc2FnZXNgIC8gYHZpZXdf
-        bWVzc2FnZXNgKVxuLSBBIHVuaWZvcm0gYGZyb21fYCBwcmVmaXggc3lzdGVt
-        IGZvciBzaXN0ZXJzIGFuZCBzdWItYWdlbnRzXG4tIFVwZGF0ZXMgdG8gY2Fz
-        c2V0dGVzIGFuZCB0ZXN0IGZpeHR1cmVzXG4tIERvY3VtZW50YXRpb24gb2Yg
-        YSBsYXRlbnQgYnVnIGluIGBNbmVtZTo6UGFzc2l2ZVJlY2FsbCNmaWx0ZXJf
-        ZHVwbGljYXRlc2BcblxuVGhlIFBSIGlzIGN1cnJlbnRseSBpbiBkcmFmdCBz
-        dGF0dXMgYW5kIGluY2x1ZGVzIGRldGFpbGVkIHRlY2huaWNhbCBub3RlcyBh
-        Ym91dCB0aGUgaW1wbGVtZW50YXRpb24gZGVjaXNpb25zIGFuZCBmb2xsb3ct
-        dXAgd29yayBuZWVkZWQuIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwi
-        c3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2Fn
-        ZSI6eyJpbnB1dF90b2tlbnMiOjYsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rv
-        a2VucyI6MjEzOSwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjIzMTAsImNh
-        Y2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjIx
-        MzksImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9r
-        ZW5zIjoyNzAsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNl
-        X2dlbyI6Im5vdF9hdmFpbGFibGUifX0=
+        czpcblxuKipQdWxsIFJlcXVlc3QgIzQ0NTogXCIjNDM2IHJlZmFjdG9yOiB0
+        aGUgVGhyZWUgTXVzZXMg4oCUIE1lbGV0ZSwgTW5lbWUsIEFvaWRlXCIqKlxu
+        XG4tICoqQ3JlYXRlZDoqKiBBcHJpbCAxMSwgMjAyNiBhdCAxNjo0MTo0MVpc
+        bi0gKipVcGRhdGVkOioqIEFwcmlsIDEyLCAyMDI2IGF0IDA5OjI2OjUwWlxu
+        LSAqKlN0YXR1czoqKiBPcGVuIChkcmFmdClcbi0gKipBdXRob3I6KiogaG9i
+        bGluXG4tICoqQXNzaWduZWU6KiogaG9ibGluXG5cblRoaXMgaXMgYWN0dWFs
+        bHkgYSBwdWxsIHJlcXVlc3QgKG5vdCBhIHJlZ3VsYXIgaXNzdWUpIHRoYXQg
+        YWRkcmVzc2VzIGlzc3VlICM0MzYuIEl0J3MgYSBzaWduaWZpY2FudCByZWZh
+        Y3RvcmluZyB0aGF0OlxuXG4xLiAqKlJlbmFtZXMgdGhlIFwiYW5hbHl0aWNh
+        bCBicmFpblwiIHN1YnN5c3RlbSB0byBcIk1lbGV0ZVwiKiogYWNyb3NzIHRo
+        ZSBjb2RlYmFzZVxuMi4gKipJbXBsZW1lbnRzIGEgXCJUaHJlZSBNdXNlc1wi
+        IG1vZGVsKiogd2l0aCBNZWxldGUsIE1uZW1lLCBhbmQgQW9pZGVcbjMuICoq
+        Q2hhbmdlcyBwaGFudG9tIHRvb2wgaW5qZWN0aW9uKiogdG8gdXNlIGEgdW5p
+        ZmllZCBgZnJvbV88c2VuZGVyPmAgY29udmVudGlvblxuNC4gKipSZW1vdmVz
+        IHBlcnNpc3RlZCBzZXNzaW9uIHN0YXRlKiogaW4gZmF2b3Igb2YgZGVyaXZp
+        bmcgXCJhY3RpdmVcIiBzdGF0ZSBmcm9tIHZpZXdwb3J0IGNvbnRlbnRcbjUu
+        ICoqUmVuYW1lcyBtZW1vcnkgdG9vbHMqKiBmcm9tIGByZWNhbGxgL2ByZW1l
+        bWJlcmAgdG8gYHNlYXJjaF9tZXNzYWdlc2AvYHZpZXdfbWVzc2FnZXNgXG42
+        LiAqKlVwZGF0ZXMgc3lzdGVtIHByb21wdHMqKiBmb3IgdGhlIG5ldyBtZW50
+        YWwgbW9kZWxcblxuVGhlIFBSIGluY2x1ZGVzIGRhdGFiYXNlIG1pZ3JhdGlv
+        bnMsIHRlc3QgdXBkYXRlcywgYW5kIGNhc3NldHRlIHJlLXJlY29yZGluZ3Mu
+        IEl0J3MgbWFya2VkIGFzIG1lZGl1bSByaXNrIGR1ZSB0byBjaGFuZ2VzIGlu
+        IGNvcmUgc2Vzc2lvbiBzdGF0ZSBkZXJpdmF0aW9uIGFuZCBidWlsdC1pbiB0
+        b29sIHJlbmFtaW5nIHRoYXQgY291bGQgYWZmZWN0IFVJIHVwZGF0ZXMgYW5k
+        IHByb21wdCBhc3NlbWJseSBiZWhhdmlvci4ifV0sInN0b3BfcmVhc29uIjoi
+        ZW5kX3R1cm4iLCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMi
+        Om51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6NiwiY2FjaGVfY3JlYXRp
+        b25faW5wdXRfdG9rZW5zIjo0NDkzLCJjYWNoZV9yZWFkX2lucHV0X3Rva2Vu
+        cyI6MjMyMCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0
+        X3Rva2VucyI6NDQ5MywiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0s
+        Im91dHB1dF90b2tlbnMiOjM0MSwic2VydmljZV90aWVyIjoic3RhbmRhcmQi
+        LCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
   recorded_at: Sun, 29 Mar 2026 12:30:00 GMT
 recorded_with: VCR 6.4.0

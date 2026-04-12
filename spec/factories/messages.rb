@@ -51,7 +51,7 @@ FactoryBot.define do
       transient { skill_name { "gh-issue" } }
       sequence(:tool_use_id) { |n| "from_melete_skill_#{n}" }
       payload do
-        {"tool_name" => PendingMessage::MELETE_TOOL,
+        {"tool_name" => PendingMessage::MELETE_SKILL_TOOL,
          "tool_input" => {"skill" => skill_name},
          "tool_use_id" => tool_use_id,
          "content" => "[recalled skill: #{skill_name}]"}
@@ -63,7 +63,7 @@ FactoryBot.define do
       transient { workflow_name { "feature" } }
       sequence(:tool_use_id) { |n| "from_melete_workflow_#{n}" }
       payload do
-        {"tool_name" => PendingMessage::MELETE_TOOL,
+        {"tool_name" => PendingMessage::MELETE_WORKFLOW_TOOL,
          "tool_input" => {"workflow" => workflow_name},
          "tool_use_id" => tool_use_id,
          "content" => "[recalled workflow: #{workflow_name}]"}
