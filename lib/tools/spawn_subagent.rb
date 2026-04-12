@@ -7,8 +7,8 @@ module Tools
   # Runs via {AgentRequestJob} and communicates with the parent through
   # natural text messages routed by {Events::Subscribers::SubagentMessageRouter}.
   #
-  # Nickname assignment is handled by the {AnalyticalBrain::Runner} which
-  # runs synchronously at spawn time — the same brain that manages skills,
+  # Nickname assignment is handled by the {Melete::Runner} which
+  # runs synchronously at spawn time — the same muse that manages skills,
   # goals, and workflows for the main session.
   #
   # For named specialists with predefined prompts and tools, see {SpawnSpecialist}.
@@ -51,9 +51,9 @@ module Tools
     end
 
     # Creates a child session with a clean context (no parent history),
-    # runs the analytical brain to assign a nickname, persists the task
+    # runs Melete to assign a nickname, persists the task
     # as a pinned user message, and queues background processing.
-    # Returns immediately after brain completes (blocking for ~200ms).
+    # Returns immediately after Melete completes (blocking for ~200ms).
     #
     # @param input [Hash<String, Object>] with "task" and optional "tools"
     # @return [String] confirmation with child session ID and @nickname
@@ -85,7 +85,7 @@ module Tools
         initial_cwd: @shell_session.pwd
       )
       create_goal_with_pinned_task(child, task)
-      assign_nickname_via_brain(child)
+      assign_nickname_via_melete(child)
       child.broadcast_children_update_to_parent
       AgentRequestJob.perform_later(child.id)
       child

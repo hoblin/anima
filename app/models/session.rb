@@ -28,8 +28,6 @@ class Session < ApplicationRecord
   validates :name, length: {maximum: 255}, allow_nil: true
 
   after_update_commit :broadcast_name_update, if: :saved_change_to_name?
-  after_update_commit :broadcast_active_skills_update, if: :saved_change_to_active_skills?
-  after_update_commit :broadcast_active_workflow_update, if: :saved_change_to_active_workflow?
 
   scope :recent, ->(limit = 10) { order(updated_at: :desc).limit(limit) }
   scope :root_sessions, -> { where(parent_session_id: nil) }
@@ -80,23 +78,18 @@ class Session < ApplicationRecord
     update_column(:mneme_boundary_message_id, first_id) if first_id
   end
 
-  # Enqueues the analytical brain to perform background maintenance on
-  # this session. Currently handles session naming; future phases add
-  # skill activation, goal tracking, and memory.
+  # Enqueues Melete — the muse of practice — to perform background
+  # maintenance on this session. Main sessions get naming, skills,
+  # workflows, and goals; sub-agents get naming and skills only
+  # (responsibilities are selected in {Melete::Runner}).
   #
-  # Runs after the first exchange and periodically as the conversation
-  # evolves, so the name stays relevant to the current topic.
+  # Fires after the first exchange (2+ messages).
   #
   # @return [void]
-  def schedule_analytical_brain!
-    return if sub_agent?
+  def schedule_melete!
+    return if messages.llm_messages.count < 2
 
-    count = messages.llm_messages.count
-    return if count < 2
-    # Already named — only regenerate at interval boundaries (30, 60, 90, …)
-    return if name.present? && (count % Anima::Settings.name_generation_interval != 0)
-
-    AnalyticalBrainJob.perform_later(id)
+    MeleteJob.perform_later(id)
   end
 
   # Token budget appropriate for this session type.
@@ -162,116 +155,112 @@ class Session < ApplicationRecord
       .order(:id)
   end
 
-  # Returns skill names whose recalled content is currently visible in the
-  # viewport. Used by the analytical brain for deduplication — skills already
-  # in the viewport are excluded from the activation catalog.
+  # Names of skills currently present in the viewport as
+  # `from_melete_skill` phantom tool_call messages, in activation order.
   #
-  # @return [Set<String>] skill names present in the viewport
+  # @return [Array<String>] skill names in the viewport, activation order
   def skills_in_viewport
-    recalled_sources_in_viewport("skill")
+    from_melete_messages
+      .where("json_extract(payload, '$.tool_name') = ?", PendingMessage::MELETE_SKILL_TOOL)
+      .pluck(Arel.sql("json_extract(payload, '$.tool_input.skill')"))
+      .compact
   end
 
-  # Returns the workflow name currently visible in the viewport, if any.
-  # Only one workflow can be active at a time, so we return the first match.
+  # Workflow name currently present in the viewport as a
+  # `from_melete_workflow` phantom tool_call message, if any. The most
+  # recent activation wins when multiple are visible.
   #
-  # @return [String, nil] workflow name present in the viewport
+  # @return [String, nil] workflow name in the viewport, or nil
   def workflow_in_viewport
-    recalled_sources_in_viewport("workflow").first
+    from_melete_messages
+      .where("json_extract(payload, '$.tool_name') = ?", PendingMessage::MELETE_WORKFLOW_TOOL)
+      .reorder(id: :desc)
+      .pick(Arel.sql("json_extract(payload, '$.tool_input.workflow')"))
+  end
+
+  # Active skills — skills Aoide is currently carrying or about to carry.
+  # Union of skills already promoted into the viewport and skills pending
+  # promotion. A skill is "active" from activation until eviction; there
+  # is no deactivation.
+  #
+  # @return [Array<String>] skill names, deduplicated, activation order first
+  def active_skills
+    queued = pending_messages.where(source_type: "skill").order(:id).pluck(:source_name)
+    (skills_in_viewport + queued).uniq
+  end
+
+  # Active workflow — the workflow Aoide is currently carrying or about
+  # to carry. Pending activations take precedence over viewport contents
+  # (the last enqueue wins; the previous phantom pair evicts naturally).
+  #
+  # @return [String, nil]
+  def active_workflow
+    pending = pending_messages.where(source_type: "workflow").order(id: :desc).pick(:source_name)
+    pending || workflow_in_viewport
   end
 
   # Returns the system prompt for this session.
-  # Sub-agent sessions use their stored prompt plus active skills and
-  # the pinned task. Main sessions assemble a full system prompt from
-  # soul and snapshots. Skills, workflows, and goals are injected as
-  # phantom tool_use/tool_result pairs in the message stream (not here)
-  # to keep the system prompt stable for prompt caching. Environment
-  # awareness flows through Bash tool responses.
-  #
-  # Sub-agent sessions still include expertise inline — they're short-lived
-  # and don't benefit from prompt caching.
+  # Sub-agent sessions use their stored prompt plus the pinned task.
+  # Main sessions assemble a full system prompt from soul, sisters, and
+  # snapshots. Skills, workflows, and goals are injected as phantom
+  # tool_use/tool_result pairs in the message stream (not here) to keep
+  # the system prompt stable for prompt caching. Environment awareness
+  # flows through Bash tool responses.
   #
   # @return [String, nil] the system prompt text, or nil when nothing to inject
   def system_prompt
     if sub_agent?
-      [prompt, assemble_expertise_section, assemble_task_section].compact.join("\n\n")
+      [prompt, assemble_task_section].compact.join("\n\n")
     else
       assemble_system_prompt
     end
   end
 
-  # Activates a skill on this session. Validates the skill exists in the
-  # registry, updates active_skills, and enqueues the skill content as a
-  # {PendingMessage} so it enters the conversation as a phantom
-  # tool_use/tool_result pair through the normal promotion flow.
+  # Activates a skill on this session by enqueuing its content as a
+  # {PendingMessage} that promotes to a `from_melete_skill` phantom pair.
+  # Skips re-activation while the previous phantom pair is still in the
+  # viewport — Aoide already has the skill text in front of her.
   #
   # @param skill_name [String] name of the skill to activate
   # @return [Skills::Definition] the activated skill
   # @raise [Skills::InvalidDefinitionError] if skill not found in registry
-  # @raise [ActiveRecord::RecordInvalid] if save fails
   def activate_skill(skill_name)
     definition = Skills::Registry.instance.find(skill_name)
     raise Skills::InvalidDefinitionError, "Unknown skill: #{skill_name}" unless definition
-
     return definition if active_skills.include?(skill_name)
 
-    self.active_skills = active_skills + [skill_name]
-    save!
     enqueue_recall_message("skill", skill_name, definition.content)
+    Events::Bus.emit(Events::SkillActivated.new(session_id: id, skill_name: skill_name))
     definition
   end
 
-  # Deactivates a skill on this session. Removes it from active_skills and persists.
-  # The skill's recalled message stays in the conversation and evicts naturally.
-  #
-  # @param skill_name [String] name of the skill to deactivate
-  # @return [void]
-  def deactivate_skill(skill_name)
-    return unless active_skills.include?(skill_name)
-
-    self.active_skills = active_skills - [skill_name]
-    save!
-  end
-
-  # Activates a workflow on this session. Validates the workflow exists in the
-  # registry, sets it as the active workflow, and enqueues the workflow content
-  # as a {PendingMessage}. Only one workflow can be active at a time —
-  # activating a new one replaces the previous.
+  # Activates a workflow on this session by enqueuing its content as a
+  # {PendingMessage} that promotes to a `from_melete_workflow` phantom
+  # tool pair. Workflows are main-session only.
+  # Skips re-activation while the previous phantom pair is still in the
+  # viewport.
   #
   # @param workflow_name [String] name of the workflow to activate
   # @return [Workflows::Definition] the activated workflow
   # @raise [Workflows::InvalidDefinitionError] if workflow not found in registry
-  # @raise [ActiveRecord::RecordInvalid] if save fails
   def activate_workflow(workflow_name)
     definition = Workflows::Registry.instance.find(workflow_name)
     raise Workflows::InvalidDefinitionError, "Unknown workflow: #{workflow_name}" unless definition
-
     return definition if active_workflow == workflow_name
 
-    self.active_workflow = workflow_name
-    save!
     enqueue_recall_message("workflow", workflow_name, definition.content)
+    Events::Bus.emit(Events::WorkflowActivated.new(session_id: id, workflow_name: workflow_name))
     definition
   end
 
-  # Deactivates the current workflow on this session.
-  # The workflow's recalled message stays in the conversation and evicts naturally.
-  #
-  # @return [void]
-  def deactivate_workflow
-    return unless active_workflow.present?
-
-    self.active_workflow = nil
-    save!
-  end
-
-  # Assembles the system prompt: version preamble, soul, and snapshots.
-  # Skills, workflows, goals, and environment awareness flow through the
-  # message stream and tool responses, keeping the system prompt stable
-  # for prompt caching.
+  # Assembles the system prompt: version preamble, soul, sisters block,
+  # and snapshots. Skills, workflows, goals, and environment awareness
+  # flow through the message stream and tool responses, keeping the
+  # system prompt stable for prompt caching.
   #
   # @return [String] composed system prompt
   def assemble_system_prompt
-    [assemble_version_preamble, assemble_soul_section, assemble_snapshots_section]
+    [assemble_version_preamble, assemble_soul_section, assemble_sisters_section, assemble_snapshots_section]
       .compact.join("\n\n")
   end
 
@@ -540,6 +529,25 @@ class Session < ApplicationRecord
     ActionCable.server.broadcast("session_#{id}", self.class.system_prompt_payload(system, tools: tools))
   end
 
+  # Broadcasts current active skills and workflow to all subscribers.
+  # "Active" is viewport-derived — the HUD reflects what Aoide actually
+  # has in front of her. Callers invoke this after any operation that
+  # changes viewport composition (phantom pair promotion, Mneme eviction).
+  #
+  # @return [void]
+  def broadcast_active_state!
+    ActionCable.server.broadcast("session_#{id}", {
+      "action" => "active_skills_updated",
+      "session_id" => id,
+      "active_skills" => active_skills
+    })
+    ActionCable.server.broadcast("session_#{id}", {
+      "action" => "active_workflow_updated",
+      "session_id" => id,
+      "active_workflow" => active_workflow
+    })
+  end
+
   # Returns the deterministic tool schemas for this session's type and
   # granted_tools configuration. Standard and spawn tools are static
   # class-level definitions — no ShellSession or registry needed.
@@ -590,21 +598,21 @@ class Session < ApplicationRecord
 
   private
 
-  # Finds recalled skill/workflow source names in the current viewport.
-  # Scans viewport messages for user_messages tagged with the given source_type.
+  # Returns `from_melete_*` tool_call messages currently in the viewport
+  # as a composable AR relation. Used by {#skills_in_viewport} and
+  # {#workflow_in_viewport} to derive active state with additional
+  # `.where` clauses on the tool name suffix.
   #
-  # @param source_type [String] "skill" or "workflow"
-  # @return [Set<String>] source names present in the viewport
-  def recalled_sources_in_viewport(source_type)
+  # @return [ActiveRecord::Relation<Message>] chronologically ordered
+  def from_melete_messages
     viewport_messages
-      .where(message_type: "user_message")
-      .where("json_extract(payload, '$.source_type') = ?", source_type)
-      .pluck(Arel.sql("json_extract(payload, '$.source_name')"))
-      .to_set
+      .where(message_type: "tool_call")
+      .where("json_extract(payload, '$.tool_name') GLOB ?", "from_melete_*")
+      .order(:id)
   end
 
   # Enqueues a recalled skill or workflow as a {PendingMessage}.
-  # Always goes through the pending queue because the analytical brain
+  # Always goes through the pending queue because Melete
   # only runs during processing. The message enters the conversation
   # through the normal promotion flow as a phantom tool_use/tool_result pair.
   #
@@ -639,25 +647,25 @@ class Session < ApplicationRecord
     File.read(path).strip
   end
 
-  # Assembles the expertise section of the system prompt from active skills
-  # and the active workflow. Both are injected into the same "Your Expertise"
-  # section — the main agent treats them identically as domain knowledge.
+  # Introduces Melete and Mneme so the agent recognizes their
+  # contributions as delivered-to-her rather than self-invoked. The
+  # `from_` prefix carries the semantics — the section just makes the
+  # convention explicit once.
   #
-  # @return [String, nil] expertise section, or nil when nothing is active
-  def assemble_expertise_section
-    sections = active_skills.filter_map do |skill_name|
-      definition = Skills::Registry.instance.find(skill_name)
-      format_expertise_section(definition, skill_name)
-    end
+  # @return [String] sisters section
+  def assemble_sisters_section
+    <<~SISTERS.strip
+      ## Your Sisters
 
-    if active_workflow.present?
-      definition = Workflows::Registry.instance.find(active_workflow)
-      sections << format_expertise_section(definition, active_workflow) if definition
-    end
+      You don't work alone. Two muses share the conversation with you, and their work arrives as tool calls prefixed `from_`:
 
-    return if sections.empty?
+      - **Melete**, the muse of practice, prepares the stage before you speak. Her contributions arrive as `from_melete_skill`, `from_melete_workflow`, and `from_melete_goal`.
+      - **Mneme**, the muse of memory, holds what has slipped past your immediate attention. When something from earlier matters again she surfaces it as `from_mneme`.
 
-    "## Your Expertise\n\nYou know this deeply. Now's your chance to put it to work.\n\n#{sections.join("\n\n")}"
+      Sub-agents you spawn arrive the same way, named after whoever sent them — `from_sleuth`, `from_scout`, and so on.
+
+      The `from_` prefix is the only signal you need: anything with it is information delivered *to* you, not a tool you called. Those names aren't in your toolkit — trying to invoke one will fail.
+    SISTERS
   end
 
   # Assembles the task section for sub-agent system prompts.
@@ -697,22 +705,6 @@ class Session < ApplicationRecord
     lines.join("\n")
   end
 
-  # Formats a definition (skill or workflow) as a Markdown section for the
-  # expertise prompt. Extracts the first Markdown heading from content for
-  # the section title; falls back to the definition name when content has
-  # no heading.
-  #
-  # @param definition [Skills::Definition, Workflows::Definition, nil] the definition to format
-  # @param fallback_name [String] name to use if content has no heading
-  # @return [String, nil] formatted section, or nil if definition is nil
-  def format_expertise_section(definition, fallback_name)
-    return unless definition
-
-    content = definition.content
-    heading = content.lines.first&.sub(/^#+ /, "")&.strip || fallback_name
-    "### #{heading}\n\n#{content}"
-  end
-
   # Broadcasts a name change to all clients subscribed to this session.
   # Triggered by after_update_commit so clients see name updates in real time.
   #
@@ -722,30 +714,6 @@ class Session < ApplicationRecord
       "action" => "session_name_updated",
       "session_id" => id,
       "name" => name
-    })
-  end
-
-  # Broadcasts active skill changes to all clients subscribed to this session.
-  # Triggered by after_update_commit so the TUI info panel updates reactively.
-  #
-  # @return [void]
-  def broadcast_active_skills_update
-    ActionCable.server.broadcast("session_#{id}", {
-      "action" => "active_skills_updated",
-      "session_id" => id,
-      "active_skills" => active_skills
-    })
-  end
-
-  # Broadcasts active workflow change to all clients subscribed to this session.
-  # Triggered by after_update_commit so the TUI info panel updates reactively.
-  #
-  # @return [void]
-  def broadcast_active_workflow_update
-    ActionCable.server.broadcast("session_#{id}", {
-      "action" => "active_workflow_updated",
-      "session_id" => id,
-      "active_workflow" => active_workflow
     })
   end
 
@@ -859,7 +827,7 @@ class Session < ApplicationRecord
     uid = "goal_snapshot_#{id}"
     [
       {role: "assistant", content: [
-        {type: "tool_use", id: uid, name: PendingMessage::RECALL_GOAL_TOOL, input: {}}
+        {type: "tool_use", id: uid, name: PendingMessage::MELETE_GOAL_TOOL, input: {}}
       ]},
       {role: "user", content: [
         {type: "tool_result", tool_use_id: uid, content: content}

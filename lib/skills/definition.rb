@@ -10,7 +10,7 @@ module Skills
   # content injected into the main agent's system prompt when active.
   #
   # Skills are passive knowledge — they describe WHAT you know, not
-  # WHAT to do. The analytical brain activates/deactivates them based
+  # WHAT to do. Melete activates/deactivates them based
   # on conversation context.
   #
   # @example Skill file format
@@ -25,7 +25,7 @@ module Skills
     # @return [String] unique skill identifier used in activate_skill(name: "...")
     attr_reader :name
 
-    # @return [String] description shown to the analytical brain for relevance matching
+    # @return [String] description shown to Melete for relevance matching
     attr_reader :description
 
     # @return [String] knowledge content (Markdown body) injected into system prompt

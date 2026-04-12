@@ -94,12 +94,14 @@ RSpec.describe SessionChannel, type: :channel do
     end
 
     it "includes active_skills in session_changed" do
-      Session.create!(id: session_id, active_skills: ["gh-issue", "activerecord"])
+      Skills::Registry.reload!
+      session = Session.create!(id: session_id)
+      session.activate_skill("gh-issue")
 
       subscribe(session_id: session_id)
 
       changed = transmissions.find { |t| t["action"] == "session_changed" }
-      expect(changed["active_skills"]).to eq(["gh-issue", "activerecord"])
+      expect(changed["active_skills"]).to include("gh-issue")
     end
 
     it "includes empty active_skills for sessions with no skills" do
@@ -112,7 +114,9 @@ RSpec.describe SessionChannel, type: :channel do
     end
 
     it "includes active_workflow in session_changed" do
-      Session.create!(id: session_id, active_workflow: "feature")
+      Workflows::Registry.reload!
+      session = Session.create!(id: session_id)
+      session.activate_workflow("feature")
 
       subscribe(session_id: session_id)
 

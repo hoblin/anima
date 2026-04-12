@@ -5,7 +5,7 @@ module Tools
   # pause between tool calls where the agent can organize thoughts, plan
   # next steps, or make decisions without interrupting the user.
   #
-  # Think events bridge the gap between the analytical brain (subconscious
+  # Think events bridge the gap between Melete (subconscious
   # background processing) and speech (user-facing messages). Without this
   # tool, reasoning leaks into tool arguments as comments.
   #

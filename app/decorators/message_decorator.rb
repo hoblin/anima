@@ -1,21 +1,21 @@
 # frozen_string_literal: true
 
 # Base decorator for {Message} records, providing multi-resolution rendering
-# for the TUI and analytical brain. Each message type has a dedicated subclass
+# for the TUI and Melete. Each message type has a dedicated subclass
 # that implements rendering methods for each view mode:
 #
 # - **basic** / **verbose** / **debug** — TUI display modes returning structured hashes
-# - **brain** — analytical brain transcript returning plain strings (or nil to skip)
+# - **melete** — Melete transcript lines as plain strings (or nil to skip)
 #
 # TUI decorators return structured hashes (not pre-formatted strings) so that
 # the TUI can style and lay out content based on semantic role, without
 # fragile regex parsing. The TUI receives structured data via ActionCable
 # and formats it for display.
 #
-# Brain mode returns condensed single-line strings for the analytical brain's
-# message transcript. Returns nil to exclude a message from the brain's view.
+# Melete mode returns condensed single-line strings for her message
+# transcript. Returns nil to exclude a message from her view.
 #
-# Subclasses must override {#render_basic}. Verbose, debug, and brain modes
+# Subclasses must override {#render_basic}. Verbose, debug, and melete modes
 # delegate to basic until subclasses provide their own implementations.
 #
 # Instantiate via +message.decorate+ — {Message#decorator_class} picks the
@@ -36,16 +36,16 @@ class MessageDecorator < ApplicationDecorator
     "basic" => :render_basic,
     "verbose" => :render_verbose,
     "debug" => :render_debug,
-    "brain" => :render_brain,
+    "melete" => :render_melete,
     "mneme" => :render_mneme
   }.freeze
   private_constant :RENDER_DISPATCH
 
   # Dispatches to the render method for the given view mode.
   #
-  # @param mode [String] one of "basic", "verbose", "debug", "brain", "mneme"
+  # @param mode [String] one of "basic", "verbose", "debug", "melete", "mneme"
   # @return [Hash, String, nil] structured message data (basic/verbose/debug),
-  #   plain string (brain), or nil to hide the message
+  #   plain string (melete), or nil to hide the message
   # @raise [ArgumentError] if the mode is not a valid view mode
   def render(mode)
     method = RENDER_DISPATCH[mode]
@@ -74,11 +74,11 @@ class MessageDecorator < ApplicationDecorator
     render_basic
   end
 
-  # Analytical brain view — condensed single-line string for the brain's
-  # message transcript. Returns nil to exclude from the brain's context.
+  # Melete view — condensed single-line string for her message
+  # transcript. Returns nil to exclude from her context.
   # Subclasses override to provide message-type-specific formatting.
   # @return [String, nil] formatted transcript line, or nil to skip
-  def render_brain
+  def render_melete
     nil
   end
 
@@ -120,7 +120,7 @@ class MessageDecorator < ApplicationDecorator
   end
 
   # Truncates long text by cutting the middle, preserving the start and end
-  # so context and conclusions aren't lost. Used for brain transcripts where
+  # so context and conclusions aren't lost. Used for Melete transcripts where
   # both the opening (intent) and closing (result) matter.
   #
   # @param text [String, nil] text to truncate

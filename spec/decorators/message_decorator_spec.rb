@@ -64,8 +64,8 @@ RSpec.describe MessageDecorator, type: :decorator do
       expect(result).to have_key(:tokens)
     end
 
-    it "dispatches to render_brain for brain mode" do
-      expect(decorator.render("brain")).to eq("User: hi")
+    it "dispatches to render_melete for melete mode" do
+      expect(decorator.render("melete")).to eq("User: hi")
     end
 
     it "raises ArgumentError for an invalid mode" do
@@ -96,9 +96,9 @@ RSpec.describe MessageDecorator, type: :decorator do
       expect(stub_decorator.render_debug).to eq({role: :stub, content: "stub output"})
     end
 
-    it "#render_brain returns nil" do
+    it "#render_melete returns nil" do
       nil_stub = Class.new(described_class) { def render_basic = nil }.new(message)
-      expect(nil_stub.render_brain).to be_nil
+      expect(nil_stub.render_melete).to be_nil
     end
   end
 

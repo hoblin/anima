@@ -13,6 +13,9 @@
 MESSAGE_LIFECYCLE_FILTER = ->(event) { event[:name].start_with?("anima.message.") }
 MESSAGE_CREATED_FILTER = ->(event) { event[:name] == "anima.message.created" }
 EVICTION_FILTER = ->(event) { event[:name] == "anima.eviction.completed" }
+ACTIVE_STATE_TRIGGER_FILTER = ->(event) {
+  %w[anima.skill.activated anima.workflow.activated anima.eviction.completed].include?(event[:name])
+}
 
 Rails.application.config.after_initialize do
   unless Rails.env.test?
@@ -39,5 +42,9 @@ Rails.application.config.after_initialize do
 
     # Broadcasts eviction cutoff to clients after Mneme advances the boundary.
     Events::Bus.subscribe(Events::Subscribers::EvictionBroadcaster.new, &EVICTION_FILTER)
+
+    # Rebroadcasts active skills/workflow on every event that can change
+    # the set: skill activation, workflow activation, or eviction.
+    Events::Bus.subscribe(Events::Subscribers::ActiveStateBroadcaster.new, &ACTIVE_STATE_TRIGGER_FILTER)
   end
 end

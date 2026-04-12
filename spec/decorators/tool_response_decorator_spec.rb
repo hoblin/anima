@@ -195,7 +195,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
     end
   end
 
-  describe "#render_brain" do
+  describe "#render_melete" do
     context "with a successful tool response" do
       let(:message) do
         build_stubbed(:message, :tool_response,
@@ -203,7 +203,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       end
 
       it "returns the success emoji" do
-        expect(decorator.render_brain).to eq("\u2705")
+        expect(decorator.render_melete).to eq("\u2705")
       end
     end
 
@@ -214,7 +214,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       end
 
       it "returns the failure emoji" do
-        expect(decorator.render_brain).to eq("\u274C")
+        expect(decorator.render_melete).to eq("\u274C")
       end
     end
 
@@ -225,7 +225,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       end
 
       it "returns nil" do
-        expect(decorator.render_brain).to be_nil
+        expect(decorator.render_melete).to be_nil
       end
     end
 
@@ -236,7 +236,7 @@ RSpec.describe ToolResponseDecorator, type: :decorator do
       end
 
       it "defaults to the success emoji" do
-        expect(decorator.render_brain).to eq("\u2705")
+        expect(decorator.render_melete).to eq("\u2705")
       end
     end
   end

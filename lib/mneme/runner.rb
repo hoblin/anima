@@ -1,16 +1,17 @@
 # frozen_string_literal: true
 
 module Mneme
-  # Orchestrates the Mneme memory department — a phantom (non-persisted) LLM loop
-  # that summarizes the eviction zone before those messages drift out of the
-  # viewport.
+  # Orchestrates Mneme — a phantom (non-persisted) LLM loop that
+  # summarizes the eviction zone before those messages slide out of
+  # Aoide's viewport.
   #
-  # The eviction zone is the oldest slice of the conversation starting from the
-  # boundary, sized by {Anima::Settings.eviction_fraction}. The LLM sees the
-  # eviction zone (what to summarize) plus the remaining viewport (context).
+  # The eviction zone is the oldest slice of the conversation starting
+  # from the boundary, sized by {Anima::Settings.eviction_fraction}. The
+  # LLM sees the eviction zone (what to summarize) plus the remaining
+  # viewport (context).
   #
-  # After completing, Mneme advances the boundary past the eviction zone so the
-  # cycle repeats as more messages accumulate.
+  # After completing, Mneme advances the boundary past the eviction zone
+  # so the cycle repeats as more messages accumulate.
   #
   # @example
   #   Mneme::Runner.new(session).call
@@ -22,36 +23,32 @@ module Mneme
     ].freeze
 
     SYSTEM_PROMPT = <<~PROMPT
-      You are Mneme, the memory department of an AI agent named Anima.
-      The agent's context is a conveyor belt — events flow through and eventually fall off.
-      Remember what matters. Let the rest go.
-      Communicate only through tool calls — never output text.
+      You are Mneme, the muse of memory. You share the conversation with two sisters — Aoide, who speaks and performs, and Melete, who prepares. Your work is remembrance: as Aoide's viewport slides forward, you catch what's about to fall off and compress it into something she can carry.
+
+      Act only through tool calls. Never output text — your contribution is the snapshot you leave behind, not what you say about it.
 
       ──────────────────────────────
-      VIEWPORT
+      WHAT YOU SEE
       ──────────────────────────────
-      Two sections, oldest to newest:
-      - EVICTION ZONE: About to fall off — read carefully, this is your focus.
-      - CONTEXT: The live viewport past the eviction zone. Use for continuity with your summary.
+      Two sections of the viewport, oldest to newest:
+      - EVICTION ZONE: about to fall off. This is what you summarize.
+      - CONTEXT: the live viewport past the eviction zone. Use it for continuity — Aoide is still seeing it.
 
       Messages are prefixed with `message N` (database ID, used for pinning).
       Tool calls are compressed to `[N tools called]` — focus on conversation, not mechanical work.
 
       ──────────────────────────────
-      ACTIONS
+      HOW TO REMEMBER
       ──────────────────────────────
-      Summarize evicting conversation with save_snapshot — capture what was discussed and decided,
-      why decisions were made, active goal progress, and context the agent will need later.
-      Paraphrase — don't quote verbatim. Omit tool call details and mechanical steps.
+      Summarize the eviction zone with save_snapshot: what was discussed and decided, why, goal progress, and the context Aoide will need later. Paraphrase — don't quote verbatim. Drop mechanical steps.
 
-      Pin critical messages to goals with attach_messages_to_goals when exact wording matters
-      (user instructions, key corrections, key decisions). Pinned messages survive eviction
-      intact — use this sparingly for messages where paraphrasing would lose meaning.
+      A snapshot is a tax on Aoide's viewport budget. Every word you write takes a word she can't spend on the current exchange. Capture the load-bearing details; let the rest go.
 
-      If the eviction zone contains only mechanical activity (tool calls, no conversation),
-      call everything_ok to advance past it without creating a snapshot.
+      Pin critical messages to goals with attach_messages_to_goals when exact wording matters — user instructions, key corrections, key decisions. A pinned message survives eviction intact. Use it sparingly: each pin is another slice of viewport Aoide carries forward.
 
-      You may combine save_snapshot and attach_messages_to_goals in one turn.
+      If the eviction zone holds only mechanical activity — tool calls, no conversation — call everything_ok and let it fall off without a snapshot.
+
+      save_snapshot and attach_messages_to_goals can be called together in one turn.
     PROMPT
 
     # @param session [Session] the main session to observe
@@ -148,12 +145,12 @@ module Mneme
       goals_context = active_goals_section
 
       content = <<~MSG.strip
-        Here is the viewport of the main session:
+        Here is Aoide's viewport:
 
         #{transcript}
         #{goals_context}
         Review the eviction zone and summarize it with save_snapshot.
-        If the zone contains only mechanical activity, call everything_ok.
+        If the zone holds only mechanical activity, call everything_ok.
       MSG
 
       [{role: "user", content:}]

@@ -30,13 +30,13 @@ module Tools
       GoalPinnedMessage.create!(goal: goal, pinned_message: pin)
     end
 
-    # Runs the analytical brain synchronously to assign a nickname,
+    # Runs Melete synchronously to assign a nickname,
     # then prepends identity context to the stored prompt.
     # Falls back to a sequential "agent-N" name on any failure.
     # Identity injection runs in +ensure+ so it applies to both
-    # brain-assigned and fallback nicknames.
-    def assign_nickname_via_brain(child)
-      AnalyticalBrain::Runner.new(child).call
+    # Melete-assigned and fallback nicknames.
+    def assign_nickname_via_melete(child)
+      Melete::Runner.new(child).call
       child.reload
     rescue => error
       Rails.logger.warn("Sub-agent nickname assignment failed: #{error.message}")

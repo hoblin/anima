@@ -220,54 +220,41 @@ RSpec.describe Session do
     end
   end
 
-  describe "#schedule_analytical_brain!" do
-    it "enqueues AnalyticalBrainJob for unnamed root sessions with messages" do
+  describe "#schedule_melete!" do
+    it "enqueues MeleteJob for unnamed root sessions with messages" do
       session = Session.create!
       session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       session.messages.create!(message_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
 
-      expect { session.schedule_analytical_brain! }
-        .to have_enqueued_job(AnalyticalBrainJob).with(session.id)
+      expect { session.schedule_melete! }
+        .to have_enqueued_job(MeleteJob).with(session.id)
     end
 
-    it "does not enqueue for sub-agent sessions" do
+    it "enqueues for sub-agent sessions (skills and naming)" do
       parent = Session.create!
       child = Session.create!(parent_session: parent, prompt: "task")
       child.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
       child.messages.create!(message_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
 
-      expect { child.schedule_analytical_brain! }
-        .not_to have_enqueued_job(AnalyticalBrainJob)
+      expect { child.schedule_melete! }
+        .to have_enqueued_job(MeleteJob).with(child.id)
     end
 
     it "does not enqueue for sessions with fewer than 2 messages" do
       session = Session.create!
       session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
 
-      expect { session.schedule_analytical_brain! }
-        .not_to have_enqueued_job(AnalyticalBrainJob)
+      expect { session.schedule_melete! }
+        .not_to have_enqueued_job(MeleteJob)
     end
 
-    it "enqueues at name_generation_interval for named sessions" do
-      session = Session.create!(name: "Old Name")
-      Anima::Settings.name_generation_interval.times do |i|
-        type = i.even? ? "user_message" : "agent_message"
-        session.messages.create!(message_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
-      end
+    it "enqueues for named sessions on every qualifying message" do
+      session = Session.create!(name: "Already Named")
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      session.messages.create!(message_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
 
-      expect { session.schedule_analytical_brain! }
-        .to have_enqueued_job(AnalyticalBrainJob).with(session.id)
-    end
-
-    it "does not enqueue for named sessions between intervals" do
-      session = Session.create!(name: "Existing")
-      3.times do |i|
-        type = i.even? ? "user_message" : "agent_message"
-        session.messages.create!(message_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
-      end
-
-      expect { session.schedule_analytical_brain! }
-        .not_to have_enqueued_job(AnalyticalBrainJob)
+      expect { session.schedule_melete! }
+        .to have_enqueued_job(MeleteJob).with(session.id)
     end
   end
 
@@ -295,27 +282,173 @@ RSpec.describe Session do
     end
   end
 
-  describe "#broadcast_active_skills_update" do
-    it "broadcasts active skills change to the session stream" do
-      session = Session.create!
+  describe "#active_skills" do
+    subject(:active_skills) { session.active_skills }
 
-      expect {
-        session.update!(active_skills: ["gh-issue", "activerecord"])
-      }.to have_broadcasted_to("session_#{session.id}")
-        .with(a_hash_including(
-          "action" => "active_skills_updated",
-          "session_id" => session.id,
-          "active_skills" => ["gh-issue", "activerecord"]
-        ))
+    let(:session) { create(:session) }
+
+    before do
+      Skills::Registry.reload!
+      allow(session).to receive(:viewport_messages).and_return(viewport)
     end
 
-    it "does not broadcast when active_skills is unchanged" do
-      session = Session.create!(active_skills: ["gh-issue"])
+    context "with no skills anywhere" do
+      let(:viewport) { Message.none }
 
-      expect {
-        session.update!(name: "New Name")
-      }.not_to have_broadcasted_to("session_#{session.id}")
-        .with(a_hash_including("action" => "active_skills_updated"))
+      it "returns an empty array" do
+        expect(active_skills).to eq([])
+      end
+    end
+
+    context "with a skill in the viewport" do
+      let(:skill) { create(:message, :from_melete_skill, session:, skill_name: "gh-issue") }
+      let(:viewport) { Message.where(id: skill.id) }
+
+      it "includes the viewport skill" do
+        expect(active_skills).to eq(["gh-issue"])
+      end
+    end
+
+    context "with a queued pending skill" do
+      let(:viewport) { Message.none }
+
+      before { session.activate_skill("gh-issue") }
+
+      it "includes the pending skill" do
+        expect(active_skills).to eq(["gh-issue"])
+      end
+    end
+
+    context "with the same skill in viewport and pending" do
+      let(:skill) { create(:message, :from_melete_skill, session:, skill_name: "gh-issue") }
+      let(:viewport) { Message.where(id: skill.id) }
+
+      before { session.activate_skill("gh-issue") }
+
+      it "deduplicates" do
+        expect(active_skills).to eq(["gh-issue"])
+      end
+    end
+
+    context "with viewport and pending skills" do
+      let(:skill) { create(:message, :from_melete_skill, session:, skill_name: "rspec") }
+      let(:viewport) { Message.where(id: skill.id) }
+
+      before { session.activate_skill("gh-issue") }
+
+      it "returns viewport skills first, then pending" do
+        expect(active_skills).to eq(%w[rspec gh-issue])
+      end
+    end
+  end
+
+  describe "#active_workflow" do
+    subject(:active_workflow) { session.active_workflow }
+
+    let(:session) { create(:session) }
+
+    before do
+      Workflows::Registry.reload!
+      allow(session).to receive(:viewport_messages).and_return(viewport)
+    end
+
+    context "with no workflow anywhere" do
+      let(:viewport) { Message.none }
+
+      it "returns nil" do
+        expect(active_workflow).to be_nil
+      end
+    end
+
+    context "with a workflow in the viewport" do
+      let(:workflow) { create(:message, :from_melete_workflow, session:, workflow_name: "feature") }
+      let(:viewport) { Message.where(id: workflow.id) }
+
+      it "returns the viewport workflow" do
+        expect(active_workflow).to eq("feature")
+      end
+    end
+
+    context "with a queued pending workflow" do
+      let(:viewport) { Message.none }
+
+      before { session.activate_workflow("feature") }
+
+      it "returns the pending workflow" do
+        expect(active_workflow).to eq("feature")
+      end
+    end
+
+    context "with a pending workflow overriding the viewport" do
+      let(:workflow) { create(:message, :from_melete_workflow, session:, workflow_name: "refactor") }
+      let(:viewport) { Message.where(id: workflow.id) }
+
+      before { session.activate_workflow("feature") }
+
+      it "returns the pending workflow (last enqueue wins)" do
+        expect(active_workflow).to eq("feature")
+      end
+    end
+
+    context "with multiple pending workflows" do
+      let(:viewport) { Message.none }
+
+      before do
+        session.pending_messages.create!(content: "old", source_type: "workflow", source_name: "refactor")
+        session.pending_messages.create!(content: "new", source_type: "workflow", source_name: "feature")
+      end
+
+      it "returns the newest pending workflow" do
+        expect(active_workflow).to eq("feature")
+      end
+    end
+  end
+
+  describe "#broadcast_active_state!" do
+    before do
+      Skills::Registry.reload!
+      Workflows::Registry.reload!
+    end
+
+    let(:session) { create(:session) }
+
+    it "broadcasts the current active skills list" do
+      session.activate_skill("gh-issue")
+
+      expect { session.broadcast_active_state! }
+        .to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("action" => "active_skills_updated",
+          "session_id" => session.id,
+          "active_skills" => ["gh-issue"]))
+    end
+
+    it "broadcasts the current active workflow" do
+      session.activate_workflow("feature")
+
+      expect { session.broadcast_active_state! }
+        .to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("action" => "active_workflow_updated",
+          "session_id" => session.id,
+          "active_workflow" => "feature"))
+    end
+
+    it "broadcasts empty state when no skills or workflows are active" do
+      expect { session.broadcast_active_state! }
+        .to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("action" => "active_skills_updated", "active_skills" => []))
+        .and have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("action" => "active_workflow_updated", "active_workflow" => nil))
+    end
+
+    it "broadcasts both skills and workflow when they coexist" do
+      session.activate_skill("gh-issue")
+      session.activate_workflow("feature")
+
+      expect { session.broadcast_active_state! }
+        .to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("action" => "active_skills_updated", "active_skills" => ["gh-issue"]))
+        .and have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("action" => "active_workflow_updated", "active_workflow" => "feature"))
     end
   end
 
@@ -421,39 +554,17 @@ RSpec.describe Session do
       expect(prompt_pos).to be < task_pos
     end
 
-    it "includes activated skills in sub-agent system prompt" do
-      parent = Session.create!
-      child = Session.create!(parent_session: parent, prompt: "You are a focused sub-agent.")
-      child.activate_skill("gh-issue")
+    it "activates skills via phantom pair promotion for sub-agents too" do
+      child = create(:session, :sub_agent)
 
-      prompt = child.system_prompt
-      expect(prompt).to include("Your Expertise")
-    end
-
-    it "places skills before task section for sub-agents" do
-      parent = Session.create!
-      child = Session.create!(parent_session: parent, prompt: "You are a focused sub-agent.")
-      child.activate_skill("gh-issue")
-      Goal.create!(session: child, description: "File a bug report")
-
-      prompt = child.system_prompt
-      expertise_pos = prompt.index("Your Expertise")
-      task_pos = prompt.index("Your Task")
-      expect(expertise_pos).to be < task_pos
+      expect { child.activate_skill("gh-issue") }
+        .to change { child.pending_messages.where(source_type: "skill").count }.by(1)
     end
 
     it "includes soul content for main sessions" do
       session = Session.create!
 
       expect(session.system_prompt).to include("# Soul")
-    end
-
-    it "does not include expertise in main session system prompt" do
-      session = Session.create!
-      session.activate_skill("gh-issue")
-
-      prompt = session.system_prompt
-      expect(prompt).not_to include("## Your Expertise")
     end
 
     it "excludes goals from system prompt entirely" do
@@ -478,13 +589,7 @@ RSpec.describe Session do
   describe "#activate_skill" do
     before { Skills::Registry.reload! }
 
-    let(:session) { Session.create! }
-
-    it "adds the skill to active_skills" do
-      session.activate_skill("gh-issue")
-
-      expect(session.reload.active_skills).to eq(["gh-issue"])
-    end
+    let(:session) { create(:session) }
 
     it "returns the skill definition" do
       result = session.activate_skill("gh-issue")
@@ -498,18 +603,11 @@ RSpec.describe Session do
         .to raise_error(Skills::InvalidDefinitionError, /Unknown skill/)
     end
 
-    it "is idempotent — does not duplicate" do
-      session.activate_skill("gh-issue")
-      session.activate_skill("gh-issue")
-
-      expect(session.reload.active_skills).to eq(["gh-issue"])
-    end
-
-    it "persists to the database" do
+    it "is idempotent — does not enqueue a duplicate while the skill is still pending" do
       session.activate_skill("gh-issue")
 
-      reloaded = Session.find(session.id)
-      expect(reloaded.active_skills).to eq(["gh-issue"])
+      expect { session.activate_skill("gh-issue") }
+        .not_to change { session.pending_messages.count }
     end
 
     it "creates a PendingMessage with source_type skill" do
@@ -521,79 +619,197 @@ RSpec.describe Session do
       expect(pm.content).to include("WHAT/WHY/HOW")
     end
 
-    it "does not create duplicate PendingMessage on idempotent call" do
+    it "surfaces the skill as active immediately after activation" do
       session.activate_skill("gh-issue")
+
+      expect(session.active_skills).to include("gh-issue")
+    end
+
+    it "is still idempotent after promotion when the phantom pair is in the viewport" do
+      session.activate_skill("gh-issue")
+      session.promote_pending_messages!
 
       expect { session.activate_skill("gh-issue") }
         .not_to change { session.pending_messages.count }
     end
   end
 
-  describe "#deactivate_skill" do
-    before { Skills::Registry.reload! }
+  describe "#from_melete_messages" do
+    subject(:from_melete_messages) { session.send(:from_melete_messages) }
 
-    let(:session) { Session.create! }
+    let(:session) { create(:session) }
 
-    it "removes the skill from active_skills" do
-      session.activate_skill("gh-issue")
-      session.deactivate_skill("gh-issue")
+    before { allow(session).to receive(:viewport_messages).and_return(viewport) }
 
-      expect(session.reload.active_skills).to be_empty
+    context "with an empty viewport" do
+      let(:viewport) { Message.none }
+
+      it "returns an ActiveRecord relation" do
+        expect(from_melete_messages).to be_a(ActiveRecord::Relation)
+      end
+
+      it "returns no messages" do
+        expect(from_melete_messages).to be_empty
+      end
     end
 
-    it "is safe when skill is not active" do
-      expect { session.deactivate_skill("nonexistent") }.not_to raise_error
+    context "with from_melete_skill tool calls" do
+      let(:skill) { create(:message, :from_melete_skill, session:) }
+      let(:viewport) { Message.where(id: skill.id) }
+
+      it "includes them" do
+        expect(from_melete_messages).to contain_exactly(skill)
+      end
     end
 
-    it "persists to the database" do
-      session.activate_skill("gh-issue")
-      session.deactivate_skill("gh-issue")
+    context "with from_melete_workflow tool calls" do
+      let(:workflow) { create(:message, :from_melete_workflow, session:) }
+      let(:viewport) { Message.where(id: workflow.id) }
 
-      reloaded = Session.find(session.id)
-      expect(reloaded.active_skills).to be_empty
+      it "includes them" do
+        expect(from_melete_messages).to contain_exactly(workflow)
+      end
+    end
+
+    context "with from_melete_goal tool calls" do
+      let(:goal) { create(:message, :from_melete_goal, session:) }
+      let(:viewport) { Message.where(id: goal.id) }
+
+      it "includes them" do
+        expect(from_melete_messages).to contain_exactly(goal)
+      end
+    end
+
+    context "with from_mneme tool calls" do
+      let(:mneme) do
+        create(:message, :tool_call, session:, payload: {
+          "tool_name" => PendingMessage::MNEME_TOOL,
+          "tool_input" => {"message_id" => 1},
+          "tool_use_id" => "from_mneme_1",
+          "content" => "recalled"
+        })
+      end
+      let(:viewport) { Message.where(id: mneme.id) }
+
+      it "excludes them" do
+        expect(from_melete_messages).to be_empty
+      end
+    end
+
+    context "with subagent tool calls" do
+      let(:subagent) do
+        create(:message, :tool_call, session:, payload: {
+          "tool_name" => "from_sleuth",
+          "tool_input" => {"from" => "sleuth"},
+          "tool_use_id" => "from_sleuth_1",
+          "content" => "result"
+        })
+      end
+      let(:viewport) { Message.where(id: subagent.id) }
+
+      it "excludes them" do
+        expect(from_melete_messages).to be_empty
+      end
+    end
+
+    context "with non-tool_call message types" do
+      let(:user_msg) { create(:message, :user_message, session:) }
+      let(:skill) { create(:message, :from_melete_skill, session:) }
+      let(:viewport) { Message.where(id: [user_msg.id, skill.id]) }
+
+      it "excludes them and keeps only melete tool calls" do
+        expect(from_melete_messages).to contain_exactly(skill)
+      end
+    end
+
+    context "with a subagent nicknamed to resemble melete" do
+      let(:impostor) do
+        create(:message, :tool_call, session:, payload: {
+          "tool_name" => "from_melete-spy",
+          "tool_input" => {"from" => "melete-spy"},
+          "tool_use_id" => "from_melete-spy_1",
+          "content" => "spy result"
+        })
+      end
+      let(:viewport) { Message.where(id: impostor.id) }
+
+      it "excludes them — underscores in the query are literal, not wildcards" do
+        expect(from_melete_messages).to be_empty
+      end
+    end
+
+    context "with mixed melete contributions" do
+      let(:skill) { create(:message, :from_melete_skill, session:, skill_name: "rspec") }
+      let(:workflow) { create(:message, :from_melete_workflow, session:, workflow_name: "feature") }
+      let(:goal) { create(:message, :from_melete_goal, session:) }
+      let(:viewport) { Message.where(id: [skill.id, workflow.id, goal.id]) }
+
+      it "returns them in activation (id) order" do
+        expect(from_melete_messages.pluck(:id)).to eq([skill.id, workflow.id, goal.id])
+      end
     end
   end
 
   describe "#skills_in_viewport" do
     let(:session) { create(:session) }
 
-    it "returns empty set when viewport has no skill messages" do
-      msg = create(:message, :user_message, session:)
-      allow(session).to receive(:viewport_messages).and_return(Message.where(id: msg.id))
+    it "returns an empty array when viewport has no from_melete_skill calls" do
+      unrelated = create(:message, :user_message, session:)
+      allow(session).to receive(:viewport_messages).and_return(Message.where(id: unrelated.id))
 
-      expect(session.skills_in_viewport).to eq(Set.new)
+      expect(session.skills_in_viewport).to eq([])
     end
 
-    it "returns skill names from viewport messages with source_type skill" do
-      msg = create(:message, :user_message, session:,
-        payload: {"content" => "skill content", "source_type" => "skill", "source_name" => "gh-issue"})
-      allow(session).to receive(:viewport_messages).and_return(Message.where(id: msg.id))
+    it "extracts skill names from from_melete_skill tool_call messages" do
+      skill_call = create(:message, :from_melete_skill, session:, skill_name: "gh-issue")
+      allow(session).to receive(:viewport_messages).and_return(Message.where(id: skill_call.id))
 
-      expect(session.skills_in_viewport).to eq(Set["gh-issue"])
+      expect(session.skills_in_viewport).to eq(["gh-issue"])
     end
 
-    it "excludes skill messages not in viewport" do
-      create(:message, :user_message, session:,
-        payload: {"content" => "skill content", "source_type" => "skill", "source_name" => "gh-issue"})
+    it "excludes from_melete_skill calls that are not in the viewport" do
+      create(:message, :from_melete_skill, session:, skill_name: "gh-issue")
       allow(session).to receive(:viewport_messages).and_return(Message.none)
 
-      expect(session.skills_in_viewport).to eq(Set.new)
+      expect(session.skills_in_viewport).to eq([])
+    end
+
+    it "ignores from_melete_workflow calls" do
+      workflow_call = create(:message, :from_melete_workflow, session:, workflow_name: "feature")
+      allow(session).to receive(:viewport_messages).and_return(Message.where(id: workflow_call.id))
+
+      expect(session.skills_in_viewport).to eq([])
+    end
+
+    it "returns skills in activation (message id) order" do
+      first = create(:message, :from_melete_skill, session:, skill_name: "testing")
+      second = create(:message, :from_melete_skill, session:, skill_name: "gh-issue")
+      allow(session).to receive(:viewport_messages).and_return(Message.where(id: [first.id, second.id]))
+
+      expect(session.skills_in_viewport).to eq(%w[testing gh-issue])
     end
   end
 
   describe "#workflow_in_viewport" do
     let(:session) { create(:session) }
 
-    it "returns nil when no workflow message is in viewport" do
+    it "returns nil when no workflow call is in viewport" do
       allow(session).to receive(:viewport_messages).and_return(Message.none)
 
       expect(session.workflow_in_viewport).to be_nil
     end
 
-    it "returns workflow name from viewport message" do
-      msg = create(:message, :user_message, session:,
-        payload: {"content" => "workflow content", "source_type" => "workflow", "source_name" => "feature"})
-      allow(session).to receive(:viewport_messages).and_return(Message.where(id: msg.id))
+    it "extracts the workflow name from a from_melete_workflow call" do
+      workflow_call = create(:message, :from_melete_workflow, session:, workflow_name: "feature")
+      allow(session).to receive(:viewport_messages).and_return(Message.where(id: workflow_call.id))
+
+      expect(session.workflow_in_viewport).to eq("feature")
+    end
+
+    it "returns the most recently activated workflow when multiple are visible" do
+      older = create(:message, :from_melete_workflow, session:, workflow_name: "refactor")
+      newer = create(:message, :from_melete_workflow, session:, workflow_name: "feature")
+      allow(session).to receive(:viewport_messages).and_return(Message.where(id: [older.id, newer.id]))
 
       expect(session.workflow_in_viewport).to eq("feature")
     end
@@ -606,6 +822,25 @@ RSpec.describe Session do
 
     it "always starts with the soul" do
       expect(session.assemble_system_prompt).to start_with("You are running on Anima v")
+    end
+
+    it "includes the sisters block introducing Melete and Mneme" do
+      prompt = session.assemble_system_prompt
+
+      expect(prompt).to include("## Your Sisters")
+      expect(prompt).to include("Melete")
+      expect(prompt).to include("from_melete_skill")
+      expect(prompt).to include("Mneme")
+      expect(prompt).to include("from_mneme")
+      expect(prompt).to include("`from_` prefix")
+    end
+
+    it "places the sisters block after the soul and before snapshots" do
+      prompt = session.assemble_system_prompt
+      sisters_idx = prompt.index("## Your Sisters")
+      preamble_idx = prompt.index("You are running on Anima v")
+
+      expect(sisters_idx).to be > preamble_idx
     end
 
     it "does not include expertise section — skills flow through messages" do
@@ -640,15 +875,7 @@ RSpec.describe Session do
         session.activate_skill("testing")
         session.activate_skill("gh-issue")
 
-        expect(session.reload.active_skills).to eq(%w[testing gh-issue])
-      end
-
-      it "deactivates one skill while others remain active" do
-        session.activate_skill("gh-issue")
-        session.activate_skill("testing")
-        session.deactivate_skill("gh-issue")
-
-        expect(session.reload.active_skills).to eq(["testing"])
+        expect(session.active_skills).to eq(%w[testing gh-issue])
       end
     end
   end
@@ -813,13 +1040,7 @@ RSpec.describe Session do
   describe "#activate_workflow" do
     before { Workflows::Registry.reload! }
 
-    let(:session) { Session.create! }
-
-    it "sets the workflow as active" do
-      session.activate_workflow("feature")
-
-      expect(session.reload.active_workflow).to eq("feature")
-    end
+    let(:session) { create(:session) }
 
     it "returns the workflow definition" do
       result = session.activate_workflow("feature")
@@ -833,26 +1054,11 @@ RSpec.describe Session do
         .to raise_error(Workflows::InvalidDefinitionError, /Unknown workflow/)
     end
 
-    it "is idempotent — returns definition without re-saving" do
-      session.activate_workflow("feature")
-      result = session.activate_workflow("feature")
-
-      expect(result).to be_a(Workflows::Definition)
-      expect(session.reload.active_workflow).to eq("feature")
-    end
-
-    it "replaces the previous active workflow" do
-      session.activate_workflow("feature")
-      session.activate_workflow("commit")
-
-      expect(session.reload.active_workflow).to eq("commit")
-    end
-
-    it "persists to the database" do
+    it "is idempotent — does not enqueue a duplicate while the workflow is still pending" do
       session.activate_workflow("feature")
 
-      reloaded = Session.find(session.id)
-      expect(reloaded.active_workflow).to eq("feature")
+      expect { session.activate_workflow("feature") }
+        .not_to change { session.pending_messages.count }
     end
 
     it "creates a PendingMessage with source_type workflow" do
@@ -864,60 +1070,18 @@ RSpec.describe Session do
       expect(pm.content).to include("branch creation to PR readiness")
     end
 
-    it "does not create duplicate PendingMessage on idempotent call" do
+    it "surfaces the workflow as active immediately after activation" do
       session.activate_workflow("feature")
 
-      expect { session.activate_workflow("feature") }
-        .not_to change { session.pending_messages.count }
+      expect(session.active_workflow).to eq("feature")
     end
-  end
 
-  describe "#deactivate_workflow" do
-    before { Workflows::Registry.reload! }
-
-    let(:session) { Session.create! }
-
-    it "clears the active workflow" do
+    it "enqueues the replacement when activating a different workflow" do
       session.activate_workflow("feature")
-      session.deactivate_workflow
+      session.promote_pending_messages!
 
-      expect(session.reload.active_workflow).to be_nil
-    end
-
-    it "is safe when no workflow is active" do
-      expect { session.deactivate_workflow }.not_to raise_error
-    end
-
-    it "persists to the database" do
-      session.activate_workflow("feature")
-      session.deactivate_workflow
-
-      reloaded = Session.find(session.id)
-      expect(reloaded.active_workflow).to be_nil
-    end
-  end
-
-  describe "#broadcast_active_workflow_update" do
-    it "broadcasts active workflow change to the session stream" do
-      session = Session.create!
-
-      expect {
-        session.update!(active_workflow: "feature")
-      }.to have_broadcasted_to("session_#{session.id}")
-        .with(a_hash_including(
-          "action" => "active_workflow_updated",
-          "session_id" => session.id,
-          "active_workflow" => "feature"
-        ))
-    end
-
-    it "does not broadcast when active_workflow is unchanged" do
-      session = Session.create!(active_workflow: "feature")
-
-      expect {
-        session.update!(name: "New Name")
-      }.not_to have_broadcasted_to("session_#{session.id}")
-        .with(a_hash_including("action" => "active_workflow_updated"))
+      expect { session.activate_workflow("commit") }
+        .to change { session.pending_messages.where(source_type: "workflow").count }.by(1)
     end
   end
 
@@ -1017,7 +1181,7 @@ RSpec.describe Session do
       schemas = session.tool_schemas
       names = schemas.map { |s| s[:name] }
 
-      expect(names).to include("bash", "read_file", "write_file", "edit_file", "web_get", "think", "remember")
+      expect(names).to include("bash", "read_file", "write_file", "edit_file", "web_get", "think", "view_messages", "search_messages")
       expect(names).to include("spawn_subagent", "spawn_specialist", "open_issue")
       expect(names).not_to include("mark_goal_completed")
     end
@@ -1944,11 +2108,11 @@ RSpec.describe Session do
       # Every phantom pair type must persist as tool_call + tool_response
       # in the DB (not user_message) so the TUI renders them correctly.
       {
-        "subagent" => {source_name: "sleuth", tool_name: "subagent_message"},
-        "skill" => {source_name: "testing", tool_name: "recall_skill"},
-        "workflow" => {source_name: "feature", tool_name: "recall_workflow"},
-        "recall" => {source_name: "42", tool_name: "recall_memory"},
-        "goal" => {source_name: "7", tool_name: "recall_goal"}
+        "subagent" => {source_name: "sleuth", tool_name: "from_sleuth"},
+        "skill" => {source_name: "testing", tool_name: "from_melete_skill"},
+        "workflow" => {source_name: "feature", tool_name: "from_melete_workflow"},
+        "recall" => {source_name: "42", tool_name: "from_mneme"},
+        "goal" => {source_name: "7", tool_name: "from_melete_goal"}
       }.each do |source_type, meta|
         context "with #{source_type} message" do
           let!(:pm) do
@@ -2163,7 +2327,7 @@ RSpec.describe Session do
 
     it "derives tool_use_id from tool name and pending message ID" do
       pm = session.pending_messages.create!(content: "recalled text", source_type: "recall", source_name: "42")
-      expected_uid = "recall_memory_#{pm.id}"
+      expected_uid = "from_mneme_#{pm.id}"
 
       session.promote_phantom_pair!(pm)
 
@@ -2178,7 +2342,7 @@ RSpec.describe Session do
       session.promote_phantom_pair!(pm)
 
       call = session.messages.find_by(message_type: "tool_call")
-      expect(call.payload["tool_name"]).to eq("recall_goal")
+      expect(call.payload["tool_name"]).to eq("from_melete_goal")
     end
 
     it "stores tool input as stringified keys" do

@@ -19,9 +19,9 @@ RSpec.describe Anima::Settings do
       "shell" => {"max_output_bytes" => 100_000},
       "tools" => {"max_file_size" => 10_485_760, "max_read_lines" => 2_000, "max_read_bytes" => 50_000, "max_web_response_bytes" => 100_000},
       "paths" => {"soul" => "/home/test/.anima/soul.md"},
-      "session" => {"default_view_mode" => "basic", "name_generation_interval" => 30},
+      "session" => {"default_view_mode" => "basic"},
       "agent" => {"name" => "Anima"},
-      "analytical_brain" => {"max_tokens" => 128, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "message_window" => 20},
+      "melete" => {"max_tokens" => 128, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "message_window" => 20},
       "environment" => {"project_files" => ["CLAUDE.md", "AGENTS.md", "README.md", "CONTRIBUTING.md"], "project_files_max_depth" => 3},
       "github" => {"repo" => "hoblin/anima", "label" => "anima-wants"}
     }
@@ -59,14 +59,13 @@ RSpec.describe Anima::Settings do
       expect(described_class.max_read_bytes).to eq(50_000)
       expect(described_class.max_web_response_bytes).to eq(100_000)
       expect(described_class.default_view_mode).to eq("basic")
-      expect(described_class.name_generation_interval).to eq(30)
     end
 
-    it "reads analytical brain settings" do
-      expect(described_class.analytical_brain_max_tokens).to eq(128)
-      expect(described_class.analytical_brain_blocking_on_user_message).to be true
-      expect(described_class.analytical_brain_blocking_on_agent_message).to be false
-      expect(described_class.analytical_brain_message_window).to eq(20)
+    it "reads Melete settings" do
+      expect(described_class.melete_max_tokens).to eq(128)
+      expect(described_class.melete_blocking_on_user_message).to be true
+      expect(described_class.melete_blocking_on_agent_message).to be false
+      expect(described_class.melete_message_window).to eq(20)
     end
 
     it "reads environment settings" do
@@ -185,8 +184,8 @@ RSpec.describe Anima::Settings do
         max_web_response_bytes = 1000
         [session]
         default_view_mode = "basic"
-        name_generation_interval = 5
-        [analytical_brain]
+
+        [melete]
         max_tokens = 128
         blocking_on_user_message = true
         blocking_on_agent_message = false
@@ -237,8 +236,8 @@ RSpec.describe Anima::Settings do
         max_web_response_bytes = 1000
         [session]
         default_view_mode = "basic"
-        name_generation_interval = 5
-        [analytical_brain]
+
+        [melete]
         max_tokens = 128
         blocking_on_user_message = true
         blocking_on_agent_message = false
