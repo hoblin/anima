@@ -7,9 +7,41 @@
 # Sessions form a hierarchy: a main session can spawn child sessions
 # (sub-agents) that inherit the parent's viewport context at fork time.
 class Session < ApplicationRecord
+  include AASM
+
   class MissingSoulError < StandardError; end
 
   VIEW_MODES = %w[basic verbose debug].freeze
+
+  aasm do
+    state :idle, initial: true
+    state :awaiting
+    state :executing
+
+    event :start_processing do
+      transitions from: :idle, to: :awaiting
+    end
+
+    event :tool_received do
+      transitions from: :awaiting, to: :executing
+    end
+
+    event :response_complete do
+      transitions from: :awaiting, to: :idle
+    end
+
+    event :tool_complete do
+      transitions from: :executing, to: :awaiting
+    end
+
+    event :finish do
+      transitions from: :executing, to: :idle
+    end
+
+    event :interrupt do
+      transitions to: :idle
+    end
+  end
 
   attribute :view_mode, :string, default: -> { Anima::Settings.default_view_mode }
 
@@ -31,7 +63,7 @@ class Session < ApplicationRecord
 
   scope :recent, ->(limit = 10) { order(updated_at: :desc).limit(limit) }
   scope :root_sessions, -> { where(parent_session_id: nil) }
-  scope :processing_children_of, ->(parent_id) { where(parent_session_id: parent_id, processing: true) }
+  scope :processing_children_of, ->(parent_id) { where(parent_session_id: parent_id).where.not(aasm_state: "idle") }
 
   # @return [Boolean] true if this session is a sub-agent (has a parent)
   def sub_agent?
@@ -347,10 +379,10 @@ class Session < ApplicationRecord
     healed
   end
 
-  # Delivers a user message respecting the session's processing state.
+  # Delivers a user message respecting the session's AASM state.
   #
   # When idle, persists the message directly and enqueues {AgentRequestJob}
-  # to process it. When mid-turn ({#processing?}), stages the message as
+  # to process it. When mid-turn (not {#idle?}), stages the message as
   # a {PendingMessage} in a separate table — it gets no message ID until
   # promoted, so it can never interleave with tool_call/tool_response pairs.
   #
@@ -362,7 +394,7 @@ class Session < ApplicationRecord
   #   {SessionChannel#speak} for immediate-display messages)
   # @return [void]
   def enqueue_user_message(content, source_type: "user", source_name: nil, bounce_back: false)
-    if processing?
+    unless idle?
       pending_messages.create!(content: content, source_type: source_type, source_name: source_name)
     else
       display = if source_type == "subagent"
@@ -466,7 +498,7 @@ class Session < ApplicationRecord
   end
 
   # Broadcasts child session list to all clients subscribed to the parent
-  # session. Called when a child session is created or its processing state
+  # session. Called when a child session is created or its AASM state
   # changes so the HUD sub-agents section updates in real time.
   #
   # Queries children via FK directly (avoids loading the parent record) and
@@ -478,13 +510,13 @@ class Session < ApplicationRecord
 
     children = Session.where(parent_session_id: parent_session_id)
       .order(:created_at)
-      .select(:id, :name, :processing)
+      .select(:id, :name, :aasm_state)
     ActionCable.server.broadcast("session_#{parent_session_id}", {
       "action" => "children_updated",
       "session_id" => parent_session_id,
       "children" => children.map { |child|
-        state = child.processing? ? "llm_generating" : "idle"
-        {"id" => child.id, "name" => child.name, "processing" => child.processing?, "session_state" => state}
+        state = child.idle? ? "idle" : "llm_generating"
+        {"id" => child.id, "name" => child.name, "aasm_state" => child.aasm_state, "session_state" => state}
       }
     })
   end
