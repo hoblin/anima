@@ -396,9 +396,7 @@ class Session < ApplicationRecord
   #   {SessionChannel#speak} for immediate-display messages)
   # @return [void]
   def enqueue_user_message(content, source_type: "user", source_name: nil, bounce_back: false)
-    unless idle?
-      pending_messages.create!(content: content, source_type: source_type, source_name: source_name)
-    else
+    if idle?
       display = if source_type == "subagent"
         format(Tools::ResponseTruncator::ATTRIBUTION_FORMAT, source_name, content)
       else
@@ -407,6 +405,8 @@ class Session < ApplicationRecord
       msg = create_user_message(display)
       job_args = bounce_back ? {message_id: msg.id} : {}
       AgentRequestJob.perform_later(id, **job_args)
+    else
+      pending_messages.create!(content: content, source_type: source_type, source_name: source_name)
     end
   end
 
