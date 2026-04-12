@@ -28,6 +28,7 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
+  spec.add_dependency "aasm", "~> 5.5"
   spec.add_dependency "certifi"
   spec.add_dependency "draper", "~> 4.0"
   spec.add_dependency "faraday", "~> 2.0"
