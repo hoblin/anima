@@ -83,14 +83,11 @@ class Session < ApplicationRecord
   # workflows, and goals; sub-agents get naming and skills only
   # (responsibilities are selected in {Melete::Runner}).
   #
-  # Fires after the first exchange, then throttled to interval
-  # boundaries once the session has a name.
+  # Fires after the first exchange (2+ messages).
   #
   # @return [void]
   def schedule_melete!
-    count = messages.llm_messages.count
-    return if count < 2
-    return if name.present? && (count % Anima::Settings.name_generation_interval != 0)
+    return if messages.llm_messages.count < 2
 
     MeleteJob.perform_later(id)
   end

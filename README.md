@@ -265,7 +265,6 @@ message_window = 20
 
 [session]
 default_view_mode = "basic"
-name_generation_interval = 30
 ```
 
 **TUI settings** (`~/.anima/tui.toml`):

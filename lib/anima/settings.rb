@@ -188,9 +188,6 @@ module Anima
         value
       end
 
-      # Regenerate session name every N messages.
-      # @return [Integer]
-      def name_generation_interval = get("session", "name_generation_interval")
 
       # ─── Paths ───────────────────────────────────────────────────────
 

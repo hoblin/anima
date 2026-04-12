@@ -19,7 +19,7 @@ RSpec.describe Anima::Settings do
       "shell" => {"max_output_bytes" => 100_000},
       "tools" => {"max_file_size" => 10_485_760, "max_read_lines" => 2_000, "max_read_bytes" => 50_000, "max_web_response_bytes" => 100_000},
       "paths" => {"soul" => "/home/test/.anima/soul.md"},
-      "session" => {"default_view_mode" => "basic", "name_generation_interval" => 30},
+      "session" => {"default_view_mode" => "basic"},
       "agent" => {"name" => "Anima"},
       "melete" => {"max_tokens" => 128, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "message_window" => 20},
       "environment" => {"project_files" => ["CLAUDE.md", "AGENTS.md", "README.md", "CONTRIBUTING.md"], "project_files_max_depth" => 3},
@@ -59,7 +59,6 @@ RSpec.describe Anima::Settings do
       expect(described_class.max_read_bytes).to eq(50_000)
       expect(described_class.max_web_response_bytes).to eq(100_000)
       expect(described_class.default_view_mode).to eq("basic")
-      expect(described_class.name_generation_interval).to eq(30)
     end
 
     it "reads Melete settings" do
@@ -185,7 +184,7 @@ RSpec.describe Anima::Settings do
         max_web_response_bytes = 1000
         [session]
         default_view_mode = "basic"
-        name_generation_interval = 5
+
         [melete]
         max_tokens = 128
         blocking_on_user_message = true
@@ -237,7 +236,7 @@ RSpec.describe Anima::Settings do
         max_web_response_bytes = 1000
         [session]
         default_view_mode = "basic"
-        name_generation_interval = 5
+
         [melete]
         max_tokens = 128
         blocking_on_user_message = true

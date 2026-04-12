@@ -248,26 +248,13 @@ RSpec.describe Session do
         .not_to have_enqueued_job(MeleteJob)
     end
 
-    it "enqueues at name_generation_interval for named sessions" do
-      session = Session.create!(name: "Old Name")
-      Anima::Settings.name_generation_interval.times do |i|
-        type = i.even? ? "user_message" : "agent_message"
-        session.messages.create!(message_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
-      end
+    it "enqueues for named sessions on every qualifying message" do
+      session = Session.create!(name: "Already Named")
+      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
+      session.messages.create!(message_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
 
       expect { session.schedule_melete! }
         .to have_enqueued_job(MeleteJob).with(session.id)
-    end
-
-    it "does not enqueue for named sessions between intervals" do
-      session = Session.create!(name: "Existing")
-      3.times do |i|
-        type = i.even? ? "user_message" : "agent_message"
-        session.messages.create!(message_type: type, payload: {"content" => "msg #{i}"}, timestamp: i + 1)
-      end
-
-      expect { session.schedule_melete! }
-        .not_to have_enqueued_job(MeleteJob)
     end
   end
 
