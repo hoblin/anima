@@ -282,6 +282,128 @@ RSpec.describe Session do
     end
   end
 
+  describe "#active_skills" do
+    subject(:active_skills) { session.active_skills }
+
+    let(:session) { create(:session) }
+
+    before do
+      Skills::Registry.reload!
+      allow(session).to receive(:viewport_messages).and_return(viewport)
+    end
+
+    context "with no skills anywhere" do
+      let(:viewport) { Message.none }
+
+      it "returns an empty array" do
+        expect(active_skills).to eq([])
+      end
+    end
+
+    context "with a skill in the viewport" do
+      let(:skill) { create(:message, :from_melete_skill, session:, skill_name: "gh-issue") }
+      let(:viewport) { Message.where(id: skill.id) }
+
+      it "includes the viewport skill" do
+        expect(active_skills).to eq(["gh-issue"])
+      end
+    end
+
+    context "with a queued pending skill" do
+      let(:viewport) { Message.none }
+
+      before { session.activate_skill("gh-issue") }
+
+      it "includes the pending skill" do
+        expect(active_skills).to eq(["gh-issue"])
+      end
+    end
+
+    context "with the same skill in viewport and pending" do
+      let(:skill) { create(:message, :from_melete_skill, session:, skill_name: "gh-issue") }
+      let(:viewport) { Message.where(id: skill.id) }
+
+      before { session.activate_skill("gh-issue") }
+
+      it "deduplicates" do
+        expect(active_skills).to eq(["gh-issue"])
+      end
+    end
+
+    context "with viewport and pending skills" do
+      let(:skill) { create(:message, :from_melete_skill, session:, skill_name: "rspec") }
+      let(:viewport) { Message.where(id: skill.id) }
+
+      before { session.activate_skill("gh-issue") }
+
+      it "returns viewport skills first, then pending" do
+        expect(active_skills).to eq(%w[rspec gh-issue])
+      end
+    end
+  end
+
+  describe "#active_workflow" do
+    subject(:active_workflow) { session.active_workflow }
+
+    let(:session) { create(:session) }
+
+    before do
+      Workflows::Registry.reload!
+      allow(session).to receive(:viewport_messages).and_return(viewport)
+    end
+
+    context "with no workflow anywhere" do
+      let(:viewport) { Message.none }
+
+      it "returns nil" do
+        expect(active_workflow).to be_nil
+      end
+    end
+
+    context "with a workflow in the viewport" do
+      let(:workflow) { create(:message, :from_melete_workflow, session:, workflow_name: "feature") }
+      let(:viewport) { Message.where(id: workflow.id) }
+
+      it "returns the viewport workflow" do
+        expect(active_workflow).to eq("feature")
+      end
+    end
+
+    context "with a queued pending workflow" do
+      let(:viewport) { Message.none }
+
+      before { session.activate_workflow("feature") }
+
+      it "returns the pending workflow" do
+        expect(active_workflow).to eq("feature")
+      end
+    end
+
+    context "with a pending workflow overriding the viewport" do
+      let(:workflow) { create(:message, :from_melete_workflow, session:, workflow_name: "refactor") }
+      let(:viewport) { Message.where(id: workflow.id) }
+
+      before { session.activate_workflow("feature") }
+
+      it "returns the pending workflow (last enqueue wins)" do
+        expect(active_workflow).to eq("feature")
+      end
+    end
+
+    context "with multiple pending workflows" do
+      let(:viewport) { Message.none }
+
+      before do
+        session.pending_messages.create!(content: "old", source_type: "workflow", source_name: "refactor")
+        session.pending_messages.create!(content: "new", source_type: "workflow", source_name: "feature")
+      end
+
+      it "returns the newest pending workflow" do
+        expect(active_workflow).to eq("feature")
+      end
+    end
+  end
+
   describe "#broadcast_active_state!" do
     before do
       Skills::Registry.reload!
