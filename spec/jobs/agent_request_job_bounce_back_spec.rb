@@ -91,10 +91,10 @@ RSpec.describe AgentRequestJob, "bounce back" do
         expect(agent_loop).not_to have_received(:run)
       end
 
-      it "still releases the processing lock" do
+      it "still returns session to idle" do
         described_class.perform_now(session.id, message_id: message.id)
 
-        expect(session.reload.processing?).to be false
+        expect(session.reload).to be_idle
       end
 
       it "still finalizes the agent loop" do

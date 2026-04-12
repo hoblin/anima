@@ -47,7 +47,7 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
     end
 
     context "when parent is processing" do
-      before { parent.update!(processing: true) }
+      before { parent.start_processing! }
 
       it "creates a PendingMessage with subagent source metadata" do
         event = Events::AgentMessage.new(content: "Here's my analysis.", session_id: child.id)
@@ -169,7 +169,7 @@ RSpec.describe Events::Subscribers::SubagentMessageRouter do
     end
 
     context "when child is processing" do
-      before { child_a.update!(processing: true) }
+      before { child_a.start_processing! }
 
       it "creates a PendingMessage with parent attribution" do
         event = Events::AgentMessage.new(

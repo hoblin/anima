@@ -1539,7 +1539,7 @@ RSpec.describe TUI::Screens::Chat do
 
   describe "children_updated protocol message" do
     it "updates children for the current session" do
-      children = [{"id" => 101, "name" => "api-scout", "processing" => true}]
+      children = [{"id" => 101, "name" => "api-scout", "aasm_state" => "awaiting"}]
       msg = {"action" => "children_updated", "session_id" => 42, "children" => children}
       allow(cable_client).to receive(:drain_messages).and_return([msg])
       screen.send(:process_incoming_messages)
@@ -1556,7 +1556,7 @@ RSpec.describe TUI::Screens::Chat do
     end
 
     it "stores children from session_changed payload" do
-      children = [{"id" => 101, "name" => "scout", "processing" => false}]
+      children = [{"id" => 101, "name" => "scout", "aasm_state" => "idle"}]
       msg = {"action" => "session_changed", "session_id" => 99, "message_count" => 5, "children" => children}
       allow(cable_client).to receive(:update_session_id)
       allow(cable_client).to receive(:drain_messages).and_return([msg])

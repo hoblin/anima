@@ -113,8 +113,8 @@ RSpec.describe Tools::MarkGoalCompleted do
       end
     end
 
-    context "when parent session is processing" do
-      before { parent_session.update!(processing: true) }
+    context "when parent session is not idle" do
+      before { parent_session.start_processing! }
 
       it "emits a pending user message event instead of persisting directly" do
         expect {

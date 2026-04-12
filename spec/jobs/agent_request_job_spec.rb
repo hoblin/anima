@@ -42,28 +42,27 @@ RSpec.describe AgentRequestJob do
       expect(agent_loop).to have_received(:run)
     end
 
-    it "sets processing flag during execution" do
+    it "transitions session to awaiting during execution" do
       session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
-      processing_during_run = nil
+      state_during_run = nil
       allow(agent_loop).to receive(:run) do
-        processing_during_run = session.reload.processing?
+        state_during_run = session.reload.aasm_state
       end
 
       described_class.perform_now(session.id)
 
-      expect(processing_during_run).to be true
-      expect(session.reload.processing?).to be false
+      expect(state_during_run).to eq("awaiting")
+      expect(session.reload).to be_idle
     end
 
     it "skips execution when session is already processing" do
-      session.update!(processing: true)
+      session.start_processing!
       session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       described_class.perform_now(session.id)
 
       expect(agent_loop).not_to have_received(:run)
-      expect(session.reload.processing?).to be false
     end
 
     context "parent session broadcasts" do
@@ -216,14 +215,14 @@ RSpec.describe AgentRequestJob do
       expect(session.reload.interrupt_requested?).to be false
     end
 
-    it "clears processing flag even on error" do
+    it "returns session to idle even on error" do
       session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       allow(agent_loop).to receive(:run).and_raise(Providers::Anthropic::AuthenticationError, "bad token")
 
       described_class.perform_now(session.id)
 
-      expect(session.reload.processing?).to be false
+      expect(session.reload).to be_idle
     end
   end
 
