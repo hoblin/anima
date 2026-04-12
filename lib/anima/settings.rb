@@ -188,7 +188,6 @@ module Anima
         value
       end
 
-
       # ─── Paths ───────────────────────────────────────────────────────
 
       # Path to the soul file — the agent's self-authored identity.
