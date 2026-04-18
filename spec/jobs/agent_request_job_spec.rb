@@ -25,12 +25,6 @@ RSpec.describe AgentRequestJob do
         satisfy { |handler| handler[0] == "Providers::Anthropic::AuthenticationError" }
       )
     end
-
-    it "discards on RecordNotFound" do
-      expect(described_class.rescue_handlers).to include(
-        satisfy { |handler| handler[0] == "ActiveRecord::RecordNotFound" }
-      )
-    end
   end
 
   describe "#perform" do
@@ -105,12 +99,12 @@ RSpec.describe AgentRequestJob do
         described_class.perform_now(session.id)
       end
 
-      it "broadcasts session_state llm_generating when claiming processing" do
+      it "broadcasts session_state awaiting when claiming processing" do
         session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
         expect(ActionCable.server).to receive(:broadcast).with(
           "session_#{session.id}",
-          hash_including("action" => "session_state", "state" => "llm_generating")
+          hash_including("action" => "session_state", "state" => "awaiting")
         )
         allow(ActionCable.server).to receive(:broadcast)
 
@@ -256,14 +250,6 @@ RSpec.describe AgentRequestJob do
           described_class.perform_now(session.id)
         }.to have_broadcasted_to("session_#{session.id}")
           .with(a_hash_including("action" => "authentication_required"))
-      end
-    end
-
-    context "deleted session" do
-      it "discards without retrying when session does not exist" do
-        expect {
-          described_class.perform_now(-1)
-        }.not_to raise_error
       end
     end
   end

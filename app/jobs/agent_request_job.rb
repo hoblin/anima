@@ -35,7 +35,6 @@ class AgentRequestJob < ApplicationJob
     ))
   end
 
-  discard_on ActiveRecord::RecordNotFound
   discard_on Providers::Anthropic::AuthenticationError do |job, error|
     session_id = job.arguments.first
     Events::Bus.emit(Events::SystemMessage.new(
@@ -75,8 +74,8 @@ class AgentRequestJob < ApplicationJob
 
     session.schedule_melete!
   ensure
-    release_processing(session) if session
-    clear_interrupt(session_id)
+    release_processing(session)
+    session.update!(interrupt_requested: false) if session.interrupt_requested?
     agent_loop&.finalize
   end
 
@@ -105,12 +104,7 @@ class AgentRequestJob < ApplicationJob
   # @param message_id [Integer] database ID of the pre-persisted user message
   # @param agent_loop [AgentLoop] agent loop instance (reused for continuation)
   def deliver_persisted_message(session, message_id, agent_loop)
-    message = Message.find_by(id: message_id, session_id: session.id)
-    # Message may have been deleted between SessionChannel#speak and job
-    # execution (e.g. user recalled the message). Exit silently — there
-    # is nothing to deliver or bounce back.
-    return unless message
-
+    message = session.messages.find(message_id)
     content = message.payload["content"]
 
     begin
@@ -157,40 +151,23 @@ class AgentRequestJob < ApplicationJob
   # if this job claimed the session, false if another job already holds it
   # (+whiny_transitions: false+ makes +start_processing!+ return false on
   # a guard failure, which is exactly the concurrency lock we want).
-  # Broadcasts +session_state: llm_generating+ and the state change to
-  # the parent session's HUD.
+  # Broadcasts the new state so the TUI updates its spinner and the
+  # parent session's HUD reflects the claim.
   def claim_processing(session)
     return false unless session.start_processing!
 
-    session.broadcast_session_state("llm_generating")
+    session.broadcast_session_state(session.aasm_state)
     session.broadcast_children_update_to_parent
     true
   end
 
-  # Returns the session to idle at the end of a processing run.
-  #
-  # {AgentLoop} will eventually own intermediate transitions (see #440) —
-  # until then the session is always in +:awaiting+ when the loop finishes
-  # cleanly, so +response_complete!+ is the semantic match. The +:executing+
-  # branch covers the future world where +AgentLoop+ has already transitioned
-  # to executing before raising, and +:idle+ is a no-op when AgentLoop already
-  # drove the session home.
-  #
-  # Broadcasts +session_state: idle+ and +children_updated+ to the parent HUD.
+  # Ends the processing run and notifies clients the session is idle.
+  # +interrupt!+ is the any-to-idle transition; +whiny_transitions: false+
+  # makes it a no-op when the session is already idle.
   def release_processing(session)
-    if session.awaiting?
-      session.response_complete!
-    elsif session.executing?
-      session.finish!
-    end
-
+    session.interrupt!
     session.broadcast_session_state("idle")
     session.broadcast_children_update_to_parent
-  end
-
-  # Safety-net clearing of the interrupt flag.
-  def clear_interrupt(session_id)
-    Session.where(id: session_id, interrupt_requested: true).update_all(interrupt_requested: false)
   end
 
   # Emits a system message before each retry so the user sees

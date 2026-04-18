@@ -448,9 +448,9 @@ module TUI
     # @return [Array(String, String)] icon and color pair
     def child_icon_and_color(child)
       case child["session_state"]
-      when "llm_generating"
+      when "awaiting"
         [CHILD_ICON_GENERATING, Settings.theme_color_success]
-      when "tool_executing"
+      when "executing"
         [CHILD_ICON_TOOL_EXECUTING, Settings.theme_color_success]
       when "interrupting"
         [CHILD_ICON_INTERRUPTING, Settings.theme_color_error]

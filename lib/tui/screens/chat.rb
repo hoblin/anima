@@ -261,8 +261,8 @@ module TUI
       # @return [String]
       def spinner_label
         case @session_state
-        when "llm_generating" then "Thinking..."
-        when "tool_executing" then "Executing..."
+        when "awaiting" then "Thinking..."
+        when "executing" then "Executing..."
         when "interrupting" then "Stopping..."
         else "Working..."
         end
@@ -275,7 +275,7 @@ module TUI
       # @return [String]
       def spinner_color
         case @session_state
-        when "llm_generating", "tool_executing" then Settings.theme_color_success
+        when "awaiting", "executing" then Settings.theme_color_success
         when "interrupting" then Settings.theme_color_error
         else Settings.theme_color_muted
         end
@@ -509,8 +509,8 @@ module TUI
 
       # Updates the session state and synchronizes the spinner.
       #
-      # @param state [String] one of "idle", "llm_generating",
-      #   "tool_executing", "interrupting"
+      # @param state [String] one of "idle", "awaiting",
+      #   "executing", "interrupting"
       def update_session_state(state)
         @session_state = state
         @spinner.state = state

@@ -71,12 +71,7 @@ class Session < ApplicationRecord
   scope :recent, ->(limit = 10) { order(updated_at: :desc).limit(limit) }
   scope :root_sessions, -> { where(parent_session_id: nil) }
   # Sessions currently working on behalf of a human — any non-idle AASM state.
-  # Composes AASM's auto-generated per-state scopes so new states added to
-  # the machine (e.g. a future +:thinking+) flow through without changes here.
   scope :processing, -> { awaiting.or(executing) }
-  scope :processing_children_of, ->(parent_id) {
-    processing.where(parent_session_id: parent_id)
-  }
 
   # @return [Boolean] true if this session is a sub-agent (has a parent)
   def sub_agent?
@@ -528,7 +523,7 @@ class Session < ApplicationRecord
       "action" => "children_updated",
       "session_id" => parent_session_id,
       "children" => children.map { |child|
-        {"id" => child.id, "name" => child.name, "session_state" => Session.public_state(child)}
+        {"id" => child.id, "name" => child.name, "session_state" => child.aasm_state}
       }
     })
   end
@@ -539,13 +534,13 @@ class Session < ApplicationRecord
   #
   # Payload broadcast to +session_{id}+:
   #   {"action" => "session_state", "state" => state, "session_id" => id}
-  #   # plus "tool" key when state is "tool_executing"
+  #   # plus "tool" key when state is "executing"
   #
   # For sub-agents, also broadcasts +child_state+ to the parent stream:
   #   {"action" => "child_state", "state" => state, "session_id" => id, "child_id" => id}
   #
-  # @param state [String] one of "idle", "llm_generating", "tool_executing", "interrupting"
-  # @param tool [String, nil] tool name when state is "tool_executing"
+  # @param state [String] one of "idle", "awaiting", "executing", "interrupting"
+  # @param tool [String, nil] tool name when state is "executing"
   # @return [void]
   def broadcast_session_state(state, tool: nil)
     payload = {"action" => "session_state", "state" => state, "session_id" => id}
@@ -558,17 +553,6 @@ class Session < ApplicationRecord
 
     parent_payload = payload.merge("action" => "child_state", "child_id" => id)
     ActionCable.server.broadcast("session_#{parent_session_id}", parent_payload)
-  end
-
-  # Maps a session's AASM state to the public +session_state+ string the
-  # TUI consumes. The internal AASM states (+:awaiting+, +:executing+)
-  # collapse into a single +"llm_generating"+ — the TUI only needs to
-  # distinguish "working" from "idle".
-  #
-  # @param session [Session]
-  # @return [String] "idle" or "llm_generating"
-  def self.public_state(session)
-    session.idle? ? "idle" : "llm_generating"
   end
 
   # Broadcasts the full LLM debug context to debug-mode TUI clients.

@@ -27,9 +27,7 @@ class SessionChannel < ApplicationCable::Channel
     @current_session_id = resolve_session_id
     stream_from stream_name
 
-    session = Session.find_by(id: @current_session_id)
-    return unless session
-
+    session = Session.find(@current_session_id)
     transmit_session_changed(session)
     transmit_view_mode(session)
     transmit_history(session)
@@ -56,10 +54,7 @@ class SessionChannel < ApplicationCable::Channel
     content = data["content"].to_s.strip
     return if content.empty?
 
-    session = Session.find_by(id: @current_session_id)
-    return unless session
-
-    session.enqueue_user_message(content, bounce_back: true)
+    Session.find(@current_session_id).enqueue_user_message(content, bounce_back: true)
   end
 
   # Recalls the most recent pending message for editing. Deletes the
@@ -89,16 +84,12 @@ class SessionChannel < ApplicationCable::Channel
   #
   # @param _data [Hash] unused
   def interrupt_execution(_data)
-    updated = Session.processing
-      .where(id: @current_session_id)
-      .update_all(interrupt_requested: true)
+    session = Session.find(@current_session_id)
+    return unless session.may_interrupt?
 
-    return unless updated > 0
-
-    Session.processing_children_of(@current_session_id)
-      .update_all(interrupt_requested: true)
-
-    Session.find_by(id: @current_session_id)&.broadcast_session_state("interrupting")
+    session.update!(interrupt_requested: true)
+    session.child_sessions.processing.update_all(interrupt_requested: true)
+    session.broadcast_session_state("interrupting")
     ActionCable.server.broadcast(stream_name, {"action" => "interrupt_acknowledged"})
   end
 
@@ -186,13 +177,13 @@ class SessionChannel < ApplicationCable::Channel
   end
 
   # Resolves the session to subscribe to. Uses the client-provided ID
-  # when valid, otherwise falls back to the most recent session or
-  # creates a new one.
+  # when it identifies an existing session, otherwise falls back to the
+  # most recent session or creates a new one.
   #
   # @return [Integer] resolved session ID
   def resolve_session_id
     id = params[:session_id].to_i
-    return id if id > 0
+    return id if id > 0 && Session.exists?(id: id)
 
     (Session.recent(1).first || Session.create!).id
   end
@@ -223,7 +214,7 @@ class SessionChannel < ApplicationCable::Channel
     children = session.child_sessions.order(:created_at).select(:id, :name, :aasm_state)
     if children.any?
       payload["children"] = children.map { |child|
-        {"id" => child.id, "name" => child.name, "session_state" => Session.public_state(child)}
+        {"id" => child.id, "name" => child.name, "session_state" => child.aasm_state}
       }
     end
 
@@ -389,7 +380,7 @@ class SessionChannel < ApplicationCable::Channel
       {
         id: child.id,
         name: child.name,
-        session_state: Session.public_state(child),
+        session_state: child.aasm_state,
         message_count: counts[child.id] || 0,
         created_at: child.created_at.iso8601
       }

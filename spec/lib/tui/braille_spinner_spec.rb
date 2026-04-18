@@ -12,9 +12,9 @@ RSpec.describe TUI::BrailleSpinner do
     end
 
     it "resets frame index on state change" do
-      spinner.state = "llm_generating"
+      spinner.state = "awaiting"
       3.times { spinner.tick }
-      spinner.state = "tool_executing"
+      spinner.state = "executing"
 
       # First tick after state change should be from the start of the tool frames
       char = spinner.current
@@ -22,11 +22,11 @@ RSpec.describe TUI::BrailleSpinner do
     end
 
     it "does not reset frame index when state stays the same" do
-      spinner.state = "llm_generating"
+      spinner.state = "awaiting"
       3.times { spinner.tick }
       frame_before = spinner.current
 
-      spinner.state = "llm_generating"
+      spinner.state = "awaiting"
       expect(spinner.current).to eq(frame_before)
     end
   end
@@ -37,7 +37,7 @@ RSpec.describe TUI::BrailleSpinner do
     end
 
     it "returns a single UTF-8 braille character when generating" do
-      spinner.state = "llm_generating"
+      spinner.state = "awaiting"
       char = spinner.tick
 
       expect(char).to be_a(String)
@@ -45,16 +45,16 @@ RSpec.describe TUI::BrailleSpinner do
       expect(char.ord).to be_between(0x2800, 0x28FF)
     end
 
-    it "advances through frames for llm_generating" do
-      spinner.state = "llm_generating"
+    it "advances through frames for awaiting" do
+      spinner.state = "awaiting"
       frames = 20.times.map { spinner.tick }
 
       # Should cycle (not all the same character)
       expect(frames.uniq.size).to be > 1
     end
 
-    it "advances through frames for tool_executing" do
-      spinner.state = "tool_executing"
+    it "advances through frames for executing" do
+      spinner.state = "executing"
       frames = 12.times.map { spinner.tick }
 
       expect(frames.uniq.size).to be > 1
@@ -74,7 +74,7 @@ RSpec.describe TUI::BrailleSpinner do
     end
 
     it "returns the current frame without advancing" do
-      spinner.state = "llm_generating"
+      spinner.state = "awaiting"
       spinner.tick
 
       a = spinner.current
@@ -89,12 +89,12 @@ RSpec.describe TUI::BrailleSpinner do
     end
 
     it "returns true when generating" do
-      spinner.state = "llm_generating"
+      spinner.state = "awaiting"
       expect(spinner).to be_active
     end
 
     it "returns true when tool executing" do
-      spinner.state = "tool_executing"
+      spinner.state = "executing"
       expect(spinner).to be_active
     end
 
@@ -105,9 +105,9 @@ RSpec.describe TUI::BrailleSpinner do
   end
 
   describe "animation speed" do
-    it "tool_executing animates faster than llm_generating" do
-      expect(TUI::BrailleSpinner::SPEED["tool_executing"])
-        .to be < TUI::BrailleSpinner::SPEED["llm_generating"]
+    it "executing animates faster than awaiting" do
+      expect(TUI::BrailleSpinner::SPEED["executing"])
+        .to be < TUI::BrailleSpinner::SPEED["awaiting"]
     end
   end
 

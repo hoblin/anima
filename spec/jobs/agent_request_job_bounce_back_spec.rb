@@ -168,18 +168,6 @@ RSpec.describe AgentRequestJob, "bounce back" do
         expect(auth_required).to be_nil
       end
     end
-
-    context "when message was already deleted" do
-      before do
-        message.destroy!
-      end
-
-      it "exits gracefully without calling deliver!" do
-        described_class.perform_now(session.id, message_id: message.id)
-
-        expect(agent_loop).not_to have_received(:deliver!)
-      end
-    end
   end
 
   describe "standard path (no message_id)" do

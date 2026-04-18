@@ -199,7 +199,7 @@ RSpec.describe TUI::Screens::Chat do
       end
 
       it "preserves session_state when agent_message received (server broadcasts idle)" do
-        screen.send(:update_session_state, "llm_generating")
+        screen.send(:update_session_state, "awaiting")
         allow(cable_client).to receive(:drain_messages).and_return([
           {"type" => "agent_message", "content" => "response"}
         ])
@@ -207,22 +207,22 @@ RSpec.describe TUI::Screens::Chat do
         screen.send(:process_incoming_messages)
 
         # State is explicitly driven — agent_message alone doesn't change it
-        expect(screen.session_state).to eq("llm_generating")
+        expect(screen.session_state).to eq("awaiting")
       end
 
       it "updates session_state on session_state broadcast" do
         allow(cable_client).to receive(:drain_messages).and_return([
-          {"action" => "session_state", "state" => "llm_generating", "session_id" => 42}
+          {"action" => "session_state", "state" => "awaiting", "session_id" => 42}
         ])
 
         screen.send(:process_incoming_messages)
 
-        expect(screen.session_state).to eq("llm_generating")
+        expect(screen.session_state).to eq("awaiting")
       end
 
       it "ignores session_state broadcast for different session" do
         allow(cable_client).to receive(:drain_messages).and_return([
-          {"action" => "session_state", "state" => "llm_generating", "session_id" => 999}
+          {"action" => "session_state", "state" => "awaiting", "session_id" => 999}
         ])
 
         screen.send(:process_incoming_messages)
@@ -236,13 +236,13 @@ RSpec.describe TUI::Screens::Chat do
         ]
 
         allow(cable_client).to receive(:drain_messages).and_return([
-          {"action" => "child_state", "child_id" => 7, "state" => "tool_executing"}
+          {"action" => "child_state", "child_id" => 7, "state" => "executing"}
         ])
 
         screen.send(:process_incoming_messages)
 
         child = screen.session_info[:children].first
-        expect(child["session_state"]).to eq("tool_executing")
+        expect(child["session_state"]).to eq("executing")
       end
 
       it "ignores child_state for unknown child" do
@@ -251,7 +251,7 @@ RSpec.describe TUI::Screens::Chat do
         ]
 
         allow(cable_client).to receive(:drain_messages).and_return([
-          {"action" => "child_state", "child_id" => 999, "state" => "llm_generating"}
+          {"action" => "child_state", "child_id" => 999, "state" => "awaiting"}
         ])
 
         screen.send(:process_incoming_messages)
@@ -266,7 +266,7 @@ RSpec.describe TUI::Screens::Chat do
         ]
 
         allow(cable_client).to receive(:drain_messages).and_return([
-          {"action" => "child_state", "state" => "llm_generating"}
+          {"action" => "child_state", "state" => "awaiting"}
         ])
 
         screen.send(:process_incoming_messages)
@@ -332,7 +332,7 @@ RSpec.describe TUI::Screens::Chat do
       end
 
       it "does not increment message_count on agent_message update" do
-        screen.send(:update_session_state, "llm_generating")
+        screen.send(:update_session_state, "awaiting")
         allow(cable_client).to receive(:drain_messages).and_return([
           {"type" => "agent_message", "content" => "done", "id" => 2, "action" => "update"}
         ])
@@ -1539,7 +1539,7 @@ RSpec.describe TUI::Screens::Chat do
 
   describe "children_updated protocol message" do
     it "updates children for the current session" do
-      children = [{"id" => 101, "name" => "api-scout", "session_state" => "llm_generating"}]
+      children = [{"id" => 101, "name" => "api-scout", "session_state" => "awaiting"}]
       msg = {"action" => "children_updated", "session_id" => 42, "children" => children}
       allow(cable_client).to receive(:drain_messages).and_return([msg])
       screen.send(:process_incoming_messages)

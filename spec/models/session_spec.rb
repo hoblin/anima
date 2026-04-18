@@ -155,16 +155,6 @@ RSpec.describe Session do
       it "provides a composite processing scope covering non-idle states" do
         expect(described_class.processing).to contain_exactly(awaiting_session, executing_session)
       end
-
-      it "scopes processing children under a parent" do
-        parent = create(:session)
-        idle_child = create(:session, parent_session: parent)
-        working_child = create(:session, :awaiting, parent_session: parent)
-
-        result = described_class.processing_children_of(parent.id)
-        expect(result).to contain_exactly(working_child)
-        expect(result).not_to include(idle_child)
-      end
     end
   end
 
@@ -253,7 +243,7 @@ RSpec.describe Session do
           "session_id" => parent.id,
           "children" => [
             {"id" => child_a.id, "name" => "analyzer", "session_state" => "idle"},
-            {"id" => child_b.id, "name" => "reviewer", "session_state" => "llm_generating"}
+            {"id" => child_b.id, "name" => "reviewer", "session_state" => "awaiting"}
           ]
         }
       )
@@ -298,21 +288,21 @@ RSpec.describe Session do
 
       expect(ActionCable.server).to receive(:broadcast).with(
         "session_#{session.id}",
-        {"action" => "session_state", "state" => "llm_generating", "session_id" => session.id}
+        {"action" => "session_state", "state" => "awaiting", "session_id" => session.id}
       )
 
-      session.broadcast_session_state("llm_generating")
+      session.broadcast_session_state("awaiting")
     end
 
-    it "includes tool name for tool_executing state" do
+    it "includes tool name for executing state" do
       session = Session.create!
 
       expect(ActionCable.server).to receive(:broadcast).with(
         "session_#{session.id}",
-        {"action" => "session_state", "state" => "tool_executing", "tool" => "bash", "session_id" => session.id}
+        {"action" => "session_state", "state" => "executing", "tool" => "bash", "session_id" => session.id}
       )
 
-      session.broadcast_session_state("tool_executing", tool: "bash")
+      session.broadcast_session_state("executing", tool: "bash")
     end
 
     it "broadcasts child_state to parent stream for sub-agents" do
@@ -321,14 +311,14 @@ RSpec.describe Session do
 
       expect(ActionCable.server).to receive(:broadcast).with(
         "session_#{child.id}",
-        {"action" => "session_state", "state" => "llm_generating", "session_id" => child.id}
+        {"action" => "session_state", "state" => "awaiting", "session_id" => child.id}
       ).ordered
       expect(ActionCable.server).to receive(:broadcast).with(
         "session_#{parent.id}",
-        {"action" => "child_state", "state" => "llm_generating", "session_id" => child.id, "child_id" => child.id}
+        {"action" => "child_state", "state" => "awaiting", "session_id" => child.id, "child_id" => child.id}
       ).ordered
 
-      child.broadcast_session_state("llm_generating")
+      child.broadcast_session_state("awaiting")
     end
 
     it "does not broadcast to parent for root sessions" do

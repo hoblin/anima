@@ -23,7 +23,7 @@ module TUI
   #
   # @example Basic usage
   #   spinner = BrailleSpinner.new
-  #   spinner.state = "llm_generating"
+  #   spinner.state = "awaiting"
   #   char = spinner.tick  # => "⠋" (braille pattern)
   class BrailleSpinner
     # Clockwise traversal of the 8 dots in the braille grid.
@@ -73,8 +73,8 @@ module TUI
     # Ticks per frame for each state — controls animation speed.
     # Higher = slower. At ~15fps render loop: 2 = ~7.5fps, 4 = ~3.75fps.
     SPEED = {
-      "llm_generating" => 2,
-      "tool_executing" => 1,
+      "awaiting" => 2,
+      "executing" => 1,
       "interrupting" => 1
     }.freeze
 
@@ -90,8 +90,8 @@ module TUI
     # Updates the session state driving the animation.
     # Resets frame position on state change for a clean transition.
     #
-    # @param new_state [String] one of "idle", "llm_generating",
-    #   "tool_executing", "interrupting"
+    # @param new_state [String] one of "idle", "awaiting",
+    #   "executing", "interrupting"
     def state=(new_state)
       if @state != new_state
         @frame_index = 0
@@ -143,8 +143,8 @@ module TUI
 
     def frames_for_state
       case @state
-      when "llm_generating" then SNAKE_TRAIL_FRAMES
-      when "tool_executing" then TOOL_FRAMES
+      when "awaiting" then SNAKE_TRAIL_FRAMES
+      when "executing" then TOOL_FRAMES
       when "interrupting" then INTERRUPT_FRAMES
       end
     end

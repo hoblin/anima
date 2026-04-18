@@ -72,7 +72,7 @@ module LLM
         response = if first_response && rounds == 1
           first_response
         else
-          broadcast_session_state(session_id, "llm_generating")
+          broadcast_session_state(session_id, "awaiting")
           provider.create_message(
             model: model,
             messages: messages,
@@ -202,7 +202,7 @@ module LLM
 
       log(:debug, "tool_call: #{name}(#{input.to_json})")
 
-      broadcast_session_state(session_id, "tool_executing", tool: name)
+      broadcast_session_state(session_id, "executing", tool: name)
 
       Events::Bus.emit(Events::ToolCall.new(
         content: "Calling #{name}", tool_name: name,
@@ -291,8 +291,8 @@ module LLM
     # the session's own stream and the parent's stream for HUD updates.
     #
     # @param session_id [Integer, String] session to broadcast for
-    # @param state [String] one of "idle", "llm_generating", "tool_executing", "interrupting"
-    # @param tool [String, nil] tool name when state is "tool_executing"
+    # @param state [String] one of "idle", "awaiting", "executing", "interrupting"
+    # @param tool [String, nil] tool name when state is "executing"
     # @return [void]
     def broadcast_session_state(session_id, state, tool: nil)
       Session.find_by(id: session_id)&.broadcast_session_state(state, tool: tool)
