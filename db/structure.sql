@@ -76,7 +76,7 @@ END;
 CREATE TABLE "secrets" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "namespace" varchar NOT NULL, "key" varchar NOT NULL, "value" text NOT NULL, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL);
 CREATE UNIQUE INDEX "index_secrets_on_namespace_and_key" ON "secrets" ("namespace", "key");
 CREATE INDEX "index_goals_on_evicted_at" ON "goals" ("evicted_at");
-CREATE TABLE "pending_messages" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "session_id" integer NOT NULL, "content" text NOT NULL, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL, "source_type" varchar DEFAULT 'user' NOT NULL, "source_name" varchar, CONSTRAINT "fk_rails_007242365b"
+CREATE TABLE "pending_messages" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "session_id" integer NOT NULL, "content" text NOT NULL, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL, "source_type" varchar DEFAULT 'user' NOT NULL, "source_name" varchar, "kind" varchar DEFAULT 'active' NOT NULL, "message_type" varchar, CONSTRAINT "fk_rails_007242365b"
 FOREIGN KEY ("session_id")
   REFERENCES "sessions" ("id")
 );
@@ -87,6 +87,7 @@ FOREIGN KEY ("parent_session_id")
 );
 CREATE INDEX "index_sessions_on_parent_session_id" ON "sessions" ("parent_session_id");
 INSERT INTO "schema_migrations" (version) VALUES
+('20260418150323'),
 ('20260412110625'),
 ('20260411172926'),
 ('20260411120553'),

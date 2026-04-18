@@ -21,7 +21,7 @@ class Session < ApplicationRecord
   # - +no_direct_assignment: true+ blocks +session.aasm_state = ...+, forcing
   #   every transition through a named event so guards always run.
   aasm whiny_transitions: false, no_direct_assignment: true do
-    after_all_transitions :emit_state_change
+    after_all_events :emit_state_change
 
     state :idle, initial: true
     state :awaiting
@@ -530,9 +530,11 @@ class Session < ApplicationRecord
     })
   end
 
-  # AASM after_all_transitions callback — publishes
+  # AASM after_all_events callback — publishes
   # {Events::SessionStateChanged} so the broadcaster subscriber can keep
   # the TUI spinner and parent-session HUD in sync with the state machine.
+  # Fires after the state column is updated and persisted, so +aasm_state+
+  # reliably holds the post-transition value.
   #
   # @return [void]
   def emit_state_change
