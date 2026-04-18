@@ -84,4 +84,123 @@ RSpec.describe PendingMessage, type: :model do
       expect { session.destroy! }.to change(PendingMessage, :count).by(-1)
     end
   end
+
+  describe "kind enum" do
+    it "defaults to active" do
+      pm = session.pending_messages.create!(content: "hi")
+      expect(pm).to be_active
+      expect(pm).not_to be_background
+    end
+
+    it "accepts background" do
+      pm = session.pending_messages.create!(content: "memory", kind: :background)
+      expect(pm).to be_background
+    end
+
+    it "exposes scopes" do
+      active_pm = session.pending_messages.create!(content: "active msg")
+      background_pm = session.pending_messages.create!(content: "background msg", kind: :background)
+
+      expect(PendingMessage.active).to include(active_pm)
+      expect(PendingMessage.active).not_to include(background_pm)
+      expect(PendingMessage.background).to include(background_pm)
+    end
+  end
+
+  describe "message_type validation" do
+    it "allows nil (legacy callers that predate the drain pipeline)" do
+      pm = PendingMessage.new(session: session, content: "hi", source_type: "user")
+      expect(pm).to be_valid
+    end
+
+    PendingMessage::MESSAGE_TYPES.each do |mt|
+      it "accepts #{mt}" do
+        pm = PendingMessage.new(session: session, content: "hi", source_type: "user", message_type: mt)
+        expect(pm).to be_valid
+      end
+    end
+
+    it "rejects unknown values" do
+      pm = PendingMessage.new(session: session, content: "hi", source_type: "user", message_type: "bogus")
+      expect(pm).not_to be_valid
+      expect(pm.errors[:message_type]).to be_present
+    end
+  end
+
+  describe "#route_to_event_bus (after_create_commit)" do
+    before do
+      allow(Events::Bus).to receive(:emit).and_call_original
+    end
+
+    context "with an active message on an idle session" do
+      {"user_message" => Events::StartMneme, "think" => Events::StartMneme}.each do |mt, event_class|
+        it "emits #{event_class.name.split("::").last} for #{mt}" do
+          pm = session.pending_messages.create!(content: "hello", message_type: mt)
+
+          expect(Events::Bus).to have_received(:emit).with(
+            an_instance_of(event_class).and(have_attributes(session_id: session.id, pending_message_id: pm.id))
+          )
+        end
+      end
+
+      {
+        "tool_call" => Events::StartProcessing,
+        "tool_response" => Events::StartProcessing,
+        "subagent" => Events::StartProcessing
+      }.each do |mt, event_class|
+        it "emits #{event_class.name.split("::").last} for #{mt}" do
+          pm = session.pending_messages.create!(
+            content: "result",
+            source_type: "subagent",
+            source_name: "sleuth",
+            message_type: mt
+          )
+
+          expect(Events::Bus).to have_received(:emit).with(
+            an_instance_of(event_class).and(have_attributes(session_id: session.id, pending_message_id: pm.id))
+          )
+        end
+      end
+    end
+
+    context "with a background message" do
+      ["from_mneme", "from_melete"].each do |mt|
+        it "does not emit a start event for #{mt}" do
+          session.pending_messages.create!(
+            content: "memory",
+            source_type: "recall",
+            source_name: "42",
+            message_type: mt,
+            kind: :background
+          )
+
+          expect(Events::Bus).not_to have_received(:emit).with(
+            an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
+          )
+        end
+      end
+    end
+
+    context "with an active message landing while the session is not idle" do
+      it "does not emit — the running drain loop will pick it up" do
+        session.start_processing!
+
+        session.pending_messages.create!(content: "late arrival", message_type: "user_message")
+
+        expect(Events::Bus).not_to have_received(:emit).with(
+          an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
+        )
+      end
+    end
+
+    context "with a legacy caller (message_type nil)" do
+      it "does not emit — the pipeline only activates for explicit message types" do
+        session.pending_messages.create!(content: "legacy")
+
+        expect(Events::Bus).not_to have_received(:emit).with(
+          an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
+        )
+      end
+    end
+  end
 end
