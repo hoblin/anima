@@ -13,6 +13,13 @@ class Session < ApplicationRecord
 
   VIEW_MODES = %w[basic verbose debug].freeze
 
+  # Non-default AASM options:
+  # - +whiny_transitions: false+ makes invalid transitions return +false+
+  #   instead of raising. {AgentRequestJob#claim_processing} depends on this:
+  #   +start_processing!+ returning +false+ signals that another job already
+  #   claimed the session, so the current job exits silently.
+  # - +no_direct_assignment: true+ blocks +session.aasm_state = ...+, forcing
+  #   every transition through a named event so guards always run.
   aasm whiny_transitions: false, no_direct_assignment: true do
     state :idle, initial: true
     state :awaiting
@@ -39,7 +46,7 @@ class Session < ApplicationRecord
     end
 
     event :interrupt do
-      transitions to: :idle
+      transitions from: [:awaiting, :executing], to: :idle
     end
   end
 
@@ -63,8 +70,12 @@ class Session < ApplicationRecord
 
   scope :recent, ->(limit = 10) { order(updated_at: :desc).limit(limit) }
   scope :root_sessions, -> { where(parent_session_id: nil) }
+  # Sessions currently working on behalf of a human — any non-idle AASM state.
+  # Composes AASM's auto-generated per-state scopes so new states added to
+  # the machine (e.g. a future +:thinking+) flow through without changes here.
+  scope :processing, -> { awaiting.or(executing) }
   scope :processing_children_of, ->(parent_id) {
-    where(parent_session_id: parent_id).where(aasm_state: [:awaiting, :executing])
+    processing.where(parent_session_id: parent_id)
   }
 
   # @return [Boolean] true if this session is a sub-agent (has a parent)
@@ -517,8 +528,7 @@ class Session < ApplicationRecord
       "action" => "children_updated",
       "session_id" => parent_session_id,
       "children" => children.map { |child|
-        state = child.idle? ? "idle" : "llm_generating"
-        {"id" => child.id, "name" => child.name, "aasm_state" => child.aasm_state, "session_state" => state}
+        {"id" => child.id, "name" => child.name, "session_state" => Session.public_state(child)}
       }
     })
   end
@@ -548,6 +558,17 @@ class Session < ApplicationRecord
 
     parent_payload = payload.merge("action" => "child_state", "child_id" => id)
     ActionCable.server.broadcast("session_#{parent_session_id}", parent_payload)
+  end
+
+  # Maps a session's AASM state to the public +session_state+ string the
+  # TUI consumes. The internal AASM states (+:awaiting+, +:executing+)
+  # collapse into a single +"llm_generating"+ — the TUI only needs to
+  # distinguish "working" from "idle".
+  #
+  # @param session [Session]
+  # @return [String] "idle" or "llm_generating"
+  def self.public_state(session)
+    session.idle? ? "idle" : "llm_generating"
   end
 
   # Broadcasts the full LLM debug context to debug-mode TUI clients.

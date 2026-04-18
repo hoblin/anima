@@ -54,7 +54,7 @@ class AgentRequestJob < ApplicationJob
     session = Session.find(session_id)
 
     # Atomic: only one job processes a session at a time.
-    return unless claim_processing(session_id)
+    return unless claim_processing(session)
 
     run_melete_blocking(session)
 
@@ -75,7 +75,7 @@ class AgentRequestJob < ApplicationJob
 
     session.schedule_melete!
   ensure
-    release_processing(session_id)
+    release_processing(session) if session
     clear_interrupt(session_id)
     agent_loop&.finalize
   end
@@ -154,26 +154,36 @@ class AgentRequestJob < ApplicationJob
   end
 
   # Transitions the session from idle → awaiting via AASM. Returns true
-  # if this job claimed the session, false if another job already holds it.
+  # if this job claimed the session, false if another job already holds it
+  # (+whiny_transitions: false+ makes +start_processing!+ return false on
+  # a guard failure, which is exactly the concurrency lock we want).
   # Broadcasts +session_state: llm_generating+ and the state change to
   # the parent session's HUD.
-  def claim_processing(session_id)
-    session = Session.find_by(id: session_id)
-    return false unless session&.start_processing!
+  def claim_processing(session)
+    return false unless session.start_processing!
 
     session.broadcast_session_state("llm_generating")
     session.broadcast_children_update_to_parent
     true
   end
 
-  # Returns the session to idle via AASM interrupt (valid from any state).
-  # Broadcasts +session_state: idle+ to the session stream and
-  # +children_updated+ to the parent session's HUD.
-  def release_processing(session_id)
-    session = Session.find_by(id: session_id)
-    return unless session
+  # Returns the session to idle at the end of a processing run.
+  #
+  # {AgentLoop} will eventually own intermediate transitions (see #440) —
+  # until then the session is always in +:awaiting+ when the loop finishes
+  # cleanly, so +response_complete!+ is the semantic match. The +:executing+
+  # branch covers the future world where +AgentLoop+ has already transitioned
+  # to executing before raising, and +:idle+ is a no-op when AgentLoop already
+  # drove the session home.
+  #
+  # Broadcasts +session_state: idle+ and +children_updated+ to the parent HUD.
+  def release_processing(session)
+    if session.awaiting?
+      session.response_complete!
+    elsif session.executing?
+      session.finish!
+    end
 
-    session.interrupt! unless session.idle?
     session.broadcast_session_state("idle")
     session.broadcast_children_update_to_parent
   end

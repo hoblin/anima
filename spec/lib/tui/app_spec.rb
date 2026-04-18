@@ -264,8 +264,8 @@ RSpec.describe TUI::App do
           {"id" => 10, "message_count" => 5, "updated_at" => Time.now.iso8601},
           {"id" => 8, "message_count" => 3, "updated_at" => Time.now.iso8601,
            "children" => [
-             {"id" => 81, "name" => "codebase-analyzer", "aasm_state" => "idle", "message_count" => 2, "created_at" => Time.now.iso8601},
-             {"id" => 82, "name" => nil, "aasm_state" => "awaiting", "message_count" => 1, "created_at" => Time.now.iso8601}
+             {"id" => 81, "name" => "codebase-analyzer", "session_state" => "idle", "message_count" => 2, "created_at" => Time.now.iso8601},
+             {"id" => 82, "name" => nil, "session_state" => "llm_generating", "message_count" => 1, "created_at" => Time.now.iso8601}
            ]},
           {"id" => 5, "message_count" => 0, "updated_at" => Time.now.iso8601}
         ]
@@ -493,7 +493,7 @@ RSpec.describe TUI::App do
         it "resets page when drilling into children" do
           sessions_with_children = many_sessions.dup
           sessions_with_children[0]["children"] = [
-            {"id" => 100, "name" => "child", "aasm_state" => "idle", "message_count" => 0, "created_at" => Time.now.iso8601}
+            {"id" => 100, "name" => "child", "session_state" => "idle", "message_count" => 0, "created_at" => Time.now.iso8601}
           ]
           chat = app.instance_variable_get(:@screens)[:chat]
           chat.instance_variable_set(:@sessions_list, sessions_with_children)
@@ -513,7 +513,7 @@ RSpec.describe TUI::App do
           sessions_with_children = [
             {"id" => 1, "message_count" => 0, "updated_at" => Time.now.iso8601,
              "children" => (1..15).map { |i|
-               {"id" => 100 + i, "name" => "child-#{i}", "aasm_state" => "idle", "message_count" => 0, "created_at" => Time.now.iso8601}
+               {"id" => 100 + i, "name" => "child-#{i}", "session_state" => "idle", "message_count" => 0, "created_at" => Time.now.iso8601}
              }}
           ]
           chat = app.instance_variable_get(:@screens)[:chat]
@@ -531,7 +531,7 @@ RSpec.describe TUI::App do
           sessions_with_many_children = [
             {"id" => 1, "message_count" => 0, "updated_at" => Time.now.iso8601,
              "children" => (1..12).map { |i|
-               {"id" => 100 + i, "name" => "child-#{i}", "aasm_state" => "idle", "message_count" => 0, "created_at" => Time.now.iso8601}
+               {"id" => 100 + i, "name" => "child-#{i}", "session_state" => "idle", "message_count" => 0, "created_at" => Time.now.iso8601}
              }}
           ]
           chat = app.instance_variable_get(:@screens)[:chat]
@@ -1689,7 +1689,7 @@ RSpec.describe TUI::App do
       end
 
       it "uses fallback name for unnamed sub-agents" do
-        children = [{"id" => 1, "name" => nil, "aasm_state" => "idle"}]
+        children = [{"id" => 1, "name" => nil, "session_state" => "idle"}]
         result = app.send(:hud_children_section, tui, {children: children})
         expect(result[2][:spans][1][:content]).to eq("@sub-agent")
       end

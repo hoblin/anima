@@ -52,7 +52,15 @@ RSpec.describe Session do
         expect(session).to be_idle
       end
 
-      it "transitions from any state to idle via interrupt!" do
+      it "transitions from awaiting to idle via interrupt!" do
+        session.start_processing!
+        expect(session).to be_awaiting
+
+        expect(session.interrupt!).to be_truthy
+        expect(session).to be_idle
+      end
+
+      it "transitions from executing to idle via interrupt!" do
         session.start_processing!
         session.tool_received!
         expect(session).to be_executing
@@ -85,6 +93,10 @@ RSpec.describe Session do
       it "rejects finish from idle" do
         expect(session.finish!).to be_falsey
       end
+
+      it "rejects interrupt from idle" do
+        expect(session.interrupt!).to be_falsey
+      end
     end
 
     describe "may_ predicates" do
@@ -93,7 +105,7 @@ RSpec.describe Session do
       it "reports valid transitions from idle" do
         expect(session.may_start_processing?).to be true
         expect(session.may_tool_received?).to be false
-        expect(session.may_interrupt?).to be true
+        expect(session.may_interrupt?).to be false
       end
 
       it "reports valid transitions from awaiting" do
@@ -101,6 +113,7 @@ RSpec.describe Session do
         expect(session.may_start_processing?).to be false
         expect(session.may_tool_received?).to be true
         expect(session.may_response_complete?).to be true
+        expect(session.may_interrupt?).to be true
       end
 
       it "reports valid transitions from executing" do
@@ -109,6 +122,7 @@ RSpec.describe Session do
         expect(session.may_tool_complete?).to be true
         expect(session.may_finish?).to be true
         expect(session.may_response_complete?).to be false
+        expect(session.may_interrupt?).to be true
       end
     end
 
@@ -128,14 +142,28 @@ RSpec.describe Session do
     end
 
     describe "scopes" do
-      it "provides state-based scopes" do
-        idle_session = create(:session)
-        awaiting_session = create(:session, :awaiting)
-        executing_session = create(:session, :executing)
+      let!(:idle_session) { create(:session) }
+      let!(:awaiting_session) { create(:session, :awaiting) }
+      let!(:executing_session) { create(:session, :executing) }
 
+      it "provides AASM-generated per-state scopes" do
         expect(described_class.idle).to include(idle_session)
         expect(described_class.awaiting).to include(awaiting_session)
         expect(described_class.executing).to include(executing_session)
+      end
+
+      it "provides a composite processing scope covering non-idle states" do
+        expect(described_class.processing).to contain_exactly(awaiting_session, executing_session)
+      end
+
+      it "scopes processing children under a parent" do
+        parent = create(:session)
+        idle_child = create(:session, parent_session: parent)
+        working_child = create(:session, :awaiting, parent_session: parent)
+
+        result = described_class.processing_children_of(parent.id)
+        expect(result).to contain_exactly(working_child)
+        expect(result).not_to include(idle_child)
       end
     end
   end
@@ -224,8 +252,8 @@ RSpec.describe Session do
           "action" => "children_updated",
           "session_id" => parent.id,
           "children" => [
-            {"id" => child_a.id, "name" => "analyzer", "aasm_state" => "idle", "session_state" => "idle"},
-            {"id" => child_b.id, "name" => "reviewer", "aasm_state" => "awaiting", "session_state" => "llm_generating"}
+            {"id" => child_a.id, "name" => "analyzer", "session_state" => "idle"},
+            {"id" => child_b.id, "name" => "reviewer", "session_state" => "llm_generating"}
           ]
         }
       )
@@ -260,7 +288,7 @@ RSpec.describe Session do
       Session.last.broadcast_children_update_to_parent
 
       child_data = payload["children"].first
-      expect(child_data.keys).to contain_exactly("id", "name", "aasm_state", "session_state")
+      expect(child_data.keys).to contain_exactly("id", "name", "session_state")
     end
   end
 

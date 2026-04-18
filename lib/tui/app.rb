@@ -1262,7 +1262,7 @@ module TUI
       hotkey = picker_hotkey(idx)
       prefix = hotkey ? "[#{hotkey}]" : "   "
       marker = is_current ? "*" : " "
-      active = child["aasm_state"] != "idle"
+      active = child["session_state"] != "idle"
       status = active ? CHILD_STATUS_RUNNING : CHILD_STATUS_DONE
       status_color = active ? Settings.theme_color_warning : Settings.theme_color_success
       display_name = child["name"] || UNNAMED_SUBAGENT_LABEL

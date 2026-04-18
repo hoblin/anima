@@ -172,7 +172,7 @@ RSpec.describe SessionChannel, type: :channel do
 
       changed = transmissions.find { |t| t["action"] == "session_changed" }
       expect(changed["children"]).to eq([
-        {"id" => child.id, "name" => "analyzer", "aasm_state" => "awaiting", "session_state" => "llm_generating"}
+        {"id" => child.id, "name" => "analyzer", "session_state" => "llm_generating"}
       ])
     end
 
@@ -492,7 +492,7 @@ RSpec.describe SessionChannel, type: :channel do
       child_entry = parent_entry["children"].first
       expect(child_entry["id"]).to eq(child.id)
       expect(child_entry["name"]).to eq("codebase-analyzer")
-      expect(child_entry["aasm_state"]).to eq("idle")
+      expect(child_entry["session_state"]).to eq("idle")
     end
 
     it "sorts children by created_at" do
@@ -507,7 +507,7 @@ RSpec.describe SessionChannel, type: :channel do
       expect(children.map { |c| c["id"] }).to eq([older.id, newer.id])
     end
 
-    it "includes aasm_state for child sessions" do
+    it "exposes derived session_state (not raw AASM state) for child sessions" do
       parent = Session.create!
       create(:session, :awaiting, parent_session: parent, prompt: "task")
 
@@ -515,7 +515,8 @@ RSpec.describe SessionChannel, type: :channel do
 
       response = transmissions.last
       child_entry = response["sessions"].first["children"].first
-      expect(child_entry["aasm_state"]).to eq("awaiting")
+      expect(child_entry["session_state"]).to eq("llm_generating")
+      expect(child_entry).not_to have_key("aasm_state")
     end
 
     it "includes message counts for child sessions" do
