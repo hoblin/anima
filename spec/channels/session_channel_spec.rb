@@ -382,12 +382,6 @@ RSpec.describe SessionChannel, type: :channel do
           .with(hash_including("action" => "interrupt_acknowledged"))
       end
 
-      it "broadcasts session_state interrupting" do
-        expect { perform(:interrupt_execution, {}) }
-          .to have_broadcasted_to("session_#{session_id}")
-          .with(hash_including("action" => "session_state", "state" => "interrupting"))
-      end
-
       it "cascades interrupt to non-idle child sessions" do
         child = create(:session, :awaiting, parent_session_id: session.id)
 

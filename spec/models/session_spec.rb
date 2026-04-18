@@ -282,54 +282,6 @@ RSpec.describe Session do
     end
   end
 
-  describe "#broadcast_session_state" do
-    it "broadcasts state to the session stream" do
-      session = Session.create!
-
-      expect(ActionCable.server).to receive(:broadcast).with(
-        "session_#{session.id}",
-        {"action" => "session_state", "state" => "awaiting", "session_id" => session.id}
-      )
-
-      session.broadcast_session_state("awaiting")
-    end
-
-    it "includes tool name for executing state" do
-      session = Session.create!
-
-      expect(ActionCable.server).to receive(:broadcast).with(
-        "session_#{session.id}",
-        {"action" => "session_state", "state" => "executing", "tool" => "bash", "session_id" => session.id}
-      )
-
-      session.broadcast_session_state("executing", tool: "bash")
-    end
-
-    it "broadcasts child_state to parent stream for sub-agents" do
-      parent = Session.create!
-      child = Session.create!(parent_session: parent, prompt: "task")
-
-      expect(ActionCable.server).to receive(:broadcast).with(
-        "session_#{child.id}",
-        {"action" => "session_state", "state" => "awaiting", "session_id" => child.id}
-      ).ordered
-      expect(ActionCable.server).to receive(:broadcast).with(
-        "session_#{parent.id}",
-        {"action" => "child_state", "state" => "awaiting", "session_id" => child.id, "child_id" => child.id}
-      ).ordered
-
-      child.broadcast_session_state("awaiting")
-    end
-
-    it "does not broadcast to parent for root sessions" do
-      session = Session.create!
-
-      expect(ActionCable.server).to receive(:broadcast).once
-
-      session.broadcast_session_state("idle")
-    end
-  end
-
   describe ".root_sessions" do
     it "returns only sessions without a parent" do
       root = Session.create!

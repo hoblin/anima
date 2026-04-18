@@ -61,6 +61,7 @@ module LLM
       messages = messages.dup
       rounds = 0
       last_api_metrics = nil
+      session = session_id ? Session.find(session_id) : nil
 
       loop do
         rounds += 1
@@ -72,7 +73,6 @@ module LLM
         response = if first_response && rounds == 1
           first_response
         else
-          broadcast_session_state(session_id, "awaiting")
           provider.create_message(
             model: model,
             messages: messages,
@@ -89,6 +89,7 @@ module LLM
         log(:debug, "stop_reason=#{response["stop_reason"]} content_types=#{(response["content"] || []).map { |b| b["type"] }.join(",")}")
 
         if response["stop_reason"] == "tool_use"
+          session&.tool_received!
           tool_results = execute_tools(response, registry, session_id)
           promoted = promote_between_rounds(between_rounds)
 
@@ -104,6 +105,8 @@ module LLM
 
           messages.concat(promoted[:pairs])
 
+          session&.tool_complete!
+
           return nil if handle_interrupt!(session_id)
         else
           # Discard the text response if the user pressed Escape while
@@ -111,6 +114,8 @@ module LLM
           # flag set during the blocking API call would be silently
           # cleared by the ensure block in AgentRequestJob.
           return nil if handle_interrupt!(session_id)
+
+          session&.response_complete!
 
           return {text: extract_text(response), api_metrics: last_api_metrics}
         end
@@ -202,8 +207,6 @@ module LLM
 
       log(:debug, "tool_call: #{name}(#{input.to_json})")
 
-      broadcast_session_state(session_id, "executing", tool: name)
-
       Events::Bus.emit(Events::ToolCall.new(
         content: "Calling #{name}", tool_name: name,
         tool_input: input, tool_use_id: id, timeout: timeout,
@@ -284,18 +287,6 @@ module LLM
     def handle_interrupt!(session_id)
       Session.where(id: session_id, interrupt_requested: true)
         .update_all(interrupt_requested: false) > 0
-    end
-
-    # Broadcasts a session state transition to all subscribed clients.
-    # Delegates to {Session#broadcast_session_state} which handles both
-    # the session's own stream and the parent's stream for HUD updates.
-    #
-    # @param session_id [Integer, String] session to broadcast for
-    # @param state [String] one of "idle", "awaiting", "executing", "interrupting"
-    # @param tool [String, nil] tool name when state is "executing"
-    # @return [void]
-    def broadcast_session_state(session_id, state, tool: nil)
-      Session.find_by(id: session_id)&.broadcast_session_state(state, tool: tool)
     end
 
     def log(level, message)

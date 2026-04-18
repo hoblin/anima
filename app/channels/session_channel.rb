@@ -89,7 +89,6 @@ class SessionChannel < ApplicationCable::Channel
 
     session.update!(interrupt_requested: true)
     session.child_sessions.processing.update_all(interrupt_requested: true)
-    session.broadcast_session_state("interrupting")
     ActionCable.server.broadcast(stream_name, {"action" => "interrupt_acknowledged"})
   end
 

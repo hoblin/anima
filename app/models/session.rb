@@ -21,6 +21,8 @@ class Session < ApplicationRecord
   # - +no_direct_assignment: true+ blocks +session.aasm_state = ...+, forcing
   #   every transition through a named event so guards always run.
   aasm whiny_transitions: false, no_direct_assignment: true do
+    after_all_transitions :emit_state_change
+
     state :idle, initial: true
     state :awaiting
     state :executing
@@ -528,31 +530,13 @@ class Session < ApplicationRecord
     })
   end
 
-  # Broadcasts the session's current processing state to all subscribed
-  # clients. Stateless — no storage, pure broadcast. The TUI uses this to
-  # drive the braille spinner animation and sub-agent HUD icons.
+  # AASM after_all_transitions callback — publishes
+  # {Events::SessionStateChanged} so the broadcaster subscriber can keep
+  # the TUI spinner and parent-session HUD in sync with the state machine.
   #
-  # Payload broadcast to +session_{id}+:
-  #   {"action" => "session_state", "state" => state, "session_id" => id}
-  #   # plus "tool" key when state is "executing"
-  #
-  # For sub-agents, also broadcasts +child_state+ to the parent stream:
-  #   {"action" => "child_state", "state" => state, "session_id" => id, "child_id" => id}
-  #
-  # @param state [String] one of "idle", "awaiting", "executing", "interrupting"
-  # @param tool [String, nil] tool name when state is "executing"
   # @return [void]
-  def broadcast_session_state(state, tool: nil)
-    payload = {"action" => "session_state", "state" => state, "session_id" => id}
-    payload["tool"] = tool if tool
-    ActionCable.server.broadcast("session_#{id}", payload)
-
-    # Notify the parent's stream so the HUD updates child state icons
-    # without requiring a full children_updated query.
-    return unless parent_session_id
-
-    parent_payload = payload.merge("action" => "child_state", "child_id" => id)
-    ActionCable.server.broadcast("session_#{parent_session_id}", parent_payload)
+  def emit_state_change
+    Events::Bus.emit(Events::SessionStateChanged.new(session_id: id, state: aasm_state))
   end
 
   # Broadcasts the full LLM debug context to debug-mode TUI clients.

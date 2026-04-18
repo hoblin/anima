@@ -59,45 +59,9 @@ RSpec.describe AgentRequestJob do
       expect(agent_loop).not_to have_received(:run)
     end
 
-    context "parent session broadcasts" do
+    context "session state broadcasts" do
       let(:parent) { create(:session) }
       let(:child) { create(:session, :sub_agent, parent_session: parent, prompt: "task") }
-
-      it "broadcasts children_updated when claiming processing" do
-        child.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
-
-        expect(ActionCable.server).to receive(:broadcast).with(
-          "session_#{parent.id}",
-          hash_including("action" => "children_updated")
-        ).at_least(:once)
-        allow(ActionCable.server).to receive(:broadcast)
-
-        described_class.perform_now(child.id)
-      end
-
-      it "broadcasts children_updated when releasing processing" do
-        child.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
-
-        broadcasts = []
-        allow(ActionCable.server).to receive(:broadcast) { |stream, data| broadcasts << data }
-
-        described_class.perform_now(child.id)
-
-        children_updates = broadcasts.select { |b| b["action"] == "children_updated" }
-        expect(children_updates.size).to be >= 2 # claim + release
-      end
-
-      it "does not broadcast children_updated for root sessions" do
-        session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
-
-        expect(ActionCable.server).not_to receive(:broadcast).with(
-          anything,
-          hash_including("action" => "children_updated")
-        )
-        allow(ActionCable.server).to receive(:broadcast)
-
-        described_class.perform_now(session.id)
-      end
 
       it "broadcasts session_state awaiting when claiming processing" do
         session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
@@ -117,6 +81,30 @@ RSpec.describe AgentRequestJob do
         expect(ActionCable.server).to receive(:broadcast).with(
           "session_#{session.id}",
           hash_including("action" => "session_state", "state" => "idle")
+        )
+        allow(ActionCable.server).to receive(:broadcast)
+
+        described_class.perform_now(session.id)
+      end
+
+      it "broadcasts child_state to parent stream when a sub-agent transitions" do
+        child.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+
+        expect(ActionCable.server).to receive(:broadcast).with(
+          "session_#{parent.id}",
+          hash_including("action" => "child_state", "child_id" => child.id)
+        ).at_least(:once)
+        allow(ActionCable.server).to receive(:broadcast)
+
+        described_class.perform_now(child.id)
+      end
+
+      it "does not broadcast child_state for root sessions" do
+        session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+
+        expect(ActionCable.server).not_to receive(:broadcast).with(
+          anything,
+          hash_including("action" => "child_state")
         )
         allow(ActionCable.server).to receive(:broadcast)
 

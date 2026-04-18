@@ -52,8 +52,9 @@ class AgentRequestJob < ApplicationJob
   def perform(session_id, message_id: nil)
     session = Session.find(session_id)
 
-    # Atomic: only one job processes a session at a time.
-    return unless claim_processing(session)
+    # +whiny_transitions: false+ makes this the atomic claim: +false+ when
+    # another job already holds the session.
+    return unless session.start_processing!
 
     run_melete_blocking(session)
 
@@ -74,7 +75,7 @@ class AgentRequestJob < ApplicationJob
 
     session.schedule_melete!
   ensure
-    release_processing(session)
+    session.interrupt!
     session.update!(interrupt_requested: false) if session.interrupt_requested?
     agent_loop&.finalize
   end
@@ -145,29 +146,6 @@ class AgentRequestJob < ApplicationJob
     msg = "FAILED (blocking) session=#{session.id}: #{error.class}: #{error.message}"
     Rails.logger.error("Melete #{msg}")
     Melete.logger.error("#{msg}\n#{error.backtrace&.first(10)&.join("\n")}")
-  end
-
-  # Transitions the session from idle → awaiting via AASM. Returns true
-  # if this job claimed the session, false if another job already holds it
-  # (+whiny_transitions: false+ makes +start_processing!+ return false on
-  # a guard failure, which is exactly the concurrency lock we want).
-  # Broadcasts the new state so the TUI updates its spinner and the
-  # parent session's HUD reflects the claim.
-  def claim_processing(session)
-    return false unless session.start_processing!
-
-    session.broadcast_session_state(session.aasm_state)
-    session.broadcast_children_update_to_parent
-    true
-  end
-
-  # Ends the processing run and notifies clients the session is idle.
-  # +interrupt!+ is the any-to-idle transition; +whiny_transitions: false+
-  # makes it a no-op when the session is already idle.
-  def release_processing(session)
-    session.interrupt!
-    session.broadcast_session_state("idle")
-    session.broadcast_children_update_to_parent
   end
 
   # Emits a system message before each retry so the user sees

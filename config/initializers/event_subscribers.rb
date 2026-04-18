@@ -16,8 +16,13 @@ EVICTION_FILTER = ->(event) { event[:name] == "anima.eviction.completed" }
 ACTIVE_STATE_TRIGGER_FILTER = ->(event) {
   %w[anima.skill.activated anima.workflow.activated anima.eviction.completed].include?(event[:name])
 }
+SESSION_STATE_FILTER = ->(event) { event[:name] == "anima.session.state_changed" }
 
 Rails.application.config.after_initialize do
+  # SessionStateBroadcaster also runs in tests — job/channel specs assert
+  # ActionCable broadcasts, which now flow through this subscriber.
+  Events::Bus.subscribe(Events::Subscribers::SessionStateBroadcaster.new, &SESSION_STATE_FILTER)
+
   unless Rails.env.test?
     # --- Domain event subscribers (layer 1) ---
 
