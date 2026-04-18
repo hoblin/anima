@@ -107,6 +107,12 @@ RSpec.describe PendingMessage, type: :model do
     end
   end
 
+  describe "MESSAGE_TYPE_ROUTES" do
+    it "only routes values that are also in MESSAGE_TYPES" do
+      expect(PendingMessage::MESSAGE_TYPE_ROUTES.keys).to all(be_in(PendingMessage::MESSAGE_TYPES))
+    end
+  end
+
   describe "message_type validation" do
     it "allows nil (legacy callers that predate the drain pipeline)" do
       pm = PendingMessage.new(session: session, content: "hi", source_type: "user")
@@ -181,11 +187,42 @@ RSpec.describe PendingMessage, type: :model do
       end
     end
 
+    context "with an active message whose message_type has no route" do
+      # from_mneme / from_melete are background-only classifications in the
+      # routing table (MESSAGE_TYPE_ROUTES has no entry). Even if a caller
+      # mistakenly creates them as active, the pipeline stays quiet.
+      ["from_mneme", "from_melete"].each do |mt|
+        it "does not emit for #{mt}" do
+          session.pending_messages.create!(
+            content: "memory",
+            source_type: "recall",
+            source_name: "42",
+            message_type: mt
+          )
+
+          expect(Events::Bus).not_to have_received(:emit).with(
+            an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
+          )
+        end
+      end
+    end
+
     context "with an active message landing while the session is not idle" do
-      it "does not emit — the running drain loop will pick it up" do
+      it "does not emit while awaiting — the drain loop will pick it up" do
         session.start_processing!
 
         session.pending_messages.create!(content: "late arrival", message_type: "user_message")
+
+        expect(Events::Bus).not_to have_received(:emit).with(
+          an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
+        )
+      end
+
+      it "does not emit while executing — the drain loop will pick it up" do
+        session.start_processing!
+        session.tool_received!
+
+        session.pending_messages.create!(content: "mid-tool", message_type: "tool_response")
 
         expect(Events::Bus).not_to have_received(:emit).with(
           an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
