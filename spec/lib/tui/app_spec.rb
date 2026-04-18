@@ -264,8 +264,8 @@ RSpec.describe TUI::App do
           {"id" => 10, "message_count" => 5, "updated_at" => Time.now.iso8601},
           {"id" => 8, "message_count" => 3, "updated_at" => Time.now.iso8601,
            "children" => [
-             {"id" => 81, "name" => "codebase-analyzer", "processing" => false, "message_count" => 2, "created_at" => Time.now.iso8601},
-             {"id" => 82, "name" => nil, "processing" => true, "message_count" => 1, "created_at" => Time.now.iso8601}
+             {"id" => 81, "name" => "codebase-analyzer", "session_state" => "idle", "message_count" => 2, "created_at" => Time.now.iso8601},
+             {"id" => 82, "name" => nil, "session_state" => "awaiting", "message_count" => 1, "created_at" => Time.now.iso8601}
            ]},
           {"id" => 5, "message_count" => 0, "updated_at" => Time.now.iso8601}
         ]
@@ -493,7 +493,7 @@ RSpec.describe TUI::App do
         it "resets page when drilling into children" do
           sessions_with_children = many_sessions.dup
           sessions_with_children[0]["children"] = [
-            {"id" => 100, "name" => "child", "processing" => false, "message_count" => 0, "created_at" => Time.now.iso8601}
+            {"id" => 100, "name" => "child", "session_state" => "idle", "message_count" => 0, "created_at" => Time.now.iso8601}
           ]
           chat = app.instance_variable_get(:@screens)[:chat]
           chat.instance_variable_set(:@sessions_list, sessions_with_children)
@@ -513,7 +513,7 @@ RSpec.describe TUI::App do
           sessions_with_children = [
             {"id" => 1, "message_count" => 0, "updated_at" => Time.now.iso8601,
              "children" => (1..15).map { |i|
-               {"id" => 100 + i, "name" => "child-#{i}", "processing" => false, "message_count" => 0, "created_at" => Time.now.iso8601}
+               {"id" => 100 + i, "name" => "child-#{i}", "session_state" => "idle", "message_count" => 0, "created_at" => Time.now.iso8601}
              }}
           ]
           chat = app.instance_variable_get(:@screens)[:chat]
@@ -531,7 +531,7 @@ RSpec.describe TUI::App do
           sessions_with_many_children = [
             {"id" => 1, "message_count" => 0, "updated_at" => Time.now.iso8601,
              "children" => (1..12).map { |i|
-               {"id" => 100 + i, "name" => "child-#{i}", "processing" => false, "message_count" => 0, "created_at" => Time.now.iso8601}
+               {"id" => 100 + i, "name" => "child-#{i}", "session_state" => "idle", "message_count" => 0, "created_at" => Time.now.iso8601}
              }}
           ]
           chat = app.instance_variable_get(:@screens)[:chat]
@@ -696,9 +696,9 @@ RSpec.describe TUI::App do
       let(:chat) { app.instance_variable_get(:@screens)[:chat] }
       let(:children) do
         [
-          {"id" => 101, "name" => "api-scout", "session_state" => "llm_generating"},
+          {"id" => 101, "name" => "api-scout", "session_state" => "awaiting"},
           {"id" => 102, "name" => "loop-sleuth", "session_state" => "idle"},
-          {"id" => 103, "name" => "test-fixer", "session_state" => "tool_executing"}
+          {"id" => 103, "name" => "test-fixer", "session_state" => "executing"}
         ]
       end
 
@@ -861,7 +861,7 @@ RSpec.describe TUI::App do
 
       it "sends interrupt when loading and input is empty" do
         chat = app.instance_variable_get(:@screens)[:chat]
-        chat.instance_variable_set(:@session_state, "llm_generating")
+        chat.instance_variable_set(:@session_state, "awaiting")
         allow(chat).to receive(:interrupt_execution)
         allow(chat).to receive(:switch_session)
 
@@ -885,7 +885,7 @@ RSpec.describe TUI::App do
 
       it "prefers interrupt over clear input when loading with empty input" do
         chat = app.instance_variable_get(:@screens)[:chat]
-        chat.instance_variable_set(:@session_state, "llm_generating")
+        chat.instance_variable_set(:@session_state, "awaiting")
         allow(chat).to receive(:interrupt_execution)
 
         app.send(:handle_event, key_event(code: "esc", esc?: true))
@@ -1580,14 +1580,14 @@ RSpec.describe TUI::App do
     end
 
     describe "#child_icon_and_color" do
-      it "returns generating icon for llm_generating child" do
-        icon, color = app.send(:child_icon_and_color, {"session_state" => "llm_generating"})
+      it "returns generating icon for awaiting child" do
+        icon, color = app.send(:child_icon_and_color, {"session_state" => "awaiting"})
         expect(icon).to eq("\u25CF") # ●
         expect(color).to eq("green")
       end
 
-      it "returns tool icon for tool_executing child" do
-        icon, color = app.send(:child_icon_and_color, {"session_state" => "tool_executing"})
+      it "returns tool icon for executing child" do
+        icon, color = app.send(:child_icon_and_color, {"session_state" => "executing"})
         expect(icon).to eq("\u25C9") # ◉
         expect(color).to eq("green")
       end
@@ -1670,7 +1670,7 @@ RSpec.describe TUI::App do
 
       it "renders children with activity indicators" do
         children = [
-          {"id" => 1, "name" => "api-scout", "session_state" => "llm_generating"},
+          {"id" => 1, "name" => "api-scout", "session_state" => "awaiting"},
           {"id" => 2, "name" => "loop-sleuth", "session_state" => "idle"}
         ]
         result = app.send(:hud_children_section, tui, {children: children})
@@ -1689,7 +1689,7 @@ RSpec.describe TUI::App do
       end
 
       it "uses fallback name for unnamed sub-agents" do
-        children = [{"id" => 1, "name" => nil, "processing" => false}]
+        children = [{"id" => 1, "name" => nil, "session_state" => "idle"}]
         result = app.send(:hud_children_section, tui, {children: children})
         expect(result[2][:spans][1][:content]).to eq("@sub-agent")
       end
@@ -1697,7 +1697,7 @@ RSpec.describe TUI::App do
       it "highlights selected child in navigation mode" do
         app.instance_variable_set(:@hud_child_index, 0)
         children = [
-          {"id" => 1, "name" => "api-scout", "session_state" => "llm_generating"},
+          {"id" => 1, "name" => "api-scout", "session_state" => "awaiting"},
           {"id" => 2, "name" => "loop-sleuth", "session_state" => "idle"}
         ]
         result = app.send(:hud_children_section, tui, {children: children})

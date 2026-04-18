@@ -35,7 +35,6 @@ class AgentRequestJob < ApplicationJob
     ))
   end
 
-  discard_on ActiveRecord::RecordNotFound
   discard_on Providers::Anthropic::AuthenticationError do |job, error|
     session_id = job.arguments.first
     Events::Bus.emit(Events::SystemMessage.new(
@@ -53,8 +52,9 @@ class AgentRequestJob < ApplicationJob
   def perform(session_id, message_id: nil)
     session = Session.find(session_id)
 
-    # Atomic: only one job processes a session at a time.
-    return unless claim_processing(session_id)
+    # +whiny_transitions: false+ makes this the atomic claim: +false+ when
+    # another job already holds the session.
+    return unless session.start_processing!
 
     run_melete_blocking(session)
 
@@ -75,8 +75,8 @@ class AgentRequestJob < ApplicationJob
 
     session.schedule_melete!
   ensure
-    release_processing(session_id)
-    clear_interrupt(session_id)
+    session.interrupt!
+    session.update!(interrupt_requested: false) if session.interrupt_requested?
     agent_loop&.finalize
   end
 
@@ -105,12 +105,7 @@ class AgentRequestJob < ApplicationJob
   # @param message_id [Integer] database ID of the pre-persisted user message
   # @param agent_loop [AgentLoop] agent loop instance (reused for continuation)
   def deliver_persisted_message(session, message_id, agent_loop)
-    message = Message.find_by(id: message_id, session_id: session.id)
-    # Message may have been deleted between SessionChannel#speak and job
-    # execution (e.g. user recalled the message). Exit silently — there
-    # is nothing to deliver or bounce back.
-    return unless message
-
+    message = session.messages.find(message_id)
     content = message.payload["content"]
 
     begin
@@ -151,36 +146,6 @@ class AgentRequestJob < ApplicationJob
     msg = "FAILED (blocking) session=#{session.id}: #{error.class}: #{error.message}"
     Rails.logger.error("Melete #{msg}")
     Melete.logger.error("#{msg}\n#{error.backtrace&.first(10)&.join("\n")}")
-  end
-
-  # Sets the session's processing flag atomically. Returns true if this
-  # job claimed the lock, false if another job already holds it.
-  # Broadcasts +session_state: llm_generating+ and the state change to
-  # the parent session's HUD.
-  def claim_processing(session_id)
-    claimed = Session.where(id: session_id, processing: false).update_all(processing: true) == 1
-    if claimed
-      session = Session.find_by(id: session_id)
-      session&.broadcast_session_state("llm_generating")
-      session&.broadcast_children_update_to_parent
-    end
-    claimed
-  end
-
-  # Clears the processing flag so the session can accept new jobs.
-  # Broadcasts +session_state: idle+ to the session stream (replaces
-  # the old +processing_stopped+ action) and +children_updated+ to the
-  # parent session's HUD.
-  def release_processing(session_id)
-    Session.where(id: session_id).update_all(processing: false)
-    session = Session.find_by(id: session_id)
-    session&.broadcast_session_state("idle")
-    session&.broadcast_children_update_to_parent
-  end
-
-  # Safety-net clearing of the interrupt flag.
-  def clear_interrupt(session_id)
-    Session.where(id: session_id, interrupt_requested: true).update_all(interrupt_requested: false)
   end
 
   # Emits a system message before each retry so the user sees

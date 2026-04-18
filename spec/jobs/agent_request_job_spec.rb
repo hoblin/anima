@@ -25,12 +25,6 @@ RSpec.describe AgentRequestJob do
         satisfy { |handler| handler[0] == "Providers::Anthropic::AuthenticationError" }
       )
     end
-
-    it "discards on RecordNotFound" do
-      expect(described_class.rescue_handlers).to include(
-        satisfy { |handler| handler[0] == "ActiveRecord::RecordNotFound" }
-      )
-    end
   end
 
   describe "#perform" do
@@ -42,76 +36,39 @@ RSpec.describe AgentRequestJob do
       expect(agent_loop).to have_received(:run)
     end
 
-    it "sets processing flag during execution" do
+    it "transitions session to awaiting during execution" do
       session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
-      processing_during_run = nil
+      state_during_run = nil
       allow(agent_loop).to receive(:run) do
-        processing_during_run = session.reload.processing?
+        state_during_run = session.reload.aasm_state
       end
 
       described_class.perform_now(session.id)
 
-      expect(processing_during_run).to be true
-      expect(session.reload.processing?).to be false
+      expect(state_during_run).to eq("awaiting")
+      expect(session.reload).to be_idle
     end
 
     it "skips execution when session is already processing" do
-      session.update!(processing: true)
+      session.start_processing!
       session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       described_class.perform_now(session.id)
 
       expect(agent_loop).not_to have_received(:run)
-      expect(session.reload.processing?).to be false
     end
 
-    context "parent session broadcasts" do
+    context "session state broadcasts" do
       let(:parent) { create(:session) }
       let(:child) { create(:session, :sub_agent, parent_session: parent, prompt: "task") }
 
-      it "broadcasts children_updated when claiming processing" do
-        child.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
-
-        expect(ActionCable.server).to receive(:broadcast).with(
-          "session_#{parent.id}",
-          hash_including("action" => "children_updated")
-        ).at_least(:once)
-        allow(ActionCable.server).to receive(:broadcast)
-
-        described_class.perform_now(child.id)
-      end
-
-      it "broadcasts children_updated when releasing processing" do
-        child.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
-
-        broadcasts = []
-        allow(ActionCable.server).to receive(:broadcast) { |stream, data| broadcasts << data }
-
-        described_class.perform_now(child.id)
-
-        children_updates = broadcasts.select { |b| b["action"] == "children_updated" }
-        expect(children_updates.size).to be >= 2 # claim + release
-      end
-
-      it "does not broadcast children_updated for root sessions" do
-        session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
-
-        expect(ActionCable.server).not_to receive(:broadcast).with(
-          anything,
-          hash_including("action" => "children_updated")
-        )
-        allow(ActionCable.server).to receive(:broadcast)
-
-        described_class.perform_now(session.id)
-      end
-
-      it "broadcasts session_state llm_generating when claiming processing" do
+      it "broadcasts session_state awaiting when claiming processing" do
         session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
         expect(ActionCable.server).to receive(:broadcast).with(
           "session_#{session.id}",
-          hash_including("action" => "session_state", "state" => "llm_generating")
+          hash_including("action" => "session_state", "state" => "awaiting")
         )
         allow(ActionCable.server).to receive(:broadcast)
 
@@ -124,6 +81,30 @@ RSpec.describe AgentRequestJob do
         expect(ActionCable.server).to receive(:broadcast).with(
           "session_#{session.id}",
           hash_including("action" => "session_state", "state" => "idle")
+        )
+        allow(ActionCable.server).to receive(:broadcast)
+
+        described_class.perform_now(session.id)
+      end
+
+      it "broadcasts child_state to parent stream when a sub-agent transitions" do
+        child.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+
+        expect(ActionCable.server).to receive(:broadcast).with(
+          "session_#{parent.id}",
+          hash_including("action" => "child_state", "child_id" => child.id)
+        ).at_least(:once)
+        allow(ActionCable.server).to receive(:broadcast)
+
+        described_class.perform_now(child.id)
+      end
+
+      it "does not broadcast child_state for root sessions" do
+        session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
+
+        expect(ActionCable.server).not_to receive(:broadcast).with(
+          anything,
+          hash_including("action" => "child_state")
         )
         allow(ActionCable.server).to receive(:broadcast)
 
@@ -216,14 +197,14 @@ RSpec.describe AgentRequestJob do
       expect(session.reload.interrupt_requested?).to be false
     end
 
-    it "clears processing flag even on error" do
+    it "returns session to idle even on error" do
       session.messages.create!(message_type: "user_message", payload: {"content" => "Hello"}, timestamp: 1)
 
       allow(agent_loop).to receive(:run).and_raise(Providers::Anthropic::AuthenticationError, "bad token")
 
       described_class.perform_now(session.id)
 
-      expect(session.reload.processing?).to be false
+      expect(session.reload).to be_idle
     end
   end
 
@@ -257,14 +238,6 @@ RSpec.describe AgentRequestJob do
           described_class.perform_now(session.id)
         }.to have_broadcasted_to("session_#{session.id}")
           .with(a_hash_including("action" => "authentication_required"))
-      end
-    end
-
-    context "deleted session" do
-      it "discards without retrying when session does not exist" do
-        expect {
-          described_class.perform_now(-1)
-        }.not_to raise_error
       end
     end
   end

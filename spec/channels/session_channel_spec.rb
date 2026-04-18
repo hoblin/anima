@@ -8,6 +8,8 @@ RSpec.describe SessionChannel, type: :channel do
 
   describe "#subscribed" do
     it "streams from the session-specific stream" do
+      Session.create!(id: session_id)
+
       subscribe(session_id: session_id)
 
       expect(subscription).to be_confirmed
@@ -15,6 +17,8 @@ RSpec.describe SessionChannel, type: :channel do
     end
 
     it "works with string session_id" do
+      Session.create!(id: 7)
+
       subscribe(session_id: "7")
 
       expect(subscription).to be_confirmed
@@ -166,13 +170,13 @@ RSpec.describe SessionChannel, type: :channel do
 
     it "includes children in session_changed for parent sessions" do
       parent = Session.create!(id: session_id)
-      child = Session.create!(parent_session: parent, prompt: "task", name: "analyzer", processing: true)
+      child = create(:session, :awaiting, parent_session: parent, prompt: "task", name: "analyzer")
 
       subscribe(session_id: session_id)
 
       changed = transmissions.find { |t| t["action"] == "session_changed" }
       expect(changed["children"]).to eq([
-        {"id" => child.id, "name" => "analyzer", "processing" => true, "session_state" => "llm_generating"}
+        {"id" => child.id, "name" => "analyzer", "session_state" => "awaiting"}
       ])
     end
 
@@ -263,6 +267,7 @@ RSpec.describe SessionChannel, type: :channel do
 
   describe "#receive" do
     it "broadcasts the received data to the session stream" do
+      Session.create!(id: session_id)
       subscribe(session_id: session_id)
       data = {"type" => "user_message", "content" => "hello"}
 
@@ -310,8 +315,8 @@ RSpec.describe SessionChannel, type: :channel do
       expect(event.payload["content"]).to eq("hello")
     end
 
-    context "when session is processing" do
-      before { session.update!(processing: true) }
+    context "when session is not idle" do
+      before { session.start_processing! }
 
       it "creates a PendingMessage" do
         expect { perform(:speak, {"content" => "queued message"}) }
@@ -362,8 +367,8 @@ RSpec.describe SessionChannel, type: :channel do
 
     before { subscribe(session_id: session_id) }
 
-    context "when session is processing" do
-      before { session.update!(processing: true) }
+    context "when session is not idle" do
+      before { session.start_processing! }
 
       it "sets interrupt_requested on the session" do
         perform(:interrupt_execution, {})
@@ -377,14 +382,8 @@ RSpec.describe SessionChannel, type: :channel do
           .with(hash_including("action" => "interrupt_acknowledged"))
       end
 
-      it "broadcasts session_state interrupting" do
-        expect { perform(:interrupt_execution, {}) }
-          .to have_broadcasted_to("session_#{session_id}")
-          .with(hash_including("action" => "session_state", "state" => "interrupting"))
-      end
-
-      it "cascades interrupt to processing child sessions" do
-        child = Session.create!(parent_session_id: session.id, processing: true)
+      it "cascades interrupt to non-idle child sessions" do
+        child = create(:session, :awaiting, parent_session_id: session.id)
 
         perform(:interrupt_execution, {})
 
@@ -392,7 +391,7 @@ RSpec.describe SessionChannel, type: :channel do
       end
 
       it "does not cascade to idle child sessions" do
-        child = Session.create!(parent_session_id: session.id, processing: false)
+        child = Session.create!(parent_session_id: session.id)
 
         perform(:interrupt_execution, {})
 
@@ -400,7 +399,7 @@ RSpec.describe SessionChannel, type: :channel do
       end
     end
 
-    context "when session is not processing" do
+    context "when session is idle" do
       it "does not set interrupt_requested" do
         perform(:interrupt_execution, {})
 
@@ -412,18 +411,11 @@ RSpec.describe SessionChannel, type: :channel do
           .not_to have_broadcasted_to("session_#{session_id}")
       end
     end
-
-    context "when session does not exist" do
-      before { session.destroy! }
-
-      it "is a no-op" do
-        expect { perform(:interrupt_execution, {}) }.not_to raise_error
-      end
-    end
   end
 
   describe "#list_sessions" do
     before do
+      Session.create!(id: session_id)
       subscribe(session_id: session_id)
     end
 
@@ -439,15 +431,15 @@ RSpec.describe SessionChannel, type: :channel do
       expect(response["action"]).to eq("sessions_list")
 
       sessions = response["sessions"]
-      expect(sessions.size).to eq(2)
+      # +1 for the subscribed session created in the before block
+      expect(sessions.size).to eq(3)
 
-      newest = sessions.first
-      expect(newest["id"]).to eq(s2.id)
-      expect(newest["message_count"]).to eq(0)
+      ids = sessions.map { |s| s["id"] }
+      expect(ids.first).to eq(s2.id)
+      expect(ids.last).to eq(session_id)
 
-      oldest = sessions.last
-      expect(oldest["id"]).to eq(s1.id)
-      expect(oldest["message_count"]).to eq(2)
+      s1_entry = sessions.find { |s| s["id"] == s1.id }
+      expect(s1_entry["message_count"]).to eq(2)
     end
 
     it "includes name for root sessions in the list" do
@@ -474,8 +466,7 @@ RSpec.describe SessionChannel, type: :channel do
 
       response = transmissions.last
       ids = response["sessions"].map { |s| s["id"] }
-      expect(ids).to include(parent.id)
-      expect(ids.size).to eq(1)
+      expect(ids).to contain_exactly(parent.id, session_id)
     end
 
     it "nests child sessions under their parent" do
@@ -492,7 +483,7 @@ RSpec.describe SessionChannel, type: :channel do
       child_entry = parent_entry["children"].first
       expect(child_entry["id"]).to eq(child.id)
       expect(child_entry["name"]).to eq("codebase-analyzer")
-      expect(child_entry["processing"]).to eq(false)
+      expect(child_entry["session_state"]).to eq("idle")
     end
 
     it "sorts children by created_at" do
@@ -507,15 +498,15 @@ RSpec.describe SessionChannel, type: :channel do
       expect(children.map { |c| c["id"] }).to eq([older.id, newer.id])
     end
 
-    it "includes processing status for child sessions" do
+    it "exposes session_state for child sessions" do
       parent = Session.create!
-      Session.create!(parent_session: parent, prompt: "task", processing: true)
+      create(:session, :awaiting, parent_session: parent, prompt: "task")
 
       perform(:list_sessions, {"limit" => 10})
 
       response = transmissions.last
       child_entry = response["sessions"].first["children"].first
-      expect(child_entry["processing"]).to eq(true)
+      expect(child_entry["session_state"]).to eq("awaiting")
     end
 
     it "includes message counts for child sessions" do
@@ -568,12 +559,12 @@ RSpec.describe SessionChannel, type: :channel do
       expect(response["sessions"].size).to eq(50)
     end
 
-    it "returns empty list when no sessions exist" do
+    it "returns only the current session when no others exist" do
       perform(:list_sessions, {})
 
       response = transmissions.last
       expect(response["action"]).to eq("sessions_list")
-      expect(response["sessions"]).to eq([])
+      expect(response["sessions"].map { |s| s["id"] }).to eq([session_id])
     end
   end
 

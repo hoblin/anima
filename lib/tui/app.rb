@@ -448,9 +448,9 @@ module TUI
     # @return [Array(String, String)] icon and color pair
     def child_icon_and_color(child)
       case child["session_state"]
-      when "llm_generating"
+      when "awaiting"
         [CHILD_ICON_GENERATING, Settings.theme_color_success]
-      when "tool_executing"
+      when "executing"
         [CHILD_ICON_TOOL_EXECUTING, Settings.theme_color_success]
       when "interrupting"
         [CHILD_ICON_INTERRUPTING, Settings.theme_color_error]
@@ -1262,8 +1262,9 @@ module TUI
       hotkey = picker_hotkey(idx)
       prefix = hotkey ? "[#{hotkey}]" : "   "
       marker = is_current ? "*" : " "
-      status = child["processing"] ? CHILD_STATUS_RUNNING : CHILD_STATUS_DONE
-      status_color = child["processing"] ? Settings.theme_color_warning : Settings.theme_color_success
+      active = child["session_state"] != "idle"
+      status = active ? CHILD_STATUS_RUNNING : CHILD_STATUS_DONE
+      status_color = active ? Settings.theme_color_warning : Settings.theme_color_success
       display_name = child["name"] || UNNAMED_SUBAGENT_LABEL
 
       label = "#{prefix}#{marker}#{status} #{display_name}"

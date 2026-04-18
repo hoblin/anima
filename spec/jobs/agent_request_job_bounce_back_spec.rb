@@ -91,10 +91,10 @@ RSpec.describe AgentRequestJob, "bounce back" do
         expect(agent_loop).not_to have_received(:run)
       end
 
-      it "still releases the processing lock" do
+      it "still returns session to idle" do
         described_class.perform_now(session.id, message_id: message.id)
 
-        expect(session.reload.processing?).to be false
+        expect(session.reload).to be_idle
       end
 
       it "still finalizes the agent loop" do
@@ -166,18 +166,6 @@ RSpec.describe AgentRequestJob, "bounce back" do
 
         auth_required = broadcasts.find { |b| b["action"] == "authentication_required" }
         expect(auth_required).to be_nil
-      end
-    end
-
-    context "when message was already deleted" do
-      before do
-        message.destroy!
-      end
-
-      it "exits gracefully without calling deliver!" do
-        described_class.perform_now(session.id, message_id: message.id)
-
-        expect(agent_loop).not_to have_received(:deliver!)
       end
     end
   end

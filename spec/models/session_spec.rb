@@ -10,6 +10,154 @@ RSpec.describe Session do
     "#{time.strftime("%a %b %-d %H:%M")}\n#{content}"
   end
 
+  describe "AASM state machine" do
+    describe "initial state" do
+      it "starts as idle" do
+        session = described_class.create!
+        expect(session).to be_idle
+      end
+    end
+
+    describe "transitions" do
+      let(:session) { create(:session) }
+
+      it "transitions from idle to awaiting via start_processing!" do
+        expect(session.start_processing!).to be_truthy
+        expect(session).to be_awaiting
+      end
+
+      it "transitions from awaiting to executing via tool_received!" do
+        session.start_processing!
+        expect(session.tool_received!).to be_truthy
+        expect(session).to be_executing
+      end
+
+      it "transitions from awaiting to idle via response_complete!" do
+        session.start_processing!
+        expect(session.response_complete!).to be_truthy
+        expect(session).to be_idle
+      end
+
+      it "transitions from executing to awaiting via tool_complete!" do
+        session.start_processing!
+        session.tool_received!
+        expect(session.tool_complete!).to be_truthy
+        expect(session).to be_awaiting
+      end
+
+      it "transitions from executing to idle via finish!" do
+        session.start_processing!
+        session.tool_received!
+        expect(session.finish!).to be_truthy
+        expect(session).to be_idle
+      end
+
+      it "transitions from awaiting to idle via interrupt!" do
+        session.start_processing!
+        expect(session).to be_awaiting
+
+        expect(session.interrupt!).to be_truthy
+        expect(session).to be_idle
+      end
+
+      it "transitions from executing to idle via interrupt!" do
+        session.start_processing!
+        session.tool_received!
+        expect(session).to be_executing
+
+        expect(session.interrupt!).to be_truthy
+        expect(session).to be_idle
+      end
+    end
+
+    describe "guards" do
+      let(:session) { create(:session) }
+
+      it "rejects start_processing from awaiting" do
+        session.start_processing!
+        expect(session.start_processing!).to be_falsey
+      end
+
+      it "rejects tool_received from idle" do
+        expect(session.tool_received!).to be_falsey
+      end
+
+      it "rejects response_complete from idle" do
+        expect(session.response_complete!).to be_falsey
+      end
+
+      it "rejects tool_complete from idle" do
+        expect(session.tool_complete!).to be_falsey
+      end
+
+      it "rejects finish from idle" do
+        expect(session.finish!).to be_falsey
+      end
+
+      it "rejects interrupt from idle" do
+        expect(session.interrupt!).to be_falsey
+      end
+    end
+
+    describe "may_ predicates" do
+      let(:session) { create(:session) }
+
+      it "reports valid transitions from idle" do
+        expect(session.may_start_processing?).to be true
+        expect(session.may_tool_received?).to be false
+        expect(session.may_interrupt?).to be false
+      end
+
+      it "reports valid transitions from awaiting" do
+        session.start_processing!
+        expect(session.may_start_processing?).to be false
+        expect(session.may_tool_received?).to be true
+        expect(session.may_response_complete?).to be true
+        expect(session.may_interrupt?).to be true
+      end
+
+      it "reports valid transitions from executing" do
+        session.start_processing!
+        session.tool_received!
+        expect(session.may_tool_complete?).to be true
+        expect(session.may_finish?).to be true
+        expect(session.may_response_complete?).to be false
+        expect(session.may_interrupt?).to be true
+      end
+    end
+
+    describe "no_direct_assignment" do
+      it "prevents direct aasm_state assignment" do
+        session = create(:session)
+        expect { session.aasm_state = "awaiting" }.to raise_error(AASM::NoDirectAssignmentError)
+      end
+    end
+
+    describe "persistence" do
+      it "persists state transitions to the database" do
+        session = create(:session)
+        session.start_processing!
+        expect(session.reload.aasm_state).to eq("awaiting")
+      end
+    end
+
+    describe "scopes" do
+      let!(:idle_session) { create(:session) }
+      let!(:awaiting_session) { create(:session, :awaiting) }
+      let!(:executing_session) { create(:session, :executing) }
+
+      it "provides AASM-generated per-state scopes" do
+        expect(described_class.idle).to include(idle_session)
+        expect(described_class.awaiting).to include(awaiting_session)
+        expect(described_class.executing).to include(executing_session)
+      end
+
+      it "provides a composite processing scope covering non-idle states" do
+        expect(described_class.processing).to contain_exactly(awaiting_session, executing_session)
+      end
+    end
+  end
+
   describe "validations" do
     it "accepts valid view modes" do
       session = Session.new
@@ -86,7 +234,7 @@ RSpec.describe Session do
     it "broadcasts children list to parent session stream" do
       parent = Session.create!
       child_a = Session.create!(parent_session: parent, prompt: "agent A", name: "analyzer")
-      child_b = Session.create!(parent_session: parent, prompt: "agent B", name: "reviewer", processing: true)
+      child_b = create(:session, :awaiting, parent_session: parent, prompt: "agent B", name: "reviewer")
 
       expect(ActionCable.server).to receive(:broadcast).with(
         "session_#{parent.id}",
@@ -94,8 +242,8 @@ RSpec.describe Session do
           "action" => "children_updated",
           "session_id" => parent.id,
           "children" => [
-            {"id" => child_a.id, "name" => "analyzer", "processing" => false, "session_state" => "idle"},
-            {"id" => child_b.id, "name" => "reviewer", "processing" => true, "session_state" => "llm_generating"}
+            {"id" => child_a.id, "name" => "analyzer", "session_state" => "idle"},
+            {"id" => child_b.id, "name" => "reviewer", "session_state" => "awaiting"}
           ]
         }
       )
@@ -130,55 +278,7 @@ RSpec.describe Session do
       Session.last.broadcast_children_update_to_parent
 
       child_data = payload["children"].first
-      expect(child_data.keys).to contain_exactly("id", "name", "processing", "session_state")
-    end
-  end
-
-  describe "#broadcast_session_state" do
-    it "broadcasts state to the session stream" do
-      session = Session.create!
-
-      expect(ActionCable.server).to receive(:broadcast).with(
-        "session_#{session.id}",
-        {"action" => "session_state", "state" => "llm_generating", "session_id" => session.id}
-      )
-
-      session.broadcast_session_state("llm_generating")
-    end
-
-    it "includes tool name for tool_executing state" do
-      session = Session.create!
-
-      expect(ActionCable.server).to receive(:broadcast).with(
-        "session_#{session.id}",
-        {"action" => "session_state", "state" => "tool_executing", "tool" => "bash", "session_id" => session.id}
-      )
-
-      session.broadcast_session_state("tool_executing", tool: "bash")
-    end
-
-    it "broadcasts child_state to parent stream for sub-agents" do
-      parent = Session.create!
-      child = Session.create!(parent_session: parent, prompt: "task")
-
-      expect(ActionCable.server).to receive(:broadcast).with(
-        "session_#{child.id}",
-        {"action" => "session_state", "state" => "llm_generating", "session_id" => child.id}
-      ).ordered
-      expect(ActionCable.server).to receive(:broadcast).with(
-        "session_#{parent.id}",
-        {"action" => "child_state", "state" => "llm_generating", "session_id" => child.id, "child_id" => child.id}
-      ).ordered
-
-      child.broadcast_session_state("llm_generating")
-    end
-
-    it "does not broadcast to parent for root sessions" do
-      session = Session.create!
-
-      expect(ActionCable.server).to receive(:broadcast).once
-
-      session.broadcast_session_state("idle")
+      expect(child_data.keys).to contain_exactly("id", "name", "session_state")
     end
   end
 
@@ -2557,8 +2657,8 @@ RSpec.describe Session do
       end
     end
 
-    context "when session is processing" do
-      before { session.update!(processing: true) }
+    context "when session is not idle" do
+      before { session.start_processing! }
 
       it "creates a PendingMessage" do
         expect { session.enqueue_user_message("hello") }

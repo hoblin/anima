@@ -7,9 +7,50 @@
 # Sessions form a hierarchy: a main session can spawn child sessions
 # (sub-agents) that inherit the parent's viewport context at fork time.
 class Session < ApplicationRecord
+  include AASM
+
   class MissingSoulError < StandardError; end
 
   VIEW_MODES = %w[basic verbose debug].freeze
+
+  # Non-default AASM options:
+  # - +whiny_transitions: false+ makes invalid transitions return +false+
+  #   instead of raising. {AgentRequestJob#claim_processing} depends on this:
+  #   +start_processing!+ returning +false+ signals that another job already
+  #   claimed the session, so the current job exits silently.
+  # - +no_direct_assignment: true+ blocks +session.aasm_state = ...+, forcing
+  #   every transition through a named event so guards always run.
+  aasm whiny_transitions: false, no_direct_assignment: true do
+    after_all_transitions :emit_state_change
+
+    state :idle, initial: true
+    state :awaiting
+    state :executing
+
+    event :start_processing do
+      transitions from: :idle, to: :awaiting
+    end
+
+    event :tool_received do
+      transitions from: :awaiting, to: :executing
+    end
+
+    event :response_complete do
+      transitions from: :awaiting, to: :idle
+    end
+
+    event :tool_complete do
+      transitions from: :executing, to: :awaiting
+    end
+
+    event :finish do
+      transitions from: :executing, to: :idle
+    end
+
+    event :interrupt do
+      transitions from: [:awaiting, :executing], to: :idle
+    end
+  end
 
   attribute :view_mode, :string, default: -> { Anima::Settings.default_view_mode }
 
@@ -31,7 +72,8 @@ class Session < ApplicationRecord
 
   scope :recent, ->(limit = 10) { order(updated_at: :desc).limit(limit) }
   scope :root_sessions, -> { where(parent_session_id: nil) }
-  scope :processing_children_of, ->(parent_id) { where(parent_session_id: parent_id, processing: true) }
+  # Sessions currently working on behalf of a human — any non-idle AASM state.
+  scope :processing, -> { awaiting.or(executing) }
 
   # @return [Boolean] true if this session is a sub-agent (has a parent)
   def sub_agent?
@@ -347,10 +389,10 @@ class Session < ApplicationRecord
     healed
   end
 
-  # Delivers a user message respecting the session's processing state.
+  # Delivers a user message respecting the session's AASM state.
   #
   # When idle, persists the message directly and enqueues {AgentRequestJob}
-  # to process it. When mid-turn ({#processing?}), stages the message as
+  # to process it. When mid-turn (not {#idle?}), stages the message as
   # a {PendingMessage} in a separate table — it gets no message ID until
   # promoted, so it can never interleave with tool_call/tool_response pairs.
   #
@@ -362,9 +404,7 @@ class Session < ApplicationRecord
   #   {SessionChannel#speak} for immediate-display messages)
   # @return [void]
   def enqueue_user_message(content, source_type: "user", source_name: nil, bounce_back: false)
-    if processing?
-      pending_messages.create!(content: content, source_type: source_type, source_name: source_name)
-    else
+    if idle?
       display = if source_type == "subagent"
         format(Tools::ResponseTruncator::ATTRIBUTION_FORMAT, source_name, content)
       else
@@ -373,6 +413,8 @@ class Session < ApplicationRecord
       msg = create_user_message(display)
       job_args = bounce_back ? {message_id: msg.id} : {}
       AgentRequestJob.perform_later(id, **job_args)
+    else
+      pending_messages.create!(content: content, source_type: source_type, source_name: source_name)
     end
   end
 
@@ -466,7 +508,7 @@ class Session < ApplicationRecord
   end
 
   # Broadcasts child session list to all clients subscribed to the parent
-  # session. Called when a child session is created or its processing state
+  # session. Called when a child session is created or its AASM state
   # changes so the HUD sub-agents section updates in real time.
   #
   # Queries children via FK directly (avoids loading the parent record) and
@@ -478,42 +520,23 @@ class Session < ApplicationRecord
 
     children = Session.where(parent_session_id: parent_session_id)
       .order(:created_at)
-      .select(:id, :name, :processing)
+      .select(:id, :name, :aasm_state)
     ActionCable.server.broadcast("session_#{parent_session_id}", {
       "action" => "children_updated",
       "session_id" => parent_session_id,
       "children" => children.map { |child|
-        state = child.processing? ? "llm_generating" : "idle"
-        {"id" => child.id, "name" => child.name, "processing" => child.processing?, "session_state" => state}
+        {"id" => child.id, "name" => child.name, "session_state" => child.aasm_state}
       }
     })
   end
 
-  # Broadcasts the session's current processing state to all subscribed
-  # clients. Stateless — no storage, pure broadcast. The TUI uses this to
-  # drive the braille spinner animation and sub-agent HUD icons.
+  # AASM after_all_transitions callback — publishes
+  # {Events::SessionStateChanged} so the broadcaster subscriber can keep
+  # the TUI spinner and parent-session HUD in sync with the state machine.
   #
-  # Payload broadcast to +session_{id}+:
-  #   {"action" => "session_state", "state" => state, "session_id" => id}
-  #   # plus "tool" key when state is "tool_executing"
-  #
-  # For sub-agents, also broadcasts +child_state+ to the parent stream:
-  #   {"action" => "child_state", "state" => state, "session_id" => id, "child_id" => id}
-  #
-  # @param state [String] one of "idle", "llm_generating", "tool_executing", "interrupting"
-  # @param tool [String, nil] tool name when state is "tool_executing"
   # @return [void]
-  def broadcast_session_state(state, tool: nil)
-    payload = {"action" => "session_state", "state" => state, "session_id" => id}
-    payload["tool"] = tool if tool
-    ActionCable.server.broadcast("session_#{id}", payload)
-
-    # Notify the parent's stream so the HUD updates child state icons
-    # without requiring a full children_updated query.
-    return unless parent_session_id
-
-    parent_payload = payload.merge("action" => "child_state", "child_id" => id)
-    ActionCable.server.broadcast("session_#{parent_session_id}", parent_payload)
+  def emit_state_change
+    Events::Bus.emit(Events::SessionStateChanged.new(session_id: id, state: aasm_state))
   end
 
   # Broadcasts the full LLM debug context to debug-mode TUI clients.
