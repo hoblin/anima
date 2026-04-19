@@ -20,8 +20,14 @@ class Session < ApplicationRecord
   #   session, so the current invocation exits silently.
   # - +no_direct_assignment: true+ blocks +session.aasm_state = ...+, forcing
   #   every transition through a named event so guards always run.
-  aasm whiny_transitions: false, no_direct_assignment: true do
+  # - +requires_lock: true+ wraps each transition in a pessimistic row lock
+  #   (+SELECT FOR UPDATE+ on PostgreSQL, +BEGIN IMMEDIATE+ on SQLite) so
+  #   two workers racing +start_processing!+ on a parallel tool-use turn
+  #   can't both succeed — the loser reads the updated +:awaiting+ state
+  #   and bails silently.
+  aasm whiny_transitions: false, no_direct_assignment: true, requires_lock: true do
     after_all_events :emit_state_change
+    after_all_events :clear_interrupt_flag_if_idle
     after_all_events :wake_drain_pipeline_if_pending
 
     state :idle, initial: true
@@ -494,6 +500,20 @@ class Session < ApplicationRecord
   # @return [void]
   def emit_state_change
     Events::Bus.emit(Events::SessionStateChanged.new(session_id: id, state: aasm_state))
+  end
+
+  # AASM after_all_events callback — clears the +interrupt_requested+
+  # flag whenever the session lands in +:idle+. The flag is a
+  # one-shot signal that long-running tools ({Tools::Bash}) poll; once
+  # the round ends (tool aborted, response synthesized, drain wound
+  # down) the signal is spent and must not leak into the next round.
+  #
+  # @return [void]
+  def clear_interrupt_flag_if_idle
+    return unless idle?
+    return unless interrupt_requested?
+
+    update_column(:interrupt_requested, false)
   end
 
   # AASM after_all_events callback — picks the oldest active
