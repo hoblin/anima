@@ -1,12 +1,10 @@
 # frozen_string_literal: true
 
+require "spec_helper"
 require_relative "../../lib/tui/flash"
 
 RSpec.describe TUI::Flash do
   subject(:flash) { described_class.new }
-
-  before { TUI::Settings.config_path = File.expand_path("../../templates/tui.toml", __dir__) }
-  after { TUI::Settings.reset! }
 
   describe "#error / #warning / #info" do
     it "adds entries that appear in any?" do

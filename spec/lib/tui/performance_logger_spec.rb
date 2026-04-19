@@ -9,15 +9,11 @@ RSpec.describe TUI::PerformanceLogger do
   let(:log_path) { File.join(Dir.tmpdir, "tui_perf_test_#{Process.pid}.log") }
 
   before do
-    TUI::Settings.config_path = File.expand_path("../../../templates/tui.toml", __dir__)
     allow(TUI::Settings).to receive(:performance_log_path).and_return(log_path)
     File.delete(log_path) if File.exist?(log_path)
   end
 
-  after do
-    TUI::Settings.reset!
-    File.delete(log_path) if File.exist?(log_path)
-  end
+  after { File.delete(log_path) if File.exist?(log_path) }
 
   describe "when disabled" do
     subject(:logger) { described_class.new(enabled: false) }

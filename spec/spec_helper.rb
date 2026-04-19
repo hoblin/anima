@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "anima"
+require "tui/settings"
 
 module EnvHelpers
   def with_env(vars)
@@ -24,4 +25,8 @@ RSpec.configure do |config|
   end
 
   config.include EnvHelpers
+
+  # TUI specs consume TUI::Settings values; loading them from TEMPLATE up
+  # front avoids a ~256ms TomlRB.load_file parse per example.
+  config.before(:suite) { TUI::Settings.load_defaults! }
 end

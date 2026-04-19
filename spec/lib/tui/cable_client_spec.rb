@@ -9,9 +9,6 @@ RSpec.describe TUI::CableClient do
 
   subject(:client) { described_class.new(host: host, session_id: session_id) }
 
-  before { TUI::Settings.config_path = File.expand_path("../../../templates/tui.toml", __dir__) }
-  after { TUI::Settings.reset! }
-
   describe "#initialize" do
     it "starts disconnected" do
       expect(client.status).to eq(:disconnected)

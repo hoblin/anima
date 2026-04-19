@@ -6,9 +6,6 @@ require "tui/input_buffer"
 RSpec.describe TUI::InputBuffer do
   subject(:buffer) { described_class.new }
 
-  before { TUI::Settings.config_path = File.expand_path("../../../templates/tui.toml", __dir__) }
-  after { TUI::Settings.reset! }
-
   describe "#initialize" do
     it "starts with empty text" do
       expect(buffer.text).to eq("")

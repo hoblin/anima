@@ -6,9 +6,6 @@ require "tui/message_store"
 RSpec.describe TUI::MessageStore do
   subject(:store) { described_class.new }
 
-  before { TUI::Settings.config_path = File.expand_path("../../../templates/tui.toml", __dir__) }
-  after { TUI::Settings.reset! }
-
   describe "#messages" do
     it "starts empty" do
       expect(store.messages).to eq([])
