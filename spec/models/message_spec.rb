@@ -102,13 +102,7 @@ RSpec.describe Message do
   describe "after_create callback" do
     %w[user_message agent_message system_message tool_call tool_response].each do |type|
       it "enqueues CountTokensJob for #{type}" do
-        trait = if type == "tool_call"
-          :bash_tool_call
-        else
-          (type == "tool_response") ? :bash_tool_response : :"#{type}"
-        end
-
-        expect { create(:message, trait, session: session) }.to have_enqueued_job(CountTokensJob)
+        expect { create(:message, type.to_sym, session: session) }.to have_enqueued_job(CountTokensJob)
       end
     end
   end

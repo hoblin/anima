@@ -49,7 +49,7 @@ RSpec.describe SessionChannel, type: :channel do
           Workflows::Registry.reload!
           session.activate_skill("gh-issue")
           session.activate_workflow("feature")
-          Goal.create!(session: session, description: "Test goal")
+          create(:goal, session: session, description: "Test goal")
           create(:message, :user_message, session: session)
 
           subscribe(session_id: session_id)

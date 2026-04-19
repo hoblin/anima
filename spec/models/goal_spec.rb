@@ -37,8 +37,7 @@ RSpec.describe Goal do
     let!(:active) { create(:goal, session: session, description: "active") }
     let!(:completed) { create(:goal, :completed, session: session, description: "done") }
     let!(:evicted) { create(:goal, :evicted, session: session, description: "gone") }
-    let!(:root) { active }
-    let!(:sub) { create(:goal, session: session, parent_goal: root, description: "sub") }
+    let!(:sub) { create(:goal, session: session, parent_goal: active, description: "sub") }
 
     it ".active returns only goals with status=active" do
       expect(Goal.active).to contain_exactly(active, sub)
