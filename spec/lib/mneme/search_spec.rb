@@ -132,6 +132,27 @@ RSpec.describe Mneme::Search do
       expect { described_class.query("test{query}") }.not_to raise_error
     end
 
+    # Regression: hyphenated words in user input used to parse as the FTS5
+    # NOT operator (`sub-agents` → `sub NOT agents`), which then tried to
+    # resolve `agents` as a column name and crashed the whole drain
+    # pipeline with "no such column: agents".
+    it "treats hyphens as token separators instead of the NOT operator" do
+      agents = create_message(session, type: "agent_message", content: "We should discuss sub-agents next.")
+
+      expect { described_class.query("sub-agents") }.not_to raise_error
+
+      results = described_class.query("sub-agents")
+      expect(results.map(&:message_id)).to include(agents.id)
+    end
+
+    it "neutralizes colon-injected column filters" do
+      create_message(session, type: "user_message", content: "Check the agents column once.")
+
+      # `agents:foo` would historically try to restrict search to a column
+      # called "agents" (which does not exist) and crash.
+      expect { described_class.query("agents:foo") }.not_to raise_error
+    end
+
     it "handles quoted phrases" do
       create_message(session, type: "user_message", content: "The full text search works well.")
 
