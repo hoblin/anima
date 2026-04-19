@@ -97,7 +97,7 @@ module Agents
     def validate_tools!(agent_name, tools)
       return if tools.empty?
 
-      unknown = tools - AgentLoop::STANDARD_TOOLS_BY_NAME.keys
+      unknown = tools - Tools::Registry::STANDARD_TOOLS_BY_NAME.keys
       return if unknown.empty?
 
       raise InvalidDefinitionError, "Unknown tools in '#{agent_name}': #{unknown.join(", ")}"

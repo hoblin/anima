@@ -14,7 +14,7 @@ Always run rspec without `--format` flags — the default progress formatter is 
 
 Run specs by line number (`bundle exec rspec spec/path/to_spec.rb:42`). Pointing at an `it` runs that example; pointing at a `describe` or `context` runs the whole block.
 
-Run `standardrb` without `--no-fix` so it auto-corrects trivial formatting issues.
+Run `standardrb --fix` directly — the auto-correct pass resolves trivial formatting issues in one shot, saving a second run. Empty output means clean.
 
 Do not add "defense-in-depth" rescue clauses or fallback logic. Silently swallowing exceptions hides bugs, violates the Single Responsibility Principle, and masks missing business logic. Let exceptions propagate — they signal that a use case is not covered. Fix the gap in logic instead of papering over it.
 

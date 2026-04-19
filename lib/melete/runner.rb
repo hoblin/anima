@@ -126,20 +126,15 @@ module Melete
     def call
       messages = build_messages
       sid = @session.id
-      if messages.empty?
-        log.debug("session=#{sid} — no messages, skipping")
-        return
-      end
 
       system = build_system_prompt
-      log.info("session=#{sid} — running (#{recent_messages.size} messages)")
+      log.info("session=#{sid} — running (#{recent_messages.size} messages + #{pending_messages.size} pending)")
       log.debug("system prompt:\n#{system}")
       log.debug("user message:\n#{messages.first[:content]}")
 
       result = @client.chat_with_tools(
         messages,
         registry: build_registry,
-        session_id: nil,
         system: system
       )
 
@@ -165,12 +160,11 @@ module Melete
     # * **Parent:** "The main session is working on this: [transcript]"
     # * **Child:** "A sub-agent has been spawned with this task: [transcript]"
     #
-    # @return [Array<Hash>] single-element messages array, or empty if no messages
+    # @return [Array<Hash>] single-element messages array
     def build_messages
-      messages = recent_messages
-      return [] if messages.empty?
-
-      transcript = messages.filter_map { |msg| msg.decorate.render("melete") }.join("\n")
+      transcript = (recent_messages + pending_messages)
+        .filter_map { |entry| entry.decorate.render("melete") }
+        .join("\n")
 
       if @session.sub_agent?
         build_child_message(transcript)
@@ -210,6 +204,14 @@ module Melete
         .limit(Anima::Settings.melete_message_window)
         .to_a
         .reverse
+    end
+
+    # @return [Array<PendingMessage>] everything currently queued for the next
+    #   drain cycle — the trigger user message, Mneme's recalls, earlier
+    #   enrichment output. Appended after real messages because they are
+    #   the "future" Melete is preparing for.
+    def pending_messages
+      @session.pending_messages.order(:created_at).to_a
     end
 
     # Builds the system prompt from active responsibilities + context sections.

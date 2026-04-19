@@ -21,7 +21,7 @@ RSpec.describe Anima::Settings do
       "paths" => {"soul" => "/home/test/.anima/soul.md"},
       "session" => {"default_view_mode" => "basic"},
       "agent" => {"name" => "Anima"},
-      "melete" => {"max_tokens" => 128, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "message_window" => 20},
+      "melete" => {"max_tokens" => 128, "message_window" => 20},
       "environment" => {"project_files" => ["CLAUDE.md", "AGENTS.md", "README.md", "CONTRIBUTING.md"], "project_files_max_depth" => 3},
       "github" => {"repo" => "hoblin/anima", "label" => "anima-wants"}
     }
@@ -63,8 +63,6 @@ RSpec.describe Anima::Settings do
 
     it "reads Melete settings" do
       expect(described_class.melete_max_tokens).to eq(128)
-      expect(described_class.melete_blocking_on_user_message).to be true
-      expect(described_class.melete_blocking_on_agent_message).to be false
       expect(described_class.melete_message_window).to eq(20)
     end
 
@@ -187,8 +185,6 @@ RSpec.describe Anima::Settings do
 
         [melete]
         max_tokens = 128
-        blocking_on_user_message = true
-        blocking_on_agent_message = false
         message_window = 20
         [environment]
         project_files = ["CLAUDE.md", "README.md"]
@@ -239,8 +235,6 @@ RSpec.describe Anima::Settings do
 
         [melete]
         max_tokens = 128
-        blocking_on_user_message = true
-        blocking_on_agent_message = false
         message_window = 20
       TOML
       config_file.flush

@@ -7,7 +7,7 @@ module Mneme
   # PendingMessage pipeline.
   #
   # Phantom pairs are promoted into real Message records by
-  # {Session#promote_pending_messages!} between agent loop rounds, then
+  # {DrainJob} between rounds, then
   # ride the conveyor belt like regular messages — cached as part of the
   # stable prefix, compressed by Mneme on eviction.
   #
@@ -113,7 +113,8 @@ module Mneme
         @session.pending_messages.create!(
           content: snippet,
           source_type: "recall",
-          source_name: result.message_id.to_s
+          source_name: result.message_id.to_s,
+          message_type: "from_mneme"
         )
 
         remaining -= cost

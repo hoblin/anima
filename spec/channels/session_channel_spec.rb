@@ -281,55 +281,38 @@ RSpec.describe SessionChannel, type: :channel do
 
     before { subscribe(session_id: session_id) }
 
-    it "persists the user message immediately" do
+    it "creates an active user_message PendingMessage with bounce_back enabled" do
       expect {
         perform(:speak, {"content" => "hello brain"})
-      }.to change { session.messages.where(message_type: "user_message").count }.by(1)
+      }.to change(PendingMessage, :count).by(1)
 
-      event = session.messages.last
-      expect(event.payload["content"]).to eq("hello brain")
-    end
-
-    it "enqueues AgentRequestJob with message_id" do
-      expect { perform(:speak, {"content" => "process this"}) }
-        .to have_enqueued_job(AgentRequestJob)
-
-      event = session.messages.last
-      expect(AgentRequestJob).to have_been_enqueued.with(session_id, message_id: event.id)
+      pm = session.pending_messages.last
+      expect(pm.content).to eq("hello brain")
+      expect(pm.message_type).to eq("user_message")
+      expect(pm.kind).to eq("active")
+      expect(pm).to be_bounce_back
     end
 
     it "ignores empty content" do
       expect { perform(:speak, {"content" => "  "}) }
-        .not_to change(Message, :count)
+        .not_to change(PendingMessage, :count)
     end
 
     it "ignores nil content" do
       expect { perform(:speak, {"content" => nil}) }
-        .not_to change(Message, :count)
+        .not_to change(PendingMessage, :count)
     end
 
     it "strips whitespace from content" do
       perform(:speak, {"content" => "  hello  "})
 
-      event = session.messages.last
-      expect(event.payload["content"]).to eq("hello")
+      pm = session.pending_messages.last
+      expect(pm.content).to eq("hello")
     end
 
-    context "when session is not idle" do
-      before { session.start_processing! }
-
-      it "creates a PendingMessage" do
-        expect { perform(:speak, {"content" => "queued message"}) }
-          .to change(PendingMessage, :count).by(1)
-
-        pm = session.pending_messages.last
-        expect(pm.content).to eq("queued message")
-      end
-
-      it "does not enqueue AgentRequestJob" do
-        expect { perform(:speak, {"content" => "queued"}) }
-          .not_to have_enqueued_job(AgentRequestJob)
-      end
+    it "does not persist a Message directly — promotion belongs to DrainJob" do
+      expect { perform(:speak, {"content" => "hi"}) }
+        .not_to change { session.messages.count }
     end
   end
 
@@ -339,20 +322,18 @@ RSpec.describe SessionChannel, type: :channel do
     before { subscribe(session_id: session_id) }
 
     it "deletes the PendingMessage" do
-      pm = session.pending_messages.create!(content: "queued")
+      pm = create(:pending_message, session: session)
 
-      expect {
-        perform(:recall_pending, {"pending_message_id" => pm.id})
-      }.to change(PendingMessage, :count).by(-1)
+      expect { perform(:recall_pending, {"pending_message_id" => pm.id}) }
+        .to change(PendingMessage, :count).by(-1)
     end
 
     it "ignores pending messages from other sessions" do
-      other_session = Session.create!
-      pm = other_session.pending_messages.create!(content: "queued")
+      other = Session.create!
+      pm = create(:pending_message, session: other)
 
-      expect {
-        perform(:recall_pending, {"pending_message_id" => pm.id})
-      }.not_to change(PendingMessage, :count)
+      expect { perform(:recall_pending, {"pending_message_id" => pm.id}) }
+        .not_to change(PendingMessage, :count)
     end
 
     it "ignores invalid pending_message_id" do

@@ -4,6 +4,8 @@
 Rails.autoloaders.each do |autoloader|
   autoloader.inflector.inflect(
     "llm" => "LLM",
-    "tui" => "TUI"
+    "tui" => "TUI",
+    "llm_response_handler" => "LLMResponseHandler",
+    "llm_responded" => "LLMResponded"
   )
 end

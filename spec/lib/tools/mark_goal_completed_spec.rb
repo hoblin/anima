@@ -63,19 +63,14 @@ RSpec.describe Tools::MarkGoalCompleted do
       expect(PinnedMessage.find_by(id: pin.id)).to be_nil
     end
 
-    it "routes the result to the parent session as a user message" do
+    it "routes the result to the parent as a subagent PendingMessage" do
       tool.execute(input)
 
-      parent_msg = parent_session.messages.order(:id).last
-      expect(parent_msg.message_type).to eq("user_message")
-      expect(parent_msg.payload["content"]).to include("[sub-agent code-scout]")
-      expect(parent_msg.payload["content"]).to include("Found 3 N+1 queries")
-    end
-
-    it "enqueues AgentRequestJob for the parent session" do
-      tool.execute(input)
-
-      expect(AgentRequestJob).to have_been_enqueued.with(parent_session.id)
+      pm = parent_session.pending_messages.last
+      expect(pm.source_type).to eq("subagent")
+      expect(pm.source_name).to eq("code-scout")
+      expect(pm.message_type).to eq("subagent")
+      expect(pm.content).to include("Found 3 N+1 queries")
     end
 
     it "returns confirmation message" do
@@ -88,8 +83,8 @@ RSpec.describe Tools::MarkGoalCompleted do
       child_session.update!(name: nil)
       tool.execute(input)
 
-      parent_msg = parent_session.messages.order(:id).last
-      expect(parent_msg.payload["content"]).to include("[sub-agent agent-#{child_session.id}]")
+      pm = parent_session.pending_messages.last
+      expect(pm.source_name).to eq("agent-#{child_session.id}")
     end
 
     context "with blank result" do

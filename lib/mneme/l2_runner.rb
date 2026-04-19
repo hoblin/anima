@@ -82,7 +82,6 @@ module Mneme
       result = @client.chat_with_tools(
         messages,
         registry: registry,
-        session_id: nil,
         system: SYSTEM_PROMPT
       )
 

@@ -13,7 +13,7 @@ RSpec.describe Events::Subscriber do
     end
   end
 
-  it "is included by MessageCollector" do
-    expect(Events::Subscribers::MessageCollector.ancestors).to include(described_class)
+  it "is included by SubagentMessageRouter" do
+    expect(Events::Subscribers::SubagentMessageRouter.ancestors).to include(described_class)
   end
 end

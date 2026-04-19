@@ -9,10 +9,9 @@ module Events
     # session. When initialized without one (global mode), the session is
     # looked up from the event's session_id payload field.
     #
-    # User messages are NOT persisted here — they are created directly by
-    # their callers ({SessionChannel#speak}, {AgentLoop#run}) so the
-    # message ID is available for bounce-back cleanup. Pending user
-    # messages live in the {PendingMessage} table, outside the event bus.
+    # User messages are NOT persisted here — {DrainJob} promotes them
+    # from {PendingMessage} into the Message stream as part of the drain
+    # cycle so bounce-back semantics stay close to the promotion.
     #
     # @example Session-scoped
     #   persister = Events::Subscribers::Persister.new(session)
@@ -33,10 +32,9 @@ module Events
 
       # Receives a Rails.event notification hash and persists it.
       #
-      # Skips user messages — those are persisted by their callers
-      # ({SessionChannel#speak}, {AgentLoop#run}). Also skips event
-      # types not in {Message::TYPES} (transient events like
-      # {Events::BounceBack}).
+      # Skips user messages — those are promoted from PendingMessage by
+      # {DrainJob}. Also skips event types not in {Message::TYPES}
+      # (transient events like {Events::BounceBack}).
       #
       # @param event [Hash] with :payload containing event data
       def emit(event)

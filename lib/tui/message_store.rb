@@ -4,8 +4,8 @@ require_relative "settings"
 
 module TUI
   # Thread-safe in-memory store for chat entries displayed in the TUI.
-  # Replaces {Events::Subscribers::MessageCollector} in the WebSocket-based
-  # TUI, with no dependency on Rails or the Events module.
+  # Holds the WebSocket-delivered view of the session's conversation with
+  # no dependency on Rails or the Events module.
   #
   # Accepts Action Cable message payloads and stores typed entries:
   # - `{type: :rendered, data:, message_type:, id:}` for messages with structured decorator output

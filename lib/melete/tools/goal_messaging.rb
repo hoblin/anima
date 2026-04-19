@@ -20,7 +20,8 @@ module Melete
         @main_session.pending_messages.create!(
           content: confirmation,
           source_type: "goal",
-          source_name: goal.id.to_s
+          source_name: goal.id.to_s,
+          message_type: "from_melete_goal"
         )
       end
     end

@@ -2,48 +2,77 @@
 
 require "rails_helper"
 
-RSpec.describe PendingMessage, type: :model do
-  let(:session) { Session.create! }
+RSpec.describe PendingMessage do
+  let(:session) { create(:session) }
 
-  describe "source_name is required for phantom pair types" do
-    PendingMessage::PHANTOM_PAIR_TYPES.each do |type|
-      it "rejects #{type} without source_name" do
-        pm = PendingMessage.new(session: session, content: "hi", source_type: type)
-        expect(pm).not_to be_valid
-        expect(pm.errors[:source_name]).to be_present
+  describe "#kind (derived from message_type)" do
+    PendingMessage::MESSAGE_TYPE_KINDS.each do |mt, expected_kind|
+      context "with message_type=#{mt}" do
+        subject(:pm) { build(:pending_message, session: session, message_type: mt, source_name: "x") }
+
+        before { pm.validate }
+
+        it "assigns kind=#{expected_kind}" do
+          expect(pm.kind).to eq(expected_kind)
+        end
       end
     end
+  end
 
-    it "allows user messages without source_name" do
-      pm = PendingMessage.new(session: session, content: "hi", source_type: "user")
-      expect(pm).to be_valid
+  describe "validations" do
+    subject(:pm) { build(:pending_message, session: session) }
+
+    it "requires message_type" do
+      pm.message_type = nil
+      expect(pm).not_to be_valid
+      expect(pm.errors[:message_type]).to be_present
+    end
+
+    it "requires tool_use_id when message_type is tool_response" do
+      pm = build(:pending_message, :tool_response, session: session, tool_use_id: nil)
+      expect(pm).not_to be_valid
+      expect(pm.errors[:tool_use_id]).to be_present
+    end
+
+    context "source_name" do
+      PendingMessage::PHANTOM_PAIR_TYPES.each do |source_type|
+        it "is required for source_type=#{source_type}" do
+          pm = build(:pending_message, session: session, source_type: source_type, source_name: nil)
+          expect(pm).not_to be_valid
+          expect(pm.errors[:source_name]).to be_present
+        end
+      end
+
+      it "is optional for user messages" do
+        expect(build(:pending_message, session: session, source_name: nil)).to be_valid
+      end
     end
   end
 
   describe "#to_llm_messages" do
-    it "returns plain content for user messages" do
-      pm = session.pending_messages.create!(content: "hey there")
-      expect(pm.to_llm_messages).to eq("hey there")
+    context "user message" do
+      subject(:pm) { build(:pending_message, session: session, content: "hey there") }
+
+      it "returns plain content" do
+        expect(pm.to_llm_messages).to eq("hey there")
+      end
     end
 
-    it "returns a tool_use/tool_result pair for phantom pair types" do
-      pm = session.pending_messages.create!(
-        content: "Goal created: Implement auth (id: 42)",
-        source_type: "goal", source_name: "42"
-      )
+    context "phantom pair type" do
+      subject(:pm) { create(:pending_message, :from_melete_goal, session: session, content: "Goal created") }
 
-      messages = pm.to_llm_messages
-
-      expect(messages.length).to eq(2)
-      expect(messages[0][:role]).to eq("assistant")
-      expect(messages[0][:content].first[:type]).to eq("tool_use")
-      expect(messages[1][:role]).to eq("user")
-      expect(messages[1][:content].first[:type]).to eq("tool_result")
-      expect(messages[1][:content].first[:tool_use_id]).to eq(messages[0][:content].first[:id])
+      it "returns a tool_use/tool_result pair with matching ids" do
+        use_block, result_block = pm.to_llm_messages
+        expect(use_block[:role]).to eq("assistant")
+        expect(use_block[:content].first[:type]).to eq("tool_use")
+        expect(result_block[:role]).to eq("user")
+        expect(result_block[:content].first[:type]).to eq("tool_result")
+        expect(result_block[:content].first[:tool_use_id]).to eq(use_block[:content].first[:id])
+      end
     end
   end
 
-  describe "phantom tool mapping" do
+  describe "phantom tool naming" do
     {
       "subagent" => {source_name: "sleuth", tool: "from_sleuth", input: {from: "sleuth"}},
       "skill" => {source_name: "testing", tool: "from_melete_skill", input: {skill: "testing"}},
@@ -61,168 +90,76 @@ RSpec.describe PendingMessage, type: :model do
 
   describe "broadcasts" do
     it "broadcasts pending_message_created on create" do
-      expect {
-        session.pending_messages.create!(content: "waiting")
-      }.to have_broadcasted_to("session_#{session.id}")
+      expect { create(:pending_message, session: session, content: "waiting") }
+        .to have_broadcasted_to("session_#{session.id}")
         .with(a_hash_including("action" => "pending_message_created", "content" => "waiting"))
     end
 
     it "broadcasts pending_message_removed on destroy" do
-      pm = session.pending_messages.create!(content: "waiting")
+      pm = create(:pending_message, session: session)
 
-      expect {
-        pm.destroy!
-      }.to have_broadcasted_to("session_#{session.id}")
+      expect { pm.destroy! }.to have_broadcasted_to("session_#{session.id}")
         .with(a_hash_including("action" => "pending_message_removed", "pending_message_id" => pm.id))
     end
   end
 
-  describe "dependent destroy" do
-    it "is destroyed when session is destroyed" do
-      session.pending_messages.create!(content: "orphan")
-
-      expect { session.destroy! }.to change(PendingMessage, :count).by(-1)
-    end
-  end
-
-  describe "kind enum" do
-    it "defaults to active" do
-      pm = session.pending_messages.create!(content: "hi")
-      expect(pm).to be_active
-      expect(pm).not_to be_background
-    end
-
-    it "accepts background" do
-      pm = session.pending_messages.create!(content: "memory", kind: :background)
-      expect(pm).to be_background
-    end
-
-    it "exposes scopes" do
-      active_pm = session.pending_messages.create!(content: "active msg")
-      background_pm = session.pending_messages.create!(content: "background msg", kind: :background)
-
-      expect(PendingMessage.active).to include(active_pm)
-      expect(PendingMessage.active).not_to include(background_pm)
-      expect(PendingMessage.background).to include(background_pm)
-    end
-  end
-
-  describe "MESSAGE_TYPE_ROUTES" do
-    it "only routes values that are also in MESSAGE_TYPES" do
-      expect(PendingMessage::MESSAGE_TYPE_ROUTES.keys).to all(be_in(PendingMessage::MESSAGE_TYPES))
-    end
-  end
-
-  describe "message_type validation" do
-    it "allows nil (legacy callers that predate the drain pipeline)" do
-      pm = PendingMessage.new(session: session, content: "hi", source_type: "user")
-      expect(pm).to be_valid
-    end
-
-    PendingMessage::MESSAGE_TYPES.each do |mt|
-      it "accepts #{mt}" do
-        pm = PendingMessage.new(session: session, content: "hi", source_type: "user", message_type: mt)
-        expect(pm).to be_valid
-      end
-    end
-
-    it "rejects unknown values" do
-      pm = PendingMessage.new(session: session, content: "hi", source_type: "user", message_type: "bogus")
-      expect(pm).not_to be_valid
-      expect(pm.errors[:message_type]).to be_present
-    end
-  end
-
   describe "#route_to_event_bus (after_create_commit)" do
-    before do
-      allow(Events::Bus).to receive(:emit).and_call_original
-    end
+    before { allow(Events::Bus).to receive(:emit).and_call_original }
 
-    context "with an active message on an idle session" do
-      {"user_message" => Events::StartMneme, "think" => Events::StartMneme}.each do |mt, event_class|
-        it "emits #{event_class.name.split("::").last} for #{mt}" do
-          pm = session.pending_messages.create!(content: "hello", message_type: mt)
+    context "when session is idle" do
+      it "emits StartMneme for user_message" do
+        pm = create(:pending_message, session: session)
 
-          expect(Events::Bus).to have_received(:emit).with(
-            an_instance_of(event_class).and(have_attributes(session_id: session.id, pending_message_id: pm.id))
-          )
-        end
+        expect(Events::Bus).to have_received(:emit).with(
+          an_instance_of(Events::StartMneme).and(have_attributes(session_id: session.id, pending_message_id: pm.id))
+        )
       end
 
-      {
-        "tool_call" => Events::StartProcessing,
-        "tool_response" => Events::StartProcessing,
-        "subagent" => Events::StartProcessing
-      }.each do |mt, event_class|
-        it "emits #{event_class.name.split("::").last} for #{mt}" do
-          pm = session.pending_messages.create!(
-            content: "result",
-            source_type: "subagent",
-            source_name: "sleuth",
-            message_type: mt
-          )
+      it "emits StartProcessing for tool_response" do
+        pm = create(:pending_message, :tool_response, session: session)
 
-          expect(Events::Bus).to have_received(:emit).with(
-            an_instance_of(event_class).and(have_attributes(session_id: session.id, pending_message_id: pm.id))
-          )
-        end
+        expect(Events::Bus).to have_received(:emit).with(
+          an_instance_of(Events::StartProcessing).and(have_attributes(pending_message_id: pm.id))
+        )
       end
-    end
 
-    context "with a background message" do
-      ["from_mneme", "from_melete"].each do |mt|
-        it "does not emit a start event for #{mt}" do
-          session.pending_messages.create!(
-            content: "memory",
-            source_type: "recall",
-            source_name: "42",
-            message_type: mt,
-            kind: :background
-          )
+      it "emits StartProcessing for subagent" do
+        pm = create(:pending_message, :subagent, session: session)
 
-          expect(Events::Bus).not_to have_received(:emit).with(
-            an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
-          )
-        end
+        expect(Events::Bus).to have_received(:emit).with(
+          an_instance_of(Events::StartProcessing).and(have_attributes(pending_message_id: pm.id))
+        )
       end
-    end
 
-    context "with an active message whose message_type has no route" do
-      # from_mneme / from_melete are background-only classifications in the
-      # routing table (MESSAGE_TYPE_ROUTES has no entry). Even if a caller
-      # mistakenly creates them as active, the pipeline stays quiet.
-      ["from_mneme", "from_melete"].each do |mt|
-        it "does not emit for #{mt}" do
-          session.pending_messages.create!(
-            content: "memory",
-            source_type: "recall",
-            source_name: "42",
-            message_type: mt
-          )
-
-          expect(Events::Bus).not_to have_received(:emit).with(
-            an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
-          )
-        end
-      end
-    end
-
-    context "with an active message landing while the session is not idle" do
-      it "does not emit while awaiting — the drain loop will pick it up" do
-        session.start_processing!
-
-        session.pending_messages.create!(content: "late arrival", message_type: "user_message")
+      it "stays silent for background messages" do
+        create(:pending_message, :from_mneme, session: session)
 
         expect(Events::Bus).not_to have_received(:emit).with(
           an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
         )
       end
+    end
 
-      it "does not emit while executing — the drain loop will pick it up" do
+    context "when session is awaiting" do
+      it "stays silent — the idle-wake rule picks it up later" do
+        session.start_processing!
+
+        create(:pending_message, session: session)
+
+        expect(Events::Bus).not_to have_received(:emit).with(
+          an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
+        )
+      end
+    end
+
+    context "when session is executing and the round is incomplete" do
+      it "stays silent — sibling tool_responses are still missing" do
         session.start_processing!
         session.tool_received!
+        create(:message, :tool_call, session: session, tool_use_id: "tu_1")
+        create(:message, :tool_call, session: session, tool_use_id: "tu_2")
 
-        session.pending_messages.create!(content: "mid-tool", message_type: "tool_response")
+        create(:pending_message, :tool_response, session: session, tool_use_id: "tu_1")
 
         expect(Events::Bus).not_to have_received(:emit).with(
           an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
@@ -230,13 +167,89 @@ RSpec.describe PendingMessage, type: :model do
       end
     end
 
-    context "with a legacy caller (message_type nil)" do
-      it "does not emit — the pipeline only activates for explicit message types" do
-        session.pending_messages.create!(content: "legacy")
+    context "when session is executing and the round becomes complete" do
+      it "emits StartProcessing — the AASM guard now permits the claim" do
+        session.start_processing!
+        session.tool_received!
+        create(:message, :tool_call, session: session, tool_use_id: "tu_1")
+        create(:message, :tool_call, session: session, tool_use_id: "tu_2")
+        create(:pending_message, :tool_response, session: session, tool_use_id: "tu_1")
 
-        expect(Events::Bus).not_to have_received(:emit).with(
-          an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
+        last = create(:pending_message, :tool_response, session: session, tool_use_id: "tu_2")
+
+        expect(Events::Bus).to have_received(:emit).with(
+          an_instance_of(Events::StartProcessing).and(have_attributes(pending_message_id: last.id))
         )
+      end
+    end
+  end
+
+  describe "#promote!" do
+    let(:session) { Session.create! }
+
+    it "promotes a tool_response PM into a tool_response Message and destroys the PM" do
+      pm = create(:pending_message, :tool_response,
+        session: session, content: "stdout", source_name: "bash", tool_use_id: "tool_123")
+
+      expect { pm.promote! }
+        .to change { session.messages.where(message_type: "tool_response").count }.by(1)
+        .and change { PendingMessage.where(id: pm.id).count }.by(-1)
+
+      msg = session.messages.find_by(message_type: "tool_response")
+      expect(msg.tool_use_id).to eq("tool_123")
+      expect(msg.payload["content"]).to eq("stdout")
+      expect(pm.promoted_message_id).to eq(msg.id)
+    end
+
+    it "promotes a user_message PM via Session#create_user_message and captures the message id" do
+      pm = session.pending_messages.create!(
+        content: "hello",
+        source_type: "user",
+        message_type: "user_message"
+      )
+
+      expect { pm.promote! }
+        .to change { session.messages.where(message_type: "user_message").count }.by(1)
+
+      msg = session.messages.find_by(message_type: "user_message")
+      expect(msg.payload["content"]).to eq("hello")
+      expect(pm.promoted_message_id).to eq(msg.id)
+    end
+
+    describe "phantom pair promotion" do
+      it "creates a tool_call + tool_response pair for recall PMs" do
+        pm = create(:pending_message, :from_mneme, session: session, content: "recalled text", source_name: "42")
+
+        expect { pm.promote! }
+          .to change { session.messages.where(message_type: "tool_call").count }.by(1)
+          .and change { session.messages.where(message_type: "tool_response").count }.by(1)
+      end
+
+      it "derives tool_use_id from phantom tool name and PM id" do
+        pm = create(:pending_message, :from_mneme, session: session, source_name: "42")
+        expected_uid = "from_mneme_#{pm.id}"
+        pm.promote!
+
+        call = session.messages.find_by(message_type: "tool_call")
+        response = session.messages.find_by(message_type: "tool_response")
+        expect(call.tool_use_id).to eq(expected_uid)
+        expect(response.tool_use_id).to eq(expected_uid)
+      end
+
+      it "uses the phantom tool name from PendingMessage" do
+        pm = create(:pending_message, :from_melete_goal, session: session, source_name: "7")
+        pm.promote!
+
+        call = session.messages.find_by(message_type: "tool_call")
+        expect(call.payload["tool_name"]).to eq("from_melete_goal")
+      end
+
+      it "stores tool input as stringified keys" do
+        pm = create(:pending_message, :from_melete_goal, session: session, source_name: "7")
+        pm.promote!
+
+        call = session.messages.find_by(message_type: "tool_call")
+        expect(call.payload["tool_input"]).to eq("goal_id" => 7)
       end
     end
   end

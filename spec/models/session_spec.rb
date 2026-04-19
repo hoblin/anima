@@ -38,18 +38,20 @@ RSpec.describe Session do
         expect(session).to be_idle
       end
 
-      it "transitions from executing to awaiting via tool_complete!" do
+      it "transitions from executing to awaiting via start_processing! when the round is complete" do
         session.start_processing!
         session.tool_received!
-        expect(session.tool_complete!).to be_truthy
+        allow(session).to receive(:tool_round_complete?).and_return(true)
+        expect(session.start_processing!).to be_truthy
         expect(session).to be_awaiting
       end
 
-      it "transitions from executing to idle via finish!" do
+      it "rejects start_processing! from executing while the round is incomplete" do
         session.start_processing!
         session.tool_received!
-        expect(session.finish!).to be_truthy
-        expect(session).to be_idle
+        allow(session).to receive(:tool_round_complete?).and_return(false)
+        expect(session.start_processing!).to be_falsey
+        expect(session).to be_executing
       end
 
       it "transitions from awaiting to idle via interrupt!" do
@@ -86,14 +88,6 @@ RSpec.describe Session do
         expect(session.response_complete!).to be_falsey
       end
 
-      it "rejects tool_complete from idle" do
-        expect(session.tool_complete!).to be_falsey
-      end
-
-      it "rejects finish from idle" do
-        expect(session.finish!).to be_falsey
-      end
-
       it "rejects interrupt from idle" do
         expect(session.interrupt!).to be_falsey
       end
@@ -119,10 +113,17 @@ RSpec.describe Session do
       it "reports valid transitions from executing" do
         session.start_processing!
         session.tool_received!
-        expect(session.may_tool_complete?).to be true
-        expect(session.may_finish?).to be true
+        allow(session).to receive(:tool_round_complete?).and_return(true)
+        expect(session.may_start_processing?).to be true
         expect(session.may_response_complete?).to be false
         expect(session.may_interrupt?).to be true
+      end
+
+      it "denies start_processing from executing while the round is incomplete" do
+        session.start_processing!
+        session.tool_received!
+        allow(session).to receive(:tool_round_complete?).and_return(false)
+        expect(session.may_start_processing?).to be false
       end
     end
 
@@ -155,6 +156,43 @@ RSpec.describe Session do
       it "provides a composite processing scope covering non-idle states" do
         expect(described_class.processing).to contain_exactly(awaiting_session, executing_session)
       end
+    end
+  end
+
+  describe "#tool_round_complete?" do
+    let(:session) { create(:session) }
+
+    it "is true when no tool_call messages exist" do
+      expect(session.tool_round_complete?).to be true
+    end
+
+    it "is true when every awaiting tool_call has a tool_response Message" do
+      create(:message, :tool_call, session:, tool_use_id: "tu_1")
+      create(:message, :tool_response, session:, tool_use_id: "tu_1")
+      expect(session.tool_round_complete?).to be true
+    end
+
+    it "is false when an orphan tool_call has neither a Message nor a PM response" do
+      create(:message, :tool_call, session:, tool_use_id: "tu_1")
+      create(:message, :tool_call, session:, tool_use_id: "tu_2")
+      create(:pending_message, :tool_response, session:, tool_use_id: "tu_1")
+      expect(session.tool_round_complete?).to be false
+    end
+
+    it "is true when every orphan tool_call has a matching tool_response PendingMessage" do
+      create(:message, :tool_call, session:, tool_use_id: "tu_1")
+      create(:message, :tool_call, session:, tool_use_id: "tu_2")
+      create(:pending_message, :tool_response, session:, tool_use_id: "tu_1")
+      create(:pending_message, :tool_response, session:, tool_use_id: "tu_2")
+      expect(session.tool_round_complete?).to be true
+    end
+
+    it "is true when the response split across Message and PendingMessage covers every orphan call" do
+      create(:message, :tool_call, session:, tool_use_id: "tu_1")
+      create(:message, :tool_response, session:, tool_use_id: "tu_1")
+      create(:message, :tool_call, session:, tool_use_id: "tu_2")
+      create(:pending_message, :tool_response, session:, tool_use_id: "tu_2")
+      expect(session.tool_round_complete?).to be true
     end
   end
 
@@ -320,44 +358,6 @@ RSpec.describe Session do
     end
   end
 
-  describe "#schedule_melete!" do
-    it "enqueues MeleteJob for unnamed root sessions with messages" do
-      session = Session.create!
-      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      session.messages.create!(message_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
-
-      expect { session.schedule_melete! }
-        .to have_enqueued_job(MeleteJob).with(session.id)
-    end
-
-    it "enqueues for sub-agent sessions (skills and naming)" do
-      parent = Session.create!
-      child = Session.create!(parent_session: parent, prompt: "task")
-      child.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      child.messages.create!(message_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
-
-      expect { child.schedule_melete! }
-        .to have_enqueued_job(MeleteJob).with(child.id)
-    end
-
-    it "does not enqueue for sessions with fewer than 2 messages" do
-      session = Session.create!
-      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-
-      expect { session.schedule_melete! }
-        .not_to have_enqueued_job(MeleteJob)
-    end
-
-    it "enqueues for named sessions on every qualifying message" do
-      session = Session.create!(name: "Already Named")
-      session.messages.create!(message_type: "user_message", payload: {"content" => "hi"}, timestamp: 1)
-      session.messages.create!(message_type: "agent_message", payload: {"content" => "hello"}, timestamp: 2)
-
-      expect { session.schedule_melete! }
-        .to have_enqueued_job(MeleteJob).with(session.id)
-    end
-  end
-
   describe "#broadcast_name_update" do
     it "broadcasts name change to the session stream" do
       session = Session.create!
@@ -494,8 +494,8 @@ RSpec.describe Session do
       let(:viewport) { Message.none }
 
       before do
-        session.pending_messages.create!(content: "old", source_type: "workflow", source_name: "refactor")
-        session.pending_messages.create!(content: "new", source_type: "workflow", source_name: "feature")
+        create(:pending_message, :from_melete_workflow, session: session, content: "old", source_name: "refactor")
+        create(:pending_message, :from_melete_workflow, session: session, content: "new", source_name: "feature")
       end
 
       it "returns the newest pending workflow" do
@@ -727,7 +727,8 @@ RSpec.describe Session do
 
     it "is still idempotent after promotion when the phantom pair is in the viewport" do
       session.activate_skill("gh-issue")
-      session.promote_pending_messages!
+      pm = session.pending_messages.last
+      pm.promote!
 
       expect { session.activate_skill("gh-issue") }
         .not_to change { session.pending_messages.count }
@@ -1178,7 +1179,8 @@ RSpec.describe Session do
 
     it "enqueues the replacement when activating a different workflow" do
       session.activate_workflow("feature")
-      session.promote_pending_messages!
+      pm = session.pending_messages.last
+      pm.promote!
 
       expect { session.activate_workflow("commit") }
         .to change { session.pending_messages.where(source_type: "workflow").count }.by(1)
@@ -1312,7 +1314,7 @@ RSpec.describe Session do
       schemas = child.tool_schemas
       names = schemas.map { |s| s[:name] }
 
-      AgentLoop::STANDARD_TOOLS.each do |tool|
+      Tools::Registry::STANDARD_TOOLS.each do |tool|
         expect(names).to include(tool.tool_name)
       end
     end
@@ -2179,192 +2181,6 @@ RSpec.describe Session do
     end
   end
 
-  describe "#promote_pending_messages!" do
-    let(:session) { Session.create! }
-
-    context "with user messages" do
-      it "persists as user_message and deletes the pending record" do
-        pm = session.pending_messages.create!(content: "queued")
-
-        session.promote_pending_messages!
-
-        expect(PendingMessage.find_by(id: pm.id)).to be_nil
-        msg = session.messages.last
-        expect(msg.message_type).to eq("user_message")
-        expect(msg.payload["content"]).to eq("queued")
-      end
-
-      it "returns content in :texts, nothing in :pairs" do
-        session.pending_messages.create!(content: "q1")
-        session.pending_messages.create!(content: "q2")
-
-        result = session.promote_pending_messages!
-        expect(result[:texts]).to eq(["q1", "q2"])
-        expect(result[:pairs]).to eq([])
-      end
-    end
-
-    context "with phantom pair types" do
-      # Every phantom pair type must persist as tool_call + tool_response
-      # in the DB (not user_message) so the TUI renders them correctly.
-      {
-        "subagent" => {source_name: "sleuth", tool_name: "from_sleuth"},
-        "skill" => {source_name: "testing", tool_name: "from_melete_skill"},
-        "workflow" => {source_name: "feature", tool_name: "from_melete_workflow"},
-        "recall" => {source_name: "42", tool_name: "from_mneme"},
-        "goal" => {source_name: "7", tool_name: "from_melete_goal"}
-      }.each do |source_type, meta|
-        context "with #{source_type} message" do
-          let!(:pm) do
-            session.pending_messages.create!(
-              content: "test content", source_type: source_type, source_name: meta[:source_name]
-            )
-          end
-
-          it "persists as tool_call + tool_response pair (not user_message)" do
-            session.promote_pending_messages!
-
-            types = session.messages.pluck(:message_type)
-            expect(types).to eq(%w[tool_call tool_response])
-          end
-
-          it "sets the correct phantom tool name on both messages" do
-            session.promote_pending_messages!
-
-            call = session.messages.find_by(message_type: "tool_call")
-            response = session.messages.find_by(message_type: "tool_response")
-            expect(call.payload["tool_name"]).to eq(meta[:tool_name])
-            expect(response.payload["tool_name"]).to eq(meta[:tool_name])
-          end
-
-          it "shares a tool_use_id between call and response" do
-            session.promote_pending_messages!
-
-            call = session.messages.find_by(message_type: "tool_call")
-            response = session.messages.find_by(message_type: "tool_response")
-            expect(call.tool_use_id).to be_present
-            expect(call.tool_use_id).to eq(response.tool_use_id)
-          end
-
-          it "stores content in the tool_response payload" do
-            session.promote_pending_messages!
-
-            response = session.messages.find_by(message_type: "tool_response")
-            expect(response.payload["content"]).to eq("test content")
-          end
-
-          it "returns phantom pairs in :pairs, nothing in :texts" do
-            result = session.promote_pending_messages!
-            expect(result[:texts]).to eq([])
-            expect(result[:pairs].length).to eq(2)
-            expect(result[:pairs][0][:role]).to eq("assistant")
-            expect(result[:pairs][1][:role]).to eq("user")
-          end
-
-          it "deletes the pending record" do
-            session.promote_pending_messages!
-
-            expect(PendingMessage.find_by(id: pm.id)).to be_nil
-          end
-        end
-      end
-    end
-
-    context "with mixed user and phantom pair messages" do
-      it "persists each type correctly and splits the return value" do
-        session.pending_messages.create!(content: "user says hi")
-        session.pending_messages.create!(
-          content: "Found a bug", source_type: "subagent", source_name: "sleuth"
-        )
-        session.pending_messages.create!(content: "user follows up")
-
-        result = session.promote_pending_messages!
-
-        expect(result[:texts]).to eq(["user says hi", "user follows up"])
-        expect(result[:pairs].length).to eq(2)
-
-        types = session.messages.pluck(:message_type)
-        expect(types).to eq(%w[user_message tool_call tool_response user_message])
-      end
-    end
-
-    it "generates unique tool_use_ids for multiple phantom pairs" do
-      session.pending_messages.create!(
-        content: "Result A", source_type: "subagent", source_name: "scout"
-      )
-      session.pending_messages.create!(
-        content: "Result B", source_type: "subagent", source_name: "sleuth"
-      )
-
-      session.promote_pending_messages!
-
-      tool_use_ids = session.messages.where(message_type: "tool_call").pluck(:tool_use_id)
-      expect(tool_use_ids.length).to eq(2)
-      expect(tool_use_ids.uniq.length).to eq(2)
-    end
-
-    it "returns empty texts and pairs when no pending messages exist" do
-      result = session.promote_pending_messages!
-      expect(result).to eq({texts: [], pairs: []})
-    end
-
-    it "promoted messages get IDs after existing messages" do
-      session.messages.create!(message_type: "user_message", payload: {"content" => "first"}, timestamp: 1, token_count: 10)
-      session.messages.create!(
-        message_type: "tool_call",
-        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "tool_input" => {}},
-        tool_use_id: "toolu_A", timestamp: 2, token_count: 10
-      )
-      session.messages.create!(
-        message_type: "tool_response",
-        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "content" => "ok"},
-        tool_use_id: "toolu_A", timestamp: 3, token_count: 10
-      )
-      session.pending_messages.create!(content: "hey")
-
-      session.promote_pending_messages!
-
-      promoted = session.messages.reload.last
-      tool_response = session.messages.where(tool_use_id: "toolu_A", message_type: "tool_response").first
-      expect(promoted.id).to be > tool_response.id
-      expect(promoted.payload["content"]).to eq("hey")
-    end
-  end
-
-  describe "#pending_messages never interleave tool pairs" do
-    let(:session) { Session.create! }
-
-    before do
-      allow(Anima::Settings).to receive(:mneme_l1_budget_fraction).and_return(0.0)
-      allow(Anima::Settings).to receive(:mneme_l2_budget_fraction).and_return(0.0)
-      allow(Anima::Settings).to receive(:mneme_pinned_budget_fraction).and_return(0.0)
-      allow(Anima::Settings).to receive(:recall_budget_fraction).and_return(0.0)
-    end
-
-    it "promoted messages appear after tool pairs in the LLM context" do
-      session.messages.create!(message_type: "user_message", payload: {"content" => "run bash"}, timestamp: 1, token_count: 10)
-      session.messages.create!(
-        message_type: "tool_call",
-        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "tool_input" => {}},
-        tool_use_id: "toolu_A", timestamp: 2, token_count: 10
-      )
-      session.messages.create!(
-        message_type: "tool_response",
-        payload: {"tool_name" => "bash", "tool_use_id" => "toolu_A", "content" => "ok"},
-        tool_use_id: "toolu_A", timestamp: 3, token_count: 10
-      )
-      # Simulate promotion: pending message becomes real message AFTER tool pair
-      session.pending_messages.create!(content: "hey")
-      session.promote_pending_messages!
-
-      result = session.messages_for_llm(token_budget: 1000)
-
-      roles = result.map { |m| m[:role] }
-      expect(roles).to eq(%w[user assistant user user])
-      expect(result.last[:content]).to include("hey")
-    end
-  end
-
   describe "sub-agent context isolation" do
     let(:parent) { Session.create! }
     let(:child) do
@@ -2411,46 +2227,6 @@ RSpec.describe Session do
       events = main.viewport_messages
       expect(events.length).to eq(1)
       expect(events.first.payload["content"]).to eq("only mine")
-    end
-  end
-
-  describe "#promote_phantom_pair!" do
-    let(:session) { Session.create! }
-
-    it "creates a tool_call and tool_response message pair" do
-      pm = session.pending_messages.create!(content: "recalled text", source_type: "recall", source_name: "42")
-
-      expect { session.promote_phantom_pair!(pm) }
-        .to change { session.messages.where(message_type: "tool_call").count }.by(1)
-        .and change { session.messages.where(message_type: "tool_response").count }.by(1)
-    end
-
-    it "derives tool_use_id from tool name and pending message ID" do
-      pm = session.pending_messages.create!(content: "recalled text", source_type: "recall", source_name: "42")
-      expected_uid = "from_mneme_#{pm.id}"
-
-      session.promote_phantom_pair!(pm)
-
-      call = session.messages.find_by(message_type: "tool_call")
-      response = session.messages.find_by(message_type: "tool_response")
-      expect(call.tool_use_id).to eq(expected_uid)
-      expect(response.tool_use_id).to eq(expected_uid)
-    end
-
-    it "uses the phantom tool name from PendingMessage" do
-      pm = session.pending_messages.create!(content: "goal event", source_type: "goal", source_name: "7")
-      session.promote_phantom_pair!(pm)
-
-      call = session.messages.find_by(message_type: "tool_call")
-      expect(call.payload["tool_name"]).to eq("from_melete_goal")
-    end
-
-    it "stores tool input as stringified keys" do
-      pm = session.pending_messages.create!(content: "goal event", source_type: "goal", source_name: "7")
-      session.promote_phantom_pair!(pm)
-
-      call = session.messages.find_by(message_type: "tool_call")
-      expect(call.payload["tool_input"]).to eq("goal_id" => 7)
     end
   end
 
@@ -2634,59 +2410,36 @@ RSpec.describe Session do
   describe "#enqueue_user_message" do
     let(:session) { Session.create! }
 
-    context "when session is idle" do
-      it "persists a deliverable event and enqueues AgentRequestJob" do
-        expect { session.enqueue_user_message("hello") }
-          .to change { session.messages.where(message_type: "user_message", status: nil).count }.by(1)
+    it "creates an active user_message PendingMessage" do
+      expect { session.enqueue_user_message("hello") }
+        .to change(PendingMessage, :count).by(1)
 
-        expect(AgentRequestJob).to have_been_enqueued.with(session.id)
-      end
-
-      it "passes message_id to job when bounce_back is true" do
-        session.enqueue_user_message("hello", bounce_back: true)
-
-        event = session.messages.last
-        expect(AgentRequestJob).to have_been_enqueued.with(session.id, message_id: event.id)
-      end
-
-      it "formats sub-agent messages with attribution" do
-        session.enqueue_user_message("Found a bug", source_type: "subagent", source_name: "sleuth")
-
-        msg = session.messages.last
-        expect(msg.payload["content"]).to eq("[sub-agent sleuth]: Found a bug")
-      end
+      pm = session.pending_messages.last
+      expect(pm.content).to eq("hello")
+      expect(pm.message_type).to eq("user_message")
+      expect(pm.kind).to eq("active")
+      expect(pm).not_to be_bounce_back
     end
 
-    context "when session is not idle" do
-      before { session.start_processing! }
+    it "carries bounce_back on the PendingMessage" do
+      session.enqueue_user_message("hello", bounce_back: true)
 
-      it "creates a PendingMessage" do
-        expect { session.enqueue_user_message("hello") }
-          .to change(PendingMessage, :count).by(1)
+      expect(session.pending_messages.last).to be_bounce_back
+    end
 
-        pm = session.pending_messages.last
-        expect(pm.content).to eq("hello")
-      end
+    it "tags sub-agent deliveries with subagent message_type" do
+      session.enqueue_user_message("result", source_type: "subagent", source_name: "scout")
 
-      it "stores source metadata on PendingMessage" do
-        session.enqueue_user_message("result", source_type: "subagent", source_name: "scout")
+      pm = session.pending_messages.last
+      expect(pm.source_type).to eq("subagent")
+      expect(pm.source_name).to eq("scout")
+      expect(pm.message_type).to eq("subagent")
+    end
 
-        pm = session.pending_messages.last
-        expect(pm.source_type).to eq("subagent")
-        expect(pm.source_name).to eq("scout")
-      end
+    it "never persists a Message directly" do
+      session.enqueue_user_message("hello")
 
-      it "does not enqueue AgentRequestJob" do
-        session.enqueue_user_message("hello")
-
-        expect(AgentRequestJob).not_to have_been_enqueued
-      end
-
-      it "does not persist a deliverable event" do
-        session.enqueue_user_message("hello")
-
-        expect(session.messages.where(message_type: "user_message", status: nil).count).to eq(0)
-      end
+      expect(session.messages.where(message_type: "user_message").count).to eq(0)
     end
   end
 end

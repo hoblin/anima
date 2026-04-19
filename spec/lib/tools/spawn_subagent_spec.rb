@@ -63,7 +63,7 @@ RSpec.describe Tools::SpawnSubagent do
     it "lists valid tool names in the tools description" do
       description = described_class.input_schema[:properties][:tools][:description]
 
-      AgentLoop::STANDARD_TOOLS_BY_NAME.each_key do |name|
+      Tools::Registry::STANDARD_TOOLS_BY_NAME.each_key do |name|
         expect(description).to include(name)
       end
     end
@@ -145,11 +145,14 @@ RSpec.describe Tools::SpawnSubagent do
       expect(pin.display_text).to eq(input["task"].truncate(PinnedMessage::MAX_DISPLAY_TEXT_LENGTH))
     end
 
-    it "enqueues AgentRequestJob for the child session" do
+    it "kicks the inbound pipeline by enqueueing the task as a user_message PendingMessage" do
       tool.execute(input)
 
       child = Session.last
-      expect(AgentRequestJob).to have_been_enqueued.with(child.id)
+      pm = child.pending_messages.find_by(message_type: "user_message")
+      expect(pm).to be_present
+      expect(pm.content).to eq(input["task"])
+      expect(MnemeEnrichmentJob).to have_been_enqueued.with(child.id, pending_message_id: pm.id)
     end
 
     it "broadcasts children update to parent session" do
@@ -282,7 +285,7 @@ RSpec.describe Tools::SpawnSubagent do
       end
 
       it "accepts all valid standard tool names" do
-        valid_names = AgentLoop::STANDARD_TOOLS_BY_NAME.keys
+        valid_names = Tools::Registry::STANDARD_TOOLS_BY_NAME.keys
         result = tool.execute(input.merge("tools" => valid_names))
 
         expect(result).to be_a(String)

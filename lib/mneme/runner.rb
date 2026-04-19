@@ -78,7 +78,6 @@ module Mneme
       result = @client.chat_with_tools(
         build_messages(transcript),
         registry: build_registry(eviction),
-        session_id: nil,
         system: SYSTEM_PROMPT
       )
 

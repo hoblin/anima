@@ -161,7 +161,7 @@ RSpec.describe Providers::Anthropic do
       shell = ShellSession.new(session_id: session.id)
       allow(shell).to receive(:pwd).and_return("/home/test/anima")
       registry = Tools::Registry.new(context: {shell_session: shell, session: session})
-      AgentLoop::STANDARD_TOOLS.each { |t| registry.register(t) }
+      Tools::Registry::STANDARD_TOOLS.each { |t| registry.register(t) }
 
       expect {
         real_provider.create_message(

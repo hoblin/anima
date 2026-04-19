@@ -4,9 +4,13 @@
 # Subscribers registered here receive all events regardless of which
 # process emitted them (brain server, background job, etc.).
 #
-# Two event layers:
-# 1. Domain events (anima.agent_message, anima.tool_call, etc.) — raw intent
+# Three event layers:
+# 1. Domain events (anima.agent_message, anima.system_message, etc.) — raw intent
 # 2. Lifecycle events (anima.message.created) — emitted after persistence
+# 3. Drain pipeline events (anima.session.start_mneme, start_melete,
+#    start_processing, llm_responded, tool_executed) — the event-driven
+#    agent loop that promotes PendingMessages into the conversation,
+#    calls the LLM, and dispatches tool execution (epic #427).
 #
 # Persister bridges layer 1 → 2 by creating Message records whose
 # after_create_commit emits MessageCreated events.
@@ -17,30 +21,49 @@ ACTIVE_STATE_TRIGGER_FILTER = ->(event) {
   %w[anima.skill.activated anima.workflow.activated anima.eviction.completed].include?(event[:name])
 }
 SESSION_STATE_FILTER = ->(event) { event[:name] == "anima.session.state_changed" }
+AUTHENTICATION_REQUIRED_FILTER = ->(event) { event[:name] == "anima.authentication_required" }
+START_MNEME_FILTER = ->(event) { event[:name] == "anima.session.start_mneme" }
+START_MELETE_FILTER = ->(event) { event[:name] == "anima.session.start_melete" }
+START_PROCESSING_FILTER = ->(event) { event[:name] == "anima.session.start_processing" }
+LLM_RESPONDED_FILTER = ->(event) { event[:name] == "anima.session.llm_responded" }
+TOOL_EXECUTED_FILTER = ->(event) { event[:name] == "anima.session.tool_executed" }
 
 Rails.application.config.after_initialize do
   # SessionStateBroadcaster also runs in tests — job/channel specs assert
   # ActionCable broadcasts, which now flow through this subscriber.
   Events::Bus.subscribe(Events::Subscribers::SessionStateBroadcaster.new, &SESSION_STATE_FILTER)
 
+  # AuthenticationBroadcaster turns provider auth failures into a
+  # conversation-visible system_message plus a client-side action frame.
+  Events::Bus.subscribe(Events::Subscribers::AuthenticationBroadcaster.new, &AUTHENTICATION_REQUIRED_FILTER)
+
+  # Drain pipeline — registered in all environments so job/channel specs
+  # can drive the full event-driven loop end-to-end.
+  Events::Bus.subscribe(Events::Subscribers::MnemeKickoff.new, &START_MNEME_FILTER)
+  Events::Bus.subscribe(Events::Subscribers::MeleteKickoff.new, &START_MELETE_FILTER)
+  Events::Bus.subscribe(Events::Subscribers::DrainKickoff.new, &START_PROCESSING_FILTER)
+  Events::Bus.subscribe(Events::Subscribers::LLMResponseHandler.new, &LLM_RESPONDED_FILTER)
+  Events::Bus.subscribe(Events::Subscribers::ToolResponseCreator.new, &TOOL_EXECUTED_FILTER)
+
   unless Rails.env.test?
     # --- Domain event subscribers (layer 1) ---
 
     # Global persister handles events from all sessions (brain server, background jobs).
-    # Skips non-pending user messages — those are persisted by their callers
-    # (SessionChannel#speak for idle sessions, AgentLoop#process for direct usage).
+    # Skips user messages — those are promoted from PendingMessage by {DrainJob}.
     Events::Bus.subscribe(Events::Subscribers::Persister.new)
 
     # Bridges transient events (e.g. BounceBack) to ActionCable for client delivery.
     Events::Bus.subscribe(Events::Subscribers::TransientBroadcaster.new)
 
-    # Routes text messages between parent and sub-agent sessions via @mentions.
-    Events::Bus.subscribe(Events::Subscribers::SubagentMessageRouter.new)
-
     # --- Lifecycle event subscribers (layer 2) ---
 
     # Broadcasts message creates and updates to connected WebSocket clients.
     Events::Bus.subscribe(Events::Subscribers::MessageBroadcaster.new, &MESSAGE_LIFECYCLE_FILTER)
+
+    # Routes agent_message Messages between parent and sub-agent sessions
+    # via @mentions. Hangs off the Message persistence lifecycle, so every
+    # persisted agent_message is a routing opportunity.
+    Events::Bus.subscribe(Events::Subscribers::SubagentMessageRouter.new, &MESSAGE_CREATED_FILTER)
 
     # Checks whether Mneme should run after each persisted message.
     Events::Bus.subscribe(Events::Subscribers::MnemeScheduler.new, &MESSAGE_CREATED_FILTER)
