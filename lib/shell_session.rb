@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "io/console"
+require "monitor"
 require "open3"
 require "pathname"
 require "pty"
@@ -72,12 +73,16 @@ class ShellSession
   # @return [ShellSession]
   def self.for_session(session)
     id = session.id
-    cached = @sessions_mutex.synchronize { @sessions_by_id[id] }
-    return cached if cached&.alive?
 
-    release(id) if cached
+    existing, shell = @sessions_mutex.synchronize do
+      cached = @sessions_by_id[id]
+      next [cached, nil] if cached&.alive?
 
-    shell = new(session_id: id)
+      release(id) if cached
+      [nil, new(session_id: id)]
+    end
+    return existing if existing
+
     cwd = session.initial_cwd
     shell.run("cd #{Shellwords.shellescape(cwd)}") if cwd.present? && File.directory?(cwd)
     shell
@@ -94,7 +99,14 @@ class ShellSession
     @env_snapshot = nil
     @read_buffer = +""
     self.class.cleanup_orphans
-    start
+    begin
+      start
+    rescue
+      # Reap the half-spawned PTY, FIFO, and stderr thread before bailing —
+      # otherwise a failed init_shell leaks a live process with no handle on it.
+      teardown
+      raise
+    end
     self.class.register(self)
   end
 
@@ -141,8 +153,12 @@ class ShellSession
   # this map via {.for_session}; the map is the single source of truth for
   # "which shells exist in this process". It has two readers: {.for_session}
   # (cache lookup) and {.cleanup_all} (at_exit sweep).
+  #
+  # {Monitor} (not {Mutex}) because {.for_session} holds the lock across
+  # +new+, whose {#initialize} re-enters the same lock via {.register}. A
+  # plain mutex would deadlock.
   @sessions_by_id = {}
-  @sessions_mutex = Mutex.new
+  @sessions_mutex = Monitor.new
 
   class << self
     # @api private

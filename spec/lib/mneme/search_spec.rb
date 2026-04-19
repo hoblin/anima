@@ -153,6 +153,34 @@ RSpec.describe Mneme::Search do
       expect { described_class.query("agents:foo") }.not_to raise_error
     end
 
+    it "returns no results for queries with only FTS5 operators" do
+      create_message(session, type: "user_message", content: "Authentication flow question.")
+
+      # `AND OR NOT` would become a syntactically invalid FTS5 query on
+      # its own — an empty body around pass-through operators. Caller
+      # should get back an empty result, not a crash.
+      expect { described_class.query("AND OR NOT") }.not_to raise_error
+    end
+
+    it "treats lowercase and/or/not as literal search terms, not operators" do
+      event = create_message(session, type: "user_message", content: "The signal and the noise.")
+
+      # Lowercase operators are NOT in the allowlist, so `and` must be
+      # quote-wrapped and matched as a plain word — not parsed as a
+      # boolean connective.
+      expect { described_class.query("signal and noise") }.not_to raise_error
+      expect(described_class.query("signal and noise").map(&:message_id)).to include(event.id)
+    end
+
+    it "escapes embedded double quotes in user tokens" do
+      create_message(session, type: "user_message", content: "She said hello to me.")
+
+      # A stray or unbalanced quote in user input historically produced an
+      # FTS5 syntax error; quote-doubling now neutralizes it.
+      expect { described_class.query('say "hello') }.not_to raise_error
+      expect { described_class.query('a "double" quote') }.not_to raise_error
+    end
+
     it "handles quoted phrases" do
       create_message(session, type: "user_message", content: "The full text search works well.")
 

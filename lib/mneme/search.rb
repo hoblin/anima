@@ -162,12 +162,20 @@ module Mneme
     # so callers that intentionally build +word1 OR word2+ queries still
     # get boolean behavior.
     #
+    # A query that collapses to operators only (e.g. user typed "and or
+    # not") has no operands and would trigger an FTS5 syntax error, so we
+    # return an empty string and let {#call} short-circuit via
+    # +@terms.blank?+.
+    #
     # @param raw [String]
     # @return [String] safe FTS5 query
     def sanitize_query(raw)
       return "" unless raw
 
-      raw.scan(/"[^"]*"|\S+/).filter_map { |token| sanitize_token(token) }.join(" ")
+      tokens = raw.scan(/"[^"]*"|\S+/).filter_map { |token| sanitize_token(token) }
+      return "" if tokens.all? { |t| FTS5_PASSTHROUGH_OPERATORS.include?(t) }
+
+      tokens.join(" ")
     end
 
     # @param token [String] one whitespace-delimited chunk of user input

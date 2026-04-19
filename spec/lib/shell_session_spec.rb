@@ -445,6 +445,14 @@ RSpec.describe ShellSession do
     ensure
       described_class.release(other.id)
     end
+
+    it "hands the same shell to concurrent callers racing on one session" do
+      threads = Array.new(4) { Thread.new { described_class.for_session(session) } }
+      shells = threads.map(&:value)
+
+      expect(shells.uniq.size).to eq(1)
+      expect(shells.first).to be_alive
+    end
   end
 
   describe ".release" do
@@ -463,6 +471,15 @@ RSpec.describe ShellSession do
 
     it "is a no-op when no shell is cached" do
       expect { described_class.release("never-seen-#{SecureRandom.hex(4)}") }.not_to raise_error
+    end
+
+    it "is safe to call twice on the same session" do
+      described_class.for_session(session)
+
+      expect {
+        described_class.release(session.id)
+        described_class.release(session.id)
+      }.not_to raise_error
     end
   end
 
