@@ -51,9 +51,12 @@ module Tools
     end
 
     # Creates a child session with a clean context (no parent history),
-    # runs Melete to assign a nickname, persists the task
-    # as a pinned user message, and queues background processing.
-    # Returns immediately after Melete completes (blocking for ~200ms).
+    # runs Melete to assign a nickname, pins the task as a Goal, and
+    # enqueues the task as the child's first user_message PendingMessage —
+    # which kicks the standard inbound pipeline (Mneme → Melete →
+    # StartProcessing → DrainJob) so the sub-agent self-starts the same
+    # way a human-typed message would. Returns immediately after Melete
+    # completes (blocking for ~200ms).
     #
     # @param input [Hash<String, Object>] with "task" and optional "tools"
     # @return [String] confirmation with child session ID and @nickname
@@ -87,7 +90,7 @@ module Tools
       create_goal_with_pinned_task(child, task)
       assign_nickname_via_melete(child)
       child.broadcast_children_update_to_parent
-      DrainJob.perform_later(child.id)
+      child.enqueue_user_message(task)
       child
     end
 

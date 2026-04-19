@@ -66,9 +66,12 @@ module Tools
       @agent_registry = agent_registry || Agents::Registry.instance
     end
 
-    # Creates a child session with the specialist's predefined prompt and tools,
-    # persists the task as a user message, and queues background processing.
-    # Returns immediately (non-blocking).
+    # Creates a child session with the specialist's predefined prompt and
+    # tools, pins the task as a Goal, and enqueues the task as the
+    # child's first user_message PendingMessage — which kicks the
+    # standard inbound pipeline (Mneme → Melete → StartProcessing →
+    # DrainJob) so the specialist self-starts the same way a human-typed
+    # message would. Returns immediately after Melete completes.
     #
     # @param input [Hash<String, Object>] with "name" and "task"
     # @return [String] confirmation with child session ID
@@ -102,7 +105,7 @@ module Tools
       create_goal_with_pinned_task(child, task)
       assign_nickname_via_melete(child)
       child.broadcast_children_update_to_parent
-      DrainJob.perform_later(child.id)
+      child.enqueue_user_message(task)
       child
     end
 

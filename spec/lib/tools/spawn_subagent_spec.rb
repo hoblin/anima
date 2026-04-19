@@ -145,11 +145,14 @@ RSpec.describe Tools::SpawnSubagent do
       expect(pin.display_text).to eq(input["task"].truncate(PinnedMessage::MAX_DISPLAY_TEXT_LENGTH))
     end
 
-    it "enqueues DrainJob for the child session" do
+    it "kicks the inbound pipeline by enqueueing the task as a user_message PendingMessage" do
       tool.execute(input)
 
       child = Session.last
-      expect(DrainJob).to have_been_enqueued.with(child.id)
+      pm = child.pending_messages.find_by(message_type: "user_message")
+      expect(pm).to be_present
+      expect(pm.content).to eq(input["task"])
+      expect(MnemeEnrichmentJob).to have_been_enqueued.with(child.id, pending_message_id: pm.id)
     end
 
     it "broadcasts children update to parent session" do
