@@ -140,8 +140,8 @@ RSpec.describe PendingMessage do
       end
     end
 
-    context "when session is not idle" do
-      it "stays silent while awaiting — the idle-wake rule picks it up later" do
+    context "when session is awaiting" do
+      it "stays silent — the idle-wake rule picks it up later" do
         session.start_processing!
 
         create(:pending_message, session: session)
@@ -150,15 +150,35 @@ RSpec.describe PendingMessage do
           an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
         )
       end
+    end
 
-      it "stays silent while executing" do
+    context "when session is executing and the round is incomplete" do
+      it "stays silent — sibling tool_responses are still missing" do
         session.start_processing!
         session.tool_received!
+        create(:message, :tool_call, session: session, tool_use_id: "tu_1")
+        create(:message, :tool_call, session: session, tool_use_id: "tu_2")
 
-        create(:pending_message, :tool_response, session: session)
+        create(:pending_message, :tool_response, session: session, tool_use_id: "tu_1")
 
         expect(Events::Bus).not_to have_received(:emit).with(
           an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
+        )
+      end
+    end
+
+    context "when session is executing and the round becomes complete" do
+      it "emits StartProcessing — the AASM guard now permits the claim" do
+        session.start_processing!
+        session.tool_received!
+        create(:message, :tool_call, session: session, tool_use_id: "tu_1")
+        create(:message, :tool_call, session: session, tool_use_id: "tu_2")
+        create(:pending_message, :tool_response, session: session, tool_use_id: "tu_1")
+
+        last = create(:pending_message, :tool_response, session: session, tool_use_id: "tu_2")
+
+        expect(Events::Bus).to have_received(:emit).with(
+          an_instance_of(Events::StartProcessing).and(have_attributes(pending_message_id: last.id))
         )
       end
     end

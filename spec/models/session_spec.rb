@@ -38,18 +38,20 @@ RSpec.describe Session do
         expect(session).to be_idle
       end
 
-      it "transitions from executing to awaiting via tool_complete!" do
+      it "transitions from executing to awaiting via start_processing! when the round is complete" do
         session.start_processing!
         session.tool_received!
-        expect(session.tool_complete!).to be_truthy
+        allow(session).to receive(:tool_round_complete?).and_return(true)
+        expect(session.start_processing!).to be_truthy
         expect(session).to be_awaiting
       end
 
-      it "transitions from executing to idle via finish!" do
+      it "rejects start_processing! from executing while the round is incomplete" do
         session.start_processing!
         session.tool_received!
-        expect(session.finish!).to be_truthy
-        expect(session).to be_idle
+        allow(session).to receive(:tool_round_complete?).and_return(false)
+        expect(session.start_processing!).to be_falsey
+        expect(session).to be_executing
       end
 
       it "transitions from awaiting to idle via interrupt!" do
@@ -86,14 +88,6 @@ RSpec.describe Session do
         expect(session.response_complete!).to be_falsey
       end
 
-      it "rejects tool_complete from idle" do
-        expect(session.tool_complete!).to be_falsey
-      end
-
-      it "rejects finish from idle" do
-        expect(session.finish!).to be_falsey
-      end
-
       it "rejects interrupt from idle" do
         expect(session.interrupt!).to be_falsey
       end
@@ -119,10 +113,17 @@ RSpec.describe Session do
       it "reports valid transitions from executing" do
         session.start_processing!
         session.tool_received!
-        expect(session.may_tool_complete?).to be true
-        expect(session.may_finish?).to be true
+        allow(session).to receive(:tool_round_complete?).and_return(true)
+        expect(session.may_start_processing?).to be true
         expect(session.may_response_complete?).to be false
         expect(session.may_interrupt?).to be true
+      end
+
+      it "denies start_processing from executing while the round is incomplete" do
+        session.start_processing!
+        session.tool_received!
+        allow(session).to receive(:tool_round_complete?).and_return(false)
+        expect(session.may_start_processing?).to be false
       end
     end
 
@@ -155,6 +156,43 @@ RSpec.describe Session do
       it "provides a composite processing scope covering non-idle states" do
         expect(described_class.processing).to contain_exactly(awaiting_session, executing_session)
       end
+    end
+  end
+
+  describe "#tool_round_complete?" do
+    let(:session) { create(:session) }
+
+    it "is true when no tool_call messages exist" do
+      expect(session.tool_round_complete?).to be true
+    end
+
+    it "is true when every awaiting tool_call has a tool_response Message" do
+      create(:message, :tool_call, session:, tool_use_id: "tu_1")
+      create(:message, :tool_response, session:, tool_use_id: "tu_1")
+      expect(session.tool_round_complete?).to be true
+    end
+
+    it "is false when an orphan tool_call has neither a Message nor a PM response" do
+      create(:message, :tool_call, session:, tool_use_id: "tu_1")
+      create(:message, :tool_call, session:, tool_use_id: "tu_2")
+      create(:pending_message, :tool_response, session:, tool_use_id: "tu_1")
+      expect(session.tool_round_complete?).to be false
+    end
+
+    it "is true when every orphan tool_call has a matching tool_response PendingMessage" do
+      create(:message, :tool_call, session:, tool_use_id: "tu_1")
+      create(:message, :tool_call, session:, tool_use_id: "tu_2")
+      create(:pending_message, :tool_response, session:, tool_use_id: "tu_1")
+      create(:pending_message, :tool_response, session:, tool_use_id: "tu_2")
+      expect(session.tool_round_complete?).to be true
+    end
+
+    it "is true when the response split across Message and PendingMessage covers every orphan call" do
+      create(:message, :tool_call, session:, tool_use_id: "tu_1")
+      create(:message, :tool_response, session:, tool_use_id: "tu_1")
+      create(:message, :tool_call, session:, tool_use_id: "tu_2")
+      create(:pending_message, :tool_response, session:, tool_use_id: "tu_2")
+      expect(session.tool_round_complete?).to be true
     end
   end
 

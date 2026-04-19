@@ -16,8 +16,9 @@ class Session < ApplicationRecord
   # Non-default AASM options:
   # - +whiny_transitions: false+ makes invalid transitions return +false+
   #   instead of raising. {DrainJob} depends on this: +start_processing!+
-  #   returning +false+ signals that another drain already claimed the
-  #   session, so the current invocation exits silently.
+  #   returning +false+ signals that the session is busy (+:awaiting+) or
+  #   that the current tool round is still incomplete, so the current
+  #   invocation exits silently.
   # - +no_direct_assignment: true+ blocks +session.aasm_state = ...+, forcing
   #   every transition through a named event so guards always run.
   # - +requires_lock: true+ wraps each transition in a pessimistic row lock
@@ -34,8 +35,16 @@ class Session < ApplicationRecord
     state :awaiting
     state :executing
 
+    # Drain claim. Two transitions, one event:
+    # - From +:idle+, the session is fresh — claim unconditionally.
+    # - From +:executing+, only claim once every +tool_use_id+ from the
+    #   latest assistant turn has a matching tool_response (Message or
+    #   PendingMessage). This collapses "tool round complete" and "drain
+    #   claims" into one atomic, lock-protected transition so the LLM
+    #   never sees a partial round.
     event :start_processing do
       transitions from: :idle, to: :awaiting
+      transitions from: :executing, to: :awaiting, guard: :tool_round_complete?
     end
 
     event :tool_received do
@@ -44,14 +53,6 @@ class Session < ApplicationRecord
 
     event :response_complete do
       transitions from: :awaiting, to: :idle
-    end
-
-    event :tool_complete do
-      transitions from: :executing, to: :awaiting
-    end
-
-    event :finish do
-      transitions from: :executing, to: :idle
     end
 
     event :interrupt do
@@ -491,6 +492,26 @@ class Session < ApplicationRecord
     })
   end
 
+  # AASM guard for the +executing → awaiting+ branch of +start_processing+.
+  # The round is complete when every orphan +tool_call+ Message (one
+  # without a matching +tool_response+ Message) has a corresponding
+  # +tool_response+ PendingMessage waiting to be promoted. Until then the
+  # drain bails so the LLM never sees a half-assembled tool turn.
+  #
+  # @return [Boolean]
+  def tool_round_complete?
+    responded_message_ids = messages.where(message_type: "tool_response").select(:tool_use_id)
+    awaiting_call_ids = messages.where(message_type: "tool_call")
+      .where.not(tool_use_id: responded_message_ids)
+      .pluck(:tool_use_id)
+    return true if awaiting_call_ids.empty?
+
+    pm_response_ids = pending_messages
+      .where(message_type: "tool_response", tool_use_id: awaiting_call_ids)
+      .pluck(:tool_use_id)
+    pm_response_ids.uniq.size == awaiting_call_ids.size
+  end
+
   # AASM after_all_events callback — publishes
   # {Events::SessionStateChanged} so the broadcaster subscriber can keep
   # the TUI spinner and parent-session HUD in sync with the state machine.
@@ -519,9 +540,14 @@ class Session < ApplicationRecord
   # AASM after_all_events callback — picks the oldest active
   # PendingMessage and re-runs its pipeline routing whenever the session
   # lands in +:idle+ with work still queued. Covers the race where a PM
-  # arrives while the session is busy: its own +after_create_commit+ saw
-  # a non-idle session and emitted nothing, so without this callback the
-  # message would sit forever.
+  # arrives while the session is +:awaiting+ (LLM in flight): its own
+  # +after_create_commit+ saw +may_start_processing?+ return false and
+  # emitted nothing, so without this callback the message would sit
+  # forever once the LLM call completed.
+  #
+  # The +:executing → :idle+ path (interrupt) is also covered here.
+  # The +:executing → :awaiting+ path (tool round close) does not need
+  # this callback — the closing tool_response PM is itself the wake.
   #
   # @return [void]
   def wake_drain_pipeline_if_pending

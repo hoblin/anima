@@ -2,14 +2,15 @@
 
 module Events
   module Subscribers
-    # Closes the tool round. On {Events::ToolExecuted}, creates a
-    # +tool_response+ PendingMessage (active) and releases the session
-    # from +:executing+ to +:idle+ via {Session#finish!}.
+    # Records a tool's outcome as a +tool_response+ PendingMessage on
+    # {Events::ToolExecuted}. One ToolExecuted → one PM. The subscriber
+    # owns no state transitions: the session stays in +:executing+ until
+    # {DrainJob} claims it via the +executing → awaiting+ branch of
+    # +start_processing+ (gated by +Session#tool_round_complete?+).
     #
-    # The PM's +after_create_commit+ emits {Events::StartProcessing},
-    # which wakes the drain loop to pick up the response in the next
-    # cycle — completing the tool pair and continuing the LLM
-    # conversation.
+    # The PM's +after_create_commit+ emits {Events::StartProcessing}
+    # whenever the AASM guard says drain may now claim — typically when
+    # the last sibling tool_response of the round lands.
     class ToolResponseCreator
       include Events::Subscriber
 
@@ -22,17 +23,14 @@ module Events
         session = Session.find_by(id: session_id)
         return unless session
 
-        session.transaction do
-          session.finish! if session.may_finish?
-          session.pending_messages.create!(
-            content: payload[:content].to_s,
-            source_type: "tool",
-            source_name: payload[:tool_name],
-            message_type: "tool_response",
-            tool_use_id: payload[:tool_use_id],
-            success: payload[:success]
-          )
-        end
+        session.pending_messages.create!(
+          content: payload[:content].to_s,
+          source_type: "tool",
+          source_name: payload[:tool_name],
+          message_type: "tool_response",
+          tool_use_id: payload[:tool_use_id],
+          success: payload[:success]
+        )
       end
     end
   end

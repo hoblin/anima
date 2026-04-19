@@ -4,17 +4,21 @@
 #
 # One invocation == one half-step of the event-driven agent loop:
 # 1. Claim the session via {Session#start_processing!} (atomic; bails if
-#    another drain already holds the session).
-# 2. Promote pending work into the conversation — tool responses take
-#    priority; otherwise background messages flush and one active
-#    message gets promoted.
+#    another drain already holds the session OR the in-flight tool round
+#    is incomplete — the AASM guard +tool_round_complete?+ handles both).
+# 2. Promote pending work into the conversation — every tool_response PM
+#    of the freshly completed round flushes in one transaction so the
+#    LLM sees a whole assistant turn paired with a whole user turn;
+#    background phantom pairs flush; one active FIFO message rides
+#    along.
 # 3. Make one LLM API call and emit {Events::LLMResponded}.
 #
 # On the happy path the job never releases the session — state
 # transitions after the emit belong to
-# {Events::Subscribers::LLMResponseHandler} (on text or tool dispatch)
-# and {Events::Subscribers::ToolResponseCreator} (after tool execution).
-# Event emission is the final act that hands control to the next piece.
+# {Events::Subscribers::LLMResponseHandler} (on text or tool dispatch).
+# {Events::Subscribers::ToolResponseCreator} no longer touches state;
+# the +executing → awaiting+ branch of +start_processing+ closes the
+# tool round and claims in one atomic, lock-protected step.
 #
 # The job DOES release its own claim when there is no responder to do
 # it: an empty mailbox (spurious kickoff) or an exception raised before
@@ -53,34 +57,45 @@ class DrainJob < ApplicationJob
     session = Session.find(session_id)
     return unless session.start_processing!
 
-    promoted_pm = promote_next(session)
-    return session.response_complete! unless promoted_pm
+    drained_count, active_pm = drain_mailbox(session)
+    return session.response_complete! if drained_count.zero?
 
     call_llm_and_emit(session)
   rescue => error
-    release_after_failure(session, promoted_pm, error) if session
-    raise error unless promoted_pm&.bounce_back?
+    release_after_failure(session, active_pm, error) if session
+    raise error unless active_pm&.bounce_back?
   ensure
     @shell_session&.finalize
   end
 
   private
 
-  # Picks the next unit of work and writes it into +messages+.
-  # Tool responses jump the queue; everything else flushes backgrounds
-  # and takes one active FIFO.
+  # Promotes every drainable PM in one cycle:
+  # 1. All +tool_response+ PMs of the just-completed round (the AASM
+  #    guard guarantees they are all present when we get here from
+  #    +:executing+; from +:idle+ this set is empty).
+  # 2. All background phantom pairs (recalls, skill/workflow/goal
+  #    activations) so they sit above the next active message.
+  # 3. One active FIFO message — a +user_message+ or a +subagent+
+  #    delivery. Tool responses are excluded from this pick because they
+  #    are already drained in step 1.
   #
   # @param session [Session]
-  # @return [PendingMessage, nil] the active PM that was promoted (nil when
-  #   mailbox held only backgrounds or was entirely empty)
-  def promote_next(session)
-    actives = session.pending_messages.active
-    tool_response = actives.where(message_type: "tool_response").first
-    return promote_tool_response(tool_response) if tool_response
+  # @return [Array(Integer, PendingMessage)] count of promoted PMs +
+  #   the active PM that rode along (or +nil+ for no active). The count
+  #   distinguishes "promoted nothing — release the claim" from "promoted
+  #   something — call the LLM".
+  def drain_mailbox(session)
+    tool_responses = session.pending_messages.where(message_type: "tool_response").order(:created_at).to_a
+    tool_responses.each { |pm| promote_tool_response(pm) }
 
     flush_backgrounds(session)
-    active = actives.order(:created_at).first
+
+    active = session.pending_messages.active.where.not(message_type: "tool_response").order(:created_at).first
     promote_active(active) if active
+
+    drained_count = tool_responses.size + (active ? 1 : 0)
+    [drained_count, active]
   end
 
   def promote_tool_response(pm)
@@ -157,8 +172,8 @@ class DrainJob < ApplicationJob
 
   # Release the session and, for bounce-back-flagged user messages,
   # notify the TUI to restore the text. Happy-path release belongs to
-  # {Events::Subscribers::LLMResponseHandler} / {Events::Subscribers::ToolResponseCreator}
-  # — this method only runs when the drain never reached emit.
+  # {Events::Subscribers::LLMResponseHandler} — this method only runs
+  # when the drain never reached emit.
   def release_after_failure(session, promoted_pm, error)
     session.response_complete! if session.may_response_complete?
 

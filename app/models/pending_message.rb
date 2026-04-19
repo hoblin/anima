@@ -253,12 +253,19 @@ class PendingMessage < ApplicationRecord
   end
 
   # Emits the event that kicks off the drain pipeline for active messages
-  # landing on an idle session. Background messages never trigger; active
-  # messages landing mid-drain queue silently — {Session#wake_drain_pipeline_if_pending}
-  # re-runs this method on the next transition into +:idle+.
+  # whenever the session is currently claimable. Claimability is delegated
+  # to the AASM via +may_start_processing?+ — true from +:idle+ always,
+  # true from +:executing+ only once +tool_round_complete?+ holds. This
+  # lets a tool_response PM landing mid-round wake the drain only when
+  # its sibling responses are all present.
+  #
+  # Background messages never trigger; active messages landing while the
+  # session is unclaimable queue silently —
+  # {Session#wake_drain_pipeline_if_pending} re-runs this method on the
+  # next transition into +:idle+.
   def route_to_event_bus
     return unless active?
-    return unless session.idle?
+    return unless session.may_start_processing?
 
     event_class = MESSAGE_TYPE_ROUTES.fetch(message_type)
     Events::Bus.emit(event_class.new(session_id: session_id, pending_message_id: id))
