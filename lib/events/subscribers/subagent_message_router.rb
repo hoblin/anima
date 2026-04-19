@@ -2,18 +2,23 @@
 
 module Events
   module Subscribers
-    # Routes text messages between parent and child sessions, enabling
-    # bidirectional @mention communication.
+    # Routes agent text messages between parent and child sessions,
+    # enabling bidirectional @mention communication.
     #
-    # **Child → Parent:** When a sub-agent emits an {Events::AgentMessage},
-    # the router enqueues a {PendingMessage} in the parent session with
-    # sub-agent attribution. The PM's +after_create_commit+ kicks off the
-    # drain pipeline when the parent is idle; otherwise the message
-    # queues silently and the idle-wake rule picks it up.
+    # Subscribes to {Events::MessageCreated} and filters on
+    # +message_type == "agent_message"+ — the Message record is the single
+    # source of truth for LLM-produced text, so routing hangs off the
+    # persistence lifecycle rather than a parallel domain-event emission.
     #
-    # **Parent → Child:** When a parent agent emits an {Events::AgentMessage}
-    # containing `@name` mentions, the router enqueues a PendingMessage in
-    # each matching child session with a +[from parent]:+ origin label.
+    # **Child → Parent:** When a sub-agent persists an +agent_message+,
+    # the router enqueues a {PendingMessage} on the parent with sub-agent
+    # attribution. The PM's +after_create_commit+ kicks off the drain
+    # pipeline when the parent is idle; otherwise the message queues
+    # silently and the idle-wake rule picks it up.
+    #
+    # **Parent → Child:** When a parent agent persists an +agent_message+
+    # containing +@name+ mentions, the router enqueues a PendingMessage
+    # in each matching child session with a +[from parent]:+ origin label.
     #
     # Both directions delegate to {Session#enqueue_user_message}.
     #
@@ -31,25 +36,21 @@ module Events
 
       # Routes agent text messages between parent and child sessions.
       #
-      # For sub-agent sessions: forwards to parent with attribution prefix.
+      # For sub-agent sessions: forwards to parent with attribution.
       # For parent sessions: scans for @mentions and routes to matching children.
       #
-      # @param event [Hash] Rails.event notification hash with +:payload+ containing
-      #   an +agent_message+ event (type, session_id, content)
+      # @param event [Hash] Rails.event notification hash with +:payload+
+      #   carrying the persisted {Message} record under +:message+
       # @return [void]
       def emit(event)
-        payload = event[:payload]
-        return unless payload.is_a?(Hash)
-        return unless payload[:type] == "agent_message"
+        message = event.dig(:payload, :message)
+        return unless message.is_a?(Message)
+        return unless message.message_type == "agent_message"
 
-        session_id = payload[:session_id]
-        return unless session_id
-
-        content = payload[:content].to_s
+        content = message.payload["content"].to_s
         return if content.empty?
 
-        session = Session.find_by(id: session_id)
-        return unless session
+        session = message.session
 
         if session.sub_agent?
           route_to_parent(session, content)

@@ -24,8 +24,7 @@ class ToolExecutionJob < ApplicationJob
   # @param tool_input [Hash]
   def perform(session_id, tool_use_id:, tool_name:, tool_input:)
     session = Session.find(session_id)
-    @shell_session = ShellSession.new(session_id: session_id)
-    restore_cwd(@shell_session, session)
+    @shell_session = ShellSession.for_session(session)
     registry = Tools::Registry.build(session: session, shell_session: @shell_session)
 
     content, success = execute(registry, tool_name, tool_input)
@@ -82,11 +81,5 @@ class ToolExecutionJob < ApplicationJob
       threshold: threshold,
       reason: "#{tool_name} output displays first/last #{lines} lines"
     )
-  end
-
-  def restore_cwd(shell_session, session)
-    cwd = session.initial_cwd
-    return unless cwd.present? && File.directory?(cwd)
-    shell_session.run("cd #{Shellwords.shellescape(cwd)}")
   end
 end

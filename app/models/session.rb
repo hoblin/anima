@@ -417,32 +417,30 @@ class Session < ApplicationRecord
   # triggers, goal events, sub-agent deliveries) into the
   # conversation.
   #
-  # @param pm [PendingMessage] phantom pair pending message
+  # Releases a failed drain claim and bounces the promoted user-message
+  # back to the client. Called from {DrainJob} when the LLM call raises
+  # before {Events::LLMResponded} ships. Destroying the exact message the
+  # PM promoted (tracked in {PendingMessage#promoted_message_id}) avoids
+  # the "last user_message" guess, which was racy under parallel drains.
+  #
+  # Idempotent — a nil +promoted_message_id+ skips the destroy and emits
+  # the BounceBack with +message_id: nil+ so the TUI still restores input.
+  #
+  # @param pm [PendingMessage] the user-message PM that failed to round-trip
+  # @param error [Exception] the raised error
   # @return [void]
-  def promote_phantom_pair!(pm)
-    tool_name = pm.phantom_tool_name
-    tool_input = pm.phantom_tool_input
-    uid = "#{tool_name}_#{pm.id}"
-    now = now_ns
+  def release_with_bounce_back(pm, error)
+    response_complete! if may_response_complete?
 
-    messages.create!(
-      message_type: "tool_call",
-      tool_use_id: uid,
-      payload: {"tool_name" => tool_name, "tool_use_id" => uid,
-                "tool_input" => tool_input.stringify_keys,
-                "content" => pm.display_content.lines.first.chomp},
-      timestamp: now,
-      token_count: Mneme::PassiveRecall::TOOL_PAIR_OVERHEAD_TOKENS
-    )
+    bounced = pm.promoted_message_id && messages.find_by(id: pm.promoted_message_id)
+    bounced&.destroy!
 
-    messages.create!(
-      message_type: "tool_response",
-      tool_use_id: uid,
-      payload: {"tool_name" => tool_name, "tool_use_id" => uid,
-                "content" => pm.content, "success" => true},
-      timestamp: now,
-      token_count: TokenEstimation.estimate_token_count(pm.content)
-    )
+    Events::Bus.emit(Events::BounceBack.new(
+      content: pm.content,
+      error: error.message,
+      session_id: id,
+      message_id: bounced&.id
+    ))
   end
 
   # Persists a user_message Message directly — skipping the PendingMessage
@@ -553,8 +551,7 @@ class Session < ApplicationRecord
   def wake_drain_pipeline_if_pending
     return unless idle?
 
-    pm = pending_messages.ordered_for_drain.first
-    pm&.wake_drain_pipeline!
+    pending_messages.ordered_for_drain.first&.route_to_event_bus
   end
 
   # Broadcasts the full LLM debug context to debug-mode TUI clients.
@@ -661,7 +658,12 @@ class Session < ApplicationRecord
   # @param content [String] definition content to recall
   # @return [PendingMessage] the created pending message
   def enqueue_recall_message(source_type, source_name, content)
-    message_type = (source_type == "skill") ? "from_melete_skill" : "from_melete_workflow"
+    message_type = case source_type
+    when "skill" then "from_melete_skill"
+    when "workflow" then "from_melete_workflow"
+    else raise ArgumentError, "unknown recall source_type: #{source_type.inspect}"
+    end
+
     pending_messages.create!(
       content: content,
       source_type: source_type,

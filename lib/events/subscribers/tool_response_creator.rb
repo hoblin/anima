@@ -17,11 +17,7 @@ module Events
       # @param event [Hash] Rails.event notification hash
       def emit(event)
         payload = event[:payload]
-        session_id = payload[:session_id]
-        return unless session_id
-
-        session = Session.find_by(id: session_id)
-        return unless session
+        session = Session.find(payload[:session_id])
 
         session.pending_messages.create!(
           content: payload[:content].to_s,

@@ -126,10 +126,6 @@ module Melete
     def call
       messages = build_messages
       sid = @session.id
-      if messages.empty?
-        log.debug("session=#{sid} — no messages, skipping")
-        return
-      end
 
       system = build_system_prompt
       log.info("session=#{sid} — running (#{recent_messages.size} messages + #{pending_messages.size} pending)")
@@ -164,12 +160,11 @@ module Melete
     # * **Parent:** "The main session is working on this: [transcript]"
     # * **Child:** "A sub-agent has been spawned with this task: [transcript]"
     #
-    # @return [Array<Hash>] single-element messages array, or empty if no messages
+    # @return [Array<Hash>] single-element messages array
     def build_messages
-      entries = recent_messages + pending_messages
-      return [] if entries.empty?
-
-      transcript = entries.filter_map { |entry| entry.decorate.render("melete") }.join("\n")
+      transcript = (recent_messages + pending_messages)
+        .filter_map { |entry| entry.decorate.render("melete") }
+        .join("\n")
 
       if @session.sub_agent?
         build_child_message(transcript)

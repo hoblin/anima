@@ -10,6 +10,13 @@
 #
 # Sub-agents skip Melete entirely (sub-agent nickname assignment is a
 # one-time step, not part of the recurring pipeline).
+#
+# Exceptions from {Melete::Runner#call} propagate — no defensive rescue.
+# A crashed Melete leaves the session idle with the PM still in the
+# mailbox; the next PM create (or idle-wake re-route) retries the full
+# chain. Swallowing would surface a degraded response to the user without
+# the failure being visible anywhere (anti-pattern per the project's
+# "soft error paths" principle).
 class MeleteEnrichmentJob < ApplicationJob
   queue_as :default
 
@@ -20,21 +27,11 @@ class MeleteEnrichmentJob < ApplicationJob
   def perform(session_id, pending_message_id: nil)
     session = Session.find(session_id)
 
-    run_melete(session) if Anima::Settings.melete_blocking_on_user_message && !session.sub_agent?
+    Melete::Runner.new(session).call unless session.sub_agent?
 
     Events::Bus.emit(Events::StartProcessing.new(
       session_id: session_id,
       pending_message_id: pending_message_id
     ))
-  end
-
-  private
-
-  def run_melete(session)
-    Melete::Runner.new(session).call
-  rescue => error
-    msg = "FAILED (enrichment) session=#{session.id}: #{error.class}: #{error.message}"
-    Rails.logger.error("Melete #{msg}")
-    Melete.logger.error("#{msg}\n#{error.backtrace&.first(10)&.join("\n")}")
   end
 end

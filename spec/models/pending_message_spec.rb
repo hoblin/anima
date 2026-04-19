@@ -183,4 +183,74 @@ RSpec.describe PendingMessage do
       end
     end
   end
+
+  describe "#promote!" do
+    let(:session) { Session.create! }
+
+    it "promotes a tool_response PM into a tool_response Message and destroys the PM" do
+      pm = create(:pending_message, :tool_response,
+        session: session, content: "stdout", source_name: "bash", tool_use_id: "tool_123")
+
+      expect { pm.promote! }
+        .to change { session.messages.where(message_type: "tool_response").count }.by(1)
+        .and change { PendingMessage.where(id: pm.id).count }.by(-1)
+
+      msg = session.messages.find_by(message_type: "tool_response")
+      expect(msg.tool_use_id).to eq("tool_123")
+      expect(msg.payload["content"]).to eq("stdout")
+      expect(pm.promoted_message_id).to eq(msg.id)
+    end
+
+    it "promotes a user_message PM via Session#create_user_message and captures the message id" do
+      pm = session.pending_messages.create!(
+        content: "hello",
+        source_type: "user",
+        message_type: "user_message"
+      )
+
+      expect { pm.promote! }
+        .to change { session.messages.where(message_type: "user_message").count }.by(1)
+
+      msg = session.messages.find_by(message_type: "user_message")
+      expect(msg.payload["content"]).to eq("hello")
+      expect(pm.promoted_message_id).to eq(msg.id)
+    end
+
+    describe "phantom pair promotion" do
+      it "creates a tool_call + tool_response pair for recall PMs" do
+        pm = create(:pending_message, :from_mneme, session: session, content: "recalled text", source_name: "42")
+
+        expect { pm.promote! }
+          .to change { session.messages.where(message_type: "tool_call").count }.by(1)
+          .and change { session.messages.where(message_type: "tool_response").count }.by(1)
+      end
+
+      it "derives tool_use_id from phantom tool name and PM id" do
+        pm = create(:pending_message, :from_mneme, session: session, source_name: "42")
+        expected_uid = "from_mneme_#{pm.id}"
+        pm.promote!
+
+        call = session.messages.find_by(message_type: "tool_call")
+        response = session.messages.find_by(message_type: "tool_response")
+        expect(call.tool_use_id).to eq(expected_uid)
+        expect(response.tool_use_id).to eq(expected_uid)
+      end
+
+      it "uses the phantom tool name from PendingMessage" do
+        pm = create(:pending_message, :from_melete_goal, session: session, source_name: "7")
+        pm.promote!
+
+        call = session.messages.find_by(message_type: "tool_call")
+        expect(call.payload["tool_name"]).to eq("from_melete_goal")
+      end
+
+      it "stores tool input as stringified keys" do
+        pm = create(:pending_message, :from_melete_goal, session: session, source_name: "7")
+        pm.promote!
+
+        call = session.messages.find_by(message_type: "tool_call")
+        expect(call.payload["tool_input"]).to eq("goal_id" => 7)
+      end
+    end
+  end
 end

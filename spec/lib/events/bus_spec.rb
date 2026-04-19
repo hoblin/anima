@@ -24,12 +24,12 @@ RSpec.describe Events::Bus do
 
     it "uses the event's event_name as notification name" do
       described_class.subscribe(subscriber)
-      event = Events::AgentMessage.new(content: "response")
+      event = Events::SystemMessage.new(content: "response")
 
       described_class.emit(event)
 
       expect(subscriber).to have_received(:emit).with(
-        hash_including(name: "anima.agent_message")
+        hash_including(name: "anima.system_message")
       )
     end
   end

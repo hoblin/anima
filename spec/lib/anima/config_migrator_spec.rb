@@ -63,8 +63,6 @@ RSpec.describe Anima::ConfigMigrator do
         expect(result.status).to eq(:updated)
         expect(result.additions.map { |a| [a.section, a.key] }).to contain_exactly(
           ["melete", "max_tokens"],
-          ["melete", "blocking_on_user_message"],
-          ["melete", "blocking_on_agent_message"],
           ["melete", "message_window"],
           ["mneme", "max_tokens"],
           ["mneme", "viewport_fraction"],
@@ -143,20 +141,6 @@ RSpec.describe Anima::ConfigMigrator do
         expect(updated).to include('model = "claude-haiku-4-5"')
         expect(updated).to include("max_tokens = 16384")
         expect(updated).to include("[melete]")
-      end
-    end
-
-    context "with boolean false values in user config" do
-      it "does not treat false as missing" do
-        config = full_default_config.sub(
-          "blocking_on_user_message = true",
-          "blocking_on_user_message = false"
-        )
-        write_config(config)
-
-        result = migrator.run
-
-        expect(result.status).to eq(:up_to_date)
       end
     end
 

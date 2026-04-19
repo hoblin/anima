@@ -8,6 +8,11 @@
 # {Events::StartMneme}. Runs the existing synchronous
 # {Mneme::PassiveRecall} logic — the event is only the entry/exit
 # plumbing.
+#
+# Exceptions from {Mneme::PassiveRecall#call} propagate — no defensive
+# rescue. A crashed Mneme leaves the session idle with the PM still in
+# the mailbox; the next PM create (or idle-wake re-route) retries the
+# full chain.
 class MnemeEnrichmentJob < ApplicationJob
   queue_as :default
 
@@ -17,12 +22,7 @@ class MnemeEnrichmentJob < ApplicationJob
   # @param pending_message_id [Integer, nil] the PM that kicked off the chain
   def perform(session_id, pending_message_id: nil)
     session = Session.find(session_id)
-
-    begin
-      Mneme::PassiveRecall.new(session).call
-    rescue => error
-      Mneme.logger.error("PassiveRecall FAILED session=#{session_id}: #{error.class}: #{error.message}")
-    end
+    Mneme::PassiveRecall.new(session).call
 
     Events::Bus.emit(Events::StartMelete.new(
       session_id: session_id,

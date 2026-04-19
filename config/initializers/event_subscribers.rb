@@ -21,6 +21,7 @@ ACTIVE_STATE_TRIGGER_FILTER = ->(event) {
   %w[anima.skill.activated anima.workflow.activated anima.eviction.completed].include?(event[:name])
 }
 SESSION_STATE_FILTER = ->(event) { event[:name] == "anima.session.state_changed" }
+AUTHENTICATION_REQUIRED_FILTER = ->(event) { event[:name] == "anima.authentication_required" }
 START_MNEME_FILTER = ->(event) { event[:name] == "anima.session.start_mneme" }
 START_MELETE_FILTER = ->(event) { event[:name] == "anima.session.start_melete" }
 START_PROCESSING_FILTER = ->(event) { event[:name] == "anima.session.start_processing" }
@@ -31,6 +32,10 @@ Rails.application.config.after_initialize do
   # SessionStateBroadcaster also runs in tests — job/channel specs assert
   # ActionCable broadcasts, which now flow through this subscriber.
   Events::Bus.subscribe(Events::Subscribers::SessionStateBroadcaster.new, &SESSION_STATE_FILTER)
+
+  # AuthenticationBroadcaster turns provider auth failures into a
+  # conversation-visible system_message plus a client-side action frame.
+  Events::Bus.subscribe(Events::Subscribers::AuthenticationBroadcaster.new, &AUTHENTICATION_REQUIRED_FILTER)
 
   # Drain pipeline — registered in all environments so job/channel specs
   # can drive the full event-driven loop end-to-end.
@@ -50,13 +55,15 @@ Rails.application.config.after_initialize do
     # Bridges transient events (e.g. BounceBack) to ActionCable for client delivery.
     Events::Bus.subscribe(Events::Subscribers::TransientBroadcaster.new)
 
-    # Routes text messages between parent and sub-agent sessions via @mentions.
-    Events::Bus.subscribe(Events::Subscribers::SubagentMessageRouter.new)
-
     # --- Lifecycle event subscribers (layer 2) ---
 
     # Broadcasts message creates and updates to connected WebSocket clients.
     Events::Bus.subscribe(Events::Subscribers::MessageBroadcaster.new, &MESSAGE_LIFECYCLE_FILTER)
+
+    # Routes agent_message Messages between parent and sub-agent sessions
+    # via @mentions. Hangs off the Message persistence lifecycle, so every
+    # persisted agent_message is a routing opportunity.
+    Events::Bus.subscribe(Events::Subscribers::SubagentMessageRouter.new, &MESSAGE_CREATED_FILTER)
 
     # Checks whether Mneme should run after each persisted message.
     Events::Bus.subscribe(Events::Subscribers::MnemeScheduler.new, &MESSAGE_CREATED_FILTER)

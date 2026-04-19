@@ -89,12 +89,18 @@ class PendingMessage < ApplicationRecord
 
   belongs_to :session
 
+  # In-memory id of the +Message+ this PM becomes on {#promote!}. Not
+  # persisted — the PM row is destroyed as part of the promotion transaction.
+  # Used by {Session#release_with_bounce_back} to destroy the exact message
+  # that should bounce, instead of guessing from +messages.last+ (which could
+  # race under parallel drains).
+  attr_accessor :promoted_message_id
+
   enum :kind, {background: "background", active: "active"}
 
-  before_validation :derive_kind
+  before_validation :derive_kind, if: :message_type
 
   validates :content, presence: true
-  validates :source_type, inclusion: {in: %w[user subagent skill workflow recall goal tool]}
   validates :source_name, presence: true, unless: :user?
   validates :message_type, presence: true, inclusion: {in: MESSAGE_TYPES}
   validates :tool_use_id, presence: true, if: -> { message_type == "tool_response" }
@@ -147,14 +153,35 @@ class PendingMessage < ApplicationRecord
     source_type.in?(PHANTOM_PAIR_TYPES)
   end
 
-  # Re-runs the {#route_to_event_bus} callback. Used by the idle-wake rule
-  # on {Session} to trigger the drain pipeline for messages that were
-  # created while the session was busy (and therefore saw a non-idle
-  # session in the original +after_create_commit+ and emitted nothing).
+  # Promotes this PendingMessage into the session's conversation history.
+  # Dispatches on +message_type+: tool responses become +tool_response+
+  # Messages, user messages become +user_message+ Messages, phantom pair
+  # types (sub-agent, skill, workflow, recall, goal) become synthetic
+  # tool_use/tool_result pairs. The PM row is destroyed in the same
+  # transaction so partial promotion can never leave a stray mailbox entry.
+  #
+  # For promotions that yield a single Message, {#promoted_message_id}
+  # captures the new record's id — callers can then act on that specific
+  # message (e.g. {Session#release_with_bounce_back}) without guessing.
   #
   # @return [void]
-  def wake_drain_pipeline!
-    route_to_event_bus
+  def promote!
+    session.transaction do
+      if message_type == "tool_response"
+        self.promoted_message_id = promote_as_tool_response!.id
+      elsif message_type == "user_message"
+        self.promoted_message_id = session.create_user_message(
+          display_content,
+          source_type: source_type,
+          source_name: source_name
+        ).id
+      elsif phantom_pair?
+        promote_as_phantom_pair!
+      else
+        raise "PendingMessage ##{id} cannot promote: message_type=#{message_type.inspect}"
+      end
+      destroy!
+    end
   end
 
   # Phantom tool name for DB persistence and LLM injection.
@@ -207,7 +234,88 @@ class PendingMessage < ApplicationRecord
     build_phantom_pair(phantom_tool_name, phantom_tool_input)
   end
 
+  # Emits the event that kicks off the drain pipeline for active messages
+  # whenever the session is currently claimable. Claimability is delegated
+  # to the AASM via +may_start_processing?+ — true from +:idle+ always,
+  # true from +:executing+ only once +tool_round_complete?+ holds. This
+  # lets a tool_response PM landing mid-round wake the drain only when
+  # its sibling responses are all present.
+  #
+  # Background messages never trigger; active messages landing while the
+  # session is unclaimable queue silently —
+  # {Session#wake_drain_pipeline_if_pending} re-invokes this on the next
+  # transition into +:idle+.
+  #
+  # Also fires from +after_create_commit+ so freshly enqueued PMs route
+  # themselves on persistence.
+  def route_to_event_bus
+    return unless active?
+    return unless session.may_start_processing?
+
+    event_class = MESSAGE_TYPE_ROUTES.fetch(message_type)
+    Events::Bus.emit(event_class.new(session_id: session_id, pending_message_id: id))
+  end
+
   private
+
+  # Persists a +tool_response+ Message for this PM and returns it.
+  # Mirrors the tool_use_id / payload shape emitted by
+  # {Events::Subscribers::LLMResponseHandler} for the paired +tool_call+.
+  #
+  # @return [Message]
+  def promote_as_tool_response!
+    session.messages.create!(
+      message_type: "tool_response",
+      tool_use_id: tool_use_id,
+      payload: {
+        "tool_name" => source_name,
+        "tool_use_id" => tool_use_id,
+        "content" => content,
+        "success" => success
+      },
+      timestamp: Time.current.to_ns,
+      token_count: TokenEstimation.estimate_token_count(content)
+    )
+  end
+
+  # Persists a synthetic +tool_call+/+tool_response+ Message pair so the
+  # LLM sees this contribution (sub-agent delivery, Melete skill/workflow/
+  # goal, Mneme recall) as a past tool invocation of its own. Keeps the
+  # system prompt stable for prompt caching — phantom pairs flow through
+  # the sliding-window conversation instead.
+  #
+  # @return [void]
+  def promote_as_phantom_pair!
+    tool_name = phantom_tool_name
+    uid = "#{tool_name}_#{id}"
+    now = Time.current.to_ns
+
+    session.messages.create!(
+      message_type: "tool_call",
+      tool_use_id: uid,
+      payload: {
+        "tool_name" => tool_name,
+        "tool_use_id" => uid,
+        "tool_input" => phantom_tool_input.stringify_keys,
+        "content" => display_content.lines.first.chomp
+      },
+      timestamp: now,
+      token_count: Mneme::PassiveRecall::TOOL_PAIR_OVERHEAD_TOKENS
+    )
+
+    session.messages.create!(
+      message_type: "tool_response",
+      tool_use_id: uid,
+      payload: {
+        "tool_name" => tool_name,
+        "tool_use_id" => uid,
+        "content" => content,
+        "success" => true
+      },
+      timestamp: now,
+      token_count: TokenEstimation.estimate_token_count(content)
+    )
+  end
 
   # Builds a phantom tool_use/tool_result message pair.
   # Follows the same format for all non-user source types — the only
@@ -252,31 +360,13 @@ class PendingMessage < ApplicationRecord
     })
   end
 
-  # Emits the event that kicks off the drain pipeline for active messages
-  # whenever the session is currently claimable. Claimability is delegated
-  # to the AASM via +may_start_processing?+ — true from +:idle+ always,
-  # true from +:executing+ only once +tool_round_complete?+ holds. This
-  # lets a tool_response PM landing mid-round wake the drain only when
-  # its sibling responses are all present.
-  #
-  # Background messages never trigger; active messages landing while the
-  # session is unclaimable queue silently —
-  # {Session#wake_drain_pipeline_if_pending} re-runs this method on the
-  # next transition into +:idle+.
-  def route_to_event_bus
-    return unless active?
-    return unless session.may_start_processing?
-
-    event_class = MESSAGE_TYPE_ROUTES.fetch(message_type)
-    Events::Bus.emit(event_class.new(session_id: session_id, pending_message_id: id))
-  end
-
   # Populates +kind+ from {MESSAGE_TYPE_KINDS} so callers only need to
   # supply +message_type+. The mapping is the single source of truth for
   # whether a message type triggers the drain loop or rides along as
-  # enrichment.
+  # enrichment. Guarded by +if: :message_type+ on the callback — rows
+  # without a +message_type+ fail validation explicitly rather than
+  # crashing here.
   def derive_kind
-    return unless message_type
     self.kind = MESSAGE_TYPE_KINDS.fetch(message_type)
   end
 end

@@ -20,11 +20,7 @@ module Events
       # @param event [Hash] Rails.event notification hash
       def emit(event)
         payload = event[:payload]
-        session_id = payload[:session_id]
-        return unless session_id
-
-        session = Session.find_by(id: session_id)
-        return unless session
+        session = Session.find(payload[:session_id])
 
         response = payload[:response] || {}
         api_metrics = payload[:api_metrics]
@@ -80,7 +76,7 @@ module Events
         session.messages.create!(
           message_type: "agent_message",
           payload: {"type" => "agent_message", "content" => text, "session_id" => session.id},
-          timestamp: now_ns,
+          timestamp: Time.current.to_ns,
           api_metrics: api_metrics
         )
       end
@@ -96,7 +92,7 @@ module Events
             "tool_input" => tool_use["input"],
             "content" => "Calling #{tool_use["name"]}"
           },
-          timestamp: now_ns
+          timestamp: Time.current.to_ns
         )
       end
 
@@ -109,10 +105,6 @@ module Events
             tool_input: tool_use["input"]
           )
         end
-      end
-
-      def now_ns
-        Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
       end
     end
   end

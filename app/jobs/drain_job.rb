@@ -10,7 +10,8 @@
 #    of the freshly completed round flushes in one transaction so the
 #    LLM sees a whole assistant turn paired with a whole user turn;
 #    background phantom pairs flush; one active FIFO message rides
-#    along.
+#    along. Promotion lives on {PendingMessage#promote!} — the job only
+#    decides what to pick and in which order.
 # 3. Make one LLM API call and emit {Events::LLMResponded}.
 #
 # On the happy path the job never releases the session — state
@@ -30,200 +31,138 @@
 class DrainJob < ApplicationJob
   queue_as :default
 
-  retry_on Providers::Anthropic::TransientError,
-    wait: :polynomially_longer, attempts: 5 do |job, error|
-    Events::Bus.emit(Events::SystemMessage.new(
-      content: "Failed after multiple retries: #{error.message}",
-      session_id: job.arguments.first
-    ))
-  end
+  # Transient provider errors retry inline within {#call_llm_and_emit}.
+  # A job-level +retry_on+ would be a no-op here: {PendingMessage#promote!}
+  # destroys the PM rows *before* the LLM call, so a retried job would find
+  # an empty mailbox and exit without ever re-issuing the request.
 
   discard_on Providers::Anthropic::AuthenticationError do |job, error|
-    session_id = job.arguments.first
-    Events::Bus.emit(Events::SystemMessage.new(
-      content: "Authentication failed: #{error.message}",
-      session_id: session_id
+    Events::Bus.emit(Events::AuthenticationRequired.new(
+      session_id: job.arguments.first,
+      content: error.message
     ))
-    ActionCable.server.broadcast(
-      "session_#{session_id}",
-      {"action" => "authentication_required", "message" => error.message}
-    )
   end
 
   discard_on ActiveRecord::RecordNotFound
 
   # @param session_id [Integer]
   def perform(session_id)
-    session = Session.find(session_id)
-    return unless session.start_processing!
+    @session = Session.find(session_id)
+    return unless @session.start_processing!
 
-    drained_count, active_pm = drain_mailbox(session)
-    return session.response_complete! if drained_count.zero?
+    drained = drain_mailbox
+    return @session.response_complete! if drained.zero?
 
-    call_llm_and_emit(session)
+    call_llm_and_emit
   rescue => error
-    release_after_failure(session, active_pm, error) if session
-    raise error unless active_pm&.bounce_back?
+    release_after_failure(error) if @session
+    raise error unless @active_pm&.bounce_back?
   ensure
     @shell_session&.finalize
   end
 
   private
 
-  # Promotes every drainable PM in one cycle:
-  # 1. All +tool_response+ PMs of the just-completed round (the AASM
-  #    guard guarantees they are all present when we get here from
-  #    +:executing+; from +:idle+ this set is empty).
-  # 2. All background phantom pairs (recalls, skill/workflow/goal
-  #    activations) so they sit above the next active message.
-  # 3. One active FIFO message — a +user_message+ or a +subagent+
-  #    delivery. Tool responses are excluded from this pick because they
-  #    are already drained in step 1.
+  # Decides what the upcoming LLM round will carry and promotes those PMs.
   #
-  # @param session [Session]
-  # @return [Array(Integer, PendingMessage)] count of promoted PMs +
-  #   the active PM that rode along (or +nil+ for no active). The count
-  #   distinguishes "promoted nothing — release the claim" from "promoted
-  #   something — call the LLM".
-  def drain_mailbox(session)
-    tool_responses = session.pending_messages.where(message_type: "tool_response").order(:created_at).to_a
-    tool_responses.each { |pm| promote_tool_response(pm) }
+  # 1. All +tool_response+ PMs of the just-completed round — the AASM
+  #    guard guarantees they are all present when we arrive from
+  #    +:executing+; from +:idle+ this set is empty.
+  # 2. Pick one active FIFO message (user_message or subagent) to ride
+  #    along. If there are no tool_responses AND no active message, the
+  #    LLM call is a no-op: release the claim and do NOT flush background
+  #    PMs (they stay in the mailbox for the next turn).
+  # 3. Flush background phantom pairs so they sit above the active pick.
+  # 4. Promote the active pick.
+  #
+  # @return [Integer] count of PMs promoted this cycle (0 means "release
+  #   the claim without calling the LLM")
+  def drain_mailbox
+    tool_responses = @session.pending_messages.where(message_type: "tool_response").order(:created_at).to_a
+    @active_pm = @session.pending_messages.active.where.not(message_type: "tool_response").order(:created_at).first
 
-    flush_backgrounds(session)
+    promoted = tool_responses.size + (@active_pm ? 1 : 0)
+    return 0 if promoted.zero?
 
-    active = session.pending_messages.active.where.not(message_type: "tool_response").order(:created_at).first
-    promote_active(active) if active
+    tool_responses.each(&:promote!)
+    @session.pending_messages.background.find_each(&:promote!)
+    @active_pm&.promote!
 
-    drained_count = tool_responses.size + (active ? 1 : 0)
-    [drained_count, active]
+    promoted
   end
 
-  def promote_tool_response(pm)
-    session = pm.session
-    content = pm.content
-    tool_use_id = pm.tool_use_id
-    session.transaction do
-      session.messages.create!(
-        message_type: "tool_response",
-        tool_use_id: tool_use_id,
-        payload: {
-          "tool_name" => pm.source_name,
-          "tool_use_id" => tool_use_id,
-          "content" => content,
-          "success" => pm.success
-        },
-        timestamp: now_ns,
-        token_count: TokenEstimation.estimate_token_count(content)
+  def call_llm_and_emit
+    prompt = @session.system_prompt
+    @session.broadcast_debug_context(system: prompt, tools: registry.schemas)
+
+    response = with_transient_retry do
+      client.provider.create_message(
+        model: client.model,
+        messages: @session.messages_for_llm,
+        max_tokens: client.max_tokens,
+        tools: registry.schemas,
+        include_metrics: true,
+        **(prompt ? {system: prompt} : {})
       )
-      pm.destroy!
     end
-    pm
-  end
-
-  def flush_backgrounds(session)
-    session.pending_messages.background.find_each do |pm|
-      session.transaction do
-        session.promote_phantom_pair!(pm)
-        pm.destroy!
-      end
-    end
-  end
-
-  def promote_active(pm)
-    session = pm.session
-    session.transaction do
-      case pm.message_type
-      when "user_message"
-        session.create_user_message(pm.display_content, source_type: pm.source_type, source_name: pm.source_name)
-      when "subagent"
-        session.promote_phantom_pair!(pm)
-      else
-        raise "DrainJob cannot promote active PendingMessage #{pm.id} with message_type=#{pm.message_type.inspect}"
-      end
-      pm.destroy!
-    end
-    pm
-  end
-
-  def call_llm_and_emit(session)
-    client = build_client(session)
-    registry = build_tool_registry(session)
-
-    messages = session.messages_for_llm
-    options = llm_options(session, registry)
-
-    response = client.provider.create_message(
-      model: client.model,
-      messages: messages,
-      max_tokens: client.max_tokens,
-      tools: registry.schemas,
-      include_metrics: true,
-      **options
-    )
-
-    api_metrics = response.respond_to?(:api_metrics) ? response.api_metrics : nil
 
     Events::Bus.emit(Events::LLMResponded.new(
-      session_id: session.id,
-      response: response_hash(response),
-      api_metrics: api_metrics
+      session_id: @session.id,
+      response: response.to_h.stringify_keys,
+      api_metrics: response.api_metrics
     ))
   end
 
-  # Release the session and, for bounce-back-flagged user messages,
-  # notify the TUI to restore the text. Happy-path release belongs to
-  # {Events::Subscribers::LLMResponseHandler} — this method only runs
-  # when the drain never reached emit.
-  def release_after_failure(session, promoted_pm, error)
-    session.response_complete! if session.may_response_complete?
+  # Retries the LLM call in-place on transient provider errors. The
+  # polynomial-backoff formula mirrors ActiveJob's +:polynomially_longer+.
+  # On final exhaustion the subscriber-visible SystemMessage is emitted
+  # before the error re-raises into {#perform}'s rescue path for release.
+  TRANSIENT_RETRY_ATTEMPTS = 5
 
-    return unless promoted_pm&.bounce_back?
-
-    last_msg = session.messages.where(message_type: "user_message").order(:id).last
-    last_msg&.destroy!
-
-    Events::Bus.emit(Events::BounceBack.new(
-      content: promoted_pm.content,
-      error: error.message,
-      session_id: session.id,
-      message_id: last_msg&.id
-    ))
+  def with_transient_retry
+    tries = 0
+    begin
+      yield
+    rescue Providers::Anthropic::TransientError => error
+      tries += 1
+      if tries >= TRANSIENT_RETRY_ATTEMPTS
+        Events::Bus.emit(Events::SystemMessage.new(
+          content: "Failed after multiple retries: #{error.message}",
+          session_id: @session.id
+        ))
+        raise
+      end
+      sleep(transient_backoff(tries))
+      retry
+    end
   end
 
-  def build_client(session)
-    if session.sub_agent?
+  def transient_backoff(attempt)
+    base = attempt**4
+    base + (rand * 0.15 * base)
+  end
+
+  def release_after_failure(error)
+    if @active_pm&.bounce_back?
+      @session.release_with_bounce_back(@active_pm, error)
+    elsif @session.may_response_complete?
+      @session.response_complete!
+    end
+  end
+
+  def client
+    @client ||= if @session.sub_agent?
       LLM::Client.new(model: Anima::Settings.subagent_model)
     else
       LLM::Client.new
     end
   end
 
-  def build_tool_registry(session)
-    @shell_session = ShellSession.new(session_id: session.id)
-    restore_cwd(@shell_session, session)
-    Tools::Registry.build(session: session, shell_session: @shell_session)
+  def registry
+    @registry ||= Tools::Registry.build(session: @session, shell_session: shell_session)
   end
 
-  def restore_cwd(shell_session, session)
-    cwd = session.initial_cwd
-    return unless cwd.present? && File.directory?(cwd)
-    shell_session.run("cd #{Shellwords.shellescape(cwd)}")
-  end
-
-  def llm_options(session, registry)
-    options = {}
-    prompt = session.system_prompt
-    options[:system] = prompt if prompt
-    session.broadcast_debug_context(system: prompt, tools: registry.schemas)
-    options
-  end
-
-  def response_hash(response)
-    # Providers may wrap the response; unwrap so subscribers see a plain Hash.
-    response.respond_to?(:to_h) ? response.to_h.stringify_keys : response
-  end
-
-  def now_ns
-    Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+  def shell_session
+    @shell_session ||= ShellSession.for_session(@session)
   end
 end

@@ -8,18 +8,6 @@ RSpec.describe Melete::Runner do
   let(:runner) { described_class.new(session, client: client) }
 
   describe "#call" do
-    it "returns nil when session has no events" do
-      expect(runner.call).to be_nil
-    end
-
-    it "does not call the LLM when session has no events" do
-      allow(client).to receive(:chat_with_tools)
-
-      runner.call
-
-      expect(client).not_to have_received(:chat_with_tools)
-    end
-
     context "with conversation events" do
       before do
         session.messages.create!(message_type: "user_message", payload: {"content" => "Tell me about Ruby"}, timestamp: 1)

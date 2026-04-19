@@ -52,6 +52,20 @@ class ShellSession
   # @return [String, nil] current working directory of the shell process
   attr_reader :pwd
 
+  # Factory that binds a new ShellSession to a {Session}, preseeding the
+  # working directory from +session.initial_cwd+ so tools run in the same
+  # directory the session was born in. Jobs that need a registry-aware
+  # shell (DrainJob, ToolExecutionJob) share this one call.
+  #
+  # @param session [Session] owning session
+  # @return [ShellSession]
+  def self.for_session(session)
+    shell = new(session_id: session.id)
+    cwd = session.initial_cwd
+    shell.run("cd #{Shellwords.shellescape(cwd)}") if cwd.present? && File.directory?(cwd)
+    shell
+  end
+
   # @param session_id [Integer, String] unique identifier for logging/diagnostics
   def initialize(session_id:)
     @session_id = session_id

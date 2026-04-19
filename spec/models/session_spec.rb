@@ -728,10 +728,7 @@ RSpec.describe Session do
     it "is still idempotent after promotion when the phantom pair is in the viewport" do
       session.activate_skill("gh-issue")
       pm = session.pending_messages.last
-      session.transaction do
-        session.promote_phantom_pair!(pm)
-        pm.destroy!
-      end
+      pm.promote!
 
       expect { session.activate_skill("gh-issue") }
         .not_to change { session.pending_messages.count }
@@ -1183,10 +1180,7 @@ RSpec.describe Session do
     it "enqueues the replacement when activating a different workflow" do
       session.activate_workflow("feature")
       pm = session.pending_messages.last
-      session.transaction do
-        session.promote_phantom_pair!(pm)
-        pm.destroy!
-      end
+      pm.promote!
 
       expect { session.activate_workflow("commit") }
         .to change { session.pending_messages.where(source_type: "workflow").count }.by(1)
@@ -2233,46 +2227,6 @@ RSpec.describe Session do
       events = main.viewport_messages
       expect(events.length).to eq(1)
       expect(events.first.payload["content"]).to eq("only mine")
-    end
-  end
-
-  describe "#promote_phantom_pair!" do
-    let(:session) { Session.create! }
-
-    it "creates a tool_call and tool_response message pair" do
-      pm = create(:pending_message, :from_mneme, session: session, content: "recalled text", source_name: "42")
-
-      expect { session.promote_phantom_pair!(pm) }
-        .to change { session.messages.where(message_type: "tool_call").count }.by(1)
-        .and change { session.messages.where(message_type: "tool_response").count }.by(1)
-    end
-
-    it "derives tool_use_id from tool name and pending message ID" do
-      pm = create(:pending_message, :from_mneme, session: session, source_name: "42")
-      expected_uid = "from_mneme_#{pm.id}"
-
-      session.promote_phantom_pair!(pm)
-
-      call = session.messages.find_by(message_type: "tool_call")
-      response = session.messages.find_by(message_type: "tool_response")
-      expect(call.tool_use_id).to eq(expected_uid)
-      expect(response.tool_use_id).to eq(expected_uid)
-    end
-
-    it "uses the phantom tool name from PendingMessage" do
-      pm = create(:pending_message, :from_melete_goal, session: session, source_name: "7")
-      session.promote_phantom_pair!(pm)
-
-      call = session.messages.find_by(message_type: "tool_call")
-      expect(call.payload["tool_name"]).to eq("from_melete_goal")
-    end
-
-    it "stores tool input as stringified keys" do
-      pm = create(:pending_message, :from_melete_goal, session: session, source_name: "7")
-      session.promote_phantom_pair!(pm)
-
-      call = session.messages.find_by(message_type: "tool_call")
-      expect(call.payload["tool_input"]).to eq("goal_id" => 7)
     end
   end
 
