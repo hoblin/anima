@@ -198,3 +198,14 @@ max_snippet_tokens = 512
 # recency bias. At 0.3 a one-year-old result needs ~30% better keyword
 # relevance to beat an identical match from today.
 recency_decay = 0.3
+
+# Runs the LLM relevance gate after FTS5 search. The gate asks the fast
+# model to keep only memories actually useful for the current goal, so
+# noisy keyword matches never reach Aoide's context. Disable to fall
+# back to pure keyword surfacing.
+relevance_gate_enabled = true
+
+# Maximum tokens the fast model may spend answering the relevance gate.
+# The gate's answer is a short JSON array of message ids, so a small
+# budget keeps the call cheap.
+relevance_gate_max_tokens = 512

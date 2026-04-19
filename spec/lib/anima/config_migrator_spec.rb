@@ -74,7 +74,9 @@ RSpec.describe Anima::ConfigMigrator do
           ["recall", "max_results"],
           ["recall", "budget_fraction"],
           ["recall", "max_snippet_tokens"],
-          ["recall", "recency_decay"]
+          ["recall", "recency_decay"],
+          ["recall", "relevance_gate_enabled"],
+          ["recall", "relevance_gate_max_tokens"]
         )
 
         updated = config_path.read

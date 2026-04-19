@@ -35,11 +35,25 @@ module Mneme
 
       results = Mneme::Search.query(search_terms, limit: Anima::Settings.recall_max_results)
       results = filter_duplicates(results)
+      results = gate_for_relevance(results, goals)
 
       enqueue_pending_messages(results)
     end
 
     private
+
+    # Runs the relevance gate on the remaining candidates. No-op when the
+    # gate is disabled in settings or the candidate list is empty.
+    #
+    # @param results [Array<Mneme::Search::Result>]
+    # @param goals [ActiveRecord::Relation<Goal>]
+    # @return [Array<Mneme::Search::Result>]
+    def gate_for_relevance(results, goals)
+      return results unless Anima::Settings.recall_relevance_gate_enabled
+      return results if results.empty?
+
+      RelevanceGate.new(goals: goals, candidates: results).call
+    end
 
     STOP_WORDS = Set.new(%w[
       a an the is are was were be been being do does did
@@ -67,31 +81,45 @@ module Mneme
       words.join(" OR ").truncate(500)
     end
 
-    # Excludes results already in the viewport or already recalled (pending or promoted).
+    # Excludes results whose content Aoide has already seen in this session:
+    # live viewport messages, phantom recall pairs previously promoted, and
+    # recalls still waiting in the mailbox. All three sets work on the raw
+    # original message_id so a single set difference suffices.
     #
     # @param results [Array<Mneme::Search::Result>]
     # @return [Array<Mneme::Search::Result>]
     def filter_duplicates(results)
+      already_surfaced = already_surfaced_message_ids
+      results.reject { |result| already_surfaced.include?(result.message_id) }
+    end
+
+    # Message IDs that have already reached Aoide's context in this session,
+    # through any of the three channels memory moves through:
+    #   1. the live viewport (original message still above the boundary);
+    #   2. a promoted `from_mneme` phantom pair (the message_id is stored
+    #      inside `tool_input.message_id` on the tool_call row);
+    #   3. a recall PendingMessage waiting in the mailbox (`source_name`
+    #      carries the message_id as a string).
+    #
+    # @return [Set<Integer>]
+    def already_surfaced_message_ids
       viewport_ids = @session.viewport_messages.pluck(:id).to_set
 
-      existing_recall_ids = @session.messages
+      promoted_recall_ids = @session.messages
         .where(message_type: "tool_call")
         .where("payload ->> 'tool_name' = ?", PendingMessage::MNEME_TOOL)
-        .pluck(:tool_use_id)
+        .pluck(Arel.sql("json_extract(payload, '$.tool_input.message_id')"))
+        .compact
+        .map(&:to_i)
         .to_set
 
       pending_recall_ids = @session.pending_messages
         .where(source_type: "recall")
         .pluck(:source_name)
-        .map { |name| "recall_#{name}" }
+        .map(&:to_i)
         .to_set
 
-      known_ids = existing_recall_ids | pending_recall_ids
-
-      results.reject { |result|
-        viewport_ids.include?(result.message_id) ||
-          known_ids.include?("recall_#{result.message_id}")
-      }
+      viewport_ids | promoted_recall_ids | pending_recall_ids
     end
 
     # Creates PendingMessages for each recall result.
