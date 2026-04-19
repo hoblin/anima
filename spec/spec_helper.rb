@@ -35,9 +35,10 @@ RSpec.configure do |config|
   # time, so failures/progress/summary are unaffected. Inside a tagged
   # example, assert on captured output via $stdout.string / $stderr.string.
   #
-  # The real streams are stashed under distinctive globals so teardown is
-  # greppable and a rogue leak (e.g. if `ensure` is skipped via exit!) is
-  # easy to trace instead of hiding behind generic names.
+  # The real streams are stashed under distinctive $anima_silence_original_*
+  # globals so teardown is greppable and a rogue leak (e.g. if `ensure` is
+  # skipped via exit!) is easy to trace instead of hiding behind generic names.
+  # standard:disable Style/GlobalVars
   config.around(:each, :silence_output) do |example|
     $anima_silence_original_stdout = $stdout
     $anima_silence_original_stderr = $stderr
@@ -50,4 +51,5 @@ RSpec.configure do |config|
     $anima_silence_original_stdout = nil
     $anima_silence_original_stderr = nil
   end
+  # standard:enable Style/GlobalVars
 end
