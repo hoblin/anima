@@ -35,11 +35,29 @@ RSpec.describe MnemeEnrichmentJob do
     expect(melete.pending_message_id).to eq(42)
   end
 
-  it "propagates exceptions from PassiveRecall (no defensive rescue)" do
-    allow(recall).to receive(:call).and_raise(StandardError.new("recall crashed"))
+  context "when PassiveRecall raises" do
+    before { allow(recall).to receive(:call).and_raise(StandardError.new("recall crashed")) }
 
-    expect {
+    it "swallows the error so the drain pipeline still progresses" do
+      expect { described_class.perform_now(session.id) }.not_to raise_error
+    end
+
+    it "logs the failure to both the Rails log and the Mneme log" do
+      allow(Rails.logger).to receive(:error)
+      allow(Mneme.logger).to receive(:error)
+
       described_class.perform_now(session.id)
-    }.to raise_error(StandardError, "recall crashed")
+
+      expect(Rails.logger).to have_received(:error).with(/Mneme FAILED .*recall crashed/)
+      expect(Mneme.logger).to have_received(:error).with(/recall crashed/)
+    end
+
+    it "still emits StartMelete so the session is not stranded" do
+      emitted = capture_emissions
+
+      described_class.perform_now(session.id, pending_message_id: 42)
+
+      expect(emitted.map(&:class)).to include(Events::StartMelete)
+    end
   end
 end

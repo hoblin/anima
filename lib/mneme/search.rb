@@ -139,25 +139,70 @@ module Mneme
       )
     end
 
-    # Sanitizes user input for FTS5 MATCH safety.
-    # Strips special FTS5 operators that could cause syntax errors,
-    # keeps only alphanumeric words and quoted phrases.
+    # FTS5 logical-operator keywords callers may pass verbatim. Everything
+    # else is quote-wrapped, which is SQLite's recommended way to feed
+    # untrusted text to +MATCH+ — inside a quoted phrase the tokenizer
+    # treats +- : * ^ { } ( )+ and any future operator character as
+    # ordinary content, so hazards like +sub-agents+ (parsed as
+    # +sub NOT agents+ → +no such column: agents+) and +agents:foo+
+    # (parsed as a column filter) become literal phrases.
+    #
+    # Adding +NEAR+ or any new operator that a caller legitimately needs
+    # is a one-line change here; character-level blocklists would need to
+    # be re-audited against every FTS5 release.
+    #
+    # @see https://www.sqlite.org/fts5.html FTS5 query syntax
+    # @see https://www.mail-archive.com/sqlite-users@mailinglists.sqlite.org/msg118320.html
+    #   Dan Kennedy's canonical guidance on MATCH sanitization
+    FTS5_PASSTHROUGH_OPERATORS = Set.new(%w[AND OR NOT NEAR]).freeze
+    private_constant :FTS5_PASSTHROUGH_OPERATORS
+
+    # Sanitizes user input for FTS5 MATCH safety by quote-wrapping each
+    # token. Logical operators ({FTS5_PASSTHROUGH_OPERATORS}) pass through
+    # so callers that intentionally build +word1 OR word2+ queries still
+    # get boolean behavior.
+    #
+    # A query that collapses to operators only (e.g. user typed "and or
+    # not") has no operands and would trigger an FTS5 syntax error, so we
+    # return an empty string and let {#call} short-circuit via
+    # +@terms.blank?+.
     #
     # @param raw [String]
     # @return [String] safe FTS5 query
     def sanitize_query(raw)
       return "" unless raw
 
-      # Extract quoted phrases and individual words, drop FTS5 operators
-      tokens = raw.scan(/"[^"]+?"|\S+/).reject { |token| token.match?(/\A[*:^{}()]+\z/) }
-      tokens.filter_map { |token| sanitize_token(token) }.join(" ")
+      tokens = raw.scan(/"[^"]*"|\S+/).filter_map { |token| sanitize_token(token) }
+      return "" if tokens.all? { |t| FTS5_PASSTHROUGH_OPERATORS.include?(t) }
+
+      tokens.join(" ")
     end
 
+    # @param token [String] one whitespace-delimited chunk of user input
+    # @return [String, nil] nil when the token is empty after cleanup
     def sanitize_token(token)
-      return token if token.start_with?('"')
+      return token if FTS5_PASSTHROUGH_OPERATORS.include?(token)
+      return rewrap_phrase(token) if token.start_with?('"')
 
-      cleaned = token.gsub(/[^a-zA-Z0-9-]/, "")
-      cleaned.empty? ? nil : cleaned
+      quote_as_phrase(token)
+    end
+
+    # Rebalances a user-supplied phrase so a stray or doubled quote can't
+    # leave the overall query syntactically broken.
+    #
+    # @param token [String] token starting with +"+
+    # @return [String, nil]
+    def rewrap_phrase(token)
+      inner = token.delete_prefix('"').delete_suffix('"').strip
+      inner.empty? ? nil : quote_as_phrase(inner)
+    end
+
+    # @param text [String] any token treated as literal content
+    # @return [String, nil]
+    def quote_as_phrase(text)
+      return nil if text.empty?
+
+      %("#{text.gsub('"', '""')}")
     end
 
     def connection

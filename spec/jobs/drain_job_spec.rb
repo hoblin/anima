@@ -174,13 +174,13 @@ RSpec.describe DrainJob do
       end
     end
 
-    it "calls ShellSession#finalize in the ensure block" do
+    it "does NOT finalize the shell session — it outlives the job" do
       create(:pending_message, session: session, content: "hi", message_type: "user_message")
       allow(Events::Bus).to receive(:emit)
 
       described_class.perform_now(session.id)
 
-      expect(shell_session).to have_received(:finalize)
+      expect(shell_session).not_to have_received(:finalize)
     end
   end
 end

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "io/console"
+require "monitor"
 require "open3"
 require "pathname"
 require "pty"
@@ -49,18 +50,39 @@ end
 #   # => {stdout: "/tmp", stderr: "", exit_code: 0}
 #   session.finalize
 class ShellSession
+  # @return [Integer, String] identifier of the {Session} (or spec fixture)
+  #   this shell belongs to
+  attr_reader :session_id
+
   # @return [String, nil] current working directory of the shell process
   attr_reader :pwd
 
-  # Factory that binds a new ShellSession to a {Session}, preseeding the
-  # working directory from +session.initial_cwd+ so tools run in the same
-  # directory the session was born in. Jobs that need a registry-aware
-  # shell (DrainJob, ToolExecutionJob) share this one call.
+  # Returns the live shell bound to +session+, spawning one the first time
+  # a conversation reaches for bash and reusing it for every subsequent
+  # call. The expensive steps (login shell profile load, PTY + FIFO setup,
+  # +cd+ into +session.initial_cwd+) happen once per conversation, not
+  # once per tool call — so the user's PATH, aliases, and any env vars the
+  # agent sets along the way survive between commands within that session.
   #
-  # @param session [Session] owning session
+  # Dead cached shells (after a crash or explicit finalize) are replaced
+  # transparently; {#run} would respawn on its own anyway, but we also
+  # reset +initial_cwd+ on a fresh spawn so the new shell lands where the
+  # conversation started.
+  #
+  # @param session [Session] owning conversation
   # @return [ShellSession]
   def self.for_session(session)
-    shell = new(session_id: session.id)
+    id = session.id
+
+    existing, shell = @sessions_mutex.synchronize do
+      cached = @sessions_by_id[id]
+      next [cached, nil] if cached&.alive?
+
+      release(id) if cached
+      [nil, new(session_id: id)]
+    end
+    return existing if existing
+
     cwd = session.initial_cwd
     shell.run("cd #{Shellwords.shellescape(cwd)}") if cwd.present? && File.directory?(cwd)
     shell
@@ -77,7 +99,14 @@ class ShellSession
     @env_snapshot = nil
     @read_buffer = +""
     self.class.cleanup_orphans
-    start
+    begin
+      start
+    rescue
+      # Reap the half-spawned PTY, FIFO, and stderr thread before bailing —
+      # otherwise a failed init_shell leaks a live process with no handle on it.
+      teardown
+      raise
+    end
     self.class.register(self)
   end
 
@@ -120,26 +149,54 @@ class ShellSession
 
   # --- Class-level session tracking for at_exit cleanup ---
 
-  @sessions = []
-  @sessions_mutex = Mutex.new
+  # One live ShellSession per Session id. Conversations rent a shell from
+  # this map via {.for_session}; the map is the single source of truth for
+  # "which shells exist in this process". It has two readers: {.for_session}
+  # (cache lookup) and {.cleanup_all} (at_exit sweep).
+  #
+  # {Monitor} (not {Mutex}) because {.for_session} holds the lock across
+  # +new+, whose {#initialize} re-enters the same lock via {.register}. A
+  # plain mutex would deadlock.
+  @sessions_by_id = {}
+  @sessions_mutex = Monitor.new
 
   class << self
     # @api private
     def register(session)
-      @sessions_mutex.synchronize { @sessions << session }
+      @sessions_mutex.synchronize { @sessions_by_id[session.session_id] = session }
     end
 
     # @api private
     def unregister(session)
-      @sessions_mutex.synchronize { @sessions.delete(session) }
+      @sessions_mutex.synchronize do
+        @sessions_by_id.delete(session.session_id) if @sessions_by_id[session.session_id].equal?(session)
+      end
+    end
+
+    # Finalize the shell bound to +session_id+, if any. Called when a
+    # conversation is deliberately retired; idempotent if nothing is cached.
+    #
+    # @param session_id [Integer, String]
+    # @return [void]
+    def release(session_id)
+      shell = @sessions_mutex.synchronize { @sessions_by_id.delete(session_id) }
+      shell&.finalize
     end
 
     # Finalize all live sessions. Called automatically via at_exit.
     def cleanup_all
       @sessions_mutex.synchronize do
-        @sessions.each { |session| session.send(:teardown) }
-        @sessions.clear
+        @sessions_by_id.each_value { |session| session.send(:teardown) }
+        @sessions_by_id.clear
       end
+    end
+
+    # Resolves the shell to spawn. Falls back to /bin/bash when +$SHELL+ is
+    # unset or empty (e.g. cron, systemd, minimal containers).
+    #
+    # @return [String] absolute path to the login shell
+    def login_shell
+      ENV["SHELL"].presence || "/bin/bash"
     end
 
     # Remove stale FIFO files left by crashed processes.
@@ -226,15 +283,32 @@ class ShellSession
     "GIT_TERMINAL_PROMPT" => "0"       # Fail immediately instead of prompting for credentials
   }.freeze
 
+  # Boots the user's login shell just long enough to source their profile
+  # (/etc/profile, ~/.zprofile, ~/.bash_profile, ~/.zshenv — whichever
+  # applies), then +exec+s a bare +bash+ that handles our command stream.
+  #
+  # Sourcing profile is what makes the agent see the same PATH, tool
+  # locations, and env vars the user has in their own terminal. Handing off
+  # to a bare +bash+ afterwards avoids the mess that comes with attaching a
+  # real interactive shell to a PTY — prompts, line editors, syntax
+  # highlighting, bracketed paste, and title-setting escapes would all
+  # corrupt our marker-based output parsing.
+  #
+  # {SHELL_ENV} still merges on top to keep pagers and credential prompts
+  # from hanging the PTY.
   def spawn_shell
-    @pty_stdout, @pty_stdin, @pid = PTY.spawn(
-      SHELL_ENV,
-      "bash", "--norc", "--noprofile"
-    )
-    # Disable terminal echo via termios before bash can echo our commands.
+    @pty_stdout, @pty_stdin, @pid = PTY.spawn(SHELL_ENV, self.class.login_shell, "-l", "-c", BARE_SHELL_EXEC)
+    # Disable terminal echo via termios before the shell can echo our commands.
     # This is instant (kernel-level), unlike stty -echo which races with input.
     @pty_stdin.echo = false
   end
+
+  # Payload handed to the login shell via +-c+. Replaces the login shell's
+  # process with a bare bash so the user's profile env carries forward, but
+  # the interactive shell machinery (ZLE, prompts, syntax highlighting) does
+  # not. Must be bash specifically — the command stream relies on bash-safe
+  # POSIX syntax, and the +--norc --noprofile+ flags are bash-specific.
+  BARE_SHELL_EXEC = "exec bash --norc --noprofile"
 
   def start_stderr_reader
     @stderr_mutex = Mutex.new
