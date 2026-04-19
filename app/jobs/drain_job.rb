@@ -10,11 +10,16 @@
 #    message gets promoted.
 # 3. Make one LLM API call and emit {Events::LLMResponded}.
 #
-# The job never releases the session. State transitions after the emit
-# belong to {Events::Subscribers::LLMResponseHandler} (on text or tool
-# dispatch) and {Events::Subscribers::ToolResponseCreator} (after tool
-# execution). Each piece reports completion via an event — event
-# emission is the final act that hands control to the next piece.
+# On the happy path the job never releases the session — state
+# transitions after the emit belong to
+# {Events::Subscribers::LLMResponseHandler} (on text or tool dispatch)
+# and {Events::Subscribers::ToolResponseCreator} (after tool execution).
+# Event emission is the final act that hands control to the next piece.
+#
+# The job DOES release its own claim when there is no responder to do
+# it: an empty mailbox (spurious kickoff) or an exception raised before
+# the LLM call succeeded. Those are lifecycle edges of the claim itself,
+# not hand-offs to responders.
 #
 # @see Events::Subscribers::DrainKickoff — enqueues this job
 # @see Events::LLMResponded — the event emitted on LLM completion
@@ -48,16 +53,14 @@ class DrainJob < ApplicationJob
     session = Session.find(session_id)
     return unless session.start_processing!
 
-    begin
-      promoted_pm = promote_next(session)
-      return unless promoted_pm
+    promoted_pm = promote_next(session)
+    return session.response_complete! unless promoted_pm
 
-      call_llm_and_emit(session)
-    rescue => error
-      bounce_back_or_reraise(session, promoted_pm, error)
-    end
+    call_llm_and_emit(session)
+  rescue => error
+    release_after_failure(session, promoted_pm, error) if session
+    raise error unless promoted_pm&.bounce_back?
   ensure
-    release_from_awaiting(session) if session
     @shell_session&.finalize
   end
 
@@ -152,12 +155,14 @@ class DrainJob < ApplicationJob
     ))
   end
 
-  # Bounce-back on the user's optimistically-committed message: delete
-  # the just-promoted Message so the TUI removes the phantom, emit
-  # {Events::BounceBack} so the client restores the text to the input.
-  # Non-bounce-back failures propagate to ActiveJob's retry machinery.
-  def bounce_back_or_reraise(session, promoted_pm, error)
-    raise error unless promoted_pm&.bounce_back?
+  # Release the session and, for bounce-back-flagged user messages,
+  # notify the TUI to restore the text. Happy-path release belongs to
+  # {Events::Subscribers::LLMResponseHandler} / {Events::Subscribers::ToolResponseCreator}
+  # — this method only runs when the drain never reached emit.
+  def release_after_failure(session, promoted_pm, error)
+    session.response_complete! if session.may_response_complete?
+
+    return unless promoted_pm&.bounce_back?
 
     last_msg = session.messages.where(message_type: "user_message").order(:id).last
     last_msg&.destroy!
@@ -168,15 +173,6 @@ class DrainJob < ApplicationJob
       session_id: session.id,
       message_id: last_msg&.id
     ))
-  end
-
-  # Ensures the session never sticks in +:awaiting+ — any path through
-  # {#perform} that exits while still awaiting an LLM response (success
-  # without tool_use lands in {Events::Subscribers::LLMResponseHandler},
-  # but our +ensure+ runs before that subscriber if we raised early)
-  # releases the claim so future kickoffs can pick up.
-  def release_from_awaiting(session)
-    session.response_complete! if session.may_response_complete?
   end
 
   def build_client(session)

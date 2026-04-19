@@ -59,7 +59,7 @@ class ToolExecutionJob < ApplicationJob
   # permanently corrupts the Anthropic conversation history.
   def execute(registry, tool_name, tool_input)
     result = registry.execute(tool_name, tool_input)
-    result = ::Tools::ToolDecorator.call(tool_name, result)
+    result = ::ToolDecorator.call(tool_name, result)
     content = format_result(result)
     content = truncate(content, registry, tool_name)
     [content, !result.is_a?(Hash) || !result.key?(:error)]
