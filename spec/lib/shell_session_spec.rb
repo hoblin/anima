@@ -397,6 +397,75 @@ RSpec.describe ShellSession do
     end
   end
 
+  describe ".for_session" do
+    let(:session) { instance_double("Session", id: "test-session-#{SecureRandom.hex(4)}", initial_cwd: "/tmp") }
+
+    after { described_class.release(session.id) }
+
+    it "spawns a shell and cd's into initial_cwd on first call" do
+      shell = described_class.for_session(session)
+      expect(shell.pwd).to eq("/tmp")
+    end
+
+    it "returns the same shell across repeated calls (persistence)" do
+      shell1 = described_class.for_session(session)
+      shell1.run("cd /")
+      shell2 = described_class.for_session(session)
+
+      expect(shell2).to equal(shell1)
+      expect(shell2.pwd).to eq("/")
+    end
+
+    it "preserves exported env vars between for_session calls" do
+      described_class.for_session(session).run("export MY_PERSIST_VAR=42")
+      result = described_class.for_session(session).run("echo $MY_PERSIST_VAR")
+
+      expect(result[:stdout]).to eq("42")
+    end
+
+    it "replaces a dead cached shell with a fresh one on the next lookup" do
+      shell1 = described_class.for_session(session)
+      shell1.finalize
+
+      shell2 = described_class.for_session(session)
+
+      expect(shell2).not_to equal(shell1)
+      expect(shell2.alive?).to be true
+    end
+
+    it "isolates shells across different sessions" do
+      other = instance_double("Session", id: "other-#{SecureRandom.hex(4)}", initial_cwd: "/tmp")
+
+      a = described_class.for_session(session)
+      b = described_class.for_session(other)
+
+      a.run("cd /")
+      expect(b.pwd).to eq("/tmp")
+      expect(a).not_to equal(b)
+    ensure
+      described_class.release(other.id)
+    end
+  end
+
+  describe ".release" do
+    let(:session) { instance_double("Session", id: "release-test-#{SecureRandom.hex(4)}", initial_cwd: nil) }
+
+    it "finalizes the cached shell and evicts the cache entry" do
+      shell = described_class.for_session(session)
+
+      described_class.release(session.id)
+
+      expect(shell.alive?).to be false
+      expect(described_class.for_session(session)).not_to equal(shell)
+    ensure
+      described_class.release(session.id)
+    end
+
+    it "is a no-op when no shell is cached" do
+      expect { described_class.release("never-seen-#{SecureRandom.hex(4)}") }.not_to raise_error
+    end
+  end
+
   describe ".cleanup_orphans" do
     it "removes FIFO files for dead processes" do
       stale_path = File.join(Dir.tmpdir, "anima-stderr-99999999-deadbeef01234567")

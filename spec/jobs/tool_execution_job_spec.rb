@@ -71,10 +71,10 @@ RSpec.describe ToolExecutionJob do
       expect(event.content).to include("registry busted")
     end
 
-    it "finalizes the shell session in the ensure block" do
+    it "does NOT finalize the shell session — it outlives the job" do
       described_class.perform_now(session.id, tool_use_id: "toolu_1", tool_name: "bash", tool_input: {})
 
-      expect(shell_session).to have_received(:finalize)
+      expect(shell_session).not_to have_received(:finalize)
     end
 
     it "runs the output through ResponseTruncator when a threshold is configured" do

@@ -49,18 +49,35 @@ end
 #   # => {stdout: "/tmp", stderr: "", exit_code: 0}
 #   session.finalize
 class ShellSession
+  # @return [Integer, String] identifier of the {Session} (or spec fixture)
+  #   this shell belongs to
+  attr_reader :session_id
+
   # @return [String, nil] current working directory of the shell process
   attr_reader :pwd
 
-  # Factory that binds a new ShellSession to a {Session}, preseeding the
-  # working directory from +session.initial_cwd+ so tools run in the same
-  # directory the session was born in. Jobs that need a registry-aware
-  # shell (DrainJob, ToolExecutionJob) share this one call.
+  # Returns the live shell bound to +session+, spawning one the first time
+  # a conversation reaches for bash and reusing it for every subsequent
+  # call. The expensive steps (login shell profile load, PTY + FIFO setup,
+  # +cd+ into +session.initial_cwd+) happen once per conversation, not
+  # once per tool call — so the user's PATH, aliases, and any env vars the
+  # agent sets along the way survive between commands within that session.
   #
-  # @param session [Session] owning session
+  # Dead cached shells (after a crash or explicit finalize) are replaced
+  # transparently; {#run} would respawn on its own anyway, but we also
+  # reset +initial_cwd+ on a fresh spawn so the new shell lands where the
+  # conversation started.
+  #
+  # @param session [Session] owning conversation
   # @return [ShellSession]
   def self.for_session(session)
-    shell = new(session_id: session.id)
+    id = session.id
+    cached = @sessions_mutex.synchronize { @sessions_by_id[id] }
+    return cached if cached&.alive?
+
+    release(id) if cached
+
+    shell = new(session_id: id)
     cwd = session.initial_cwd
     shell.run("cd #{Shellwords.shellescape(cwd)}") if cwd.present? && File.directory?(cwd)
     shell
@@ -120,25 +137,41 @@ class ShellSession
 
   # --- Class-level session tracking for at_exit cleanup ---
 
-  @sessions = []
+  # One live ShellSession per Session id. Conversations rent a shell from
+  # this map via {.for_session}; the map is the single source of truth for
+  # "which shells exist in this process". It has two readers: {.for_session}
+  # (cache lookup) and {.cleanup_all} (at_exit sweep).
+  @sessions_by_id = {}
   @sessions_mutex = Mutex.new
 
   class << self
     # @api private
     def register(session)
-      @sessions_mutex.synchronize { @sessions << session }
+      @sessions_mutex.synchronize { @sessions_by_id[session.session_id] = session }
     end
 
     # @api private
     def unregister(session)
-      @sessions_mutex.synchronize { @sessions.delete(session) }
+      @sessions_mutex.synchronize do
+        @sessions_by_id.delete(session.session_id) if @sessions_by_id[session.session_id].equal?(session)
+      end
+    end
+
+    # Finalize the shell bound to +session_id+, if any. Called when a
+    # conversation is deliberately retired; idempotent if nothing is cached.
+    #
+    # @param session_id [Integer, String]
+    # @return [void]
+    def release(session_id)
+      shell = @sessions_mutex.synchronize { @sessions_by_id.delete(session_id) }
+      shell&.finalize
     end
 
     # Finalize all live sessions. Called automatically via at_exit.
     def cleanup_all
       @sessions_mutex.synchronize do
-        @sessions.each { |session| session.send(:teardown) }
-        @sessions.clear
+        @sessions_by_id.each_value { |session| session.send(:teardown) }
+        @sessions_by_id.clear
       end
     end
 
