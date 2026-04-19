@@ -235,7 +235,7 @@ RSpec.describe Anima::CLI::Mcp do
         TOML
       end
 
-      it "keeps existing servers when adding a new one" do
+      it "keeps existing servers when adding a new one", :silence_output do
         Anima::CLI.start(["mcp", "add", "new_one", "http://new.example.com/mcp"])
 
         servers = config.all_servers

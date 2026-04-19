@@ -33,7 +33,7 @@ RSpec.describe Anima::CLI do
       }.to output(/Run 'anima install' first/).to_stdout.and raise_error(SystemExit)
     end
 
-    context "when installed" do
+    context "when installed", :silence_output do
       before do
         allow(File).to receive(:directory?).and_call_original
         allow(File).to receive(:directory?).with(File.expand_path("~/.anima")).and_return(true)
@@ -118,7 +118,7 @@ RSpec.describe Anima::CLI do
         }.to output(/Run manually for details: gem update anima-core/).to_stdout.and raise_error(SystemExit)
       end
 
-      it "re-execs with --migrate-only after successful gem update" do
+      it "re-execs with --migrate-only after successful gem update", :silence_output do
         allow_any_instance_of(Kernel).to receive(:system)
           .with("gem", "update", "anima-core", out: File::NULL, err: File::NULL).and_return(true)
 
