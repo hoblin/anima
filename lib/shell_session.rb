@@ -142,6 +142,14 @@ class ShellSession
       end
     end
 
+    # Resolves the shell to spawn. Falls back to /bin/bash when +$SHELL+ is
+    # unset or empty (e.g. cron, systemd, minimal containers).
+    #
+    # @return [String] absolute path to the login shell
+    def login_shell
+      ENV["SHELL"].presence || "/bin/bash"
+    end
+
     # Remove stale FIFO files left by crashed processes.
     # FIFO naming format: anima-stderr-{pid}-{hex}
     def cleanup_orphans
@@ -240,7 +248,7 @@ class ShellSession
   # {SHELL_ENV} still merges on top to keep pagers and credential prompts
   # from hanging the PTY.
   def spawn_shell
-    @pty_stdout, @pty_stdin, @pid = PTY.spawn(SHELL_ENV, login_shell, "-l", "-c", BARE_SHELL_EXEC)
+    @pty_stdout, @pty_stdin, @pid = PTY.spawn(SHELL_ENV, self.class.login_shell, "-l", "-c", BARE_SHELL_EXEC)
     # Disable terminal echo via termios before the shell can echo our commands.
     # This is instant (kernel-level), unlike stty -echo which races with input.
     @pty_stdin.echo = false
@@ -252,14 +260,6 @@ class ShellSession
   # not. Must be bash specifically — the command stream relies on bash-safe
   # POSIX syntax, and the +--norc --noprofile+ flags are bash-specific.
   BARE_SHELL_EXEC = "exec bash --norc --noprofile"
-
-  # Resolves the shell to spawn. Falls back to /bin/bash when +$SHELL+ is
-  # unset or empty (e.g. cron, systemd, minimal containers).
-  #
-  # @return [String] absolute path to the login shell
-  def login_shell
-    ENV["SHELL"].presence || "/bin/bash"
-  end
 
   def start_stderr_reader
     @stderr_mutex = Mutex.new
