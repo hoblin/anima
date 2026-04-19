@@ -6,9 +6,6 @@ require "tui/formatting"
 RSpec.describe TUI::Formatting do
   subject(:formatter) { Object.new.extend(described_class) }
 
-  before { TUI::Settings.config_path = File.expand_path("../../../templates/tui.toml", __dir__) }
-  after { TUI::Settings.reset! }
-
   describe "#token_count_color" do
     it "returns muted color for tokens under 1k" do
       expect(formatter.token_count_color(500)).to eq(TUI::Settings.theme_color_muted)

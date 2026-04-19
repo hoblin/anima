@@ -12,6 +12,8 @@ Always fix flaky tests. Never skip, mark pending, or work around them — fix th
 
 Always run rspec without `--format` flags — the default progress formatter is optimized for agent consumption.
 
+Do not pipe rspec through `tail`, `head`, or `grep` — output is already clean. Tag noisy specs with `:silence_output` (see `spec/spec_helper.rb`); assert on captured output via `$stdout.string`.
+
 Run specs by line number (`bundle exec rspec spec/path/to_spec.rb:42`). Pointing at an `it` runs that example; pointing at a `describe` or `context` runs the whole block.
 
 Run `standardrb --fix` directly — the auto-correct pass resolves trivial formatting issues in one shot, saving a second run. Empty output means clean.
@@ -25,6 +27,8 @@ This project does not use i18n. Skip translation checks entirely.
 Never hardcode tunable values as constants — expose them through `Anima::Settings` backed by `config.toml`.
 
 The development environment is fully configured (LLM API keys, credentials, dependencies). Don't ask — just run things.
+
+`~/.anima/` is the home of a living being — the running agent's soul, memories, and identity live there. Never write, delete, or stub processes against that path. Even the dev database has a soul.
 
 Use HEREDOC syntax for multiline Ruby/Python one-liners in Bash: `ruby -e '...'` breaks on quotes and newlines.
 

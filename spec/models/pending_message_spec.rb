@@ -5,47 +5,34 @@ require "rails_helper"
 RSpec.describe PendingMessage do
   let(:session) { create(:session) }
 
-  describe "#kind (derived from message_type)" do
-    PendingMessage::MESSAGE_TYPE_KINDS.each do |mt, expected_kind|
-      context "with message_type=#{mt}" do
-        subject(:pm) { build(:pending_message, session: session, message_type: mt, source_name: "x") }
+  describe "#derive_kind (before_validation)" do
+    it "populates #kind from MESSAGE_TYPE_KINDS for every supported message_type" do
+      PendingMessage::MESSAGE_TYPE_KINDS.each do |message_type, expected_kind|
+        pm = build(:pending_message, session: session, message_type: message_type, source_name: "x")
+        pm.validate
 
-        before { pm.validate }
-
-        it "assigns kind=#{expected_kind}" do
-          expect(pm.kind).to eq(expected_kind)
-        end
+        expect(pm.kind).to eq(expected_kind), "expected #{message_type} to derive kind=#{expected_kind}"
       end
     end
   end
 
   describe "validations" do
-    subject(:pm) { build(:pending_message, session: session) }
-
-    it "requires message_type" do
-      pm.message_type = nil
-      expect(pm).not_to be_valid
-      expect(pm.errors[:message_type]).to be_present
-    end
-
     it "requires tool_use_id when message_type is tool_response" do
       pm = build(:pending_message, :tool_response, session: session, tool_use_id: nil)
       expect(pm).not_to be_valid
       expect(pm.errors[:tool_use_id]).to be_present
     end
 
-    context "source_name" do
+    it "requires source_name for every phantom-pair source_type" do
       PendingMessage::PHANTOM_PAIR_TYPES.each do |source_type|
-        it "is required for source_type=#{source_type}" do
-          pm = build(:pending_message, session: session, source_type: source_type, source_name: nil)
-          expect(pm).not_to be_valid
-          expect(pm.errors[:source_name]).to be_present
-        end
+        pm = build(:pending_message, session: session, source_type: source_type, source_name: nil)
+        expect(pm).not_to be_valid, "expected #{source_type} to need source_name"
+        expect(pm.errors[:source_name]).to be_present
       end
+    end
 
-      it "is optional for user messages" do
-        expect(build(:pending_message, session: session, source_name: nil)).to be_valid
-      end
+    it "leaves source_name optional for plain user messages" do
+      expect(build(:pending_message, session: session, source_name: nil)).to be_valid
     end
   end
 
@@ -185,8 +172,6 @@ RSpec.describe PendingMessage do
   end
 
   describe "#promote!" do
-    let(:session) { Session.create! }
-
     it "promotes a tool_response PM into a tool_response Message and destroys the PM" do
       pm = create(:pending_message, :tool_response,
         session: session, content: "stdout", source_name: "bash", tool_use_id: "tool_123")

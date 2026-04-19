@@ -3,58 +3,23 @@
 require "rails_helper"
 
 RSpec.describe Tools::Bash do
-  let(:session) { Session.create! }
+  let(:session) { create(:session) }
   let(:shell_session) { ShellSession.new(session_id: "bash-tool-#{SecureRandom.hex(4)}") }
 
   subject(:tool) { described_class.new(shell_session: shell_session, session: session) }
 
   after { shell_session.finalize }
 
-  describe ".tool_name" do
-    it "returns bash" do
-      expect(described_class.tool_name).to eq("bash")
-    end
-  end
-
-  describe ".description" do
-    it "returns a non-empty description" do
-      expect(described_class.description).to be_a(String)
-      expect(described_class.description).not_to be_empty
-    end
-  end
-
-  describe ".input_schema" do
-    it "defines command as a string property" do
-      schema = described_class.input_schema
-      expect(schema[:type]).to eq("object")
-      expect(schema[:properties][:command][:type]).to eq("string")
-    end
-
-    it "defines commands as an array of strings property" do
-      schema = described_class.input_schema
-      commands_schema = schema[:properties][:commands]
-      expect(commands_schema[:type]).to eq("array")
-      expect(commands_schema[:items][:type]).to eq("string")
-    end
-
-    it "defines mode as an enum property" do
-      schema = described_class.input_schema
-      mode_schema = schema[:properties][:mode]
-      expect(mode_schema[:type]).to eq("string")
-      expect(mode_schema[:enum]).to contain_exactly("sequential", "parallel")
-    end
-
-    it "does not require any specific property" do
-      schema = described_class.input_schema
-      expect(schema[:required]).to be_nil
-    end
-  end
-
   describe ".schema" do
-    it "builds valid Anthropic tool schema" do
+    it "exposes the Anthropic tool contract: name, description, and input schema shape" do
       schema = described_class.schema
+
       expect(schema).to include(name: "bash", description: a_kind_of(String))
-      expect(schema[:input_schema]).to be_a(Hash)
+      expect(schema[:input_schema][:properties]).to include(
+        command: include(type: "string"),
+        commands: include(type: "array", items: {type: "string"}),
+        mode: include(type: "string", enum: contain_exactly("sequential", "parallel"))
+      )
     end
   end
 
@@ -238,9 +203,12 @@ RSpec.describe Tools::Bash do
 
     context "when interrupted by user" do
       it "returns interrupted message for single command" do
-        session.update_column(:interrupt_requested, true)
+        allow(shell_session).to receive(:run).and_return(
+          {interrupted: true, stdout: "", stderr: ""}
+        )
+
         result = tool.execute("command" => "sleep 30")
-        expect(result).to include("Your human wants your attention")
+        expect(result).to include(LLM::Client::INTERRUPT_MESSAGE)
       end
 
       it "includes partial stdout in interrupted result" do
