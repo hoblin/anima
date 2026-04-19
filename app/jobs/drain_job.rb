@@ -54,9 +54,12 @@ class DrainJob < ApplicationJob
     return @session.response_complete! if drained.zero?
 
     call_llm_and_emit
+  rescue Providers::Anthropic::AuthenticationError => error
+    release_after_failure(error) if @session
+    raise
   rescue => error
     release_after_failure(error) if @session
-    raise error unless @active_pm&.bounce_back?
+    raise unless @active_pm&.bounce_back?
   ensure
     @shell_session&.finalize
   end

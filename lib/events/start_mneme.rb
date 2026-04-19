@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module Events
-  # Emitted when a new +user_message+ or +think+ PendingMessage lands on an
-  # idle session. Mneme subscribes and performs associative recall, then
+  # Emitted when a new +user_message+ PendingMessage lands on an idle
+  # session. Mneme subscribes and performs associative recall, then
   # enqueues its memories as background PendingMessages and emits
   # {Events::StartMelete} to continue the pipeline.
   #

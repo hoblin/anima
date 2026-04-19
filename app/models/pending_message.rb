@@ -111,7 +111,7 @@ class PendingMessage < ApplicationRecord
   # (user messages, sub-agent replies) wait their FIFO turn behind the
   # completion.
   scope :ordered_for_drain, -> {
-    active.order(Arel.sql("message_type = 'tool_response' DESC, created_at ASC"))
+    active.order(Arel.sql("message_type = 'tool_response' DESC")).order(:created_at)
   }
 
   after_create_commit :broadcast_created

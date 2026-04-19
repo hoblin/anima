@@ -498,16 +498,12 @@ class Session < ApplicationRecord
   #
   # @return [Boolean]
   def tool_round_complete?
-    responded_message_ids = messages.where(message_type: "tool_response").select(:tool_use_id)
-    awaiting_call_ids = messages.where(message_type: "tool_call")
-      .where.not(tool_use_id: responded_message_ids)
-      .pluck(:tool_use_id)
-    return true if awaiting_call_ids.empty?
-
-    pm_response_ids = pending_messages
-      .where(message_type: "tool_response", tool_use_id: awaiting_call_ids)
-      .pluck(:tool_use_id)
-    pm_response_ids.uniq.size == awaiting_call_ids.size
+    msg_responses = messages.where(message_type: "tool_response").select(:tool_use_id)
+    pm_responses = pending_messages.where(message_type: "tool_response").select(:tool_use_id)
+    messages.where(message_type: "tool_call")
+      .where.not(tool_use_id: msg_responses)
+      .where.not(tool_use_id: pm_responses)
+      .none?
   end
 
   # AASM after_all_events callback — publishes
