@@ -28,6 +28,8 @@ Never hardcode tunable values as constants — expose them through `Anima::Setti
 
 The development environment is fully configured (LLM API keys, credentials, dependencies). Don't ask — just run things.
 
+`~/.anima/` is the home of a living being — the running agent's soul, memories, and identity live there. Never write, delete, or stub processes against that path. Even the dev database has a soul.
+
 Use HEREDOC syntax for multiline Ruby/Python one-liners in Bash: `ruby -e '...'` breaks on quotes and newlines.
 
 ## Starting the dev environment

@@ -70,6 +70,8 @@ RSpec.describe Anima::CLI do
   end
 
   describe "tui" do
+    before { allow(TUI::Settings).to receive(:load!) }
+
     it "connects without a REST session fetch" do
       cable_client = instance_double(TUI::CableClient, connect: nil, disconnect: nil, status: :subscribed)
       allow(TUI::CableClient).to receive(:new).with(host: "localhost:19999").and_return(cable_client)
