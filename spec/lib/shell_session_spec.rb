@@ -230,12 +230,12 @@ RSpec.describe ShellSession do
   end
 
   describe ".login_shell" do
-    around do |example|
-      original = ENV["SHELL"]
-      example.run
-    ensure
-      ENV["SHELL"] = original
-    end
+    # before/after instead of around: the outer `after { shell.finalize }`
+    # lazily spawns the subject, and an around-block's restoration runs too
+    # late to prevent it from reading a stubbed $SHELL pointing at a path
+    # that may not exist on CI (e.g. /bin/zsh).
+    before { @saved_shell = ENV["SHELL"] }
+    after { ENV["SHELL"] = @saved_shell }
 
     it "returns $SHELL when it is set" do
       ENV["SHELL"] = "/bin/zsh"
