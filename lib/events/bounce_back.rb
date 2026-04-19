@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 module Events
-  # Transient failure event emitted when LLM delivery fails inside the
-  # Bounce Back transaction. The user event record is rolled back, and
-  # this event notifies clients to remove the phantom message and
-  # restore the text to the input field.
+  # Transient failure event emitted by {DrainJob} when the first LLM
+  # call on a bounce-back-flagged user_message fails. The promoted
+  # Message is destroyed so the TUI can remove the phantom and restore
+  # the user's text to the input field.
   #
   # Not persisted — not included in {Message::TYPES}.
   class BounceBack < Base

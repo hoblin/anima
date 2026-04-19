@@ -29,20 +29,6 @@ RSpec.describe Events::Subscribers::MessageCollector do
       expect(collector.messages).to be_empty
     end
 
-    it "ignores tool_call events" do
-      Events::Bus.subscribe(collector)
-      Events::Bus.emit(Events::ToolCall.new(content: "running", tool_name: "bash"))
-
-      expect(collector.messages).to be_empty
-    end
-
-    it "ignores tool_response events" do
-      Events::Bus.subscribe(collector)
-      Events::Bus.emit(Events::ToolResponse.new(content: "output", tool_name: "bash"))
-
-      expect(collector.messages).to be_empty
-    end
-
     it "preserves message order across types" do
       Events::Bus.subscribe(collector)
       Events::Bus.emit(Events::UserMessage.new(content: "first"))

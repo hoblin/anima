@@ -14,6 +14,63 @@ module Tools
   #   registry.register(Tools::Bash)
   #   registry.execute("bash", {"command" => "ls"})
   class Registry
+    # Standard tools available to every session unless filtered out by
+    # {Session#granted_tools}.
+    STANDARD_TOOLS = [Tools::Bash, Tools::Read, Tools::Write, Tools::Edit, Tools::WebGet, Tools::Think, Tools::ViewMessages, Tools::SearchMessages].freeze
+
+    # Tools that bypass {Session#granted_tools} filtering — the agent's
+    # reasoning depends on them regardless of task scope.
+    ALWAYS_GRANTED_TOOLS = [Tools::Think].freeze
+
+    # Name-to-class mapping for granted-tools filtering.
+    STANDARD_TOOLS_BY_NAME = STANDARD_TOOLS.index_by(&:tool_name).freeze
+
+    class << self
+      # Builds a registry appropriate for the given session: standard tools
+      # filtered through {Session#granted_tools}, plus spawn tools for main
+      # sessions or +mark_goal_completed+ for sub-agents, plus any tools
+      # exposed by configured MCP servers.
+      #
+      # MCP registration warnings are emitted as system messages so both the
+      # user (in verbose mode) and the LLM see them.
+      #
+      # @param session [Session] the session requesting tools
+      # @param shell_session [ShellSession] persistent PTY for Bash-family tools
+      # @return [Registry] configured registry
+      def build(session:, shell_session:)
+        registry = new(context: {shell_session: shell_session, session: session})
+
+        granted_standard_tools(session).each { |tool| registry.register(tool) }
+
+        if session.sub_agent?
+          registry.register(Tools::MarkGoalCompleted)
+        else
+          registry.register(Tools::SpawnSubagent)
+          registry.register(Tools::SpawnSpecialist)
+          registry.register(Tools::OpenIssue)
+        end
+
+        Mcp::ClientManager.new.register_tools(registry).each do |message|
+          Events::Bus.emit(Events::SystemMessage.new(content: message, session_id: session.id))
+        end
+
+        registry
+      end
+
+      private
+
+      # Filters {STANDARD_TOOLS} through the session's granted list.
+      # Always includes {ALWAYS_GRANTED_TOOLS} so the agent retains core
+      # reasoning tools regardless of task scope.
+      def granted_standard_tools(session)
+        granted = session.granted_tools
+        return STANDARD_TOOLS unless granted
+
+        explicitly_granted = granted.filter_map { |name| STANDARD_TOOLS_BY_NAME[name] }
+        (ALWAYS_GRANTED_TOOLS + explicitly_granted).uniq
+      end
+    end
+
     # @return [Hash{String => Class, Object}] registered tools keyed by name
     attr_reader :tools
 

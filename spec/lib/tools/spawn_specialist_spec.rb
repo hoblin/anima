@@ -201,11 +201,11 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(pin.display_text).to eq(input["task"].truncate(PinnedMessage::MAX_DISPLAY_TEXT_LENGTH))
     end
 
-    it "enqueues AgentRequestJob for the child session" do
+    it "enqueues DrainJob for the child session" do
       tool.execute(input)
 
       child = Session.last
-      expect(AgentRequestJob).to have_been_enqueued.with(child.id)
+      expect(DrainJob).to have_been_enqueued.with(child.id)
     end
 
     it "returns confirmation with nickname (no @ prefix) and session ID" do

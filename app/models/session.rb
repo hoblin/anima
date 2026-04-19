@@ -15,13 +15,14 @@ class Session < ApplicationRecord
 
   # Non-default AASM options:
   # - +whiny_transitions: false+ makes invalid transitions return +false+
-  #   instead of raising. {AgentRequestJob#claim_processing} depends on this:
-  #   +start_processing!+ returning +false+ signals that another job already
-  #   claimed the session, so the current job exits silently.
+  #   instead of raising. {DrainJob} depends on this: +start_processing!+
+  #   returning +false+ signals that another drain already claimed the
+  #   session, so the current invocation exits silently.
   # - +no_direct_assignment: true+ blocks +session.aasm_state = ...+, forcing
   #   every transition through a named event so guards always run.
   aasm whiny_transitions: false, no_direct_assignment: true do
     after_all_events :emit_state_change
+    after_all_events :wake_drain_pipeline_if_pending
 
     state :idle, initial: true
     state :awaiting
@@ -118,20 +119,6 @@ class Session < ApplicationRecord
   def initialize_mneme_boundary!
     first_id = messages.conversation_or_think.order(:id).pick(:id)
     update_column(:mneme_boundary_message_id, first_id) if first_id
-  end
-
-  # Enqueues Melete — the muse of practice — to perform background
-  # maintenance on this session. Main sessions get naming, skills,
-  # workflows, and goals; sub-agents get naming and skills only
-  # (responsibilities are selected in {Melete::Runner}).
-  #
-  # Fires after the first exchange (2+ messages).
-  #
-  # @return [void]
-  def schedule_melete!
-    return if messages.llm_messages.count < 2
-
-    MeleteJob.perform_later(id)
   end
 
   # Token budget appropriate for this session type.
@@ -389,37 +376,39 @@ class Session < ApplicationRecord
     healed
   end
 
-  # Delivers a user message respecting the session's AASM state.
-  #
-  # When idle, persists the message directly and enqueues {AgentRequestJob}
-  # to process it. When mid-turn (not {#idle?}), stages the message as
-  # a {PendingMessage} in a separate table — it gets no message ID until
-  # promoted, so it can never interleave with tool_call/tool_response pairs.
+  # Enqueues an inbound human-side message (direct user input or a
+  # sub-agent reply) as an active {PendingMessage}. The PM's
+  # +after_create_commit+ emits the appropriate pipeline event when the
+  # session is idle (+StartMneme+ for user input, +StartProcessing+ for
+  # sub-agent deliveries). On a busy session the PM queues silently and
+  # {#wake_drain_pipeline_if_pending} picks it up on the next transition
+  # into +:idle+.
   #
   # @param content [String] message text (raw, without attribution)
   # @param source_type [String] origin type: "user" (default) or "subagent"
   # @param source_name [String, nil] sub-agent nickname (required when source_type is "subagent")
-  # @param bounce_back [Boolean] when true, passes +message_id+ to the job
-  #   so failed LLM delivery triggers a {Events::BounceBack} (used by
-  #   {SessionChannel#speak} for immediate-display messages)
-  # @return [void]
+  # @param bounce_back [Boolean] when true, a failed first LLM call on the
+  #   promoted message triggers a {Events::BounceBack} so the TUI can
+  #   restore the text to the input field
+  # @return [PendingMessage]
   def enqueue_user_message(content, source_type: "user", source_name: nil, bounce_back: false)
-    if idle?
-      display = if source_type == "subagent"
-        format(Tools::ResponseTruncator::ATTRIBUTION_FORMAT, source_name, content)
-      else
-        content
-      end
-      msg = create_user_message(display)
-      job_args = bounce_back ? {message_id: msg.id} : {}
-      AgentRequestJob.perform_later(id, **job_args)
-    else
-      pending_messages.create!(content: content, source_type: source_type, source_name: source_name)
-    end
+    message_type = (source_type == "subagent") ? "subagent" : "user_message"
+    pending_messages.create!(
+      content: content,
+      source_type: source_type,
+      source_name: source_name,
+      message_type: message_type,
+      bounce_back: bounce_back
+    )
   end
 
-  # Promotes a phantom pair pending message into a tool_call/tool_response pair.
-  # These persist as real Message records and ride the conveyor belt.
+  # Promotes a phantom-pair PendingMessage into a synthetic
+  # tool_call/tool_response Message pair — the LLM sees "a tool I
+  # invoked returned a result" and the pair rides the viewport like
+  # any real tool round. Used by {DrainJob} to flush background
+  # enrichment PMs (recalled memories, activated skills, workflow
+  # triggers, goal events, sub-agent deliveries) into the
+  # conversation.
   #
   # @param pm [PendingMessage] phantom pair pending message
   # @return [void]
@@ -449,12 +438,12 @@ class Session < ApplicationRecord
     )
   end
 
-  # Persists a user message directly, bypassing the pending queue.
-  #
-  # Used by {#enqueue_user_message} (idle path), {AgentLoop#run},
-  # and sub-agent spawn tools ({Tools::SpawnSubagent}, {Tools::SpawnSpecialist})
-  # because the global {Events::Subscribers::Persister} skips non-pending user
-  # messages — these callers own the persistence lifecycle.
+  # Persists a user_message Message directly — skipping the PendingMessage
+  # mailbox. Used by {DrainJob} to finalize a promoted user_message PM
+  # and by the sub-agent spawn tools ({Tools::SpawnSubagent},
+  # {Tools::SpawnSpecialist}) to seed the child's conversation with its
+  # assigned task. The global {Events::Subscribers::Persister} skips
+  # +user_message+ events, so these callers own the persistence.
   #
   # @param content [String] user message text
   # @param source_type [String, nil] origin type (e.g. "skill", "workflow")
@@ -471,40 +460,6 @@ class Session < ApplicationRecord
       payload: payload,
       timestamp: now
     )
-  end
-
-  # Promotes all pending messages into the conversation history.
-  # Each {PendingMessage} is atomically deleted and replaced with a real
-  # {Message} — the new message gets the next auto-increment ID,
-  # naturally placing it after any tool_call/tool_response pairs that
-  # were persisted while the message was waiting.
-  #
-  # Returns a hash with two keys:
-  # - +:texts+ — plain content strings for user messages (injected as text blocks
-  #   within the current tool_results turn)
-  # - +:pairs+ — synthetic tool_use/tool_result message hashes for phantom pair
-  #   types (appended as new conversation turns)
-  #
-  # @return [Hash{Symbol => Array}] promoted messages split by injection strategy
-  def promote_pending_messages!
-    texts = []
-    pairs = []
-    pending_messages.find_each do |pm|
-      transaction do
-        if pm.phantom_pair?
-          promote_phantom_pair!(pm)
-        else
-          create_user_message(pm.display_content, source_type: pm.source_type, source_name: pm.source_name)
-        end
-        pm.destroy!
-      end
-      if pm.phantom_pair?
-        pairs.concat(pm.to_llm_messages)
-      else
-        texts << pm.content
-      end
-    end
-    {texts: texts, pairs: pairs}
   end
 
   # Broadcasts child session list to all clients subscribed to the parent
@@ -539,6 +494,21 @@ class Session < ApplicationRecord
   # @return [void]
   def emit_state_change
     Events::Bus.emit(Events::SessionStateChanged.new(session_id: id, state: aasm_state))
+  end
+
+  # AASM after_all_events callback — picks the oldest active
+  # PendingMessage and re-runs its pipeline routing whenever the session
+  # lands in +:idle+ with work still queued. Covers the race where a PM
+  # arrives while the session is busy: its own +after_create_commit+ saw
+  # a non-idle session and emitted nothing, so without this callback the
+  # message would sit forever.
+  #
+  # @return [void]
+  def wake_drain_pipeline_if_pending
+    return unless idle?
+
+    pm = pending_messages.ordered_for_drain.first
+    pm&.wake_drain_pipeline!
   end
 
   # Broadcasts the full LLM debug context to debug-mode TUI clients.
@@ -582,10 +552,10 @@ class Session < ApplicationRecord
   # @return [Array<Hash>] tool schema hashes matching Anthropic tools API format
   def tool_schemas
     tools = if granted_tools
-      granted = granted_tools.filter_map { |name| AgentLoop::STANDARD_TOOLS_BY_NAME[name] }
-      (AgentLoop::ALWAYS_GRANTED_TOOLS + granted).uniq
+      granted = granted_tools.filter_map { |name| Tools::Registry::STANDARD_TOOLS_BY_NAME[name] }
+      (Tools::Registry::ALWAYS_GRANTED_TOOLS + granted).uniq
     else
-      AgentLoop::STANDARD_TOOLS.dup
+      Tools::Registry::STANDARD_TOOLS.dup
     end
 
     unless sub_agent?
@@ -636,17 +606,22 @@ class Session < ApplicationRecord
       .order(:id)
   end
 
-  # Enqueues a recalled skill or workflow as a {PendingMessage}.
-  # Always goes through the pending queue because Melete
-  # only runs during processing. The message enters the conversation
-  # through the normal promotion flow as a phantom tool_use/tool_result pair.
+  # Enqueues a Melete-recalled skill or workflow as a background
+  # {PendingMessage}. {DrainJob} flushes it into the conversation as a
+  # phantom tool_use/tool_result pair on the next drain cycle.
   #
   # @param source_type [String] "skill" or "workflow"
   # @param source_name [String] skill or workflow name
   # @param content [String] definition content to recall
   # @return [PendingMessage] the created pending message
   def enqueue_recall_message(source_type, source_name, content)
-    pending_messages.create!(content: content, source_type: source_type, source_name: source_name)
+    message_type = (source_type == "skill") ? "from_melete_skill" : "from_melete_workflow"
+    pending_messages.create!(
+      content: content,
+      source_type: source_type,
+      source_name: source_name,
+      message_type: message_type
+    )
   end
 
   # One-line version preamble so the agent knows its own version.

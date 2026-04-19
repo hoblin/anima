@@ -139,7 +139,6 @@ module Melete
       result = @client.chat_with_tools(
         messages,
         registry: build_registry,
-        session_id: nil,
         system: system
       )
 

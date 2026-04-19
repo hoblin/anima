@@ -21,7 +21,6 @@ detectors:
   # Tool rescue blocks naturally reference the error object.
   FeatureEnvy:
     exclude:
-      - "MeleteJob#perform"
       - "Melete::Runner#build_messages"
       - "Anima::ConfigMigrator"
       - "WebGetToolDecorator"
@@ -47,8 +46,6 @@ detectors:
       - "Tools::Bash#execute"
       - "Tools::Bash#execute_single"
       - "Tools::Bash#execute_batch"
-      # Delivery method orchestrates session, event, and agent_loop — inherent.
-      - "AgentRequestJob#deliver_persisted_event"
   # Private helpers don't need instance state to be valid.
   # ActiveJob#perform is always a utility function by design.
   # No-op tools (Think, EverythingIsReady) don't need instance state — by design.
@@ -58,7 +55,6 @@ detectors:
   UtilityFunction:
     public_methods_only: true
     exclude:
-      - "MeleteJob#perform"
       - "PassiveRecallJob#perform"
       - "Tools::Think#execute"
       - "TUI::Formatting"
@@ -110,8 +106,6 @@ detectors:
       - "Tools::ViewMessages"
       # Nickname validation checks parent_session for existence then queries — two calls, one guard.
       - "Melete::Tools::AssignNickname#sibling_nickname_taken?"
-      # Delivery method references session.id for lookup, BounceBack, and auth broadcast.
-      - "AgentRequestJob#deliver_persisted_event"
   # Method length is enforced by code review, not arbitrary line counts
   # build_sections passes context through to sub-methods — inherent to assembly.
   LongParameterList:

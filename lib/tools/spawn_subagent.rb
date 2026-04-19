@@ -4,7 +4,7 @@ module Tools
   # Spawns a generic child session that works on a task autonomously.
   # The sub-agent starts clean — no parent conversation history — with
   # only a system prompt, a Goal, and the task as its first user message.
-  # Runs via {AgentRequestJob} and communicates with the parent through
+  # Runs via {DrainJob} and communicates with the parent through
   # natural text messages routed by {Events::Subscribers::SubagentMessageRouter}.
   #
   # Nickname assignment is handled by the {Melete::Runner} which
@@ -36,7 +36,7 @@ module Tools
             items: {type: "string"},
             description: "Tool names to grant the sub-agent. " \
               "Omit for all standard tools. Empty array for pure reasoning. " \
-              "Valid tools: #{AgentLoop::STANDARD_TOOLS_BY_NAME.keys.join(", ")}"
+              "Valid tools: #{Tools::Registry::STANDARD_TOOLS_BY_NAME.keys.join(", ")}"
           }
         },
         required: %w[task]
@@ -87,7 +87,7 @@ module Tools
       create_goal_with_pinned_task(child, task)
       assign_nickname_via_melete(child)
       child.broadcast_children_update_to_parent
-      AgentRequestJob.perform_later(child.id)
+      DrainJob.perform_later(child.id)
       child
     end
 
@@ -109,7 +109,7 @@ module Tools
       return nil unless tools
       return {error: "tools must be an array"} unless tools.is_a?(Array)
 
-      unknown = tools - AgentLoop::STANDARD_TOOLS_BY_NAME.keys
+      unknown = tools - Tools::Registry::STANDARD_TOOLS_BY_NAME.keys
       return {error: "Unknown tool: #{unknown.first}"} if unknown.any?
 
       nil

@@ -47,7 +47,11 @@ RSpec.describe Melete::Tools::ReadWorkflow do
 
     it "enqueues the replacement when a different workflow is activated" do
       tool.execute({"workflow_name" => "feature"})
-      session.promote_pending_messages!
+      pm = session.pending_messages.last
+      session.transaction do
+        session.promote_phantom_pair!(pm)
+        pm.destroy!
+      end
 
       expect { tool.execute({"workflow_name" => "commit"}) }
         .to change { session.pending_messages.where(source_type: "workflow").count }.by(1)

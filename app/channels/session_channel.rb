@@ -40,13 +40,13 @@ class SessionChannel < ApplicationCable::Channel
     ActionCable.server.broadcast(stream_name, data)
   end
 
-  # Processes user input. For idle sessions, persists the message immediately
-  # so it appears in the TUI without waiting for the background job, then
-  # schedules {AgentRequestJob} for LLM delivery. If delivery fails, the
-  # job deletes the message and emits a {Events::BounceBack}.
-  #
-  # For busy sessions, stages the message as a {PendingMessage} in a
-  # separate table until the current agent loop completes.
+  # Processes user input by enqueuing a bounce-back-flagged user_message
+  # PendingMessage on the session. The PM's +after_create_commit+ kicks
+  # off the drain pipeline — Mneme → Melete → {DrainJob} — when the
+  # session is idle; otherwise the PM queues silently and the idle-wake
+  # rule on {Session} picks it up on the next transition to +:idle+.
+  # If the first LLM call after promotion fails, {DrainJob} emits a
+  # {Events::BounceBack} so the TUI can restore the text to the input.
   #
   # @param data [Hash] must include "content" with the user's message text
   # @see Session#enqueue_user_message
@@ -70,17 +70,17 @@ class SessionChannel < ApplicationCable::Channel
     pm&.destroy!
   end
 
-  # Requests interruption of the current tool execution. Sets a flag on the
-  # session that the LLM client checks between tool calls. Remaining tools
-  # receive synthetic "Your human wants your attention" results to satisfy the API's
+  # Requests interruption of the current tool execution. Sets the
+  # +interrupt_requested+ flag on the session — long-running tools
+  # ({Tools::Bash}) poll it and abort early with a synthetic "Your
+  # human wants your attention" result that satisfies the Anthropic
   # tool_use/tool_result pairing requirement.
   #
   # Cascades to running sub-agent sessions to avoid burning tokens in
   # child jobs that the parent will discard anyway.
   #
-  # Atomic: a single UPDATE with WHERE avoids the read-then-write race where
-  # the session could finish processing between the SELECT and UPDATE.
-  # No-op if the session isn't currently processing.
+  # No-op if the session isn't currently processing ({Session#may_interrupt?}
+  # returns false when the AASM state is +:idle+).
   #
   # @param _data [Hash] unused
   def interrupt_execution(_data)

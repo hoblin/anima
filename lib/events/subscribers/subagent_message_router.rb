@@ -6,20 +6,16 @@ module Events
     # bidirectional @mention communication.
     #
     # **Child → Parent:** When a sub-agent emits an {Events::AgentMessage},
-    # the router creates a {Events::UserMessage} in the parent session
-    # with attribution prefix. If the parent is idle, persists directly
-    # and wakes it via {AgentRequestJob}. If the parent is mid-turn,
-    # emits a pending message that is promoted after the current loop
-    # completes — same mechanism as {SessionChannel#speak}.
+    # the router enqueues a {PendingMessage} in the parent session with
+    # sub-agent attribution. The PM's +after_create_commit+ kicks off the
+    # drain pipeline when the parent is idle; otherwise the message
+    # queues silently and the idle-wake rule picks it up.
     #
     # **Parent → Child:** When a parent agent emits an {Events::AgentMessage}
-    # containing `@name` mentions, the router persists the message in each
-    # matching child session with a +[from parent]:+ origin label and wakes
-    # them via {AgentRequestJob}.
+    # containing `@name` mentions, the router enqueues a PendingMessage in
+    # each matching child session with a +[from parent]:+ origin label.
     #
-    # Both directions delegate to {Session#enqueue_user_message}, which
-    # respects the target session's processing state — persisting directly
-    # when idle, deferring via pending queue when mid-turn.
+    # Both directions delegate to {Session#enqueue_user_message}.
     #
     # This replaces the +return_result+ tool — sub-agents communicate
     # through natural text messages instead of structured tool calls.
@@ -66,8 +62,8 @@ module Events
 
       # Forwards a sub-agent's text message to its parent session
       # via {Session#enqueue_user_message} with source metadata.
-      # The parent's {PendingMessage} (or idle-path message) owns the
-      # attribution formatting — the router passes raw content.
+      # The parent's {PendingMessage} owns the attribution formatting —
+      # the router passes raw content.
       #
       # @param child [Session] the sub-agent session
       # @param content [String] the sub-agent's message text

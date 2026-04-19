@@ -5,10 +5,10 @@
 # message stream and have no database ID that could interleave with
 # tool_call/tool_response pairs.
 #
-# Created when a message arrives while the session is processing.
-# Promoted to a real {Message} (delete + create in transaction) when
-# the current agent loop completes, giving the new message an ID that
-# naturally follows the tool batch.
+# Entry point of the event-driven drain pipeline. Every inbound
+# message destined for the LLM — user input, tool responses,
+# sub-agent replies, Mneme recalls, Melete skills/goals — lands here
+# first, then gets promoted into a real {Message} by {DrainJob}.
 #
 # Each pending message knows its source (+source_type+, +source_name+)
 # and how to serialize itself for the LLM conversation via {#to_llm_messages}.
@@ -16,13 +16,12 @@
 # goal events) become synthetic tool_use/tool_result pairs so the LLM sees
 # "a tool I invoked returned a result" rather than "a user wrote me."
 #
-# Also classifies itself for the event-driven drain pipeline via +kind+
-# (+active+ triggers the drain loop, +background+ enriches context
-# silently) and +message_type+ (selects which pipeline event to emit on
-# create).
+# Classifies itself for the pipeline via +kind+ (+active+ triggers the
+# drain loop, +background+ enriches context silently) and +message_type+
+# (selects which pipeline event to emit on create).
 #
 # @see Session#enqueue_user_message
-# @see Session#promote_pending_messages!
+# @see DrainJob — promotes PMs into Messages
 # @see Events::StartMneme
 # @see Events::StartProcessing
 class PendingMessage < ApplicationRecord
@@ -60,35 +59,54 @@ class PendingMessage < ApplicationRecord
     "goal" => ->(name) { {goal_id: name.to_i} }
   }.freeze
 
-  # The LLM-role classification used by the event-driven drain pipeline.
-  # Distinct from +source_type+ (origin of the pending message): this
-  # describes what the promoted message will become in the LLM conversation.
-  MESSAGE_TYPES = %w[user_message think tool_call tool_response subagent from_mneme from_melete].freeze
+  # Every message_type has a defined drain-pipeline role. +active+ types
+  # trigger the drain loop when the session is idle; +background+ types
+  # enrich context silently and ride the next active turn into the LLM.
+  # {#kind} is derived from this map in {#derive_kind} — callers only
+  # supply +message_type+.
+  MESSAGE_TYPE_KINDS = {
+    "user_message" => "active",
+    "tool_response" => "active",
+    "subagent" => "active",
+    "from_mneme" => "background",
+    "from_melete_skill" => "background",
+    "from_melete_workflow" => "background",
+    "from_melete_goal" => "background"
+  }.freeze
+
+  MESSAGE_TYPES = MESSAGE_TYPE_KINDS.keys.freeze
 
   # Routes active message types to the event that begins the drain pipeline.
-  # +user_message+ and +think+ enrich context first (Mneme → Melete →
-  # Processing); everything else bypasses enrichment and goes straight to
-  # the drain loop.
+  # User messages enrich context first (Mneme → Melete → Processing);
+  # tool responses and sub-agent deliveries bypass enrichment and go
+  # straight to the drain loop. Background message types route to nothing
+  # — they wait in the mailbox until an active turn drains them.
   MESSAGE_TYPE_ROUTES = {
     "user_message" => Events::StartMneme,
-    "think" => Events::StartMneme,
-    "tool_call" => Events::StartProcessing,
     "tool_response" => Events::StartProcessing,
     "subagent" => Events::StartProcessing
   }.freeze
 
   belongs_to :session
 
-  # +background+: recalled memories and activated skills/workflows — they
-  # enrich context silently and never start the drain pipeline.
-  # +active+: user input, tool traffic, sub-agent replies — they trigger
-  # the drain loop when the session is idle.
   enum :kind, {background: "background", active: "active"}
 
+  before_validation :derive_kind
+
   validates :content, presence: true
-  validates :source_type, inclusion: {in: %w[user subagent skill workflow recall goal]}
+  validates :source_type, inclusion: {in: %w[user subagent skill workflow recall goal tool]}
   validates :source_name, presence: true, unless: :user?
-  validates :message_type, inclusion: {in: MESSAGE_TYPES}, allow_nil: true
+  validates :message_type, presence: true, inclusion: {in: MESSAGE_TYPES}
+  validates :tool_use_id, presence: true, if: -> { message_type == "tool_response" }
+
+  # Tool responses take priority over other active messages: they complete
+  # a tool round the LLM is waiting on, so promoting them first preserves
+  # the tool_use/tool_result pairing in the conversation. Other actives
+  # (user messages, sub-agent replies) wait their FIFO turn behind the
+  # completion.
+  scope :ordered_for_drain, -> {
+    active.order(Arel.sql("message_type = 'tool_response' DESC, created_at ASC"))
+  }
 
   after_create_commit :broadcast_created
   after_create_commit :route_to_event_bus
@@ -127,6 +145,16 @@ class PendingMessage < ApplicationRecord
   # @return [Boolean] true when promotion produces phantom tool_use/tool_result pairs
   def phantom_pair?
     source_type.in?(PHANTOM_PAIR_TYPES)
+  end
+
+  # Re-runs the {#route_to_event_bus} callback. Used by the idle-wake rule
+  # on {Session} to trigger the drain pipeline for messages that were
+  # created while the session was busy (and therefore saw a non-idle
+  # session in the original +after_create_commit+ and emitted nothing).
+  #
+  # @return [void]
+  def wake_drain_pipeline!
+    route_to_event_bus
   end
 
   # Phantom tool name for DB persistence and LLM injection.
@@ -226,16 +254,22 @@ class PendingMessage < ApplicationRecord
 
   # Emits the event that kicks off the drain pipeline for active messages
   # landing on an idle session. Background messages never trigger; active
-  # messages landing mid-drain queue silently — the running drain will
-  # pick them up. Legacy callers that don't set +message_type+ are a no-op
-  # until #440/#441/#442/#443 migrate them.
+  # messages landing mid-drain queue silently — {Session#wake_drain_pipeline_if_pending}
+  # re-runs this method on the next transition into +:idle+.
   def route_to_event_bus
     return unless active?
     return unless session.idle?
 
-    event_class = MESSAGE_TYPE_ROUTES[message_type]
-    return unless event_class
-
+    event_class = MESSAGE_TYPE_ROUTES.fetch(message_type)
     Events::Bus.emit(event_class.new(session_id: session_id, pending_message_id: id))
+  end
+
+  # Populates +kind+ from {MESSAGE_TYPE_KINDS} so callers only need to
+  # supply +message_type+. The mapping is the single source of truth for
+  # whether a message type triggers the drain loop or rides along as
+  # enrichment.
+  def derive_kind
+    return unless message_type
+    self.kind = MESSAGE_TYPE_KINDS.fetch(message_type)
   end
 end
