@@ -10,9 +10,6 @@ require "tui/decorators/web_get_decorator"
 require "tui/decorators/think_decorator"
 
 RSpec.describe TUI::Decorators::BaseDecorator do
-  before { TUI::Settings.config_path = File.expand_path("../../../../templates/tui.toml", __dir__) }
-  after { TUI::Settings.reset! }
-
   # Lightweight TUI stub — returns plain data structures instead of
   # RatatuiRuby native objects, so we can assert on content and style.
   let(:tui) do

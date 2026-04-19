@@ -13,7 +13,6 @@ RSpec.describe TUI::Screens::Chat do
   subject(:screen) { described_class.new(cable_client: cable_client, message_store: message_store) }
 
   before do
-    TUI::Settings.config_path = File.expand_path("../../../../templates/tui.toml", __dir__)
     allow(cable_client).to receive(:drain_messages).and_return([])
     allow(cable_client).to receive(:speak)
     allow(cable_client).to receive(:create_session)
@@ -22,8 +21,6 @@ RSpec.describe TUI::Screens::Chat do
     allow(cable_client).to receive(:update_session_id)
     allow(cable_client).to receive(:change_view_mode)
   end
-
-  after { TUI::Settings.reset! }
 
   # RatatuiRuby::Message uses method_missing for dynamic predicates,
   # so we use plain doubles instead of instance_double

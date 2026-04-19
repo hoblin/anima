@@ -33,7 +33,7 @@ RSpec.describe Anima::CLI do
       }.to output(/Run 'anima install' first/).to_stdout.and raise_error(SystemExit)
     end
 
-    context "when installed" do
+    context "when installed", :silence_output do
       before do
         allow(File).to receive(:directory?).and_call_original
         allow(File).to receive(:directory?).with(File.expand_path("~/.anima")).and_return(true)
@@ -70,8 +70,7 @@ RSpec.describe Anima::CLI do
   end
 
   describe "tui" do
-    before { TUI::Settings.config_path = File.expand_path("../../../templates/tui.toml", __dir__) }
-    after { TUI::Settings.reset! }
+    before { allow(TUI::Settings).to receive(:load!) }
 
     it "connects without a REST session fetch" do
       cable_client = instance_double(TUI::CableClient, connect: nil, disconnect: nil, status: :subscribed)
@@ -121,7 +120,7 @@ RSpec.describe Anima::CLI do
         }.to output(/Run manually for details: gem update anima-core/).to_stdout.and raise_error(SystemExit)
       end
 
-      it "re-execs with --migrate-only after successful gem update" do
+      it "re-execs with --migrate-only after successful gem update", :silence_output do
         allow_any_instance_of(Kernel).to receive(:system)
           .with("gem", "update", "anima-core", out: File::NULL, err: File::NULL).and_return(true)
 

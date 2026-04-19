@@ -12,7 +12,6 @@ RSpec.describe TUI::App do
   subject(:app) { described_class.new(cable_client: cable_client) }
 
   before do
-    TUI::Settings.config_path = File.expand_path("../../../templates/tui.toml", __dir__)
     allow(cable_client).to receive(:drain_messages).and_return([])
     allow(cable_client).to receive(:speak)
     allow(cable_client).to receive(:list_sessions)
@@ -20,8 +19,6 @@ RSpec.describe TUI::App do
     allow(cable_client).to receive(:change_view_mode)
     allow(cable_client).to receive(:save_token)
   end
-
-  after { TUI::Settings.reset! }
 
   describe "#initialize" do
     it "starts on the chat screen" do

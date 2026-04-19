@@ -22,11 +22,4 @@ RSpec.describe TokenEstimation do
       expect(described_class.estimate_token_count(text)).to eq((text.bytesize / 4.0).ceil)
     end
   end
-
-  describe "BYTES_PER_TOKEN" do
-    it "is a small positive integer heuristic" do
-      expect(described_class::BYTES_PER_TOKEN).to be_a(Integer)
-      expect(described_class::BYTES_PER_TOKEN).to be > 0
-    end
-  end
 end

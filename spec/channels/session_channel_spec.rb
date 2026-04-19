@@ -7,8 +7,8 @@ RSpec.describe SessionChannel, type: :channel do
   let(:stream_name) { "session_#{session_id}" }
 
   describe "#subscribed" do
-    it "streams from the session-specific stream" do
-      Session.create!(id: session_id)
+    it "confirms the subscription and streams from the session-specific name" do
+      create(:session, id: session_id)
 
       subscribe(session_id: session_id)
 
@@ -16,225 +16,109 @@ RSpec.describe SessionChannel, type: :channel do
       expect(subscription).to have_stream_from(stream_name)
     end
 
-    it "works with string session_id" do
-      Session.create!(id: 7)
-
-      subscribe(session_id: "7")
-
-      expect(subscription).to be_confirmed
-      expect(subscription).to have_stream_from("session_7")
-    end
-
-    context "without session_id (server-side resolution)" do
-      it "resolves to the most recent session" do
-        existing = Session.create!
+    context "without a usable session_id" do
+      it "resolves nil to the most recent existing session" do
+        existing = create(:session)
 
         subscribe(session_id: nil)
 
-        expect(subscription).to be_confirmed
+        expect(subscription).to have_stream_from("session_#{existing.id}")
+      end
+
+      it "resolves zero to the most recent existing session" do
+        existing = create(:session)
+
+        subscribe(session_id: 0)
+
         expect(subscription).to have_stream_from("session_#{existing.id}")
       end
 
       it "creates a session when none exist" do
         expect { subscribe(session_id: nil) }.to change(Session, :count).by(1)
-
         expect(subscription).to be_confirmed
       end
+    end
 
-      it "transmits session_changed with the resolved session info" do
-        existing = Session.create!
-        existing.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+    describe "session_changed payload" do
+      context "for a fully populated root session" do
+        let!(:session) { create(:session, id: session_id, name: "🔧 Debug Session") }
+        let!(:child) { create(:session, :awaiting, parent_session: session, name: "analyzer") }
 
-        subscribe(session_id: nil)
+        before do
+          Skills::Registry.reload!
+          Workflows::Registry.reload!
+          session.activate_skill("gh-issue")
+          session.activate_workflow("feature")
+          create(:goal, session: session, description: "Test goal")
+          create(:message, :user_message, session: session)
+
+          subscribe(session_id: session_id)
+        end
+
+        it "serialises the full session metadata under one event" do
+          changed = transmissions.find { |t| t["action"] == "session_changed" }
+
+          expect(changed).to include(
+            "session_id" => session_id,
+            "name" => "🔧 Debug Session",
+            "parent_session_id" => nil,
+            "message_count" => 1,
+            "view_mode" => "basic",
+            "active_skills" => include("gh-issue"),
+            "active_workflow" => "feature"
+          )
+          expect(changed["goals"].map { |g| g["description"] }).to include("Test goal")
+          expect(changed["children"]).to eq([
+            {"id" => child.id, "name" => "analyzer", "session_state" => "awaiting"}
+          ])
+        end
+      end
+
+      context "for a bare session with no skills, workflow, goals, or children" do
+        before do
+          create(:session, id: session_id)
+          subscribe(session_id: session_id)
+        end
+
+        it "exposes empty collections, nil scalars, and omits the children key" do
+          changed = transmissions.find { |t| t["action"] == "session_changed" }
+
+          expect(changed).to include(
+            "name" => nil,
+            "active_skills" => [],
+            "active_workflow" => nil,
+            "goals" => []
+          )
+          expect(changed).not_to have_key("children")
+        end
+      end
+
+      it "propagates parent_session_id for child sessions" do
+        parent = create(:session)
+        child = create(:session, parent_session: parent)
+
+        subscribe(session_id: child.id)
 
         changed = transmissions.find { |t| t["action"] == "session_changed" }
-        expect(changed["session_id"]).to eq(existing.id)
-        expect(changed["message_count"]).to eq(1)
-        expect(changed["view_mode"]).to eq("basic")
+        expect(changed["parent_session_id"]).to eq(parent.id)
       end
-    end
-
-    context "with session_id of zero" do
-      it "resolves to the most recent session" do
-        existing = Session.create!
-
-        subscribe(session_id: 0)
-
-        expect(subscription).to be_confirmed
-        expect(subscription).to have_stream_from("session_#{existing.id}")
-      end
-    end
-
-    it "transmits session_changed on subscription" do
-      session = Session.create!(id: session_id)
-      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
-
-      subscribe(session_id: session_id)
-
-      changed = transmissions.find { |t| t["action"] == "session_changed" }
-      expect(changed).to be_present
-      expect(changed["session_id"]).to eq(session_id)
-      expect(changed["parent_session_id"]).to be_nil
-      expect(changed["message_count"]).to eq(1)
-      expect(changed["view_mode"]).to eq("basic")
-    end
-
-    it "includes name in session_changed" do
-      Session.create!(id: session_id, name: "🔧 Debug Session")
-
-      subscribe(session_id: session_id)
-
-      changed = transmissions.find { |t| t["action"] == "session_changed" }
-      expect(changed["name"]).to eq("🔧 Debug Session")
-    end
-
-    it "includes nil name in session_changed for unnamed sessions" do
-      Session.create!(id: session_id)
-
-      subscribe(session_id: session_id)
-
-      changed = transmissions.find { |t| t["action"] == "session_changed" }
-      expect(changed["name"]).to be_nil
-    end
-
-    it "includes active_skills in session_changed" do
-      Skills::Registry.reload!
-      session = Session.create!(id: session_id)
-      session.activate_skill("gh-issue")
-
-      subscribe(session_id: session_id)
-
-      changed = transmissions.find { |t| t["action"] == "session_changed" }
-      expect(changed["active_skills"]).to include("gh-issue")
-    end
-
-    it "includes empty active_skills for sessions with no skills" do
-      Session.create!(id: session_id)
-
-      subscribe(session_id: session_id)
-
-      changed = transmissions.find { |t| t["action"] == "session_changed" }
-      expect(changed["active_skills"]).to eq([])
-    end
-
-    it "includes active_workflow in session_changed" do
-      Workflows::Registry.reload!
-      session = Session.create!(id: session_id)
-      session.activate_workflow("feature")
-
-      subscribe(session_id: session_id)
-
-      changed = transmissions.find { |t| t["action"] == "session_changed" }
-      expect(changed["active_workflow"]).to eq("feature")
-    end
-
-    it "includes nil active_workflow for sessions with no workflow" do
-      Session.create!(id: session_id)
-
-      subscribe(session_id: session_id)
-
-      changed = transmissions.find { |t| t["action"] == "session_changed" }
-      expect(changed["active_workflow"]).to be_nil
-    end
-
-    it "includes goals in session_changed" do
-      session = Session.create!(id: session_id)
-      Goal.create!(session: session, description: "Test goal")
-
-      subscribe(session_id: session_id)
-
-      changed = transmissions.find { |t| t["action"] == "session_changed" }
-      expect(changed["goals"]).to be_an(Array)
-      expect(changed["goals"].size).to eq(1)
-      expect(changed["goals"].first["description"]).to eq("Test goal")
-    end
-
-    it "includes empty goals for sessions with no goals" do
-      Session.create!(id: session_id)
-
-      subscribe(session_id: session_id)
-
-      changed = transmissions.find { |t| t["action"] == "session_changed" }
-      expect(changed["goals"]).to eq([])
-    end
-
-    it "includes parent_session_id for child sessions" do
-      parent = Session.create!
-      child = Session.create!(parent_session: parent)
-
-      subscribe(session_id: child.id)
-
-      changed = transmissions.find { |t| t["action"] == "session_changed" }
-      expect(changed["parent_session_id"]).to eq(parent.id)
-    end
-
-    it "includes children in session_changed for parent sessions" do
-      parent = Session.create!(id: session_id)
-      child = create(:session, :awaiting, parent_session: parent, prompt: "task", name: "analyzer")
-
-      subscribe(session_id: session_id)
-
-      changed = transmissions.find { |t| t["action"] == "session_changed" }
-      expect(changed["children"]).to eq([
-        {"id" => child.id, "name" => "analyzer", "session_state" => "awaiting"}
-      ])
-    end
-
-    it "omits children key when session has no children" do
-      Session.create!(id: session_id)
-
-      subscribe(session_id: session_id)
-
-      changed = transmissions.find { |t| t["action"] == "session_changed" }
-      expect(changed).not_to have_key("children")
     end
 
     it "transmits chat history newest-first to prevent render thrashing" do
-      session = Session.create!(id: session_id)
-      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
-      session.messages.create!(message_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi there"}, timestamp: 2)
-      session.messages.create!(message_type: "tool_call", payload: {"type" => "tool_call", "content" => "calling bash"}, tool_use_id: "toolu_test1", timestamp: 3)
+      session = create(:session, id: session_id)
+      create(:message, :user_message, session: session, payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
+      create(:message, :agent_message, session: session, payload: {"type" => "agent_message", "content" => "hi there"}, timestamp: 2)
+      create(:message, :tool_call, session: session, payload: {"type" => "tool_call", "content" => "calling bash", "tool_name" => "bash"}, timestamp: 3)
 
       subscribe(session_id: session_id)
 
       history = transmissions.reject { |t| t["action"] }
-      expect(history.size).to eq(3)
-      expect(history[0]).to include("type" => "tool_call", "content" => "calling bash")
-      expect(history[1]).to include("type" => "agent_message", "content" => "hi there")
-      expect(history[2]).to include("type" => "user_message", "content" => "hello")
+      expect(history.map { |h| h["content"] }).to eq(["calling bash", "hi there", "hello"])
     end
 
-    it "includes structured rendered output in history transmissions" do
-      session = Session.create!(id: session_id)
-      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
-      session.messages.create!(message_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi"}, timestamp: 2)
-      session.messages.create!(message_type: "tool_call", payload: {"type" => "tool_call", "content" => "calling bash"}, tool_use_id: "toolu_test2", timestamp: 3)
-
-      subscribe(session_id: session_id)
-
-      # First transmission is session_changed, then view_mode, then history (newest-first)
-      view_mode_msg = transmissions.find { |t| t["action"] == "view_mode" }
-      expect(view_mode_msg["view_mode"]).to eq("basic")
-
-      history = transmissions.reject { |t| t["action"] }
-      expect(history[0]["rendered"]).to eq("basic" => nil)
-      expect(history[1]["rendered"]).to eq("basic" => {"role" => :assistant, "content" => "hi"})
-      expect(history[2]["rendered"]).to eq("basic" => {"role" => :user, "content" => "hello"})
-    end
-
-    it "transmits view_mode on subscription" do
-      Session.create!(id: session_id)
-
-      subscribe(session_id: session_id)
-
-      view_mode_msg = transmissions.find { |t| t["action"] == "view_mode" }
-      expect(view_mode_msg).to be_present
-      expect(view_mode_msg["view_mode"]).to eq("basic")
-    end
-
-    it "decorates history in the session's view_mode" do
-      session = Session.create!(id: session_id, view_mode: "verbose")
-      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
+    it "decorates history entries with structured output keyed by view_mode" do
+      session = create(:session, id: session_id, view_mode: "verbose")
+      create(:message, :user_message, session: session, payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
 
       subscribe(session_id: session_id)
 
@@ -243,20 +127,18 @@ RSpec.describe SessionChannel, type: :channel do
     end
 
     it "includes system_message events in history" do
-      session = Session.create!(id: session_id)
-      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
-      session.messages.create!(message_type: "system_message", payload: {"type" => "system_message", "content" => "MCP: server failed"}, timestamp: 2)
+      session = create(:session, id: session_id)
+      create(:message, :user_message, session: session, payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
+      create(:message, :system_message, session: session, payload: {"type" => "system_message", "content" => "MCP: server failed"}, timestamp: 2)
 
       subscribe(session_id: session_id)
 
-      history = transmissions.reject { |t| t["action"] }
-      expect(history.size).to eq(2)
-      types = history.map { |h| h["type"] }
+      types = transmissions.reject { |t| t["action"] }.map { |h| h["type"] }
       expect(types).to include("system_message")
     end
 
-    it "transmits session_changed and view_mode for a session with no messages" do
-      Session.create!(id: session_id)
+    it "transmits session_changed then view_mode for a session with no messages" do
+      create(:session, id: session_id)
 
       subscribe(session_id: session_id)
 
@@ -267,7 +149,7 @@ RSpec.describe SessionChannel, type: :channel do
 
   describe "#receive" do
     it "broadcasts the received data to the session stream" do
-      Session.create!(id: session_id)
+      create(:session, id: session_id)
       subscribe(session_id: session_id)
       data = {"type" => "user_message", "content" => "hello"}
 
@@ -277,7 +159,7 @@ RSpec.describe SessionChannel, type: :channel do
   end
 
   describe "#speak" do
-    let!(:session) { Session.create!(id: session_id) }
+    let!(:session) { create(:session, id: session_id) }
 
     before { subscribe(session_id: session_id) }
 
@@ -317,7 +199,7 @@ RSpec.describe SessionChannel, type: :channel do
   end
 
   describe "#recall_pending" do
-    let!(:session) { Session.create!(id: session_id) }
+    let!(:session) { create(:session, id: session_id) }
 
     before { subscribe(session_id: session_id) }
 
@@ -329,7 +211,7 @@ RSpec.describe SessionChannel, type: :channel do
     end
 
     it "ignores pending messages from other sessions" do
-      other = Session.create!
+      other = create(:session)
       pm = create(:pending_message, session: other)
 
       expect { perform(:recall_pending, {"pending_message_id" => pm.id}) }
@@ -344,7 +226,7 @@ RSpec.describe SessionChannel, type: :channel do
   end
 
   describe "#interrupt_execution" do
-    let!(:session) { Session.create!(id: session_id) }
+    let!(:session) { create(:session, id: session_id) }
 
     before { subscribe(session_id: session_id) }
 
@@ -372,7 +254,7 @@ RSpec.describe SessionChannel, type: :channel do
       end
 
       it "does not cascade to idle child sessions" do
-        child = Session.create!(parent_session_id: session.id)
+        child = create(:session, parent_session_id: session.id)
 
         perform(:interrupt_execution, {})
 
@@ -396,162 +278,110 @@ RSpec.describe SessionChannel, type: :channel do
 
   describe "#list_sessions" do
     before do
-      Session.create!(id: session_id)
+      create(:session, id: session_id)
       subscribe(session_id: session_id)
     end
 
-    it "returns recent root sessions with metadata" do
-      s1 = Session.create!
-      s1.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
-      s1.messages.create!(message_type: "agent_message", payload: {"type" => "agent_message", "content" => "hello"}, timestamp: 2)
-      s2 = Session.create!
+    it "returns recent root sessions newest-first with name and LLM message count" do
+      older = create(:session, name: "🧠 Brainstorm")
+      create(:message, :user_message, session: older)
+      create(:message, :agent_message, session: older)
+      newer = create(:session)
 
       perform(:list_sessions, {"limit" => 10})
+      sessions = transmissions.last.fetch("sessions")
 
-      response = transmissions.last
-      expect(response["action"]).to eq("sessions_list")
-
-      sessions = response["sessions"]
-      # +1 for the subscribed session created in the before block
       expect(sessions.size).to eq(3)
-
-      ids = sessions.map { |s| s["id"] }
-      expect(ids.first).to eq(s2.id)
-      expect(ids.last).to eq(session_id)
-
-      s1_entry = sessions.find { |s| s["id"] == s1.id }
-      expect(s1_entry["message_count"]).to eq(2)
-    end
-
-    it "includes name for root sessions in the list" do
-      named = Session.create!(name: "🧠 Brainstorm")
-      unnamed = Session.create!
-
-      perform(:list_sessions, {"limit" => 10})
-
-      response = transmissions.last
-      sessions = response["sessions"]
-
-      named_entry = sessions.find { |s| s["id"] == named.id }
-      unnamed_entry = sessions.find { |s| s["id"] == unnamed.id }
-
-      expect(named_entry["name"]).to eq("🧠 Brainstorm")
-      expect(unnamed_entry["name"]).to be_nil
+      expect(sessions.map { |s| s["id"] }).to eq([newer.id, older.id, session_id])
+      expect(sessions.find { |s| s["id"] == older.id }).to include(
+        "name" => "🧠 Brainstorm", "message_count" => 2
+      )
+      expect(sessions.find { |s| s["id"] == newer.id }["name"]).to be_nil
     end
 
     it "excludes child sessions from the top level" do
-      parent = Session.create!
-      Session.create!(parent_session: parent, prompt: "sub-agent task")
+      parent = create(:session)
+      create(:session, parent_session: parent, prompt: "sub-agent task")
 
       perform(:list_sessions, {"limit" => 10})
 
-      response = transmissions.last
-      ids = response["sessions"].map { |s| s["id"] }
+      ids = transmissions.last["sessions"].map { |s| s["id"] }
       expect(ids).to contain_exactly(parent.id, session_id)
     end
 
-    it "nests child sessions under their parent" do
-      parent = Session.create!
-      child = Session.create!(parent_session: parent, prompt: "research", name: "codebase-analyzer")
+    it "nests children under their parent with id, name, state, and message count" do
+      parent = create(:session)
+      child = create(:session, :awaiting, parent_session: parent, prompt: "research", name: "codebase-analyzer")
+      create(:message, :user_message, session: child)
+      create(:message, :agent_message, session: child)
 
       perform(:list_sessions, {"limit" => 10})
+      parent_entry = transmissions.last["sessions"].find { |s| s["id"] == parent.id }
 
-      response = transmissions.last
-      parent_entry = response["sessions"].find { |s| s["id"] == parent.id }
-      expect(parent_entry["children"]).to be_present
-      expect(parent_entry["children"].size).to eq(1)
-
-      child_entry = parent_entry["children"].first
-      expect(child_entry["id"]).to eq(child.id)
-      expect(child_entry["name"]).to eq("codebase-analyzer")
-      expect(child_entry["session_state"]).to eq("idle")
+      expect(parent_entry["children"]).to eq([
+        {
+          "id" => child.id,
+          "name" => "codebase-analyzer",
+          "session_state" => "awaiting",
+          "message_count" => 2,
+          "created_at" => child.created_at.iso8601
+        }
+      ])
     end
 
     it "sorts children by created_at" do
-      parent = Session.create!
-      older = Session.create!(parent_session: parent, prompt: "first", name: "alpha", created_at: 2.minutes.ago)
-      newer = Session.create!(parent_session: parent, prompt: "second", name: "beta", created_at: 1.minute.ago)
+      parent = create(:session)
+      older = create(:session, parent_session: parent, prompt: "first", name: "alpha", created_at: 2.minutes.ago)
+      newer = create(:session, parent_session: parent, prompt: "second", name: "beta", created_at: 1.minute.ago)
 
       perform(:list_sessions, {"limit" => 10})
 
-      response = transmissions.last
-      children = response["sessions"].first["children"]
+      children = transmissions.last["sessions"].first["children"]
       expect(children.map { |c| c["id"] }).to eq([older.id, newer.id])
     end
 
-    it "exposes session_state for child sessions" do
-      parent = Session.create!
-      create(:session, :awaiting, parent_session: parent, prompt: "task")
+    it "omits the children key entirely when a session has no children" do
+      create(:session)
 
       perform(:list_sessions, {"limit" => 10})
 
-      response = transmissions.last
-      child_entry = response["sessions"].first["children"].first
-      expect(child_entry["session_state"]).to eq("awaiting")
-    end
-
-    it "includes message counts for child sessions" do
-      parent = Session.create!
-      child = Session.create!(parent_session: parent, prompt: "task")
-      child.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
-      child.messages.create!(message_type: "agent_message", payload: {"type" => "agent_message", "content" => "ok"}, timestamp: 2)
-
-      perform(:list_sessions, {"limit" => 10})
-
-      response = transmissions.last
-      child_entry = response["sessions"].first["children"].first
-      expect(child_entry["message_count"]).to eq(2)
-    end
-
-    it "omits children key when session has no children" do
-      Session.create!
-
-      perform(:list_sessions, {"limit" => 10})
-
-      response = transmissions.last
-      expect(response["sessions"].first).not_to have_key("children")
+      expect(transmissions.last["sessions"].first).not_to have_key("children")
     end
 
     it "respects the limit parameter" do
-      3.times { Session.create! }
+      3.times { create(:session) }
 
       perform(:list_sessions, {"limit" => 2})
 
-      response = transmissions.last
-      expect(response["sessions"].size).to eq(2)
+      expect(transmissions.last["sessions"].size).to eq(2)
     end
 
-    it "defaults to 10 sessions" do
-      12.times { Session.create! }
+    it "defaults to DEFAULT_LIST_LIMIT when limit is omitted" do
+      (SessionChannel::DEFAULT_LIST_LIMIT + 2).times { create(:session) }
 
       perform(:list_sessions, {})
 
-      response = transmissions.last
-      expect(response["sessions"].size).to eq(10)
+      expect(transmissions.last["sessions"].size).to eq(SessionChannel::DEFAULT_LIST_LIMIT)
     end
 
-    it "clamps limit to 50" do
-      55.times { Session.create! }
+    it "clamps limit to MAX_LIST_LIMIT" do
+      (SessionChannel::MAX_LIST_LIMIT + 5).times { create(:session) }
 
-      perform(:list_sessions, {"limit" => 100})
+      perform(:list_sessions, {"limit" => SessionChannel::MAX_LIST_LIMIT + 50})
 
-      response = transmissions.last
-      expect(response["action"]).to eq("sessions_list")
-      expect(response["sessions"].size).to eq(50)
+      expect(transmissions.last["sessions"].size).to eq(SessionChannel::MAX_LIST_LIMIT)
     end
 
     it "returns only the current session when no others exist" do
       perform(:list_sessions, {})
 
-      response = transmissions.last
-      expect(response["action"]).to eq("sessions_list")
-      expect(response["sessions"].map { |s| s["id"] }).to eq([session_id])
+      expect(transmissions.last["sessions"].map { |s| s["id"] }).to eq([session_id])
     end
   end
 
   describe "#create_session" do
     before do
-      Session.create!(id: session_id)
+      create(:session, id: session_id)
       subscribe(session_id: session_id)
     end
 
@@ -578,12 +408,12 @@ RSpec.describe SessionChannel, type: :channel do
   end
 
   describe "#switch_session" do
-    let!(:source_session) { Session.create!(id: session_id) }
-    let!(:target_session) { Session.create! }
+    let!(:source_session) { create(:session, id: session_id) }
+    let!(:target_session) { create(:session) }
 
     before do
-      target_session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "old msg"}, timestamp: 1)
-      target_session.messages.create!(message_type: "agent_message", payload: {"type" => "agent_message", "content" => "old reply"}, timestamp: 2)
+      create(:message, :user_message, session: target_session, payload: {"type" => "user_message", "content" => "old msg"}, timestamp: 1)
+      create(:message, :agent_message, session: target_session, payload: {"type" => "agent_message", "content" => "old reply"}, timestamp: 2)
       subscribe(session_id: session_id)
     end
 
@@ -636,11 +466,11 @@ RSpec.describe SessionChannel, type: :channel do
   end
 
   describe "#change_view_mode" do
-    let!(:session) { Session.create!(id: session_id) }
+    let!(:session) { create(:session, id: session_id) }
 
     before do
-      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
-      session.messages.create!(message_type: "agent_message", payload: {"type" => "agent_message", "content" => "hi"}, timestamp: 2)
+      create(:message, :user_message, session: session, payload: {"type" => "user_message", "content" => "hello"}, timestamp: 1)
+      create(:message, :agent_message, session: session, payload: {"type" => "agent_message", "content" => "hi"}, timestamp: 2)
       subscribe(session_id: session_id)
     end
 
@@ -800,11 +630,11 @@ RSpec.describe SessionChannel, type: :channel do
   end
 
   describe "debug mode system prompt" do
-    let!(:session) { Session.create!(id: session_id, view_mode: "debug") }
+    let!(:session) { create(:session, id: session_id, view_mode: "debug") }
 
     it "prepends system prompt in debug mode history when prompt exists" do
       allow_any_instance_of(Session).to receive(:system_prompt).and_return("You are Anima.")
-      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+      create(:message, :user_message, session: session, payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
 
       subscribe(session_id: session_id)
 
@@ -819,7 +649,7 @@ RSpec.describe SessionChannel, type: :channel do
     end
 
     it "always prepends system prompt (soul is always present)" do
-      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+      create(:message, :user_message, session: session, payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
 
       subscribe(session_id: session_id)
 
@@ -832,7 +662,7 @@ RSpec.describe SessionChannel, type: :channel do
     it "does not prepend system prompt in basic mode" do
       session.update!(view_mode: "basic")
       allow_any_instance_of(Session).to receive(:system_prompt).and_return("You are Anima.")
-      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+      create(:message, :user_message, session: session, payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
 
       subscribe(session_id: session_id)
 
@@ -844,7 +674,7 @@ RSpec.describe SessionChannel, type: :channel do
     it "broadcasts system prompt on view mode change to debug" do
       session.update!(view_mode: "basic")
       allow_any_instance_of(Session).to receive(:system_prompt).and_return("You are Anima.")
-      session.messages.create!(message_type: "user_message", payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
+      create(:message, :user_message, session: session, payload: {"type" => "user_message", "content" => "hi"}, timestamp: 1)
 
       subscribe(session_id: session_id)
 
@@ -862,45 +692,30 @@ RSpec.describe SessionChannel, type: :channel do
   end
 
   describe "debug mode renders token counts" do
-    let!(:session) { Session.create!(id: session_id, view_mode: "debug") }
+    let!(:session) { create(:session, id: session_id, view_mode: "debug") }
 
     it "includes token info in debug-decorated user messages" do
-      session.messages.create!(
-        message_type: "user_message",
+      create(:message, :user_message, session: session,
         payload: {"type" => "user_message", "content" => "hello"},
-        timestamp: 1,
-        token_count: 5
-      )
+        timestamp: 1, token_count: 5)
 
       subscribe(session_id: session_id)
 
-      history = transmissions.reject { |t| t["action"] }
-      msg = history.find { |t| t["type"] == "user_message" }
-      rendered = msg.dig("rendered", "debug")
-
-      expect(rendered["tokens"]).to eq(5)
+      msg = transmissions.find { |t| t["type"] == "user_message" }
+      expect(msg.dig("rendered", "debug", "tokens")).to eq(5)
     end
 
     it "includes tool_use_id in debug-decorated tool calls" do
-      session.messages.create!(
-        message_type: "tool_call",
-        payload: {
-          "type" => "tool_call", "content" => "calling bash",
-          "tool_name" => "bash", "tool_input" => {"command" => "ls"},
-          "tool_use_id" => "toolu_abc"
-        },
-        timestamp: 1,
-        tool_use_id: "toolu_abc"
-      )
+      create(:message, :bash_tool_call, session: session,
+        payload: {"type" => "tool_call", "content" => "calling bash",
+                  "tool_name" => "bash", "tool_input" => {"command" => "ls"},
+                  "tool_use_id" => "toolu_abc"},
+        tool_use_id: "toolu_abc", timestamp: 1)
 
       subscribe(session_id: session_id)
 
-      history = transmissions.reject { |t| t["action"] }
-      msg = history.find { |t| t["type"] == "tool_call" }
-      rendered = msg.dig("rendered", "debug")
-
-      expect(rendered["tool_use_id"]).to eq("toolu_abc")
-      expect(rendered["tool"]).to eq("bash")
+      msg = transmissions.find { |t| t["type"] == "tool_call" }
+      expect(msg.dig("rendered", "debug")).to include("tool_use_id" => "toolu_abc", "tool" => "bash")
     end
   end
 

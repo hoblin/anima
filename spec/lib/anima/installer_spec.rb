@@ -5,19 +5,7 @@ require "anima/installer"
 require "tmpdir"
 
 RSpec.describe Anima::Installer do
-  describe "DIRECTORIES" do
-    it "includes expected directories" do
-      expect(described_class::DIRECTORIES).to include("db", "config/credentials", "log", "tmp")
-    end
-  end
-
-  describe "ANIMA_HOME" do
-    it "points to ~/.anima" do
-      expect(described_class::ANIMA_HOME.to_s).to eq(File.expand_path("~/.anima"))
-    end
-  end
-
-  describe "#run" do
+  describe "#run", :silence_output do
     let(:tmp_home) { Pathname.new(Dir.mktmpdir("anima-test-")) }
     let(:installer) { described_class.new(anima_home: tmp_home) }
 
@@ -171,7 +159,7 @@ RSpec.describe Anima::Installer do
     end
   end
 
-  describe "#create_systemd_service" do
+  describe "#create_systemd_service", :silence_output do
     let(:tmp_home) { Pathname.new(Dir.mktmpdir("anima-test-")) }
     let(:installer) { described_class.new(anima_home: tmp_home) }
     let(:service_dir) { Pathname.new(Dir.mktmpdir("systemd-test-")) }

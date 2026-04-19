@@ -49,12 +49,19 @@ module TUI
         @config_path || DEFAULT_PATH
       end
 
-      # Clears all loaded settings and resets to default path.
+      # Restores template defaults and clears the path override.
       # Useful in test teardown.
       def reset!
         @config_path = nil
+        load_defaults!
+      end
+
+      # Populates ivars from the cached {TEMPLATE} hash without touching disk.
+      # Intended for test suites that want template defaults without paying
+      # the TOML parse cost for every example.
+      def load_defaults!
         TEMPLATE.each do |section, keys|
-          keys.each_key { |key| instance_variable_set(:"@#{section}_#{key}", nil) }
+          keys.each { |key, value| instance_variable_set(:"@#{section}_#{key}", value) }
         end
       end
 
