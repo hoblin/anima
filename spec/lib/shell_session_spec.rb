@@ -229,6 +229,45 @@ RSpec.describe ShellSession do
     end
   end
 
+  describe "#login_shell" do
+    around do |example|
+      original = ENV["SHELL"]
+      example.run
+    ensure
+      ENV["SHELL"] = original
+    end
+
+    it "returns $SHELL when it is set" do
+      ENV["SHELL"] = "/bin/zsh"
+      expect(shell.send(:login_shell)).to eq("/bin/zsh")
+    end
+
+    it "falls back to /bin/bash when $SHELL is unset" do
+      ENV.delete("SHELL")
+      expect(shell.send(:login_shell)).to eq("/bin/bash")
+    end
+
+    it "falls back to /bin/bash when $SHELL is empty" do
+      ENV["SHELL"] = ""
+      expect(shell.send(:login_shell)).to eq("/bin/bash")
+    end
+  end
+
+  describe "shell selection" do
+    it "sources the user's login profile then hands off to a bare bash" do
+      expected_shell = ENV["SHELL"].presence || "/bin/bash"
+      allow(PTY).to receive(:spawn).and_call_original
+
+      described_class.new(session_id: "spawn-#{SecureRandom.hex(4)}").finalize
+
+      expect(PTY).to have_received(:spawn).with(
+        described_class.const_get(:SHELL_ENV),
+        expected_shell,
+        "-l", "-c", described_class.const_get(:BARE_SHELL_EXEC)
+      ).at_least(:once)
+    end
+  end
+
   describe "environment tracking" do
     describe "seed_env_snapshot" do
       it "sets @env_snapshot to real startup state on initialization" do

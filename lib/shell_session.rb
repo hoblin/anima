@@ -226,14 +226,39 @@ class ShellSession
     "GIT_TERMINAL_PROMPT" => "0"       # Fail immediately instead of prompting for credentials
   }.freeze
 
+  # Boots the user's login shell just long enough to source their profile
+  # (/etc/profile, ~/.zprofile, ~/.bash_profile, ~/.zshenv — whichever
+  # applies), then +exec+s a bare +bash+ that handles our command stream.
+  #
+  # Sourcing profile is what makes the agent see the same PATH, tool
+  # locations, and env vars the user has in their own terminal. Handing off
+  # to a bare +bash+ afterwards avoids the mess that comes with attaching a
+  # real interactive shell to a PTY — prompts, line editors, syntax
+  # highlighting, bracketed paste, and title-setting escapes would all
+  # corrupt our marker-based output parsing.
+  #
+  # {SHELL_ENV} still merges on top to keep pagers and credential prompts
+  # from hanging the PTY.
   def spawn_shell
-    @pty_stdout, @pty_stdin, @pid = PTY.spawn(
-      SHELL_ENV,
-      "bash", "--norc", "--noprofile"
-    )
-    # Disable terminal echo via termios before bash can echo our commands.
+    @pty_stdout, @pty_stdin, @pid = PTY.spawn(SHELL_ENV, login_shell, "-l", "-c", BARE_SHELL_EXEC)
+    # Disable terminal echo via termios before the shell can echo our commands.
     # This is instant (kernel-level), unlike stty -echo which races with input.
     @pty_stdin.echo = false
+  end
+
+  # Payload handed to the login shell via +-c+. Replaces the login shell's
+  # process with a bare bash so the user's profile env carries forward, but
+  # the interactive shell machinery (ZLE, prompts, syntax highlighting) does
+  # not. Must be bash specifically — the command stream relies on bash-safe
+  # POSIX syntax, and the +--norc --noprofile+ flags are bash-specific.
+  BARE_SHELL_EXEC = "exec bash --norc --noprofile"
+
+  # Resolves the shell to spawn. Falls back to /bin/bash when +$SHELL+ is
+  # unset or empty (e.g. cron, systemd, minimal containers).
+  #
+  # @return [String] absolute path to the login shell
+  def login_shell
+    ENV["SHELL"].presence || "/bin/bash"
   end
 
   def start_stderr_reader
