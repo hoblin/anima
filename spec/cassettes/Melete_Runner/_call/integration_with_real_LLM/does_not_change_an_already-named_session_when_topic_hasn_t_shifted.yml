@@ -67,31 +67,34 @@ http_interactions:
         — Decorator patterns for Rails views — presentation logic separated from models,
         *_decorator.rb, app/decorators/.\\n- gh-issue — Issue writing with WHAT/WHY/HOW
         framework — tickets, bug reports, feature requests, issue descriptions, unclear
-        rationale in existing issues.\\n- mcp-server — Ruby MCP server development
-        — tools, prompts, resources, transport, the mcp gem, LLM tool integrations.\\n-
-        ratatui-ruby — Terminal UI development — widgets, layouts, events, Tea MVU,
-        terminal rendering.\\n- rspec — Testing with FactoryBot — matchers, test doubles,
-        shared examples, describe/it/expect blocks, *_spec.rb files, test strategy.\\n\\n──────────────────────────────\\nAVAILABLE
-        WORKFLOWS\\n──────────────────────────────\\n- commit — Create focused git
-        commits with user approval.\\n- create_handoff — Preserve current session's
-        context, decisions, and next steps so another session can continue the work.\\n-
-        create_note — Persist findings, insights, or decisions as a note in the thoughts
-        system for future sessions.\\n- create_plan — For epics and multi-ticket efforts
-        — research the problem space and design a phased implementation strategy before
-        writing code.\\n- decompose_ticket — Decompose a feature ticket into vertical
-        slices — testable, deliverable units ordered by dependency.\\n- feature —
-        Implement a GitHub issue end-to-end: branch, research, code, test, commit,
-        PR, self-review.\\n- implement_plan — Execute an approved implementation plan
-        — work through each phase, verify success criteria before moving on.\\n- iterate_plan
-        — Revise an existing implementation plan based on feedback, new findings,
-        or changed requirements.\\n- research_codebase — Deep-dive into a large or
-        unfamiliar codebase — delegate research to parallel specialists and synthesize
-        findings.\\n- resume_handoff — Continue work left by a previous session —
-        read its handoff, verify assumptions, and pick up where it stopped.\\n- review_pr
-        — All PR review operations — review, re-review, self-review, or address reviewer
-        feedback.\\n- thoughts_init — Bootstrap ./thoughts for a new project that
-        doesn't have one yet.\\n- validate_plan — Check whether the implementation
-        satisfies the plan — compare success criteria against what was actually built.\\n\",\"cache_control\":{\"type\":\"ephemeral\"}}]}"
+        rationale in existing issues.\\n- github — GitHub operations — issues, pull
+        requests, releases, CI runs, comments. Activate when an issue or PR number
+        comes up, or when the conversation turns to repo state.\\n- mcp-server — Ruby
+        MCP server development — tools, prompts, resources, transport, the mcp gem,
+        LLM tool integrations.\\n- ratatui-ruby — Terminal UI development — widgets,
+        layouts, events, Tea MVU, terminal rendering.\\n- rspec — Testing with FactoryBot
+        — matchers, test doubles, shared examples, describe/it/expect blocks, *_spec.rb
+        files, test strategy.\\n\\n──────────────────────────────\\nAVAILABLE WORKFLOWS\\n──────────────────────────────\\n-
+        commit — Create focused git commits with user approval.\\n- create_handoff
+        — Preserve current session's context, decisions, and next steps so another
+        session can continue the work.\\n- create_note — Persist findings, insights,
+        or decisions as a note in the thoughts system for future sessions.\\n- create_plan
+        — For epics and multi-ticket efforts — research the problem space and design
+        a phased implementation strategy before writing code.\\n- decompose_ticket
+        — Decompose a feature ticket into vertical slices — testable, deliverable
+        units ordered by dependency.\\n- feature — Implement a GitHub issue end-to-end:
+        branch, research, code, test, commit, PR, self-review.\\n- implement_plan
+        — Execute an approved implementation plan — work through each phase, verify
+        success criteria before moving on.\\n- iterate_plan — Revise an existing implementation
+        plan based on feedback, new findings, or changed requirements.\\n- research_codebase
+        — Deep-dive into a large or unfamiliar codebase — delegate research to parallel
+        specialists and synthesize findings.\\n- resume_handoff — Continue work left
+        by a previous session — read its handoff, verify assumptions, and pick up
+        where it stopped.\\n- review_pr — All PR review operations — review, re-review,
+        self-review, or address reviewer feedback.\\n- thoughts_init — Bootstrap ./thoughts
+        for a new project that doesn't have one yet.\\n- validate_plan — Check whether
+        the implementation satisfies the plan — compare success criteria against what
+        was actually built.\\n\",\"cache_control\":{\"type\":\"ephemeral\"}}]}"
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -113,7 +116,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 11 Apr 2026 17:46:04 GMT
+      - Mon, 20 Apr 2026 07:57:38 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -125,21 +128,21 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775941200'
+      - '1776682800'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.19'
+      - '0.11'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1776409200'
+      - '1777010400'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.09'
+      - '0.24'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1775941200'
+      - '1776682800'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -153,47 +156,51 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2791'
+      - '3096'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=2794
-      Cf-Cache-Status:
-      - DYNAMIC
+      - x-originResponse;dur=3099
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
       X-Robots-Tag:
       - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
       Cf-Ray:
       - "<CF_RAY>"
     body:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMTNZR1JUVmpGY0syMVJqb1A3R3dkTFUiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMTZ4YUc0cENheEd5aFYyUUVYU3BrcmgiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
-        InRleHQiOiJJIG5lZWQgbW9yZSBjb250ZXh0IHRvIHByZXBhcmUgcHJvcGVy
-        bHkuIFRoZSBtZXNzYWdlIFwiQ29udGludWUgd2l0aCB0aGUgZml4XCIgaXMg
-        aW5jb21wbGV0ZSDigJQgSSBkb24ndCBrbm93OlxuXG4xLiAqKldoYXQgZml4
-        KiogaXMgaW4gcHJvZ3Jlc3MgKGJ1ZyBmaXgsIGZlYXR1cmUgaW1wbGVtZW50
-        YXRpb24sIHRlc3QgZmFpbHVyZT8pXG4yLiAqKldoYXQgZG9tYWluKiogc2hl
-        J3Mgd29ya2luZyBpbiAoUmFpbHMsIGdhbWUgZGV2LCBDTEksIGV0Yz8pXG4z
-        LiAqKldoYXQgc2Vzc2lvbioqIHRoaXMgaXMgY29udGludWluZyBmcm9tIChk
-        b2VzIGEgaGFuZG9mZiBleGlzdD8pXG5cbkNhbiB5b3UgcHJvdmlkZTpcbi0g
-        QSBkZXNjcmlwdGlvbiBvZiB3aGF0J3MgYmVpbmcgZml4ZWRcbi0gVGhlIGNv
-        ZGViYXNlIG9yIGRvbWFpbiBjb250ZXh0XG4tIFdoZXRoZXIgdGhlcmUncyBh
-        biBleGlzdGluZyBoYW5kb2ZmIG9yIGdvYWwgc3RhdGUgdG8gcmVmZXJlbmNl
-        XG5cbk9uY2UgSSB1bmRlcnN0YW5kIHRoZSB3b3JrLCBJJ2xsIGFjdGl2YXRl
-        IHRoZSByaWdodCBza2lsbHMsIHdvcmtmbG93cywgYW5kIGdvYWxzIHRvIHNl
-        dCB0aGUgc2NlbmUuIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3Rv
-        cF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6
-        eyJpbnB1dF90b2tlbnMiOjI0NTIsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rv
-        a2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2Ny
-        ZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVt
-        ZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoxNDYs
-        InNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5v
-        dF9hdmFpbGFibGUifX0=
-  recorded_at: Sat, 11 Apr 2026 17:46:04 GMT
+        InRleHQiOiJJIGRvbid0IGhhdmUgZW5vdWdoIGNvbnRleHQgdG8gcHJlcGFy
+        ZSB0aGUgcmlnaHQgc2NlbmUuIFRoZSBtZXNzYWdlIFwiQ29udGludWUgd2l0
+        aCB0aGUgZml4XCIgZG9lc24ndCB0ZWxsIG1lOlxuXG4tIFdoYXQgZml4IGlz
+        IHVuZGVyd2F5P1xuLSBXaGF0IGNvZGViYXNlIG9yIGRvbWFpbj9cbi0gV2hh
+        dCdzIHRoZSBjdXJyZW50IHN0YXRlIOKAlCBpcyB0aGVyZSBhIGJyYW5jaCwg
+        UFIsIG9yIHRpY2tldD9cbi0gV2hhdCBza2lsbCBvciB3b3JrZmxvdyB3b3Vs
+        ZCBoZWxwIGhlciBuZXh0P1xuXG5UbyBzZXQgdGhpcyB1cCBwcm9wZXJseSwg
+        SSBuZWVkIEFvaWRlIChvciB5b3UpIHRvIGNsYXJpZnk6XG5cbjEuICoqVGhl
+        IHByb2JsZW0qKjogV2hhdCBhcmUgd2UgZml4aW5nP1xuMi4gKipUaGUgc2Nv
+        cGUqKjogSXMgdGhpcyBhIGJ1ZyBpbiBhIHNwZWNpZmljIHN5c3RlbSwgYSBm
+        ZWF0dXJlIGltcGxlbWVudGF0aW9uLCBhIHJlZmFjdG9yP1xuMy4gKipUaGUg
+        Y3VycmVudCBzdGF0ZSoqOiBEbyB3ZSBoYXZlIGEgYnJhbmNoLCBhIGZhaWxp
+        bmcgdGVzdCwgYSBQUiByZXZpZXcgdG8gYWRkcmVzcz9cblxuT25jZSB5b3Ug
+        Z2l2ZSBtZSB0aG9zZSBkZXRhaWxzLCBJIGNhbjpcbi0gTmFtZSB0aGUgc2Vz
+        c2lvbiBhcHByb3ByaWF0ZWx5XG4tIEFjdGl2YXRlIHRoZSByaWdodCBza2ls
+        bChzKSBmb3IgdGhlIGRvbWFpblxuLSBSZWFkIGEgd29ya2Zsb3cgaWYgdGhl
+        IHRhc2sgaXMgbXVsdGktc3RlcFxuLSBTZXQgdXAgZ29hbHMgdG8gdHJhY2sg
+        cHJvZ3Jlc3NcblxuV2hhdCdzIHRoZSBjb250ZXh0PyJ9XSwic3RvcF9yZWFz
+        b24iOiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0
+        YWlscyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyNDkxLCJjYWNo
+        ZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRf
+        dG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5w
+        dXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwi
+        b3V0cHV0X3Rva2VucyI6MjExLCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIs
+        ImluZmVyZW5jZV9nZW8iOiJub3RfYXZhaWxhYmxlIn19
+  recorded_at: Mon, 20 Apr 2026 07:57:38 GMT
 recorded_with: VCR 6.4.0

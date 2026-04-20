@@ -64,31 +64,34 @@ http_interactions:
         — Decorator patterns for Rails views — presentation logic separated from models,
         *_decorator.rb, app/decorators/.\n- gh-issue — Issue writing with WHAT/WHY/HOW
         framework — tickets, bug reports, feature requests, issue descriptions, unclear
-        rationale in existing issues.\n- mcp-server — Ruby MCP server development
-        — tools, prompts, resources, transport, the mcp gem, LLM tool integrations.\n-
-        ratatui-ruby — Terminal UI development — widgets, layouts, events, Tea MVU,
-        terminal rendering.\n- rspec — Testing with FactoryBot — matchers, test doubles,
-        shared examples, describe/it/expect blocks, *_spec.rb files, test strategy.\n\n──────────────────────────────\nAVAILABLE
-        WORKFLOWS\n──────────────────────────────\n- commit — Create focused git commits
-        with user approval.\n- create_handoff — Preserve current session''s context,
-        decisions, and next steps so another session can continue the work.\n- create_note
-        — Persist findings, insights, or decisions as a note in the thoughts system
-        for future sessions.\n- create_plan — For epics and multi-ticket efforts —
-        research the problem space and design a phased implementation strategy before
-        writing code.\n- decompose_ticket — Decompose a feature ticket into vertical
-        slices — testable, deliverable units ordered by dependency.\n- feature — Implement
-        a GitHub issue end-to-end: branch, research, code, test, commit, PR, self-review.\n-
-        implement_plan — Execute an approved implementation plan — work through each
-        phase, verify success criteria before moving on.\n- iterate_plan — Revise
-        an existing implementation plan based on feedback, new findings, or changed
-        requirements.\n- research_codebase — Deep-dive into a large or unfamiliar
-        codebase — delegate research to parallel specialists and synthesize findings.\n-
-        resume_handoff — Continue work left by a previous session — read its handoff,
-        verify assumptions, and pick up where it stopped.\n- review_pr — All PR review
-        operations — review, re-review, self-review, or address reviewer feedback.\n-
-        thoughts_init — Bootstrap ./thoughts for a new project that doesn''t have
-        one yet.\n- validate_plan — Check whether the implementation satisfies the
-        plan — compare success criteria against what was actually built.\n","cache_control":{"type":"ephemeral"}}]}'
+        rationale in existing issues.\n- github — GitHub operations — issues, pull
+        requests, releases, CI runs, comments. Activate when an issue or PR number
+        comes up, or when the conversation turns to repo state.\n- mcp-server — Ruby
+        MCP server development — tools, prompts, resources, transport, the mcp gem,
+        LLM tool integrations.\n- ratatui-ruby — Terminal UI development — widgets,
+        layouts, events, Tea MVU, terminal rendering.\n- rspec — Testing with FactoryBot
+        — matchers, test doubles, shared examples, describe/it/expect blocks, *_spec.rb
+        files, test strategy.\n\n──────────────────────────────\nAVAILABLE WORKFLOWS\n──────────────────────────────\n-
+        commit — Create focused git commits with user approval.\n- create_handoff
+        — Preserve current session''s context, decisions, and next steps so another
+        session can continue the work.\n- create_note — Persist findings, insights,
+        or decisions as a note in the thoughts system for future sessions.\n- create_plan
+        — For epics and multi-ticket efforts — research the problem space and design
+        a phased implementation strategy before writing code.\n- decompose_ticket
+        — Decompose a feature ticket into vertical slices — testable, deliverable
+        units ordered by dependency.\n- feature — Implement a GitHub issue end-to-end:
+        branch, research, code, test, commit, PR, self-review.\n- implement_plan —
+        Execute an approved implementation plan — work through each phase, verify
+        success criteria before moving on.\n- iterate_plan — Revise an existing implementation
+        plan based on feedback, new findings, or changed requirements.\n- research_codebase
+        — Deep-dive into a large or unfamiliar codebase — delegate research to parallel
+        specialists and synthesize findings.\n- resume_handoff — Continue work left
+        by a previous session — read its handoff, verify assumptions, and pick up
+        where it stopped.\n- review_pr — All PR review operations — review, re-review,
+        self-review, or address reviewer feedback.\n- thoughts_init — Bootstrap ./thoughts
+        for a new project that doesn''t have one yet.\n- validate_plan — Check whether
+        the implementation satisfies the plan — compare success criteria against what
+        was actually built.\n","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -110,7 +113,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 11 Apr 2026 17:46:06 GMT
+      - Mon, 20 Apr 2026 07:57:40 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -122,21 +125,21 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775941200'
+      - '1776682800'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.19'
+      - '0.11'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1776409200'
+      - '1777010400'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.09'
+      - '0.24'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1775941200'
+      - '1776682800'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -150,36 +153,38 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '823'
+      - '902'
+      Vary:
+      - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=825
-      Cf-Cache-Status:
-      - DYNAMIC
+      - x-originResponse;dur=905
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
       X-Robots-Tag:
       - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
       Cf-Ray:
       - "<CF_RAY>"
     body:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMTdnRThUaENBZkdVRWFnM1ZRc2hwUloiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMUplVktRcGhtRnZBcmU4OFRnQnNvYlciLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidG9vbF91
-        c2UiLCJpZCI6InRvb2x1XzAxS2hlSk1ZelpKR2dxeXVITHpCeUJQZSIsIm5h
+        c2UiLCJpZCI6InRvb2x1XzAxWDZXTUNqS0VMQnRXS3ZRVWF3UFFueCIsIm5h
         bWUiOiJldmVyeXRoaW5nX2lzX3JlYWR5IiwiaW5wdXQiOnt9LCJjYWxsZXIi
         OnsidHlwZSI6ImRpcmVjdCJ9fV0sInN0b3BfcmVhc29uIjoidG9vbF91c2Ui
         LCJzdG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGwsInVz
-        YWdlIjp7ImlucHV0X3Rva2VucyI6MjQ0MSwiY2FjaGVfY3JlYXRpb25faW5w
+        YWdlIjp7ImlucHV0X3Rva2VucyI6MjQ4MCwiY2FjaGVfY3JlYXRpb25faW5w
         dXRfdG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2Fj
         aGVfY3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwi
         ZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMi
         OjM5LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8i
         OiJub3RfYXZhaWxhYmxlIn19
-  recorded_at: Sat, 11 Apr 2026 17:46:06 GMT
+  recorded_at: Mon, 20 Apr 2026 07:57:40 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
@@ -187,7 +192,7 @@ http_interactions:
       encoding: UTF-8
       string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":[{"type":"text","text":"Aoide
         is working on this:\n```\nUser: Hello\nAssistant: Hi\n```\n\nPrepare whatever
-        she needs for the next exchange, then call everything_is_ready."}]},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01KheJMYzZJGgqyuHLzByBPe","name":"everything_is_ready","input":{},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01KheJMYzZJGgqyuHLzByBPe","content":"Acknowledged.
+        she needs for the next exchange, then call everything_is_ready."}]},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01X6WMCjKELBtWKvQUawPQnx","name":"everything_is_ready","input":{},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01X6WMCjKELBtWKvQUawPQnx","content":"Acknowledged.
         No changes needed.","cache_control":{"type":"ephemeral"}}]}],"max_tokens":4096,"tools":[{"name":"rename_session","description":"Rename
         the session.","input_schema":{"type":"object","properties":{"emoji":{"type":"string"},"name":{"type":"string","description":"1-3
         words."},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["emoji","name"]}},{"name":"activate_skill","description":"Give
@@ -245,31 +250,34 @@ http_interactions:
         — Decorator patterns for Rails views — presentation logic separated from models,
         *_decorator.rb, app/decorators/.\n- gh-issue — Issue writing with WHAT/WHY/HOW
         framework — tickets, bug reports, feature requests, issue descriptions, unclear
-        rationale in existing issues.\n- mcp-server — Ruby MCP server development
-        — tools, prompts, resources, transport, the mcp gem, LLM tool integrations.\n-
-        ratatui-ruby — Terminal UI development — widgets, layouts, events, Tea MVU,
-        terminal rendering.\n- rspec — Testing with FactoryBot — matchers, test doubles,
-        shared examples, describe/it/expect blocks, *_spec.rb files, test strategy.\n\n──────────────────────────────\nAVAILABLE
-        WORKFLOWS\n──────────────────────────────\n- commit — Create focused git commits
-        with user approval.\n- create_handoff — Preserve current session''s context,
-        decisions, and next steps so another session can continue the work.\n- create_note
-        — Persist findings, insights, or decisions as a note in the thoughts system
-        for future sessions.\n- create_plan — For epics and multi-ticket efforts —
-        research the problem space and design a phased implementation strategy before
-        writing code.\n- decompose_ticket — Decompose a feature ticket into vertical
-        slices — testable, deliverable units ordered by dependency.\n- feature — Implement
-        a GitHub issue end-to-end: branch, research, code, test, commit, PR, self-review.\n-
-        implement_plan — Execute an approved implementation plan — work through each
-        phase, verify success criteria before moving on.\n- iterate_plan — Revise
-        an existing implementation plan based on feedback, new findings, or changed
-        requirements.\n- research_codebase — Deep-dive into a large or unfamiliar
-        codebase — delegate research to parallel specialists and synthesize findings.\n-
-        resume_handoff — Continue work left by a previous session — read its handoff,
-        verify assumptions, and pick up where it stopped.\n- review_pr — All PR review
-        operations — review, re-review, self-review, or address reviewer feedback.\n-
-        thoughts_init — Bootstrap ./thoughts for a new project that doesn''t have
-        one yet.\n- validate_plan — Check whether the implementation satisfies the
-        plan — compare success criteria against what was actually built.\n","cache_control":{"type":"ephemeral"}}]}'
+        rationale in existing issues.\n- github — GitHub operations — issues, pull
+        requests, releases, CI runs, comments. Activate when an issue or PR number
+        comes up, or when the conversation turns to repo state.\n- mcp-server — Ruby
+        MCP server development — tools, prompts, resources, transport, the mcp gem,
+        LLM tool integrations.\n- ratatui-ruby — Terminal UI development — widgets,
+        layouts, events, Tea MVU, terminal rendering.\n- rspec — Testing with FactoryBot
+        — matchers, test doubles, shared examples, describe/it/expect blocks, *_spec.rb
+        files, test strategy.\n\n──────────────────────────────\nAVAILABLE WORKFLOWS\n──────────────────────────────\n-
+        commit — Create focused git commits with user approval.\n- create_handoff
+        — Preserve current session''s context, decisions, and next steps so another
+        session can continue the work.\n- create_note — Persist findings, insights,
+        or decisions as a note in the thoughts system for future sessions.\n- create_plan
+        — For epics and multi-ticket efforts — research the problem space and design
+        a phased implementation strategy before writing code.\n- decompose_ticket
+        — Decompose a feature ticket into vertical slices — testable, deliverable
+        units ordered by dependency.\n- feature — Implement a GitHub issue end-to-end:
+        branch, research, code, test, commit, PR, self-review.\n- implement_plan —
+        Execute an approved implementation plan — work through each phase, verify
+        success criteria before moving on.\n- iterate_plan — Revise an existing implementation
+        plan based on feedback, new findings, or changed requirements.\n- research_codebase
+        — Deep-dive into a large or unfamiliar codebase — delegate research to parallel
+        specialists and synthesize findings.\n- resume_handoff — Continue work left
+        by a previous session — read its handoff, verify assumptions, and pick up
+        where it stopped.\n- review_pr — All PR review operations — review, re-review,
+        self-review, or address reviewer feedback.\n- thoughts_init — Bootstrap ./thoughts
+        for a new project that doesn''t have one yet.\n- validate_plan — Check whether
+        the implementation satisfies the plan — compare success criteria against what
+        was actually built.\n","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -291,7 +299,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Sat, 11 Apr 2026 17:46:07 GMT
+      - Mon, 20 Apr 2026 07:57:41 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -303,21 +311,21 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1775941200'
+      - '1776682800'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.19'
+      - '0.11'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1776409200'
+      - '1777010400'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.09'
+      - '0.24'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
       Anthropic-Ratelimit-Unified-Reset:
-      - '1775941200'
+      - '1776682800'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -331,11 +339,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '433'
+      - '447'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=435
+      - x-originResponse;dur=448
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
       X-Robots-Tag:
@@ -350,14 +358,14 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMVVVODhHYnNCRmoxaWFXcVRjYVB6Q2UiLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMU5ZTmRFMWR2RDN4QlczbTVhSFEzNXgiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24i
         OiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWls
-        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyNDk4LCJjYWNoZV9j
+        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyNTM3LCJjYWNoZV9j
         cmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9r
         ZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRf
         dG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0
         cHV0X3Rva2VucyI6Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZl
         cmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Sat, 11 Apr 2026 17:46:07 GMT
+  recorded_at: Mon, 20 Apr 2026 07:57:41 GMT
 recorded_with: VCR 6.4.0
