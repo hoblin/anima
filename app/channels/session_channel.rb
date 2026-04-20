@@ -210,7 +210,10 @@ class SessionChannel < ApplicationCable::Channel
       "goals" => session.goals_summary
     }
 
-    children = session.child_sessions.order(:created_at).select(:id, :name, :aasm_state)
+    children = session.child_sessions
+      .where(hud_visible: true)
+      .order(:created_at)
+      .select(:id, :name, :aasm_state)
     if children.any?
       payload["children"] = children.map { |child|
         {"id" => child.id, "name" => child.name, "session_state" => child.aasm_state}

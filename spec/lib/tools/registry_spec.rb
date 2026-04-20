@@ -142,6 +142,36 @@ RSpec.describe Tools::Registry do
         expect(result).to eq("")
       end
     end
+
+    context "with tool_use_id" do
+      let(:uid_capturing_tool_class) do
+        Class.new(Tools::Base) do
+          def self.tool_name = "uid_capture"
+          def self.description = "Captures the tool_use_id from context"
+          def self.input_schema = {type: "object", properties: {}, required: []}
+
+          def initialize(tool_use_id: nil, **)
+            @tool_use_id = tool_use_id
+          end
+
+          def execute(_input)
+            @tool_use_id.to_s
+          end
+        end
+      end
+
+      it "forwards tool_use_id to the tool's initializer" do
+        registry.register(uid_capturing_tool_class)
+
+        expect(registry.execute("uid_capture", {}, tool_use_id: "toolu_xyz")).to eq("toolu_xyz")
+      end
+
+      it "omits tool_use_id from the context when none is provided" do
+        registry.register(uid_capturing_tool_class)
+
+        expect(registry.execute("uid_capture", {})).to eq("")
+      end
+    end
   end
 
   describe "instance-based tools" do

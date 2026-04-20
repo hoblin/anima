@@ -75,7 +75,7 @@ WHEN OLD.message_type IN ('user_message', 'agent_message', 'system_message')
 BEGIN
   DELETE FROM messages_fts WHERE rowid = OLD.id;
 END;
-CREATE TABLE "sessions" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "created_at" datetime(6) NOT NULL, "granted_tools" text, "interrupt_requested" boolean DEFAULT FALSE NOT NULL, "mneme_boundary_message_id" integer, "name" varchar, "parent_session_id" integer, "prompt" text, "recalled_message_ids" json DEFAULT '[]' NOT NULL, "updated_at" datetime(6) NOT NULL, "view_mode" varchar DEFAULT 'basic' NOT NULL, "initial_cwd" varchar, "aasm_state" varchar DEFAULT 'idle' NOT NULL, CONSTRAINT "fk_rails_045409ac27"
+CREATE TABLE "sessions" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "created_at" datetime(6) NOT NULL, "granted_tools" text, "interrupt_requested" boolean DEFAULT FALSE NOT NULL, "mneme_boundary_message_id" integer, "name" varchar, "parent_session_id" integer, "prompt" text, "recalled_message_ids" json DEFAULT '[]' NOT NULL, "updated_at" datetime(6) NOT NULL, "view_mode" varchar DEFAULT 'basic' NOT NULL, "initial_cwd" varchar, "aasm_state" varchar DEFAULT 'idle' NOT NULL, "hud_visible" boolean DEFAULT TRUE NOT NULL, "spawn_tool_use_id" varchar, CONSTRAINT "fk_rails_045409ac27"
 FOREIGN KEY ("parent_session_id")
   REFERENCES "sessions" ("id")
 );
@@ -88,7 +88,9 @@ FOREIGN KEY ("session_id")
 CREATE INDEX "index_pending_messages_on_session_id" ON "pending_messages" ("session_id");
 CREATE INDEX "index_pending_messages_on_drain_ordering" ON "pending_messages" ("session_id", "message_type", "created_at");
 CREATE INDEX "index_pending_messages_on_session_and_tool_use" ON "pending_messages" ("session_id", "tool_use_id");
+CREATE INDEX "index_sessions_on_parent_session_id_and_hud_visible" ON "sessions" ("parent_session_id", "hud_visible");
 INSERT INTO "schema_migrations" (version) VALUES
+('20260420100000'),
 ('20260419140000'),
 ('20260419130000'),
 ('20260419120000'),

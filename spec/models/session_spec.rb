@@ -265,6 +265,20 @@ RSpec.describe Session do
       child_a.broadcast_children_update_to_parent
     end
 
+    it "omits sub-agents whose traces have been fully evicted from the HUD" do
+      parent = Session.create!
+      visible = Session.create!(parent_session: parent, prompt: "agent A", name: "analyzer")
+      Session.create!(parent_session: parent, prompt: "agent B", name: "reviewer", hud_visible: false)
+
+      payload = nil
+      allow(ActionCable.server).to receive(:broadcast) { |_, data| payload = data }
+
+      visible.broadcast_children_update_to_parent
+
+      ids = payload["children"].map { |c| c["id"] }
+      expect(ids).to contain_exactly(visible.id)
+    end
+
     it "does nothing for root sessions" do
       root = Session.create!
 
@@ -293,6 +307,60 @@ RSpec.describe Session do
 
       child_data = payload["children"].first
       expect(child_data.keys).to contain_exactly("id", "name", "session_state")
+    end
+  end
+
+  describe "#subagent_trace_in_viewport?" do
+    let(:parent) { Session.create! }
+    let(:child) do
+      Session.create!(parent_session: parent, prompt: "task", name: "sleuth", spawn_tool_use_id: "toolu_spawn_abc")
+    end
+
+    it "returns true when the spawn pair lives above the Mneme boundary" do
+      spawn_call = create(:message, :bash_tool_call, session: parent,
+        tool_use_id: "toolu_spawn_abc",
+        payload: {"tool_name" => "spawn_subagent", "tool_use_id" => "toolu_spawn_abc"})
+      parent.update_column(:mneme_boundary_message_id, spawn_call.id)
+
+      expect(parent.subagent_trace_in_viewport?(child)).to be true
+    end
+
+    it "returns true when any from_<nickname> phantom pair lives above the boundary" do
+      anchor = create(:message, :user_message, session: parent)
+      parent.update_column(:mneme_boundary_message_id, anchor.id)
+      create(:message, :bash_tool_call, session: parent,
+        tool_use_id: "phantom_1",
+        payload: {"tool_name" => "from_sleuth", "tool_use_id" => "phantom_1"})
+
+      expect(parent.subagent_trace_in_viewport?(child)).to be true
+    end
+
+    it "returns false when every trace is below the boundary" do
+      create(:message, :bash_tool_call, session: parent,
+        tool_use_id: "toolu_spawn_abc",
+        payload: {"tool_name" => "spawn_subagent", "tool_use_id" => "toolu_spawn_abc"})
+      create(:message, :bash_tool_call, session: parent,
+        tool_use_id: "phantom_1",
+        payload: {"tool_name" => "from_sleuth", "tool_use_id" => "phantom_1"})
+      anchor = create(:message, :user_message, session: parent)
+      parent.update_column(:mneme_boundary_message_id, anchor.id)
+
+      expect(parent.subagent_trace_in_viewport?(child)).to be false
+    end
+
+    it "returns false when the session is not the child's parent" do
+      stranger = Session.create!
+      create(:message, :bash_tool_call, session: stranger,
+        tool_use_id: "toolu_spawn_abc",
+        payload: {"tool_name" => "spawn_subagent", "tool_use_id" => "toolu_spawn_abc"})
+
+      expect(stranger.subagent_trace_in_viewport?(child)).to be false
+    end
+
+    it "returns false for a legacy child with no spawn_tool_use_id and no name" do
+      nameless = Session.create!(parent_session: parent, prompt: "legacy")
+
+      expect(parent.subagent_trace_in_viewport?(nameless)).to be false
     end
   end
 

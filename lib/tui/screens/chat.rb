@@ -315,6 +315,8 @@ module TUI
             handle_goals_updated(msg)
           when "children_updated"
             handle_children_updated(msg)
+          when "subagent_evicted"
+            handle_subagent_evicted(msg)
           when "sessions_list"
             @sessions_list = msg["sessions"]
           when "pending_message_created"
@@ -481,6 +483,20 @@ module TUI
         @session_info[:children] = msg["children"] || []
       end
 
+      # Removes a sub-agent from the HUD panel when viewport eviction has
+      # taken its last trace past the Mneme boundary. Only applies to the
+      # current session — the brain emits this only on the parent's stream.
+      #
+      # @param msg [Hash] ActionCable payload with "session_id" and "child_id" keys
+      def handle_subagent_evicted(msg)
+        return unless msg["session_id"] == @session_info[:id]
+
+        child_id = msg["child_id"]
+        return unless child_id
+
+        @session_info[:children] = @session_info[:children]&.reject { |child| child["id"] == child_id }
+      end
+
       # Handles explicit session state transitions from the server.
       # Drives the braille spinner animation. Only processes broadcasts
       # matching the current session.
@@ -503,8 +519,8 @@ module TUI
         child_id = msg["child_id"]
         return unless child_id
 
-        child = @session_info[:children]&.find { |c| c["id"] == child_id }
-        child["session_state"] = msg["state"] if child
+        entry = @session_info[:children]&.find { |child| child["id"] == child_id }
+        entry["session_state"] = msg["state"] if entry
       end
 
       # Updates the session state and synchronizes the spinner.

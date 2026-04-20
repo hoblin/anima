@@ -392,7 +392,7 @@ The difference from every other system: memory isn't a tool the agent uses. It's
 
 ### TUI HUD & View Modes
 
-The right-side HUD panel shows session state at a glance: session name, goals (with status icons), active skills, workflow, and sub-agents. Toggle with `C-a → h`; when hidden, the input border shows `C-a → h HUD` as a reminder.
+The right-side HUD panel shows session state at a glance: session name, goals (with status icons), active skills, workflow, and sub-agents. Toggle with `C-a → h`; when hidden, the input border shows `C-a → h HUD` as a reminder. The sub-agent list mirrors what Aoide actually carries in her viewport: once Mneme eviction takes the last spawn pair or `from_<nickname>` response out of the sliding window, the entry drops from the HUD; if a later response reintroduces a trace, the entry comes back.
 
 **Braille spinner**: An animated braille character (U+2800-U+28FF) replaces the old "Thinking..." label in both the chat viewport and HUD. Each processing state has a distinct animation pattern — smooth snake rotation for LLM generation, staccato pulse for tool execution, rapid deceleration for interrupting. Sub-agents in the HUD show state-driven icons: `●` (generating, green), `◉` (tool executing, green), `●` (interrupting, red), `◌` (idle, grey).
 

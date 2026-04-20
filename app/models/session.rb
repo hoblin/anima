@@ -465,7 +465,9 @@ class Session < ApplicationRecord
 
   # Broadcasts child session list to all clients subscribed to the parent
   # session. Called when a child session is created or its AASM state
-  # changes so the HUD sub-agents section updates in real time.
+  # changes so the HUD sub-agents section updates in real time. Evicted
+  # sub-agents (+hud_visible: false+) are filtered out — the panel mirrors
+  # what Aoide currently carries in her viewport.
   #
   # Queries children via FK directly (avoids loading the parent record) and
   # selects only the columns needed for the HUD payload.
@@ -474,7 +476,7 @@ class Session < ApplicationRecord
   def broadcast_children_update_to_parent
     return unless parent_session_id
 
-    children = Session.where(parent_session_id: parent_session_id)
+    children = Session.where(parent_session_id: parent_session_id, hud_visible: true)
       .order(:created_at)
       .select(:id, :name, :aasm_state)
     ActionCable.server.broadcast("session_#{parent_session_id}", {
@@ -484,6 +486,42 @@ class Session < ApplicationRecord
         {"id" => child.id, "name" => child.name, "session_state" => child.aasm_state}
       }
     })
+  end
+
+  # True when at least one of +child+'s traces (the +spawn_subagent+ tool
+  # pair or any +from_{nickname}+ phantom pair) still lives above the
+  # Mneme boundary in this session's viewport. Used by {Mneme::Runner}
+  # after boundary advancement to decide whether a child should drop out
+  # of the HUD panel.
+  #
+  # Returns +false+ when the given session isn't a direct child, when it
+  # has no +spawn_tool_use_id+ (legacy child), or when the boundary has
+  # passed every trace.
+  #
+  # @param child [Session] a sub-agent session to check
+  # @return [Boolean]
+  def subagent_trace_in_viewport?(child)
+    return false unless child.parent_session_id == id
+
+    boundary_id = mneme_boundary_message_id
+    scope = messages
+    scope = scope.where("messages.id >= ?", boundary_id) if boundary_id
+
+    spawn_uid = child.spawn_tool_use_id
+    nickname = child.name
+    conditions = []
+    bindings = {}
+    if spawn_uid
+      conditions << "messages.tool_use_id = :uid"
+      bindings[:uid] = spawn_uid
+    end
+    if nickname
+      conditions << "json_extract(messages.payload, '$.tool_name') = :tool"
+      bindings[:tool] = "from_#{nickname}"
+    end
+    return false if conditions.empty?
+
+    scope.where(conditions.join(" OR "), **bindings).exists?
   end
 
   # AASM guard for the +executing → awaiting+ branch of +start_processing+.

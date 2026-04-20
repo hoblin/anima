@@ -96,7 +96,25 @@ module Mneme
         session_id: session.id,
         evict_above_id: last_evicted_id
       ))
+      refresh_subagent_visibility
       log.debug("session=#{session.id} — boundary advanced to message #{new_boundary_id}")
+    end
+
+    # Flips visible sub-agents to +hud_visible: false+ once every one of
+    # their viewport traces (spawn pair + +from_{nickname}+ phantom pairs)
+    # has fallen past the Mneme boundary. Emits {Events::SubagentEvicted}
+    # per flip so the broadcaster removes them from the HUD panel on the
+    # parent stream. Flips are logged so the transition is auditable.
+    def refresh_subagent_visibility
+      session_id = session.id
+      session.child_sessions.where(hud_visible: true).each do |child|
+        next if session.subagent_trace_in_viewport?(child)
+
+        child_id = child.id
+        child.update_column(:hud_visible, false)
+        Events::Bus.emit(Events::SubagentEvicted.new(session_id: session_id, child_id: child_id))
+        log.debug("session=#{session_id} — sub-agent #{child_id} evicted from HUD")
+      end
     end
 
     # Renders eviction zone and context as a Mneme transcript using

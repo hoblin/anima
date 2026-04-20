@@ -240,6 +240,80 @@ RSpec.describe Mneme::Runner do
     end
   end
 
+  describe "sub-agent HUD visibility sweep after eviction" do
+    let!(:anchor) { create(:message, :user_message, session:, token_count: 100) }
+    let!(:filler) { create(:message, :user_message, session:, token_count: 100) }
+    let!(:next_anchor) { create(:message, :user_message, session:, token_count: 100) }
+
+    before { session.update_column(:mneme_boundary_message_id, anchor.id) }
+
+    it "flips child.hud_visible to false and emits SubagentEvicted when no traces remain" do
+      child = Session.create!(
+        parent_session: session,
+        prompt: "task",
+        name: "loop-sleuth",
+        spawn_tool_use_id: "toolu_spawn_123"
+      )
+
+      events = []
+      allow(Events::Bus).to receive(:emit).and_wrap_original do |original, event|
+        events << event
+        original.call(event)
+      end
+
+      allow(client).to receive(:chat_with_tools) { "Done" }
+      runner.call
+
+      expect(child.reload.hud_visible).to be false
+      evicted = events.find { |e| e.is_a?(Events::SubagentEvicted) }
+      expect(evicted).to have_attributes(session_id: session.id, child_id: child.id)
+    end
+
+    it "keeps child.hud_visible true when the spawn pair survives the advance" do
+      # anchor/filler/next_anchor make up the eviction zone (boundary is anchor.id).
+      # after_zone is the first conversation message beyond the zone — the new
+      # boundary lands here. The spawn_call sits past that, so the trace still
+      # lives in the viewport after the advance.
+      create(:message, :user_message, session:, token_count: 100)
+      child = Session.create!(
+        parent_session: session,
+        prompt: "task",
+        name: "scout",
+        spawn_tool_use_id: "toolu_spawn_456"
+      )
+      create(:message, :bash_tool_call, session:,
+        tool_use_id: "toolu_spawn_456",
+        payload: {"tool_name" => "spawn_subagent", "tool_use_id" => "toolu_spawn_456"},
+        token_count: 50)
+
+      allow(client).to receive(:chat_with_tools) { "Done" }
+      runner.call
+
+      expect(child.reload.hud_visible).to be true
+    end
+
+    it "does not re-emit SubagentEvicted for sub-agents already hidden" do
+      child = Session.create!(
+        parent_session: session,
+        prompt: "task",
+        name: "loop-sleuth",
+        spawn_tool_use_id: "toolu_spawn_789",
+        hud_visible: false
+      )
+
+      events = []
+      allow(Events::Bus).to receive(:emit).and_wrap_original do |original, event|
+        events << event
+        original.call(event)
+      end
+
+      allow(client).to receive(:chat_with_tools) { "Done" }
+      runner.call
+
+      expect(events).not_to include(an_instance_of(Events::SubagentEvicted).and(have_attributes(child_id: child.id)))
+    end
+  end
+
   describe "integration with real LLM", vcr: {match_requests_on: [:method, :uri]} do
     it "calls save_snapshot with a meaningful summary" do
       first = create(:message, :user_message, session:, token_count: 20,

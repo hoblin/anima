@@ -315,6 +315,23 @@ class PendingMessage < ApplicationRecord
       timestamp: now,
       token_count: TokenEstimation.estimate_token_count(content)
     )
+
+    restore_subagent_hud_visibility! if subagent?
+  end
+
+  # Flips the delivering sub-agent back to +hud_visible: true+ when the
+  # phantom pair we just persisted reintroduces a trace. A subsequent
+  # eviction that passes every trace will hide the sub-agent again via
+  # {Mneme::Runner#refresh_subagent_visibility}.
+  #
+  # Re-broadcasts the parent's children list on flip so the TUI adds the
+  # HUD entry back without waiting for the next AASM state change.
+  def restore_subagent_hud_visibility!
+    child = session.child_sessions.find_by(name: source_name)
+    return unless child && !child.hud_visible
+
+    child.update_column(:hud_visible, true)
+    child.broadcast_children_update_to_parent
   end
 
   # Builds a phantom tool_use/tool_result message pair.
