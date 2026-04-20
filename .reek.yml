@@ -29,6 +29,10 @@ detectors:
       - "Tools::ViewMessages"
       # Event subscribers extract payload fields — inherent to the pattern.
       - "Events::Subscribers::SubagentMessageRouter"
+      # Query-style predicate operates on the argument by design.
+      - "Session#subagent_trace_in_viewport?"
+      # Visibility restore operates on the child session — that's the job.
+      - "PendingMessage#restore_subagent_hud_visibility!"
       # Spawn tools orchestrate child session creation — references are the job.
       - "Tools::SpawnSubagent#spawn_child"
       - "Tools::SpawnSpecialist#spawn_child"

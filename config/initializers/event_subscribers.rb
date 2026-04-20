@@ -17,6 +17,7 @@
 MESSAGE_LIFECYCLE_FILTER = ->(event) { event[:name].start_with?("anima.message.") }
 MESSAGE_CREATED_FILTER = ->(event) { event[:name] == "anima.message.created" }
 EVICTION_FILTER = ->(event) { event[:name] == "anima.eviction.completed" }
+SUBAGENT_EVICTED_FILTER = ->(event) { event[:name] == "anima.subagent.evicted" }
 ACTIVE_STATE_TRIGGER_FILTER = ->(event) {
   %w[anima.skill.activated anima.workflow.activated anima.eviction.completed].include?(event[:name])
 }
@@ -70,6 +71,10 @@ Rails.application.config.after_initialize do
 
     # Broadcasts eviction cutoff to clients after Mneme advances the boundary.
     Events::Bus.subscribe(Events::Subscribers::EvictionBroadcaster.new, &EVICTION_FILTER)
+
+    # Broadcasts sub-agent HUD removal when eviction takes the last trace
+    # of a sub-agent past the Mneme boundary.
+    Events::Bus.subscribe(Events::Subscribers::SubagentVisibilityBroadcaster.new, &SUBAGENT_EVICTED_FILTER)
 
     # Rebroadcasts active skills/workflow on every event that can change
     # the set: skill activation, workflow activation, or eviction.

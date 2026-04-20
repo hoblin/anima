@@ -74,6 +74,23 @@ RSpec.describe SessionChannel, type: :channel do
         end
       end
 
+      context "with a mix of visible and evicted sub-agents" do
+        let!(:session) { create(:session, id: session_id) }
+        let!(:visible) { create(:session, parent_session: session, name: "analyzer") }
+
+        before do
+          Session.create!(parent_session: session, name: "retired", hud_visible: false)
+          subscribe(session_id: session_id)
+        end
+
+        it "includes only sub-agents still visible in the HUD" do
+          changed = transmissions.find { |t| t["action"] == "session_changed" }
+
+          ids = changed["children"].map { |c| c["id"] }
+          expect(ids).to contain_exactly(visible.id)
+        end
+      end
+
       context "for a bare session with no skills, workflow, goals, or children" do
         before do
           create(:session, id: session_id)

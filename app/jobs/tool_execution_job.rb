@@ -31,7 +31,7 @@ class ToolExecutionJob < ApplicationJob
     shell_session = ShellSession.for_session(session)
     registry = Tools::Registry.build(session: session, shell_session: shell_session)
 
-    content, success = execute(registry, tool_name, tool_input)
+    content, success = execute(registry, tool_name, tool_input, tool_use_id)
 
     Events::Bus.emit(Events::ToolExecuted.new(
       session_id: session_id,
@@ -58,8 +58,8 @@ class ToolExecutionJob < ApplicationJob
 
   # Always emits something executable back — a missing +tool_result+
   # permanently corrupts the Anthropic conversation history.
-  def execute(registry, tool_name, tool_input)
-    result = registry.execute(tool_name, tool_input)
+  def execute(registry, tool_name, tool_input, tool_use_id)
+    result = registry.execute(tool_name, tool_input, tool_use_id: tool_use_id)
     result = ::ToolDecorator.call(tool_name, result)
     content = format_result(result)
     content = truncate(content, registry, tool_name)

@@ -77,6 +77,14 @@ RSpec.describe ToolExecutionJob do
       expect(shell_session).not_to have_received(:finalize)
     end
 
+    it "forwards the invoking tool_use_id to the registry" do
+      expect(registry).to receive(:execute)
+        .with("bash", {"command" => "ls"}, tool_use_id: "toolu_77")
+        .and_return("ok")
+
+      described_class.perform_now(session.id, tool_use_id: "toolu_77", tool_name: "bash", tool_input: {"command" => "ls"})
+    end
+
     it "runs the output through ResponseTruncator when a threshold is configured" do
       allow(registry).to receive(:truncation_threshold).and_return(10)
       allow(registry).to receive(:execute).and_return("huge output")

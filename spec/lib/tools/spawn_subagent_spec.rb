@@ -96,6 +96,18 @@ RSpec.describe Tools::SpawnSubagent do
       expect(child.parent_session).to eq(parent_session)
     end
 
+    it "captures the invoking tool_call's id on the child as spawn_tool_use_id" do
+      tool = described_class.new(
+        session: parent_session,
+        shell_session: shell_session,
+        tool_use_id: "toolu_spawn_abc"
+      )
+
+      tool.execute(input)
+
+      expect(Session.last.spawn_tool_use_id).to eq("toolu_spawn_abc")
+    end
+
     it "inherits the parent shell's working directory" do
       tool.execute(input)
 

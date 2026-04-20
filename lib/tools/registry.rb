@@ -106,16 +106,22 @@ module Tools
     end
 
     # Execute a tool by name. Classes are instantiated with the registry's
-    # context; instances are called directly.
+    # context; instances are called directly. The enclosing +tool_use_id+
+    # is merged into the context when provided so tools that need to
+    # reference their own invoking tool_call (e.g. {Tools::SpawnSubagent}
+    # persisting +spawn_tool_use_id+ on the child session) can read it via
+    # a named kwarg in their initializer.
     #
     # @param name [String] registered tool name
     # @param input [Hash] tool input parameters (may include "timeout" for
     #   tools that support per-call timeout overrides)
+    # @param tool_use_id [String, nil] the invoking tool_call's pairing id
     # @return [String, Hash] tool execution result
     # @raise [UnknownToolError] if no tool is registered with the given name
-    def execute(name, input)
+    def execute(name, input, tool_use_id: nil)
       tool = @tools.fetch(name) { raise UnknownToolError, "Unknown tool: #{name}" }
-      instance = tool.is_a?(Class) ? tool.new(**@context) : tool
+      context = tool_use_id ? @context.merge(tool_use_id: tool_use_id) : @context
+      instance = tool.is_a?(Class) ? tool.new(**context) : tool
       instance.execute(input)
     end
 

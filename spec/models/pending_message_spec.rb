@@ -75,6 +75,38 @@ RSpec.describe PendingMessage do
     end
   end
 
+  describe "#promote_as_phantom_pair! for sub-agent deliveries" do
+    let(:parent) { create(:session) }
+    let!(:child) { Session.create!(parent_session: parent, prompt: "task", name: "loop-sleuth", hud_visible: false) }
+
+    it "restores hud_visible on the child and re-broadcasts the children list" do
+      pm = create(:pending_message, :subagent, session: parent, content: "result", source_name: "loop-sleuth")
+
+      payload = nil
+      allow(ActionCable.server).to receive(:broadcast) do |stream, data|
+        payload = data if stream == "session_#{parent.id}" && data["action"] == "children_updated"
+      end
+
+      pm.send(:promote_as_phantom_pair!)
+
+      expect(child.reload.hud_visible).to be true
+      expect(payload).to be_present
+      expect(payload["children"].map { |c| c["id"] }).to include(child.id)
+    end
+
+    it "leaves an already-visible sub-agent untouched (no broadcast)" do
+      child.update_column(:hud_visible, true)
+      pm = create(:pending_message, :subagent, session: parent, content: "result", source_name: "loop-sleuth")
+
+      expect(ActionCable.server).not_to receive(:broadcast).with(
+        "session_#{parent.id}",
+        a_hash_including("action" => "children_updated")
+      )
+
+      pm.send(:promote_as_phantom_pair!)
+    end
+  end
+
   describe "broadcasts" do
     it "broadcasts pending_message_created on create" do
       expect { create(:pending_message, session: session, content: "waiting") }

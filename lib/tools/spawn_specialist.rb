@@ -60,10 +60,14 @@ module Tools
     # @param session [Session] the parent session spawning the specialist
     # @param shell_session [ShellSession] the parent's persistent shell (for CWD inheritance)
     # @param agent_registry [Agents::Registry, nil] injectable for testing
-    def initialize(session:, shell_session:, agent_registry: nil, **)
+    # @param tool_use_id [String, nil] the invoking +spawn_specialist+ tool_call's
+    #   pairing id, captured so the spawn pair can later be located by the
+    #   HUD visibility sweep in {Mneme::Runner}
+    def initialize(session:, shell_session:, agent_registry: nil, tool_use_id: nil, **)
       @session = session
       @shell_session = shell_session
       @agent_registry = agent_registry || Agents::Registry.instance
+      @tool_use_id = tool_use_id
     end
 
     # Creates a child session with the specialist's predefined prompt and
@@ -100,7 +104,8 @@ module Tools
         parent_session_id: @session.id,
         prompt: build_prompt(definition),
         granted_tools: definition.tools,
-        initial_cwd: @shell_session.pwd
+        initial_cwd: @shell_session.pwd,
+        spawn_tool_use_id: @tool_use_id
       )
       create_goal_with_pinned_task(child, task)
       assign_nickname_via_melete(child)
