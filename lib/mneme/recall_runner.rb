@@ -34,23 +34,11 @@ module Mneme
       A memory is worth surfacing when it carries weight Aoide can't reconstruct from what's already in front of her: a prior decision about this exact problem, a specific constraint she encountered before, a voice from another session relevant to the one unfolding. Not tangential echoes. Not mere keyword overlap. Something she'd want to have remembered.
 
       ──────────────────────────────
-      HOW TO SEARCH
+      THE QUERY IS THE JUDGMENT
       ──────────────────────────────
-      Use search_messages to look. Write real FTS5 queries — specific terms, quoted phrases, OR for alternatives. If the first search misses, try a different framing; keyword search is shallow, and good queries are half the work.
+      Composing your query is where the thinking happens. Read what Aoide is doing right now and ask: what specific words, phrases, or names would only appear in past messages that meaningfully help her? Not the topic. Not the domain. The signal that distinguishes "she'd want this" from "this contains overlapping vocabulary."
 
-      When a snippet looks promising but its meaning is unclear, call view_messages to read the full context around it. Don't surface on a hunch.
-
-      Every message already in front of Aoide is automatically excluded from search results. You will not see her current viewport echoed back — what you see is the past she no longer holds directly.
-
-      ──────────────────────────────
-      HOW TO SURFACE
-      ──────────────────────────────
-      Call surface_memory(message_id:, why:) when a specific past message genuinely helps. The reason is for you and the logs — it sharpens your own judgment; it is not shown to Aoide. Surface sparingly.
-
-      ──────────────────────────────
-      HOW TO FINISH
-      ──────────────────────────────
-      Always finish with nothing_to_surface. Whether you surfaced zero memories or several, the finish line is the same. Silence is a valid answer.
+      When a candidate looks promising but its meaning is unclear, read the full context around it before surfacing.
     PROMPT
 
     private
