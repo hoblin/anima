@@ -5,33 +5,26 @@ require "rails_helper"
 RSpec.describe PassiveRecallJob do
   let(:session) { Session.create! }
 
-  before do
-    allow(Anima::Settings).to receive(:token_budget).and_return(190_000)
-    allow(Anima::Settings).to receive(:recall_budget_fraction).and_return(0.05)
-    allow(Anima::Settings).to receive(:recall_max_results).and_return(5)
-    allow(Anima::Settings).to receive(:recall_max_snippet_tokens).and_return(512)
-  end
-
   it "discards on RecordNotFound" do
     expect { described_class.perform_now(-1) }.not_to raise_error
   end
 
-  it "creates recall pending messages for matching results" do
-    other_session = Session.create!
-    other_session.messages.create!(
-      message_type: "user_message",
-      payload: {"content" => "The authentication module is broken"},
-      timestamp: Time.current.to_ns
-    )
+  it "delegates to Mneme::RecallRunner for the given session" do
+    recall = instance_double(Mneme::RecallRunner, call: nil)
+    expect(Mneme::RecallRunner).to receive(:new).with(session).and_return(recall)
 
-    session.goals.create!(description: "Fix the authentication module")
+    described_class.perform_now(session.id)
 
-    expect { described_class.perform_now(session.id) }
-      .to change { session.pending_messages.where(source_type: "recall").count }.by_at_least(1)
+    expect(recall).to have_received(:call)
   end
 
-  it "does nothing when no goals exist" do
-    expect { described_class.perform_now(session.id) }
-      .not_to change { session.pending_messages.count }
+  it "propagates recall-loop errors (no defensive rescue)" do
+    recall = instance_double(Mneme::RecallRunner)
+    allow(Mneme::RecallRunner).to receive(:new).and_return(recall)
+    allow(recall).to receive(:call).and_raise(StandardError.new("boom"))
+
+    expect {
+      described_class.perform_now(session.id)
+    }.to raise_error(StandardError, "boom")
   end
 end

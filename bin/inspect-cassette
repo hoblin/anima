@@ -106,6 +106,8 @@ puts "          (#{omitted} non-LLM HTTP requests omitted)" if omitted > 0
 puts
 
 seen_messages = 0
+previous_first = nil
+
 llm_interactions.each_with_index do |interaction, round|
   request_body = JSON.parse(interaction["request"]["body"]["string"])
   messages = request_body["messages"] || []
@@ -114,17 +116,28 @@ llm_interactions.each_with_index do |interaction, round|
   status = interaction["response"]["status"]["code"]
   model = response_body["model"] || request_body["model"]
 
+  # Detect a new conversation: cassettes can interleave multiple phantom
+  # sessions (Mneme, Melete, Aoide's drain) that each keep their own
+  # independent message history. When a new round's first message differs
+  # from the prior round's, or the round has fewer messages than we've
+  # already shown, we've crossed into a new conversation — rewind the
+  # dedup counter so we render from the top again.
+  first = messages.first
+  if round > 0 && (previous_first != first || messages.size < seen_messages)
+    puts "─── new conversation ───"
+    puts
+    seen_messages = 0
+  end
+  previous_first = first
+
   puts "── Round #{round + 1} (#{status} #{model}) ──"
   puts
 
-  # Print only messages we haven't shown yet
-  new_messages = messages[seen_messages..]
-  new_messages.each do |msg|
+  messages[seen_messages..].to_a.each do |msg|
     puts format_message(msg)
     puts
   end
 
-  # Print the assistant response from this round
   if response_body["content"]
     assistant_msg = {"role" => "assistant", "content" => response_body["content"]}
     puts format_message(assistant_msg)

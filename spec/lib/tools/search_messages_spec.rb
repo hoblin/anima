@@ -4,12 +4,14 @@ require "rails_helper"
 
 RSpec.describe Tools::SearchMessages do
   let(:session) { Session.create!(name: "Current Session") }
+  let(:other_session) { Session.create!(name: "Other Session") }
   let(:tool) { described_class.new(session: session) }
 
   def create_message(sess, type:, content: "msg", tool_name: nil)
     payload = if type == "tool_call"
       name = tool_name || "bash"
-      {"tool_name" => name, "tool_input" => ((name == "think") ? {"thoughts" => content} : {"cmd" => "ls"}), "tool_use_id" => SecureRandom.hex(8)}
+      input = (name == "think") ? {"thoughts" => content} : {"cmd" => "ls"}
+      {"tool_name" => name, "tool_input" => input, "tool_use_id" => SecureRandom.hex(8)}
     elsif type == "tool_response"
       {"content" => content, "tool_use_id" => SecureRandom.hex(8)}
     else
@@ -34,7 +36,7 @@ RSpec.describe Tools::SearchMessages do
 
       expect(schema[:name]).to eq("search_messages")
       expect(schema[:description]).to include("long-term memory")
-      expect(schema[:input_schema][:required]).to include("query")
+      expect(schema[:input_schema][:required]).to eq(["query"])
     end
   end
 
@@ -46,15 +48,16 @@ RSpec.describe Tools::SearchMessages do
       expect(result[:error]).to include("cannot be blank")
     end
 
-    it "returns no results message when nothing matches" do
+    it "returns a 'no results' message when nothing matches" do
       result = tool.execute("query" => "xyznonexistent")
 
       expect(result).to be_a(String)
       expect(result).to include("No results found")
     end
 
-    it "finds messages matching the query" do
-      create_message(session, type: "user_message", content: "Implementing the authentication flow with OAuth2")
+    it "finds matching messages from other sessions" do
+      create_message(other_session, type: "user_message",
+        content: "Implementing the authentication flow with OAuth2")
 
       result = tool.execute("query" => "authentication")
 
@@ -63,54 +66,62 @@ RSpec.describe Tools::SearchMessages do
     end
 
     it "includes message IDs for drill-down" do
-      msg = create_message(session, type: "user_message", content: "Deploying to production server")
+      msg = create_message(other_session, type: "user_message",
+        content: "Deploying to production server")
 
       result = tool.execute("query" => "deploying production")
 
       expect(result).to include("message #{msg.id}")
     end
 
-    it "includes session name in results" do
+    it "includes the owning session name in each result" do
       named_session = Session.create!(name: "Auth Refactoring")
-      create_message(named_session, type: "user_message", content: "Refactoring the auth middleware")
+      create_message(named_session, type: "user_message",
+        content: "Refactoring the auth middleware")
 
       result = tool.execute("query" => "auth middleware")
 
       expect(result).to include("Auth Refactoring")
     end
 
-    it "includes message type in results" do
-      create_message(session, type: "user_message", content: "The database migration strategy")
+    it "includes the message type in each result" do
+      create_message(other_session, type: "user_message",
+        content: "The database migration strategy")
 
       result = tool.execute("query" => "database migration")
 
       expect(result).to include("human")
     end
 
-    it "searches across all sessions by default" do
-      other_session = Session.create!(name: "Other Session")
-      create_message(session, type: "user_message", content: "First session content about caching")
-      create_message(other_session, type: "user_message", content: "Second session content about caching")
+    # Viewport exclusion semantics — the tool surfaces long-term memory only,
+    # never content the caller already has in front of her.
+    it "excludes the caller's own viewport from results" do
+      create_message(session, type: "user_message",
+        content: "Local session content that is still visible in the viewport.")
+      create_message(other_session, type: "user_message",
+        content: "Other session content about the same topic: visible.")
+
+      result = tool.execute("query" => "visible")
+
+      expect(result).to include("Other Session")
+      expect(result).not_to include("Current Session")
+    end
+
+    it "searches across every other session" do
+      third_session = Session.create!(name: "Third Session")
+      create_message(other_session, type: "user_message",
+        content: "First long-term memory about caching")
+      create_message(third_session, type: "user_message",
+        content: "Second long-term memory about caching")
 
       result = tool.execute("query" => "caching")
 
-      expect(result).to include("Current Session")
       expect(result).to include("Other Session")
+      expect(result).to include("Third Session")
     end
 
-    it "restricts to current session when session_only is true" do
-      other_session = Session.create!(name: "Other Session")
-      create_message(session, type: "user_message", content: "Local session content about routing")
-      create_message(other_session, type: "user_message", content: "Other session content about routing")
-
-      result = tool.execute("query" => "routing", "session_only" => true)
-
-      expect(result).to include("Current Session")
-      expect(result).not_to include("Other Session")
-    end
-
-    it "searches think tool calls" do
-      create_message(session, type: "tool_call", tool_name: "think",
+    it "searches think tool_calls" do
+      create_message(other_session, type: "tool_call", tool_name: "think",
         content: "Reasoning about the polymorphic association design")
 
       result = tool.execute("query" => "polymorphic association")
@@ -119,9 +130,10 @@ RSpec.describe Tools::SearchMessages do
       expect(result).to include("thought")
     end
 
-    it "falls back to session ID when session has no name" do
+    it "falls back to session ID when the owning session has no name" do
       unnamed_session = Session.create!
-      create_message(unnamed_session, type: "user_message", content: "Unnamed session content about testing")
+      create_message(unnamed_session, type: "user_message",
+        content: "Unnamed session content about testing")
 
       result = tool.execute("query" => "testing")
 
@@ -129,7 +141,10 @@ RSpec.describe Tools::SearchMessages do
     end
 
     it "returns multiple ranked results" do
-      3.times { |i| create_message(session, type: "user_message", content: "Discussion about webhooks topic #{i}") }
+      3.times { |i|
+        create_message(other_session, type: "user_message",
+          content: "Discussion about webhooks topic #{i}")
+      }
 
       result = tool.execute("query" => "webhooks")
 

@@ -1,13 +1,12 @@
 # frozen_string_literal: true
 
-# First stage of the drain pipeline: runs Mneme's associative recall to
-# surface relevant memories as background PendingMessages, then hands off
-# to Melete via {Events::StartMelete}.
+# First stage of the drain pipeline: runs Mneme's recall loop so any
+# older memory she judges useful lands in the mailbox as background
+# {PendingMessage}s, then hands off to Melete via {Events::StartMelete}.
 #
 # Triggered by {Events::Subscribers::MnemeKickoff} in response to
-# {Events::StartMneme}. Runs the existing synchronous
-# {Mneme::PassiveRecall} logic — the event is only the entry/exit
-# plumbing.
+# {Events::StartMneme}. Runs the phantom {Mneme::RecallRunner} loop —
+# the event is only the entry/exit plumbing.
 #
 # Mneme recall is *enrichment* — it adds recalled memories as background
 # phantom pairs but is never required for the primary pipeline to make
@@ -36,7 +35,7 @@ class MnemeEnrichmentJob < ApplicationJob
   private
 
   def run_recall(session)
-    Mneme::PassiveRecall.new(session).call
+    Mneme::RecallRunner.new(session).call
   rescue => error
     msg = "FAILED (recall) session=#{session.id}: #{error.class}: #{error.message}"
     Rails.logger.error("Mneme #{msg}")

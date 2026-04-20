@@ -1,19 +1,19 @@
 # frozen_string_literal: true
 
 module Mneme
-  # Full-text search over message history using SQLite FTS5.
-  # Covers user messages, agent messages, and think messages across all sessions.
+  # Full-text search over long-term memory — the message history outside
+  # the caller's current viewport. Covers user messages, agent messages,
+  # and think messages across every session Anima has ever held.
   #
   # The interface is intentionally abstract — callers receive {Result} structs
   # and never touch FTS5 directly. A future semantic search backend (embeddings,
   # BM25 + re-ranking) can replace the implementation without changing callers.
   #
-  # @example Search across all sessions
-  #   results = Mneme::Search.query("authentication flow")
-  #   results.each { |r| puts "message #{r.message_id}: #{r.snippet}" }
+  # @example Mneme's recall muse searching for the main session
+  #   Mneme::Search.query("authentication flow", caller_session: session)
   #
-  # @example Search within a single session
-  #   results = Mneme::Search.query("OAuth config", session_id: 42)
+  # @example Aoide searching actively from her own session
+  #   Mneme::Search.query("OAuth config", caller_session: session)
   class Search
     # A single search result with enough context for display and drill-down.
     #
@@ -24,19 +24,27 @@ module Mneme
     # @!attribute message_type [String] friendly label: human, anima, system, or thought
     Result = Struct.new(:message_id, :session_id, :snippet, :rank, :message_type, keyword_init: true)
 
-    # Searches message history for the given terms.
+    # Searches long-term memory for the given terms.
+    #
+    # Excludes messages currently in the caller's viewport so a `LIMIT`-bounded
+    # search never burns its slots returning things the caller already has in
+    # front of them. A caller with no established Mneme boundary yet (fresh
+    # main session, sub-agent) treats the whole session as "in viewport" — none
+    # of its own messages surface.
     #
     # @param terms [String] search query (FTS5 syntax: words, phrases, OR/AND/NOT)
-    # @param session_id [Integer, nil] scope to a specific session (nil = all sessions)
+    # @param caller_session [Session] the session doing the search — used to
+    #   exclude its own viewport from the results. Required; search always
+    #   happens from the perspective of a specific session.
     # @param limit [Integer] maximum results
     # @return [Array<Result>] ranked by relevance (best first)
-    def self.query(terms, session_id: nil, limit: Anima::Settings.recall_max_results)
-      new(terms, session_id: session_id, limit: limit).call
+    def self.query(terms, caller_session:, limit: Anima::Settings.recall_max_results)
+      new(terms, caller_session: caller_session, limit: limit).call
     end
 
-    def initialize(terms, session_id: nil, limit: 5)
+    def initialize(terms, caller_session:, limit: 5)
       @terms = sanitize_query(terms)
-      @session_id = session_id
+      @caller_session = caller_session
       @limit = limit
       @recency_decay = Anima::Settings.recall_recency_decay
     end
@@ -51,70 +59,59 @@ module Mneme
 
     private
 
-    # Executes the FTS5 MATCH query with optional session scoping.
-    # Joins back to messages table for session_id and message_type.
+    # Executes the FTS5 MATCH query with viewport exclusion for the caller.
     #
     # @return [Array<Hash>] raw database rows
     def execute_fts_query
-      sql = if @session_id
-        Arel.sql(scoped_sql, @recency_decay, @terms, @session_id, @limit)
+      sql, binds = build_sql_and_binds
+      connection.select_all(Arel.sql(sql, *binds), "Mneme::Search").to_a
+    end
+
+    # Builds the FTS5 SQL. Viewport exclusion depends on whether the caller's
+    # session has a Mneme boundary:
+    # * boundary set → exclude caller's messages at or above it (they're visible).
+    # * boundary nil → exclude the caller's whole session (no eviction has
+    #   happened yet, so everything is visible).
+    # Other sessions are always unfiltered — their IDs and boundaries mean
+    # nothing to the caller's context.
+    def build_sql_and_binds
+      binds = [@recency_decay, @terms]
+
+      viewport_clause, viewport_binds = caller_viewport_exclusion
+      binds.concat(viewport_binds)
+      binds << @limit
+
+      sql = <<~SQL
+        SELECT
+          m.id AS message_id,
+          m.session_id,
+          m.message_type,
+          CASE
+            WHEN m.message_type IN ('user_message', 'agent_message', 'system_message')
+              THEN substr(json_extract(m.payload, '$.content'), 1, 300)
+            WHEN m.message_type = 'tool_call'
+              THEN substr(json_extract(m.payload, '$.tool_input.thoughts'), 1, 300)
+          END AS snippet,
+          rank / (1.0 + ? * (julianday('now') - julianday(m.created_at)) / 365.0) AS rank
+        FROM messages_fts
+        JOIN messages m ON m.id = messages_fts.rowid
+        WHERE messages_fts MATCH ?
+          AND #{viewport_clause}
+        ORDER BY rank
+        LIMIT ?
+      SQL
+
+      [sql, binds]
+    end
+
+    # Returns the SQL fragment + bind params that exclude the caller's viewport.
+    def caller_viewport_exclusion
+      boundary = @caller_session.mneme_boundary_message_id
+      if boundary
+        ["(m.session_id != ? OR m.id < ?)", [@caller_session.id, boundary]]
       else
-        Arel.sql(global_sql, @recency_decay, @terms, @limit)
+        ["m.session_id != ?", [@caller_session.id]]
       end
-
-      connection.select_all(sql, "Mneme::Search").to_a
-    end
-
-    # FTS5 query across all sessions.
-    # Contentless FTS5 can't use snippet() — extract content from messages directly.
-    #
-    # Ranking blends BM25 relevance with recency: rank is negative (more
-    # negative = better match), so dividing by a factor > 1 for older messages
-    # moves them closer to zero (less relevant). At decay 0.3, a one-year-old
-    # result needs ~30% better keyword relevance to beat an identical match
-    # from today.
-    def global_sql
-      <<~SQL
-        SELECT
-          m.id AS message_id,
-          m.session_id,
-          m.message_type,
-          CASE
-            WHEN m.message_type IN ('user_message', 'agent_message', 'system_message')
-              THEN substr(json_extract(m.payload, '$.content'), 1, 300)
-            WHEN m.message_type = 'tool_call'
-              THEN substr(json_extract(m.payload, '$.tool_input.thoughts'), 1, 300)
-          END AS snippet,
-          rank / (1.0 + ? * (julianday('now') - julianday(m.created_at)) / 365.0) AS rank
-        FROM messages_fts
-        JOIN messages m ON m.id = messages_fts.rowid
-        WHERE messages_fts MATCH ?
-        ORDER BY rank
-        LIMIT ?
-      SQL
-    end
-
-    # FTS5 query scoped to a specific session.
-    def scoped_sql
-      <<~SQL
-        SELECT
-          m.id AS message_id,
-          m.session_id,
-          m.message_type,
-          CASE
-            WHEN m.message_type IN ('user_message', 'agent_message', 'system_message')
-              THEN substr(json_extract(m.payload, '$.content'), 1, 300)
-            WHEN m.message_type = 'tool_call'
-              THEN substr(json_extract(m.payload, '$.tool_input.thoughts'), 1, 300)
-          END AS snippet,
-          rank / (1.0 + ? * (julianday('now') - julianday(m.created_at)) / 365.0) AS rank
-        FROM messages_fts
-        JOIN messages m ON m.id = messages_fts.rowid
-        WHERE messages_fts MATCH ?
-          AND m.session_id = ?
-        ORDER BY rank
-        LIMIT ?
-      SQL
     end
 
     FRIENDLY_MESSAGE_TYPES = {

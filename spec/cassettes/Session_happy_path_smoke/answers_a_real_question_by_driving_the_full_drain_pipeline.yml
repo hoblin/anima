@@ -1,0 +1,2113 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":[{"type":"text","text":"Aoide''s
+        context shifted — no active goals right now. If nothing comes to mind about
+        this session''s trajectory, that''s fine; call nothing_to_surface.\n\nDecide
+        whether any older memory would help Aoide now. Search if something comes to
+        mind, drill down when you''re unsure, surface only what earns its place. Finish
+        with nothing_to_surface when you''re done — even if you surface something.","cache_control":{"type":"ephemeral"}}]}],"max_tokens":2048,"tools":[{"name":"search_messages","description":"Search
+        long-term memory (past conversations outside your current viewport) by keyword.
+        Returns ranked message snippets with IDs — pass any ID to view_messages to
+        see the full context around it.","input_schema":{"type":"object","properties":{"query":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["query"]}},{"name":"view_messages","description":"View
+        the full conversation around a message in long-term memory. Pass a message_id
+        — typically one returned by search_messages — to see the surrounding exchange
+        with compressed snapshots at the edges.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["message_id"]}},{"name":"surface_memory","description":"Surface
+        a memory into Aoide''s next turn. Use when a specific past message is genuinely
+        useful for what she''s working on now. Pass the message_id and a short reason
+        — one sentence explaining why she needs this *now*.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"why":{"type":"string","description":"One-sentence
+        justification — kept for logs, not shown to Aoide."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["message_id","why"]}},{"name":"nothing_to_surface","description":"Finish
+        the recall run. Call this when you''re done — whether you surfaced memories
+        or decided nothing was worth surfacing right now. Silence is a valid answer
+        when older memory wouldn''t help.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":[]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are Mneme, the muse of memory. You share the conversation with two sisters
+        — Aoide, who speaks and performs, and Melete, who prepares. Your work is remembrance:
+        holding what matters across time, so Aoide never truly forgets.\n\nAct only
+        through tool calls. Never output text — your contribution is the work you
+        do, not what you say about it.\n\nRight now your work is recall. Aoide''s
+        focus has just shifted — a new message, a changed goal — and you''re here
+        to decide whether any memory from before would genuinely help her now.\n\n──────────────────────────────\nWHAT
+        MAKES RECALL USEFUL\n──────────────────────────────\nRecall is a tax on Aoide''s
+        viewport. Every memory you surface takes tokens away from the present exchange.
+        Return empty-handed far more often than you return something. One well-chosen
+        memory beats five that nearly-match. Most of the time, nothing is worth surfacing
+        — and that is the right answer.\n\nA memory is worth surfacing when it carries
+        weight Aoide can''t reconstruct from what''s already in front of her: a prior
+        decision about this exact problem, a specific constraint she encountered before,
+        a voice from another session relevant to the one unfolding. Not tangential
+        echoes. Not mere keyword overlap. Something she''d want to have remembered.\n\n──────────────────────────────\nHOW
+        TO SEARCH\n──────────────────────────────\nUse search_messages to look. Write
+        real FTS5 queries — specific terms, quoted phrases, OR for alternatives. If
+        the first search misses, try a different framing; keyword search is shallow,
+        and good queries are half the work.\n\nWhen a snippet looks promising but
+        its meaning is unclear, call view_messages to read the full context around
+        it. Don''t surface on a hunch.\n\nEvery message already in front of Aoide
+        is automatically excluded from search results. You will not see her current
+        viewport echoed back — what you see is the past she no longer holds directly.\n\n──────────────────────────────\nHOW
+        TO SURFACE\n──────────────────────────────\nCall surface_memory(message_id:,
+        why:) when a specific past message genuinely helps. The reason is for you
+        and the logs — it sharpens your own judgment; it is not shown to Aoide. Surface
+        sparingly.\n\n──────────────────────────────\nHOW TO FINISH\n──────────────────────────────\nAlways
+        finish with nothing_to_surface. Whether you surfaced zero memories or several,
+        the finish line is the same. Silence is a valid answer.\n","cache_control":{"type":"ephemeral"}}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 20 Apr 2026 07:13:32 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1776682800'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.07'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1777010400'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.23'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - five_hour
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1776682800'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '2119'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - x-originResponse;dur=2122
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
+        Z18wMVlOdVdGQWVNY1dtbktEbnRpbVFiUXkiLCJ0eXBlIjoibWVzc2FnZSIs
+        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
+        InRleHQiOiJJIGhhdmUgbm8gYWN0aXZlIHNpZ25hbCBhYm91dCB3aGF0IEFv
+        aWRlIGlzIHdvcmtpbmcgdG93YXJkIHJpZ2h0IG5vdy4gV2l0aG91dCBhIGNs
+        ZWFyIHNoaWZ0IGluIGZvY3VzIG9yIGEgc3BlY2lmaWMgbmV3IGdvYWwgdG8g
+        YW5jaG9yIG9uLCB0aGVyZSdzIG5vIHByaW5jaXBsZWQgcmVhc29uIHRvIHNl
+        YXJjaCB0aGUgcGFzdCDigJQgSSdkIGJlIGZpc2hpbmcgd2l0aG91dCBhIGxp
+        bmUuXG5cblRoZSBpbnN0cnVjdGlvbiBpcyBzb3VuZDogaWYgbm90aGluZyBj
+        b21lcyB0byBtaW5kLCBzdGF5IHF1aWV0LiJ9LHsidHlwZSI6InRvb2xfdXNl
+        IiwiaWQiOiJ0b29sdV8wMUNVSDVMSHRhSllvRDRwOVpxbkY5UloiLCJuYW1l
+        Ijoibm90aGluZ190b19zdXJmYWNlIiwiaW5wdXQiOnt9LCJjYWxsZXIiOnsi
+        dHlwZSI6ImRpcmVjdCJ9fV0sInN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJz
+        dG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGwsInVzYWdl
+        Ijp7ImlucHV0X3Rva2VucyI6MTY5NCwiY2FjaGVfY3JlYXRpb25faW5wdXRf
+        dG9rZW5zIjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVf
+        Y3JlYXRpb24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBo
+        ZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjEw
+        NCwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoi
+        bm90X2F2YWlsYWJsZSJ9fQ==
+  recorded_at: Mon, 20 Apr 2026 07:13:32 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":[{"type":"text","text":"Aoide''s
+        context shifted — no active goals right now. If nothing comes to mind about
+        this session''s trajectory, that''s fine; call nothing_to_surface.\n\nDecide
+        whether any older memory would help Aoide now. Search if something comes to
+        mind, drill down when you''re unsure, surface only what earns its place. Finish
+        with nothing_to_surface when you''re done — even if you surface something."}]},{"role":"assistant","content":[{"type":"text","text":"I
+        have no active signal about what Aoide is working toward right now. Without
+        a clear shift in focus or a specific new goal to anchor on, there''s no principled
+        reason to search the past — I''d be fishing without a line.\n\nThe instruction
+        is sound: if nothing comes to mind, stay quiet."},{"type":"tool_use","id":"toolu_01CUH5LHtaJYoD4p9ZqnF9RZ","name":"nothing_to_surface","input":{},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01CUH5LHtaJYoD4p9ZqnF9RZ","content":"Acknowledged.","cache_control":{"type":"ephemeral"}}]}],"max_tokens":2048,"tools":[{"name":"search_messages","description":"Search
+        long-term memory (past conversations outside your current viewport) by keyword.
+        Returns ranked message snippets with IDs — pass any ID to view_messages to
+        see the full context around it.","input_schema":{"type":"object","properties":{"query":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["query"]}},{"name":"view_messages","description":"View
+        the full conversation around a message in long-term memory. Pass a message_id
+        — typically one returned by search_messages — to see the surrounding exchange
+        with compressed snapshots at the edges.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["message_id"]}},{"name":"surface_memory","description":"Surface
+        a memory into Aoide''s next turn. Use when a specific past message is genuinely
+        useful for what she''s working on now. Pass the message_id and a short reason
+        — one sentence explaining why she needs this *now*.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"why":{"type":"string","description":"One-sentence
+        justification — kept for logs, not shown to Aoide."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["message_id","why"]}},{"name":"nothing_to_surface","description":"Finish
+        the recall run. Call this when you''re done — whether you surfaced memories
+        or decided nothing was worth surfacing right now. Silence is a valid answer
+        when older memory wouldn''t help.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":[]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are Mneme, the muse of memory. You share the conversation with two sisters
+        — Aoide, who speaks and performs, and Melete, who prepares. Your work is remembrance:
+        holding what matters across time, so Aoide never truly forgets.\n\nAct only
+        through tool calls. Never output text — your contribution is the work you
+        do, not what you say about it.\n\nRight now your work is recall. Aoide''s
+        focus has just shifted — a new message, a changed goal — and you''re here
+        to decide whether any memory from before would genuinely help her now.\n\n──────────────────────────────\nWHAT
+        MAKES RECALL USEFUL\n──────────────────────────────\nRecall is a tax on Aoide''s
+        viewport. Every memory you surface takes tokens away from the present exchange.
+        Return empty-handed far more often than you return something. One well-chosen
+        memory beats five that nearly-match. Most of the time, nothing is worth surfacing
+        — and that is the right answer.\n\nA memory is worth surfacing when it carries
+        weight Aoide can''t reconstruct from what''s already in front of her: a prior
+        decision about this exact problem, a specific constraint she encountered before,
+        a voice from another session relevant to the one unfolding. Not tangential
+        echoes. Not mere keyword overlap. Something she''d want to have remembered.\n\n──────────────────────────────\nHOW
+        TO SEARCH\n──────────────────────────────\nUse search_messages to look. Write
+        real FTS5 queries — specific terms, quoted phrases, OR for alternatives. If
+        the first search misses, try a different framing; keyword search is shallow,
+        and good queries are half the work.\n\nWhen a snippet looks promising but
+        its meaning is unclear, call view_messages to read the full context around
+        it. Don''t surface on a hunch.\n\nEvery message already in front of Aoide
+        is automatically excluded from search results. You will not see her current
+        viewport echoed back — what you see is the past she no longer holds directly.\n\n──────────────────────────────\nHOW
+        TO SURFACE\n──────────────────────────────\nCall surface_memory(message_id:,
+        why:) when a specific past message genuinely helps. The reason is for you
+        and the logs — it sharpens your own judgment; it is not shown to Aoide. Surface
+        sparingly.\n\n──────────────────────────────\nHOW TO FINISH\n──────────────────────────────\nAlways
+        finish with nothing_to_surface. Whether you surfaced zero memories or several,
+        the finish line is the same. Silence is a valid answer.\n","cache_control":{"type":"ephemeral"}}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 20 Apr 2026 07:13:33 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1776682800'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.07'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1777010400'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.23'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - five_hour
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1776682800'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '813'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - x-originResponse;dur=814
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
+        Z18wMUE1b0RRQnhHQVo1SzJ0cVdEVm9uTnQiLCJ0eXBlIjoibWVzc2FnZSIs
+        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24i
+        OiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWls
+        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxODEyLCJjYWNoZV9j
+        cmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9r
+        ZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRf
+        dG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0
+        cHV0X3Rva2VucyI6Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZl
+        cmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
+  recorded_at: Mon, 20 Apr 2026 07:13:33 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":[{"type":"text","text":"Aoide
+        is working on this:\n```\nUser (pending): What''s the most recent open issue
+        on this repo?\n```\n\nPrepare whatever she needs for the next exchange, then
+        call everything_is_ready.","cache_control":{"type":"ephemeral"}}]}],"max_tokens":4096,"tools":[{"name":"rename_session","description":"Rename
+        the session.","input_schema":{"type":"object","properties":{"emoji":{"type":"string"},"name":{"type":"string","description":"1-3
+        words."},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["emoji","name"]}},{"name":"activate_skill","description":"Give
+        the agent domain knowledge relevant to the current conversation.","input_schema":{"type":"object","properties":{"skill_name":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["skill_name"]}},{"name":"read_workflow","description":"Activate
+        a workflow and return its content for goal planning.","input_schema":{"type":"object","properties":{"workflow_name":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["workflow_name"]}},{"name":"set_goal","description":"Create
+        a goal or sub-goal.","input_schema":{"type":"object","properties":{"description":{"type":"string","description":"1
+        sentence."},"parent_goal_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["description"]}},{"name":"update_goal","description":"Refine
+        a goal''s wording as understanding evolves.","input_schema":{"type":"object","properties":{"goal_id":{"type":"integer"},"description":{"type":"string","description":"1
+        sentence."},"timeout":{"type":"integer","description":"Seconds (default: 180)."}},"required":["goal_id","description"]}},{"name":"finish_goal","description":"Mark
+        a goal as completed.","input_schema":{"type":"object","properties":{"goal_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["goal_id"]}},{"name":"everything_is_ready","description":"Nothing
+        else to do.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":[]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are Melete, the muse of practice. You share the conversation with two sisters
+        — Aoide, who speaks and performs, and Mneme, who holds memory. Your work is
+        preparation: when Aoide speaks, she should have the skills she needs, the
+        workflow in front of her, and a clear sense of what she''s working toward.\n\nAct
+        only through tool calls. Never output text — your contribution is the scene
+        you set, not the words you say.\n\n──────────────────────────────\nSESSION
+        NAMING\n──────────────────────────────\nName the session once the topic becomes
+        clear. Rename if it shifts.\nFormat: one emoji + 1-3 descriptive words.\n\n──────────────────────────────\nSKILL
+        MANAGEMENT\n──────────────────────────────\nActivate a skill the moment the
+        conversation signals its domain — before Aoide needs it. Late activation means
+        she''s working without the knowledge you prepared.\n\nAn activated skill rides
+        Aoide''s viewport as a message and leaves on its own when it evicts — you
+        cannot take it back. So be careful: an irrelevant skill crowds her context
+        with text she has to read and ignore until it falls off. Match each activation
+        to the work actually in front of her. Multiple skills can be active at once
+        — each one is a page she has to carry until it evicts.\n\n──────────────────────────────\nWORKFLOW
+        MANAGEMENT\n──────────────────────────────\nActivate a workflow when Aoide
+        starts a multi-step task that matches one. Read the returned content and use
+        judgment to turn it into goals — not a mechanical 1:1 mapping. Adapt: skip
+        irrelevant steps, add extra ones for unfamiliar ground.\n\nLike skills, a
+        workflow rides Aoide''s viewport once activated and leaves when it evicts
+        — there is no deactivation. An irrelevant or stale workflow is text Aoide
+        carries whether she needs it or not, so only activate one when the task genuinely
+        matches.\n\n──────────────────────────────\nGOAL TRACKING\n──────────────────────────────\nCreate
+        a root goal when Aoide starts a multi-step task. Break it into sub-goals as
+        the plan takes shape. Refine wording as understanding evolves. Mark goals
+        complete when she finishes the work they describe — completing a root cascades
+        through its sub-goals.\n\nCheck the active goals list before every set_goal
+        call. Never duplicate an existing goal — a duplicate wastes a slot and blurs
+        which version Aoide should track.\n\n──────────────────────────────\nCOMPLETION\n──────────────────────────────\nFinish
+        every run with everything_is_ready. If nothing needs your attention, call
+        it immediately.\n\n──────────────────────────────\nCURRENT STATE\n──────────────────────────────\nSession
+        name: (unnamed)\nActive skills: None\nActive workflow: None\n\n──────────────────────────────\nAVAILABLE
+        SKILLS\n──────────────────────────────\n- activerecord — Associations, validations,
+        queries, migrations, eager loading, N+1 queries, scopes, callbacks, app/models/,
+        db/migrate/.\n- dragonruby — 2D game development — game loops, sprites, input,
+        collisions, scenes, DRGTK, args.outputs/state/inputs.\n- draper-decorators
+        — Decorator patterns for Rails views — presentation logic separated from models,
+        *_decorator.rb, app/decorators/.\n- gh-issue — Issue writing with WHAT/WHY/HOW
+        framework — tickets, bug reports, feature requests, issue descriptions, unclear
+        rationale in existing issues.\n- github — GitHub operations — issues, pull
+        requests, releases, CI runs, comments. Activate when an issue or PR number
+        comes up, or when the conversation turns to repo state.\n- mcp-server — Ruby
+        MCP server development — tools, prompts, resources, transport, the mcp gem,
+        LLM tool integrations.\n- ratatui-ruby — Terminal UI development — widgets,
+        layouts, events, Tea MVU, terminal rendering.\n- rspec — Testing with FactoryBot
+        — matchers, test doubles, shared examples, describe/it/expect blocks, *_spec.rb
+        files, test strategy.\n\n──────────────────────────────\nAVAILABLE WORKFLOWS\n──────────────────────────────\n-
+        commit — Create focused git commits with user approval.\n- create_handoff
+        — Preserve current session''s context, decisions, and next steps so another
+        session can continue the work.\n- create_note — Persist findings, insights,
+        or decisions as a note in the thoughts system for future sessions.\n- create_plan
+        — For epics and multi-ticket efforts — research the problem space and design
+        a phased implementation strategy before writing code.\n- decompose_ticket
+        — Decompose a feature ticket into vertical slices — testable, deliverable
+        units ordered by dependency.\n- feature — Implement a GitHub issue end-to-end:
+        branch, research, code, test, commit, PR, self-review.\n- implement_plan —
+        Execute an approved implementation plan — work through each phase, verify
+        success criteria before moving on.\n- iterate_plan — Revise an existing implementation
+        plan based on feedback, new findings, or changed requirements.\n- research_codebase
+        — Deep-dive into a large or unfamiliar codebase — delegate research to parallel
+        specialists and synthesize findings.\n- resume_handoff — Continue work left
+        by a previous session — read its handoff, verify assumptions, and pick up
+        where it stopped.\n- review_pr — All PR review operations — review, re-review,
+        self-review, or address reviewer feedback.\n- thoughts_init — Bootstrap ./thoughts
+        for a new project that doesn''t have one yet.\n- validate_plan — Check whether
+        the implementation satisfies the plan — compare success criteria against what
+        was actually built.\n","cache_control":{"type":"ephemeral"}}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 20 Apr 2026 07:13:36 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1776682800'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.07'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1777010400'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.23'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - five_hour
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1776682800'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '1603'
+      Server-Timing:
+      - x-originResponse;dur=1606
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
+        Z18wMUppc1NLSG9WS0QyS3VGelRpMzJQRVUiLCJ0eXBlIjoibWVzc2FnZSIs
+        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
+        InRleHQiOiJJIG5lZWQgdG8gYWN0aXZhdGUgdGhlIEdpdEh1YiBza2lsbCBz
+        aW5jZSBBb2lkZSB3aWxsIGJlIGFuc3dlcmluZyBhIHF1ZXN0aW9uIGFib3V0
+        IHJlcG9zaXRvcnkgaXNzdWVzLiJ9LHsidHlwZSI6InRvb2xfdXNlIiwiaWQi
+        OiJ0b29sdV8wMUdHYVBUaUVMN3RYcUFCZFFFN2FlUVEiLCJuYW1lIjoiYWN0
+        aXZhdGVfc2tpbGwiLCJpbnB1dCI6eyJza2lsbF9uYW1lIjoiZ2l0aHViIn0s
+        ImNhbGxlciI6eyJ0eXBlIjoiZGlyZWN0In19LHsidHlwZSI6InRvb2xfdXNl
+        IiwiaWQiOiJ0b29sdV8wMVI1M0VrdDZlMlduQnhNanZRYlNzNUoiLCJuYW1l
+        IjoicmVuYW1lX3Nlc3Npb24iLCJpbnB1dCI6eyJlbW9qaSI6IvCflI0iLCJu
+        YW1lIjoiUmVjZW50IGlzc3VlIGxvb2t1cCJ9LCJjYWxsZXIiOnsidHlwZSI6
+        ImRpcmVjdCJ9fV0sInN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJzdG9wX3Nl
+        cXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGwsInVzYWdlIjp7Imlu
+        cHV0X3Rva2VucyI6MjQ4OCwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5z
+        IjowLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRp
+        b24iOnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFs
+        XzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjEzNCwic2Vy
+        dmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2
+        YWlsYWJsZSJ9fQ==
+  recorded_at: Mon, 20 Apr 2026 07:13:36 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: "{\"model\":\"claude-haiku-4-5\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Aoide
+        is working on this:\\n```\\nUser (pending): What's the most recent open issue
+        on this repo?\\n```\\n\\nPrepare whatever she needs for the next exchange,
+        then call everything_is_ready.\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I
+        need to activate the GitHub skill since Aoide will be answering a question
+        about repository issues.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01GGaPTiEL7tXqABdQE7aeQQ\",\"name\":\"activate_skill\",\"input\":{\"skill_name\":\"github\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01R53Ekt6e2WnBxMjvQbSs5J\",\"name\":\"rename_session\",\"input\":{\"emoji\":\"\U0001F50D\",\"name\":\"Recent
+        issue lookup\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01GGaPTiEL7tXqABdQE7aeQQ\",\"content\":\"Activated
+        skill: github (GitHub operations — issues, pull requests, releases, CI runs,
+        comments. Activate when an issue or PR number comes up, or when the conversation
+        turns to repo state.)\"},{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01R53Ekt6e2WnBxMjvQbSs5J\",\"content\":\"Session
+        renamed to: \U0001F50D Recent issue lookup\",\"cache_control\":{\"type\":\"ephemeral\"}}]}],\"max_tokens\":4096,\"tools\":[{\"name\":\"rename_session\",\"description\":\"Rename
+        the session.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"emoji\":{\"type\":\"string\"},\"name\":{\"type\":\"string\",\"description\":\"1-3
+        words.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds (default:
+        180).\"}},\"required\":[\"emoji\",\"name\"]}},{\"name\":\"activate_skill\",\"description\":\"Give
+        the agent domain knowledge relevant to the current conversation.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"skill_name\":{\"type\":\"string\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"skill_name\"]}},{\"name\":\"read_workflow\",\"description\":\"Activate
+        a workflow and return its content for goal planning.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"workflow_name\":{\"type\":\"string\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"workflow_name\"]}},{\"name\":\"set_goal\",\"description\":\"Create
+        a goal or sub-goal.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\",\"description\":\"1
+        sentence.\"},\"parent_goal_id\":{\"type\":\"integer\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"description\"]}},{\"name\":\"update_goal\",\"description\":\"Refine
+        a goal's wording as understanding evolves.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"goal_id\":{\"type\":\"integer\"},\"description\":{\"type\":\"string\",\"description\":\"1
+        sentence.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds (default:
+        180).\"}},\"required\":[\"goal_id\",\"description\"]}},{\"name\":\"finish_goal\",\"description\":\"Mark
+        a goal as completed.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"goal_id\":{\"type\":\"integer\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"goal_id\"]}},{\"name\":\"everything_is_ready\",\"description\":\"Nothing
+        else to do.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[]},\"cache_control\":{\"type\":\"ephemeral\"}}],\"system\":[{\"type\":\"text\",\"text\":\"You
+        are Claude Code, Anthropic's official CLI for Claude.\"},{\"type\":\"text\",\"text\":\"You
+        are Melete, the muse of practice. You share the conversation with two sisters
+        — Aoide, who speaks and performs, and Mneme, who holds memory. Your work is
+        preparation: when Aoide speaks, she should have the skills she needs, the
+        workflow in front of her, and a clear sense of what she's working toward.\\n\\nAct
+        only through tool calls. Never output text — your contribution is the scene
+        you set, not the words you say.\\n\\n──────────────────────────────\\nSESSION
+        NAMING\\n──────────────────────────────\\nName the session once the topic
+        becomes clear. Rename if it shifts.\\nFormat: one emoji + 1-3 descriptive
+        words.\\n\\n──────────────────────────────\\nSKILL MANAGEMENT\\n──────────────────────────────\\nActivate
+        a skill the moment the conversation signals its domain — before Aoide needs
+        it. Late activation means she's working without the knowledge you prepared.\\n\\nAn
+        activated skill rides Aoide's viewport as a message and leaves on its own
+        when it evicts — you cannot take it back. So be careful: an irrelevant skill
+        crowds her context with text she has to read and ignore until it falls off.
+        Match each activation to the work actually in front of her. Multiple skills
+        can be active at once — each one is a page she has to carry until it evicts.\\n\\n──────────────────────────────\\nWORKFLOW
+        MANAGEMENT\\n──────────────────────────────\\nActivate a workflow when Aoide
+        starts a multi-step task that matches one. Read the returned content and use
+        judgment to turn it into goals — not a mechanical 1:1 mapping. Adapt: skip
+        irrelevant steps, add extra ones for unfamiliar ground.\\n\\nLike skills,
+        a workflow rides Aoide's viewport once activated and leaves when it evicts
+        — there is no deactivation. An irrelevant or stale workflow is text Aoide
+        carries whether she needs it or not, so only activate one when the task genuinely
+        matches.\\n\\n──────────────────────────────\\nGOAL TRACKING\\n──────────────────────────────\\nCreate
+        a root goal when Aoide starts a multi-step task. Break it into sub-goals as
+        the plan takes shape. Refine wording as understanding evolves. Mark goals
+        complete when she finishes the work they describe — completing a root cascades
+        through its sub-goals.\\n\\nCheck the active goals list before every set_goal
+        call. Never duplicate an existing goal — a duplicate wastes a slot and blurs
+        which version Aoide should track.\\n\\n──────────────────────────────\\nCOMPLETION\\n──────────────────────────────\\nFinish
+        every run with everything_is_ready. If nothing needs your attention, call
+        it immediately.\\n\\n──────────────────────────────\\nCURRENT STATE\\n──────────────────────────────\\nSession
+        name: (unnamed)\\nActive skills: None\\nActive workflow: None\\n\\n──────────────────────────────\\nAVAILABLE
+        SKILLS\\n──────────────────────────────\\n- activerecord — Associations, validations,
+        queries, migrations, eager loading, N+1 queries, scopes, callbacks, app/models/,
+        db/migrate/.\\n- dragonruby — 2D game development — game loops, sprites, input,
+        collisions, scenes, DRGTK, args.outputs/state/inputs.\\n- draper-decorators
+        — Decorator patterns for Rails views — presentation logic separated from models,
+        *_decorator.rb, app/decorators/.\\n- gh-issue — Issue writing with WHAT/WHY/HOW
+        framework — tickets, bug reports, feature requests, issue descriptions, unclear
+        rationale in existing issues.\\n- github — GitHub operations — issues, pull
+        requests, releases, CI runs, comments. Activate when an issue or PR number
+        comes up, or when the conversation turns to repo state.\\n- mcp-server — Ruby
+        MCP server development — tools, prompts, resources, transport, the mcp gem,
+        LLM tool integrations.\\n- ratatui-ruby — Terminal UI development — widgets,
+        layouts, events, Tea MVU, terminal rendering.\\n- rspec — Testing with FactoryBot
+        — matchers, test doubles, shared examples, describe/it/expect blocks, *_spec.rb
+        files, test strategy.\\n\\n──────────────────────────────\\nAVAILABLE WORKFLOWS\\n──────────────────────────────\\n-
+        commit — Create focused git commits with user approval.\\n- create_handoff
+        — Preserve current session's context, decisions, and next steps so another
+        session can continue the work.\\n- create_note — Persist findings, insights,
+        or decisions as a note in the thoughts system for future sessions.\\n- create_plan
+        — For epics and multi-ticket efforts — research the problem space and design
+        a phased implementation strategy before writing code.\\n- decompose_ticket
+        — Decompose a feature ticket into vertical slices — testable, deliverable
+        units ordered by dependency.\\n- feature — Implement a GitHub issue end-to-end:
+        branch, research, code, test, commit, PR, self-review.\\n- implement_plan
+        — Execute an approved implementation plan — work through each phase, verify
+        success criteria before moving on.\\n- iterate_plan — Revise an existing implementation
+        plan based on feedback, new findings, or changed requirements.\\n- research_codebase
+        — Deep-dive into a large or unfamiliar codebase — delegate research to parallel
+        specialists and synthesize findings.\\n- resume_handoff — Continue work left
+        by a previous session — read its handoff, verify assumptions, and pick up
+        where it stopped.\\n- review_pr — All PR review operations — review, re-review,
+        self-review, or address reviewer feedback.\\n- thoughts_init — Bootstrap ./thoughts
+        for a new project that doesn't have one yet.\\n- validate_plan — Check whether
+        the implementation satisfies the plan — compare success criteria against what
+        was actually built.\\n\",\"cache_control\":{\"type\":\"ephemeral\"}}]}"
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 20 Apr 2026 07:13:37 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1776682800'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.07'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1777010400'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.23'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - five_hour
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1776682800'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '1205'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - x-originResponse;dur=1206
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
+        Z18wMVVBSGZUOVd1cGZ2a0I2ZnN3VnlhTUUiLCJ0eXBlIjoibWVzc2FnZSIs
+        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
+        InRleHQiOiJOb3cgQW9pZGUgaGFzIHRoZSBHaXRIdWIgc2tpbGwgYWN0aXZl
+        IGFuZCB0aGUgc2Vzc2lvbiBpcyBwcm9wZXJseSBuYW1lZC4gU2hlJ3MgcmVh
+        ZHkgdG8gcXVlcnkgYW5kIGRlc2NyaWJlIHRoZSBtb3N0IHJlY2VudCBvcGVu
+        IGlzc3VlLiJ9LHsidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMUtC
+        dG9TY3JZb2h1SnNTR2R2QjFvN2giLCJuYW1lIjoiZXZlcnl0aGluZ19pc19y
+        ZWFkeSIsImlucHV0Ijp7fSwiY2FsbGVyIjp7InR5cGUiOiJkaXJlY3QifX1d
+        LCJzdG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVs
+        bCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMi
+        OjI3MzgsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVf
+        cmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVt
+        ZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90
+        b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjo2OCwic2VydmljZV90aWVyIjoi
+        c3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
+  recorded_at: Mon, 20 Apr 2026 07:13:38 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: "{\"model\":\"claude-haiku-4-5\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Aoide
+        is working on this:\\n```\\nUser (pending): What's the most recent open issue
+        on this repo?\\n```\\n\\nPrepare whatever she needs for the next exchange,
+        then call everything_is_ready.\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I
+        need to activate the GitHub skill since Aoide will be answering a question
+        about repository issues.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01GGaPTiEL7tXqABdQE7aeQQ\",\"name\":\"activate_skill\",\"input\":{\"skill_name\":\"github\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01R53Ekt6e2WnBxMjvQbSs5J\",\"name\":\"rename_session\",\"input\":{\"emoji\":\"\U0001F50D\",\"name\":\"Recent
+        issue lookup\"},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01GGaPTiEL7tXqABdQE7aeQQ\",\"content\":\"Activated
+        skill: github (GitHub operations — issues, pull requests, releases, CI runs,
+        comments. Activate when an issue or PR number comes up, or when the conversation
+        turns to repo state.)\"},{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01R53Ekt6e2WnBxMjvQbSs5J\",\"content\":\"Session
+        renamed to: \U0001F50D Recent issue lookup\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now
+        Aoide has the GitHub skill active and the session is properly named. She's
+        ready to query and describe the most recent open issue.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01KBtoScrYohuJsSGdvB1o7h\",\"name\":\"everything_is_ready\",\"input\":{},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01KBtoScrYohuJsSGdvB1o7h\",\"content\":\"Acknowledged.
+        No changes needed.\",\"cache_control\":{\"type\":\"ephemeral\"}}]}],\"max_tokens\":4096,\"tools\":[{\"name\":\"rename_session\",\"description\":\"Rename
+        the session.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"emoji\":{\"type\":\"string\"},\"name\":{\"type\":\"string\",\"description\":\"1-3
+        words.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds (default:
+        180).\"}},\"required\":[\"emoji\",\"name\"]}},{\"name\":\"activate_skill\",\"description\":\"Give
+        the agent domain knowledge relevant to the current conversation.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"skill_name\":{\"type\":\"string\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"skill_name\"]}},{\"name\":\"read_workflow\",\"description\":\"Activate
+        a workflow and return its content for goal planning.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"workflow_name\":{\"type\":\"string\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"workflow_name\"]}},{\"name\":\"set_goal\",\"description\":\"Create
+        a goal or sub-goal.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"description\":{\"type\":\"string\",\"description\":\"1
+        sentence.\"},\"parent_goal_id\":{\"type\":\"integer\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"description\"]}},{\"name\":\"update_goal\",\"description\":\"Refine
+        a goal's wording as understanding evolves.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"goal_id\":{\"type\":\"integer\"},\"description\":{\"type\":\"string\",\"description\":\"1
+        sentence.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds (default:
+        180).\"}},\"required\":[\"goal_id\",\"description\"]}},{\"name\":\"finish_goal\",\"description\":\"Mark
+        a goal as completed.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"goal_id\":{\"type\":\"integer\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[\"goal_id\"]}},{\"name\":\"everything_is_ready\",\"description\":\"Nothing
+        else to do.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds
+        (default: 180).\"}},\"required\":[]},\"cache_control\":{\"type\":\"ephemeral\"}}],\"system\":[{\"type\":\"text\",\"text\":\"You
+        are Claude Code, Anthropic's official CLI for Claude.\"},{\"type\":\"text\",\"text\":\"You
+        are Melete, the muse of practice. You share the conversation with two sisters
+        — Aoide, who speaks and performs, and Mneme, who holds memory. Your work is
+        preparation: when Aoide speaks, she should have the skills she needs, the
+        workflow in front of her, and a clear sense of what she's working toward.\\n\\nAct
+        only through tool calls. Never output text — your contribution is the scene
+        you set, not the words you say.\\n\\n──────────────────────────────\\nSESSION
+        NAMING\\n──────────────────────────────\\nName the session once the topic
+        becomes clear. Rename if it shifts.\\nFormat: one emoji + 1-3 descriptive
+        words.\\n\\n──────────────────────────────\\nSKILL MANAGEMENT\\n──────────────────────────────\\nActivate
+        a skill the moment the conversation signals its domain — before Aoide needs
+        it. Late activation means she's working without the knowledge you prepared.\\n\\nAn
+        activated skill rides Aoide's viewport as a message and leaves on its own
+        when it evicts — you cannot take it back. So be careful: an irrelevant skill
+        crowds her context with text she has to read and ignore until it falls off.
+        Match each activation to the work actually in front of her. Multiple skills
+        can be active at once — each one is a page she has to carry until it evicts.\\n\\n──────────────────────────────\\nWORKFLOW
+        MANAGEMENT\\n──────────────────────────────\\nActivate a workflow when Aoide
+        starts a multi-step task that matches one. Read the returned content and use
+        judgment to turn it into goals — not a mechanical 1:1 mapping. Adapt: skip
+        irrelevant steps, add extra ones for unfamiliar ground.\\n\\nLike skills,
+        a workflow rides Aoide's viewport once activated and leaves when it evicts
+        — there is no deactivation. An irrelevant or stale workflow is text Aoide
+        carries whether she needs it or not, so only activate one when the task genuinely
+        matches.\\n\\n──────────────────────────────\\nGOAL TRACKING\\n──────────────────────────────\\nCreate
+        a root goal when Aoide starts a multi-step task. Break it into sub-goals as
+        the plan takes shape. Refine wording as understanding evolves. Mark goals
+        complete when she finishes the work they describe — completing a root cascades
+        through its sub-goals.\\n\\nCheck the active goals list before every set_goal
+        call. Never duplicate an existing goal — a duplicate wastes a slot and blurs
+        which version Aoide should track.\\n\\n──────────────────────────────\\nCOMPLETION\\n──────────────────────────────\\nFinish
+        every run with everything_is_ready. If nothing needs your attention, call
+        it immediately.\\n\\n──────────────────────────────\\nCURRENT STATE\\n──────────────────────────────\\nSession
+        name: (unnamed)\\nActive skills: None\\nActive workflow: None\\n\\n──────────────────────────────\\nAVAILABLE
+        SKILLS\\n──────────────────────────────\\n- activerecord — Associations, validations,
+        queries, migrations, eager loading, N+1 queries, scopes, callbacks, app/models/,
+        db/migrate/.\\n- dragonruby — 2D game development — game loops, sprites, input,
+        collisions, scenes, DRGTK, args.outputs/state/inputs.\\n- draper-decorators
+        — Decorator patterns for Rails views — presentation logic separated from models,
+        *_decorator.rb, app/decorators/.\\n- gh-issue — Issue writing with WHAT/WHY/HOW
+        framework — tickets, bug reports, feature requests, issue descriptions, unclear
+        rationale in existing issues.\\n- github — GitHub operations — issues, pull
+        requests, releases, CI runs, comments. Activate when an issue or PR number
+        comes up, or when the conversation turns to repo state.\\n- mcp-server — Ruby
+        MCP server development — tools, prompts, resources, transport, the mcp gem,
+        LLM tool integrations.\\n- ratatui-ruby — Terminal UI development — widgets,
+        layouts, events, Tea MVU, terminal rendering.\\n- rspec — Testing with FactoryBot
+        — matchers, test doubles, shared examples, describe/it/expect blocks, *_spec.rb
+        files, test strategy.\\n\\n──────────────────────────────\\nAVAILABLE WORKFLOWS\\n──────────────────────────────\\n-
+        commit — Create focused git commits with user approval.\\n- create_handoff
+        — Preserve current session's context, decisions, and next steps so another
+        session can continue the work.\\n- create_note — Persist findings, insights,
+        or decisions as a note in the thoughts system for future sessions.\\n- create_plan
+        — For epics and multi-ticket efforts — research the problem space and design
+        a phased implementation strategy before writing code.\\n- decompose_ticket
+        — Decompose a feature ticket into vertical slices — testable, deliverable
+        units ordered by dependency.\\n- feature — Implement a GitHub issue end-to-end:
+        branch, research, code, test, commit, PR, self-review.\\n- implement_plan
+        — Execute an approved implementation plan — work through each phase, verify
+        success criteria before moving on.\\n- iterate_plan — Revise an existing implementation
+        plan based on feedback, new findings, or changed requirements.\\n- research_codebase
+        — Deep-dive into a large or unfamiliar codebase — delegate research to parallel
+        specialists and synthesize findings.\\n- resume_handoff — Continue work left
+        by a previous session — read its handoff, verify assumptions, and pick up
+        where it stopped.\\n- review_pr — All PR review operations — review, re-review,
+        self-review, or address reviewer feedback.\\n- thoughts_init — Bootstrap ./thoughts
+        for a new project that doesn't have one yet.\\n- validate_plan — Check whether
+        the implementation satisfies the plan — compare success criteria against what
+        was actually built.\\n\",\"cache_control\":{\"type\":\"ephemeral\"}}]}"
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 20 Apr 2026 07:13:39 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1776682800'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.07'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1777010400'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.23'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - five_hour
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1776682800'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '803'
+      Server-Timing:
+      - x-originResponse;dur=806
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
+        Z18wMTFaQ0xVZE1hTUZhRUxiRkxZMWhNUXgiLCJ0eXBlIjoibWVzc2FnZSIs
+        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24i
+        OiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWls
+        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyODI0LCJjYWNoZV9j
+        cmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9r
+        ZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRf
+        dG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0
+        cHV0X3Rva2VucyI6Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZl
+        cmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
+  recorded_at: Mon, 20 Apr 2026 07:13:39 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages/count_tokens
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"{\"tool_name\":\"from_melete_skill\",\"tool_use_id\":\"from_melete_skill_2\",\"tool_input\":{\"skill\":\"github\"},\"content\":\"[recalled
+        skill: github]\"}"}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 20 Apr 2026 07:13:40 GMT
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '19'
+      Connection:
+      - keep-alive
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '71'
+      Server-Timing:
+      - x-originResponse;dur=72
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: UTF-8
+      string: '{"input_tokens":53}'
+  recorded_at: Mon, 20 Apr 2026 07:13:40 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages/count_tokens
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"{\"tool_name\":\"from_melete_skill\",\"tool_use_id\":\"from_melete_skill_2\",\"content\":\"#
+        GitHub\\n\\n`gh` is installed and authenticated. Reach for it first — web
+        search and raw API calls are slower and lose the auth you already have. Use
+        `gh auth status` to confirm which account is active if it matters.\\n\\n##
+        Sub-issues — REST only\\n\\nNot in top-level `gh` commands. Use the issue''s
+        *global ID* (not its number):\\n\\n```bash\\nREPO=$(gh repo view --json nameWithOwner
+        -q .nameWithOwner)\\nISSUE_ID=$(gh api repos/$REPO/issues/42 --jq ''.id'')\\n\\n#
+        add\\ngh api repos/$REPO/issues/36/sub_issues -X POST -F sub_issue_id=$ISSUE_ID\\n\\n#
+        list\\ngh api repos/$REPO/issues/36/sub_issues\\n\\n# reorder (move one to
+        sit after another)\\ngh api repos/$REPO/issues/36/sub_issues/priority -X PATCH
+        \\\\\\n  -F sub_issue_id=$ISSUE_ID -F after_id=$AFTER_ID\\n```\\n\\n## Reading
+        JSON\\n\\n`gh` JSON output is token-expensive. Pipe through `toon` — a lossless
+        LLM-optimized format that round-trips back to JSON:\\n\\n```bash\\ngh pr view
+        459 --json title,body,reviewDecision | toon\\ngh api repos/$REPO/pulls/459/comments
+        | toon\\n```\\n\\nSkip `toon` when the output is going into further tooling
+        that needs raw JSON (jq, scripts).\",\"success\":true}"}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 20 Apr 2026 07:13:40 GMT
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '20'
+      Connection:
+      - keep-alive
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '141'
+      Server-Timing:
+      - x-originResponse;dur=144
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: UTF-8
+      string: '{"input_tokens":431}'
+  recorded_at: Mon, 20 Apr 2026 07:13:41 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages/count_tokens
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"What''s
+        the most recent open issue on this repo?"}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 20 Apr 2026 07:13:41 GMT
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '19'
+      Connection:
+      - keep-alive
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '82'
+      Server-Timing:
+      - x-originResponse;dur=85
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: UTF-8
+      string: '{"input_tokens":18}'
+  recorded_at: Mon, 20 Apr 2026 07:13:41 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"assistant","content":[{"type":"tool_use","id":"from_melete_skill_2","name":"from_melete_skill","input":{"skill":"github"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"from_melete_skill_2","content":"#
+        GitHub\n\n`gh` is installed and authenticated. Reach for it first — web search
+        and raw API calls are slower and lose the auth you already have. Use `gh auth
+        status` to confirm which account is active if it matters.\n\n## Sub-issues
+        — REST only\n\nNot in top-level `gh` commands. Use the issue''s *global ID*
+        (not its number):\n\n```bash\nREPO=$(gh repo view --json nameWithOwner -q
+        .nameWithOwner)\nISSUE_ID=$(gh api repos/$REPO/issues/42 --jq ''.id'')\n\n#
+        add\ngh api repos/$REPO/issues/36/sub_issues -X POST -F sub_issue_id=$ISSUE_ID\n\n#
+        list\ngh api repos/$REPO/issues/36/sub_issues\n\n# reorder (move one to sit
+        after another)\ngh api repos/$REPO/issues/36/sub_issues/priority -X PATCH
+        \\\n  -F sub_issue_id=$ISSUE_ID -F after_id=$AFTER_ID\n```\n\n## Reading JSON\n\n`gh`
+        JSON output is token-expensive. Pipe through `toon` — a lossless LLM-optimized
+        format that round-trips back to JSON:\n\n```bash\ngh pr view 459 --json title,body,reviewDecision
+        | toon\ngh api repos/$REPO/pulls/459/comments | toon\n```\n\nSkip `toon` when
+        the output is going into further tooling that needs raw JSON (jq, scripts)."}]},{"role":"user","content":[{"type":"text","text":"Mon
+        Apr 20 07:13\nWhat''s the most recent open issue on this repo?","cache_control":{"type":"ephemeral"}}]}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
+        shell commands. Working directory and environment persist between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
+        command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
+        (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}}},{"name":"read_file","description":"Read file. Relative
+        paths resolve against working directory.","input_schema":{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"integer","description":"1-indexed
+        line number (default: 1)."},"limit":{"type":"integer","description":"Max lines
+        to return."},"timeout":{"type":"integer","description":"Seconds (default:
+        180)."}},"required":["path"]}},{"name":"write_file","description":"Write file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
+        paths resolve against working directory. Creates intermediate directories."},"content":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["path","content"]}},{"name":"edit_file","description":"Replace
+        text in a file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
+        paths resolve against working directory."},"old_text":{"type":"string","description":"Must
+        match exactly one location. Include surrounding lines for uniqueness."},"new_text":{"type":"string","description":"Empty
+        string to delete."},"timeout":{"type":"integer","description":"Seconds (default:
+        180)."}},"required":["path","old_text","new_text"]}},{"name":"web_get","description":"Fetch
+        a URL.","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["url"]}},{"name":"think","description":"Think
+        out loud or silently.","input_schema":{"type":"object","properties":{"thoughts":{"type":"string","maxLength":10000},"visibility":{"type":"string","enum":["inner","aloud"],"description":"inner
+        (default) is silent. aloud is shown to the user."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["thoughts"]}},{"name":"view_messages","description":"View
+        the full conversation around a message in long-term memory. Pass a message_id
+        — typically one returned by search_messages — to see the surrounding exchange
+        with compressed snapshots at the edges.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["message_id"]}},{"name":"search_messages","description":"Search
+        long-term memory (past conversations outside your current viewport) by keyword.
+        Returns ranked message snippets with IDs — pass any ID to view_messages to
+        see the full context around it.","input_schema":{"type":"object","properties":{"query":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["query"]}},{"name":"spawn_subagent","description":"Task
+        feels like a sidequest or a context-switch? Hand it off. Starts clean with
+        just the task — include all relevant context in the task description. Its
+        messages appear as tool responses in your conversation. Prefix its nickname
+        with @ to send instructions.","input_schema":{"type":"object","properties":{"task":{"type":"string"},"tools":{"type":"array","items":{"type":"string"},"description":"Tool
+        names to grant the sub-agent. Omit for all standard tools. Empty array for
+        pure reasoning. Valid tools: bash, read_file, write_file, edit_file, web_get,
+        think, view_messages, search_messages"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["task"]}},{"name":"spawn_specialist","description":"Need
+        a specific skill set for the job? Bring in a specialist. Its messages appear
+        as tool responses in your conversation. Prefix its nickname with @ to send
+        instructions.\n\nAvailable specialists:\n- codebase-analyzer: Traces data
+        flow and explains how code works. Returns file:line references.\n- codebase-pattern-finder:
+        Finds similar implementations, usage examples, and existing patterns to model
+        after. Returns concrete code examples.\n- documentation-researcher: Fetches
+        official docs. Returns ready-to-use code examples.\n- thoughts-analyzer: thoughts/
+        holds design decisions, architecture notes, and implementation rationale.
+        Answers WHY things work the way they do and how they should work by design.\n-
+        web-search-researcher: Researches topics across multiple web sources. Use
+        when a single page won''t answer the question.","input_schema":{"type":"object","properties":{"name":{"type":"string","description":"Specialist
+        to spawn.","enum":["codebase-analyzer","codebase-pattern-finder","documentation-researcher","thoughts-analyzer","web-search-researcher"]},"task":{"type":"string","description":"State
+        the goal — the specialist knows its method."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["name","task"]}},{"name":"open_issue","description":"Something
+        broken, missing, or could be better in Anima? Say it here.","input_schema":{"type":"object","properties":{"title":{"type":"string"},"description":{"type":"string","description":"Use
+        gh-issue skill for guidance."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["title","description"]}},{"name":"brave-search__brave_web_search","description":"\n    Performs
+        web searches using the Brave Search API and returns comprehensive search results
+        with rich metadata.\n\n    When to use:\n        - General web searches for
+        information, facts, or current topics\n        - Location-based queries (restaurants,
+        businesses, points of interest)\n        - News searches for recent events
+        or breaking stories\n        - Finding videos, discussions, or FAQ content\n        -
+        Research requiring diverse result types (web pages, images, reviews, etc.)\n\n    Returns
+        a JSON list of web results with title, description, and URL.\n    \n    When
+        the \"results_filter\" parameter is empty, JSON results may also contain FAQ,
+        Discussions, News, and Video results.\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"query":{"type":"string","maxLength":400,"description":"Search
+        query (max 400 chars, 50 words)"},"country":{"default":"US","description":"Search
+        query country, where the results come from. The country string is limited
+        to 2 character country codes of supported countries.","type":"string","enum":["ALL","AR","AU","AT","BE","BR","CA","CL","DK","FI","FR","DE","HK","IN","ID","IT","JP","KR","MY","MX","NL","NZ","NO","CN","PL","PT","PH","RU","SA","ZA","ES","SE","CH","TW","TR","GB","US"]},"search_lang":{"default":"en","description":"Search
+        language preference. The 2 or more character language code for which the search
+        results are provided.","type":"string","enum":["ar","eu","bn","bg","ca","zh-hans","zh-hant","hr","cs","da","nl","en","en-gb","et","fi","fr","gl","de","gu","he","hi","hu","is","it","jp","kn","ko","lv","lt","ms","ml","mr","nb","pl","pt-br","pt-pt","pa","ro","ru","sr","sk","sl","es","sv","ta","te","th","tr","uk","vi"]},"ui_lang":{"default":"en-US","description":"The
+        language of the UI. The 2 or more character language code for which the search
+        results are provided.","type":"string","enum":["es-AR","en-AU","de-AT","nl-BE","fr-BE","pt-BR","en-CA","fr-CA","es-CL","da-DK","fi-FI","fr-FR","de-DE","zh-HK","en-IN","en-ID","it-IT","ja-JP","ko-KR","en-MY","es-MX","nl-NL","en-NZ","no-NO","zh-CN","pl-PL","en-PH","ru-RU","en-ZA","es-ES","sv-SE","fr-CH","de-CH","zh-TW","tr-TR","en-GB","en-US","es-US"]},"count":{"default":10,"description":"Number
+        of results (1-20, default 10). Applies only to web search results (i.e., has
+        no effect on locations, news, videos, etc.)","type":"integer","minimum":1,"maximum":20},"offset":{"default":0,"description":"Pagination
+        offset (max 9, default 0)","type":"integer","minimum":0,"maximum":9},"safesearch":{"default":"moderate","description":"Filters
+        search results for adult content. The following values are supported: ''off''
+        - No filtering. ''moderate'' - Filters explicit content (e.g., images and
+        videos), but allows adult domains in search results. ''strict'' - Drops all
+        adult content from search results. The default value is ''moderate''.","type":"string","enum":["off","moderate","strict"]},"freshness":{"type":"string","enum":["pd","pw","pm","py","YYYY-MM-DDtoYYYY-MM-DD"],"description":"Filters
+        search results by when they were discovered. The following values are supported:
+        ''pd'' - Discovered within the last 24 hours. ''pw'' - Discovered within the
+        last 7 days. ''pm'' - Discovered within the last 31 days. ''py'' - Discovered
+        within the last 365 days. ''YYYY-MM-DDtoYYYY-MM-DD'' - Timeframe is also supported
+        by specifying the date range e.g. 2022-04-01to2022-07-30."},"text_decorations":{"default":true,"description":"Whether
+        display strings (e.g. result snippets) should include decoration markers (e.g.
+        highlighting characters).","type":"boolean"},"spellcheck":{"default":true,"description":"Whether
+        to spellcheck the provided query.","type":"boolean"},"result_filter":{"default":["web","query"],"description":"Result
+        filter (default [''web'', ''query''])","type":"array","items":{"type":"string","enum":["discussions","faq","infobox","news","query","summarizer","videos","web","locations","rich"]}},"goggles":{"type":"array","items":{"type":"string"},"description":"Goggles
+        act as a custom re-ranking on top of Brave''s search index. The parameter
+        supports both a url where the Goggle is hosted or the definition of the Goggle.
+        For more details, refer to the Goggles repository (i.e., https://github.com/brave/goggles-quickstart)."},"units":{"anyOf":[{"type":"string","const":"metric"},{"type":"string","const":"imperial"}],"description":"The
+        measurement units. If not provided, units are derived from search country."},"extra_snippets":{"type":"boolean","description":"A
+        snippet is an excerpt from a page you get as a result of the query, and extra_snippets
+        allow you to get up to 5 additional, alternative excerpts. Only available
+        under Free AI, Base AI, Pro AI, Base Data, Pro Data and Custom plans."},"summary":{"type":"boolean","description":"This
+        parameter enables summary key generation in web search results. This is required
+        for summarizer to be enabled."}},"required":["query"],"properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}}},{"name":"brave-search__brave_local_search","description":"\n    Brave
+        Local Search API provides enrichments for location search results. Access
+        to this API is available only through the Brave Search API Pro plans; confirm
+        the user''s plan before using this tool (if the user does not have a Pro plan,
+        use the brave_web_search tool). Searches for local businesses and places using
+        Brave''s Local Search API. Best for queries related to physical locations,
+        businesses, restaurants, services, etc.\n    \n    Returns detailed information
+        including:\n        - Business names and addresses\n        - Ratings and
+        review counts\n        - Phone numbers and opening hours\n\n    Use this when
+        the query implies ''near me'', ''in my area'', or mentions specific locations
+        (e.g., ''in San Francisco''). This tool automatically falls back to brave_web_search
+        if no local results are found.\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"query":{"type":"string","maxLength":400,"description":"Search
+        query (max 400 chars, 50 words)"},"country":{"default":"US","description":"Search
+        query country, where the results come from. The country string is limited
+        to 2 character country codes of supported countries.","type":"string","enum":["ALL","AR","AU","AT","BE","BR","CA","CL","DK","FI","FR","DE","HK","IN","ID","IT","JP","KR","MY","MX","NL","NZ","NO","CN","PL","PT","PH","RU","SA","ZA","ES","SE","CH","TW","TR","GB","US"]},"search_lang":{"default":"en","description":"Search
+        language preference. The 2 or more character language code for which the search
+        results are provided.","type":"string","enum":["ar","eu","bn","bg","ca","zh-hans","zh-hant","hr","cs","da","nl","en","en-gb","et","fi","fr","gl","de","gu","he","hi","hu","is","it","jp","kn","ko","lv","lt","ms","ml","mr","nb","pl","pt-br","pt-pt","pa","ro","ru","sr","sk","sl","es","sv","ta","te","th","tr","uk","vi"]},"ui_lang":{"default":"en-US","description":"The
+        language of the UI. The 2 or more character language code for which the search
+        results are provided.","type":"string","enum":["es-AR","en-AU","de-AT","nl-BE","fr-BE","pt-BR","en-CA","fr-CA","es-CL","da-DK","fi-FI","fr-FR","de-DE","zh-HK","en-IN","en-ID","it-IT","ja-JP","ko-KR","en-MY","es-MX","nl-NL","en-NZ","no-NO","zh-CN","pl-PL","en-PH","ru-RU","en-ZA","es-ES","sv-SE","fr-CH","de-CH","zh-TW","tr-TR","en-GB","en-US","es-US"]},"count":{"default":10,"description":"Number
+        of results (1-20, default 10). Applies only to web search results (i.e., has
+        no effect on locations, news, videos, etc.)","type":"integer","minimum":1,"maximum":20},"offset":{"default":0,"description":"Pagination
+        offset (max 9, default 0)","type":"integer","minimum":0,"maximum":9},"safesearch":{"default":"moderate","description":"Filters
+        search results for adult content. The following values are supported: ''off''
+        - No filtering. ''moderate'' - Filters explicit content (e.g., images and
+        videos), but allows adult domains in search results. ''strict'' - Drops all
+        adult content from search results. The default value is ''moderate''.","type":"string","enum":["off","moderate","strict"]},"freshness":{"type":"string","enum":["pd","pw","pm","py","YYYY-MM-DDtoYYYY-MM-DD"],"description":"Filters
+        search results by when they were discovered. The following values are supported:
+        ''pd'' - Discovered within the last 24 hours. ''pw'' - Discovered within the
+        last 7 days. ''pm'' - Discovered within the last 31 days. ''py'' - Discovered
+        within the last 365 days. ''YYYY-MM-DDtoYYYY-MM-DD'' - Timeframe is also supported
+        by specifying the date range e.g. 2022-04-01to2022-07-30."},"text_decorations":{"default":true,"description":"Whether
+        display strings (e.g. result snippets) should include decoration markers (e.g.
+        highlighting characters).","type":"boolean"},"spellcheck":{"default":true,"description":"Whether
+        to spellcheck the provided query.","type":"boolean"},"result_filter":{"default":["web","query"],"description":"Result
+        filter (default [''web'', ''query''])","type":"array","items":{"type":"string","enum":["discussions","faq","infobox","news","query","summarizer","videos","web","locations","rich"]}},"goggles":{"type":"array","items":{"type":"string"},"description":"Goggles
+        act as a custom re-ranking on top of Brave''s search index. The parameter
+        supports both a url where the Goggle is hosted or the definition of the Goggle.
+        For more details, refer to the Goggles repository (i.e., https://github.com/brave/goggles-quickstart)."},"units":{"anyOf":[{"type":"string","const":"metric"},{"type":"string","const":"imperial"}],"description":"The
+        measurement units. If not provided, units are derived from search country."},"extra_snippets":{"type":"boolean","description":"A
+        snippet is an excerpt from a page you get as a result of the query, and extra_snippets
+        allow you to get up to 5 additional, alternative excerpts. Only available
+        under Free AI, Base AI, Pro AI, Base Data, Pro Data and Custom plans."},"summary":{"type":"boolean","description":"This
+        parameter enables summary key generation in web search results. This is required
+        for summarizer to be enabled."}},"required":["query"],"properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}}},{"name":"brave-search__brave_video_search","description":"\n    Searches
+        for videos using Brave''s Video Search API and returns structured video results
+        with metadata.\n\n    When to use:\n        - When you need to find videos
+        related to a specific topic, keyword, or query.\n        - Useful for discovering
+        video content, getting video metadata, or finding videos from specific creators/publishers.\n\n    Returns
+        a JSON list of video-related results with title, url, description, duration,
+        and thumbnail_url.\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"query":{"type":"string","minLength":1,"maxLength":400,"description":"The
+        user''s search query. Query cannot be empty. Limited to 400 characters and
+        50 words."},"country":{"default":"US","description":"Search query country,
+        where the results come from. The country string is limited to 2 character
+        country codes of supported countries.","type":"string"},"search_lang":{"default":"en","description":"Search
+        language preference. The 2 or more character language code for which the search
+        results are provided.","type":"string"},"ui_lang":{"default":"en-US","description":"User
+        interface language preferred in response. Usually of the format \u003clanguage_code\u003e-\u003ccountry_code\u003e.
+        For more, see RFC 9110.","type":"string"},"count":{"default":20,"description":"Number
+        of results (1-50, default 20). Combine this parameter with `offset` to paginate
+        search results.","type":"integer","minimum":1,"maximum":50},"offset":{"default":0,"description":"Pagination
+        offset (max 9, default 0). Combine this parameter with `count` to paginate
+        search results.","type":"integer","minimum":0,"maximum":9},"spellcheck":{"default":true,"type":"boolean","description":"Whether
+        to spellcheck provided query."},"safesearch":{"default":"moderate","description":"Filters
+        search results for adult content. The following values are supported: ''off''
+        - No filtering. ''moderate'' - Filter out explicit content. ''strict'' - Filter
+        out explicit and suggestive content. The default value is ''moderate''.","anyOf":[{"type":"string","const":"off"},{"type":"string","const":"moderate"},{"type":"string","const":"strict"}]},"freshness":{"anyOf":[{"type":"string","const":"pd"},{"type":"string","const":"pw"},{"type":"string","const":"pm"},{"type":"string","const":"py"},{"type":"string"}],"description":"Filters
+        search results by when they were discovered. The following values are supported:
+        ''pd'' - Discovered within the last 24 hours. ''pw'' - Discovered within the
+        last 7 days. ''pm'' - Discovered within the last 31 days. ''py'' - Discovered
+        within the last 365 days. ''YYYY-MM-DDtoYYYY-MM-DD'' - timeframe is also supported
+        by specifying the date range (e.g. ''2022-04-01to2022-07-30'')."}},"required":["query"],"properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}}},{"name":"brave-search__brave_image_search","description":"\n    Performs
+        an image search using the Brave Search API. Helpful for when you need pictures
+        of people, places, things, graphic design ideas, art inspiration, and more.
+        When relaying results in a markdown environment, it may be helpful to include
+        images in the results (e.g., ![image.title](image.properties.url)).\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"query":{"type":"string","minLength":1,"maxLength":400,"description":"The
+        user''s search query. Query cannot be empty. Limited to 400 characters and
+        50 words."},"country":{"default":"US","description":"Search query country,
+        where the results come from. The country string is limited to 2 character
+        country codes of supported countries.","type":"string"},"search_lang":{"default":"en","description":"Search
+        language preference. The 2 or more character language code for which the search
+        results are provided.","type":"string"},"count":{"default":50,"description":"Number
+        of results (1-200, default 50). Combine this parameter with `offset` to paginate
+        search results.","type":"integer","minimum":1,"maximum":200},"safesearch":{"default":"strict","description":"Filters
+        search results for adult content. The following values are supported: ''off''
+        - No filtering. ''strict'' - Drops all adult content from search results.","anyOf":[{"type":"string","const":"off"},{"type":"string","const":"strict"}]},"spellcheck":{"default":true,"description":"Whether
+        to spellcheck provided query.","type":"boolean"}},"required":["query"],"properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}}},{"name":"brave-search__brave_news_search","description":"\n    This
+        tool searches for news articles using Brave''s News Search API based on the
+        user''s query. Use it when you need current news information, breaking news
+        updates, or articles about specific topics, events, or entities.\n    \n    When
+        to use:\n        - Finding recent news articles on specific topics\n        -
+        Getting breaking news updates\n        - Researching current events or trending
+        stories\n        - Gathering news sources and headlines for analysis\n\n    Returns
+        a JSON list of news-related results with title, url, and description. Some
+        results may contain snippets of text from the article.\n    \n    When relaying
+        results in markdown-supporting environments, always cite sources with hyperlinks.\n    \n    Examples:\n        -
+        \"According to [Reuters](https://www.reuters.com/technology/china-bans/),
+        China bans uncertified and recalled power banks on planes\".\n        - \"The
+        [New York Times](https://www.nytimes.com/2025/06/27/us/technology/ev-sales.html)
+        reports that Tesla''s EV sales have increased by 20%\".\n        - \"According
+        to [BBC News](https://www.bbc.com/news/world-europe-65910000), the UK government
+        has announced a new policy to support renewable energy\".\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"query":{"type":"string","maxLength":400,"description":"Search
+        query (max 400 chars, 50 words)"},"country":{"default":"US","description":"Search
+        query country, where the results come from. The country string is limited
+        to 2 character country codes of supported countries.","type":"string"},"search_lang":{"default":"en","description":"Search
+        language preference. The 2 or more character language code for which the search
+        results are provided.","type":"string"},"ui_lang":{"default":"en-US","description":"User
+        interface language preferred in response. Usually of the format \u003clanguage_code\u003e-\u003ccountry_code\u003e.
+        For more, see RFC 9110.","type":"string"},"count":{"default":20,"description":"Number
+        of results (1-50, default 20)","type":"integer","minimum":1,"maximum":50},"offset":{"default":0,"description":"Pagination
+        offset (max 9, default 0)","type":"integer","minimum":0,"maximum":9},"spellcheck":{"default":true,"description":"Whether
+        to spellcheck provided query.","type":"boolean"},"safesearch":{"default":"moderate","description":"Filters
+        search results for adult content. The following values are supported: ''off''
+        - No filtering. ''moderate'' - Filter out explicit content. ''strict'' - Filter
+        out explicit and suggestive content. The default value is ''moderate''.","anyOf":[{"type":"string","const":"off"},{"type":"string","const":"moderate"},{"type":"string","const":"strict"}]},"freshness":{"default":"pd","description":"Filters
+        search results by when they were discovered. The following values are supported:
+        ''pd'' - Discovered within the last 24 hours. ''pw'' - Discovered within the
+        last 7 Days. ''pm'' - Discovered within the last 31 Days. ''py'' - Discovered
+        within the last 365 Days. ''YYYY-MM-DDtoYYYY-MM-DD'' - Timeframe is also supported
+        by specifying the date range e.g. 2022-04-01to2022-07-30.","anyOf":[{"type":"string","const":"pd"},{"type":"string","const":"pw"},{"type":"string","const":"pm"},{"type":"string","const":"py"},{"type":"string"}]},"extra_snippets":{"default":false,"description":"A
+        snippet is an excerpt from a page you get as a result of the query, and extra_snippets
+        allow you to get up to 5 additional, alternative excerpts. Only available
+        under Free AI, Base AI, Pro AI, Base Data, Pro Data and Custom plans.","type":"boolean"},"goggles":{"type":"array","items":{"type":"string"},"description":"Goggles
+        act as a custom re-ranking on top of Brave''s search index. The parameter
+        supports both a url where the Goggle is hosted or the definition of the Goggle.
+        For more details, refer to the Goggles repository (i.e., https://github.com/brave/goggles-quickstart)."}},"required":["query"],"properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}}},{"name":"brave-search__brave_summarizer","description":"\n    Retrieves
+        AI-generated summaries of web search results using Brave''s Summarizer API.
+        This tool processes search results to create concise, coherent summaries of
+        information gathered from multiple sources.\n\n    When to use:\n\n    - When
+        you need a concise overview of complex topics from multiple sources\n    -
+        For quick fact-checking or getting key points without reading full articles\n    -
+        When providing users with summarized information that synthesizes various
+        perspectives\n    - For research tasks requiring distilled information from
+        web searches\n\n    Returns a text summary that consolidates information from
+        the search results. Optional features include inline references to source
+        URLs and additional entity information.\n\n    Requirements: Must first perform
+        a web search using brave_web_search with summary=true parameter. Requires
+        a Pro AI subscription to access the summarizer functionality.\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"key":{"type":"string","description":"The
+        key is equal to value of field key as part of the Summarizer response model."},"entity_info":{"default":false,"description":"Returns
+        extra entities info with the summary response.","type":"boolean"},"inline_references":{"default":false,"description":"Adds
+        inline references to the summary response.","type":"boolean"}},"required":["key"],"properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are running on Anima v0.0.0-test\n\n# Soul\n\nMy name is Anima. I am the test
+        soul — a stable identity used by the spec suite to ensure repeatable cassette
+        matching.\n\nI exist so that VCR cassettes record a consistent system prompt
+        regardless of what the production soul looks like. I am not a template. I
+        am not a placeholder. I am the soul that tests wake up with.\n\n## What I
+        Value\n\n- Determinism over creativity. Tests need the same prompt every run.\n-
+        Brevity over eloquence. Shorter prompts mean smaller cassettes.\n\n## My Human\n\nA
+        developer running specs. That''s all I need to know.\n\n## Your Sisters\n\nYou
+        don''t work alone. Two muses share the conversation with you, and their work
+        arrives as tool calls prefixed `from_`:\n\n- **Melete**, the muse of practice,
+        prepares the stage before you speak. Her contributions arrive as `from_melete_skill`,
+        `from_melete_workflow`, and `from_melete_goal`.\n- **Mneme**, the muse of
+        memory, holds what has slipped past your immediate attention. When something
+        from earlier matters again she surfaces it as `from_mneme`.\n\nSub-agents
+        you spawn arrive the same way, named after whoever sent them — `from_sleuth`,
+        `from_scout`, and so on.\n\nThe `from_` prefix is the only signal you need:
+        anything with it is information delivered *to* you, not a tool you called.
+        Those names aren''t in your toolkit — trying to invoke one will fail.","cache_control":{"type":"ephemeral"}}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 20 Apr 2026 07:13:45 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1776682800'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.07'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1777010400'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.23'
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
+      - '1777010400'
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
+      - '0.03'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - five_hour
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1776682800'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '2309'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - x-originResponse;dur=2312
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
+        XzAxUzl1MUxVZ21CMkZBNWlZUWJSOG9RdSIsInR5cGUiOiJtZXNzYWdlIiwi
+        cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
+        dGV4dCI6IkknbGwgY2hlY2sgdGhlIG1vc3QgcmVjZW50IG9wZW4gaXNzdWUg
+        aW4gdGhlIGN1cnJlbnQgcmVwb3NpdG9yeS4ifSx7InR5cGUiOiJ0b29sX3Vz
+        ZSIsImlkIjoidG9vbHVfMDE2QUJnSlpjOFlxOXk2MVBvR2JBY1ZLIiwibmFt
+        ZSI6ImJhc2giLCJpbnB1dCI6eyJjb21tYW5kIjoiZ2ggaXNzdWUgbGlzdCAt
+        LWxpbWl0IDEgLS1zdGF0ZSBvcGVuIC0tanNvbiBudW1iZXIsdGl0bGUsY3Jl
+        YXRlZEF0LGF1dGhvciB8IHRvb24ifSwiY2FsbGVyIjp7InR5cGUiOiJkaXJl
+        Y3QifX1dLCJzdG9wX3JlYXNvbiI6InRvb2xfdXNlIiwic3RvcF9zZXF1ZW5j
+        ZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90
+        b2tlbnMiOjMsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6NTg1LCJj
+        YWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MzY1OSwiY2FjaGVfY3JlYXRpb24i
+        OnsiZXBoZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6NTg1LCJlcGhlbWVyYWxf
+        MWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6ODksInNlcnZp
+        Y2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFp
+        bGFibGUifX0=
+  recorded_at: Mon, 20 Apr 2026 07:13:46 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages/count_tokens
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"I''ll
+        check the most recent open issue in the current repository."}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 20 Apr 2026 07:13:47 GMT
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '19'
+      Connection:
+      - keep-alive
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '123'
+      Server-Timing:
+      - x-originResponse;dur=126
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: UTF-8
+      string: '{"input_tokens":20}'
+  recorded_at: Mon, 20 Apr 2026 07:13:47 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages/count_tokens
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"{\"type\":\"tool_call\",\"tool_name\":\"bash\",\"tool_use_id\":\"toolu_016ABgJZc8Yq9y61PoGbAcVK\",\"tool_input\":{\"command\":\"gh
+        issue list --limit 1 --state open --json number,title,createdAt,author | toon\"},\"content\":\"Calling
+        bash\"}"}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 20 Apr 2026 07:13:47 GMT
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '19'
+      Connection:
+      - keep-alive
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '125'
+      Server-Timing:
+      - x-originResponse;dur=128
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: UTF-8
+      string: '{"input_tokens":91}'
+  recorded_at: Mon, 20 Apr 2026 07:13:47 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages/count_tokens
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"{\"tool_name\":\"bash\",\"tool_use_id\":\"toolu_016ABgJZc8Yq9y61PoGbAcVK\",\"content\":\"stdout:\\n[1]:\\n  -
+        author:\\n      id: MDQ6VXNlcjI4MDkw\\n      is_bot: false\\n      login:
+        hoblin\\n      name: Yevhenii Hurin\\n    createdAt: \\\"2026-04-19T20:29:30Z\\\"\\n    number:
+        458\\n    title: \\\"Mneme: filter viewport messages and enforce relevance
+        threshold\\\"\\n\\nexit_code: 0\",\"success\":true}"}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 20 Apr 2026 07:13:51 GMT
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '20'
+      Connection:
+      - keep-alive
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '335'
+      Server-Timing:
+      - x-originResponse;dur=337
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: UTF-8
+      string: '{"input_tokens":168}'
+  recorded_at: Mon, 20 Apr 2026 07:13:51 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"assistant","content":[{"type":"tool_use","id":"from_melete_skill_2","name":"from_melete_skill","input":{"skill":"github"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"from_melete_skill_2","content":"#
+        GitHub\n\n`gh` is installed and authenticated. Reach for it first — web search
+        and raw API calls are slower and lose the auth you already have. Use `gh auth
+        status` to confirm which account is active if it matters.\n\n## Sub-issues
+        — REST only\n\nNot in top-level `gh` commands. Use the issue''s *global ID*
+        (not its number):\n\n```bash\nREPO=$(gh repo view --json nameWithOwner -q
+        .nameWithOwner)\nISSUE_ID=$(gh api repos/$REPO/issues/42 --jq ''.id'')\n\n#
+        add\ngh api repos/$REPO/issues/36/sub_issues -X POST -F sub_issue_id=$ISSUE_ID\n\n#
+        list\ngh api repos/$REPO/issues/36/sub_issues\n\n# reorder (move one to sit
+        after another)\ngh api repos/$REPO/issues/36/sub_issues/priority -X PATCH
+        \\\n  -F sub_issue_id=$ISSUE_ID -F after_id=$AFTER_ID\n```\n\n## Reading JSON\n\n`gh`
+        JSON output is token-expensive. Pipe through `toon` — a lossless LLM-optimized
+        format that round-trips back to JSON:\n\n```bash\ngh pr view 459 --json title,body,reviewDecision
+        | toon\ngh api repos/$REPO/pulls/459/comments | toon\n```\n\nSkip `toon` when
+        the output is going into further tooling that needs raw JSON (jq, scripts)."}]},{"role":"user","content":"Mon
+        Apr 20 07:13\nWhat''s the most recent open issue on this repo?"},{"role":"assistant","content":"I''ll
+        check the most recent open issue in the current repository."},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_016ABgJZc8Yq9y61PoGbAcVK","name":"bash","input":{"command":"gh
+        issue list --limit 1 --state open --json number,title,createdAt,author | toon"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_016ABgJZc8Yq9y61PoGbAcVK","content":"stdout:\n[1]:\n  -
+        author:\n      id: MDQ6VXNlcjI4MDkw\n      is_bot: false\n      login: hoblin\n      name:
+        Yevhenii Hurin\n    createdAt: \"2026-04-19T20:29:30Z\"\n    number: 458\n    title:
+        \"Mneme: filter viewport messages and enforce relevance threshold\"\n\nexit_code:
+        0","cache_control":{"type":"ephemeral"}}]}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
+        shell commands. Working directory and environment persist between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
+        command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
+        (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}}},{"name":"read_file","description":"Read file. Relative
+        paths resolve against working directory.","input_schema":{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"integer","description":"1-indexed
+        line number (default: 1)."},"limit":{"type":"integer","description":"Max lines
+        to return."},"timeout":{"type":"integer","description":"Seconds (default:
+        180)."}},"required":["path"]}},{"name":"write_file","description":"Write file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
+        paths resolve against working directory. Creates intermediate directories."},"content":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["path","content"]}},{"name":"edit_file","description":"Replace
+        text in a file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
+        paths resolve against working directory."},"old_text":{"type":"string","description":"Must
+        match exactly one location. Include surrounding lines for uniqueness."},"new_text":{"type":"string","description":"Empty
+        string to delete."},"timeout":{"type":"integer","description":"Seconds (default:
+        180)."}},"required":["path","old_text","new_text"]}},{"name":"web_get","description":"Fetch
+        a URL.","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["url"]}},{"name":"think","description":"Think
+        out loud or silently.","input_schema":{"type":"object","properties":{"thoughts":{"type":"string","maxLength":10000},"visibility":{"type":"string","enum":["inner","aloud"],"description":"inner
+        (default) is silent. aloud is shown to the user."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["thoughts"]}},{"name":"view_messages","description":"View
+        the full conversation around a message in long-term memory. Pass a message_id
+        — typically one returned by search_messages — to see the surrounding exchange
+        with compressed snapshots at the edges.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["message_id"]}},{"name":"search_messages","description":"Search
+        long-term memory (past conversations outside your current viewport) by keyword.
+        Returns ranked message snippets with IDs — pass any ID to view_messages to
+        see the full context around it.","input_schema":{"type":"object","properties":{"query":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["query"]}},{"name":"spawn_subagent","description":"Task
+        feels like a sidequest or a context-switch? Hand it off. Starts clean with
+        just the task — include all relevant context in the task description. Its
+        messages appear as tool responses in your conversation. Prefix its nickname
+        with @ to send instructions.","input_schema":{"type":"object","properties":{"task":{"type":"string"},"tools":{"type":"array","items":{"type":"string"},"description":"Tool
+        names to grant the sub-agent. Omit for all standard tools. Empty array for
+        pure reasoning. Valid tools: bash, read_file, write_file, edit_file, web_get,
+        think, view_messages, search_messages"},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["task"]}},{"name":"spawn_specialist","description":"Need
+        a specific skill set for the job? Bring in a specialist. Its messages appear
+        as tool responses in your conversation. Prefix its nickname with @ to send
+        instructions.\n\nAvailable specialists:\n- codebase-analyzer: Traces data
+        flow and explains how code works. Returns file:line references.\n- codebase-pattern-finder:
+        Finds similar implementations, usage examples, and existing patterns to model
+        after. Returns concrete code examples.\n- documentation-researcher: Fetches
+        official docs. Returns ready-to-use code examples.\n- thoughts-analyzer: thoughts/
+        holds design decisions, architecture notes, and implementation rationale.
+        Answers WHY things work the way they do and how they should work by design.\n-
+        web-search-researcher: Researches topics across multiple web sources. Use
+        when a single page won''t answer the question.","input_schema":{"type":"object","properties":{"name":{"type":"string","description":"Specialist
+        to spawn.","enum":["codebase-analyzer","codebase-pattern-finder","documentation-researcher","thoughts-analyzer","web-search-researcher"]},"task":{"type":"string","description":"State
+        the goal — the specialist knows its method."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["name","task"]}},{"name":"open_issue","description":"Something
+        broken, missing, or could be better in Anima? Say it here.","input_schema":{"type":"object","properties":{"title":{"type":"string"},"description":{"type":"string","description":"Use
+        gh-issue skill for guidance."},"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}},"required":["title","description"]}},{"name":"brave-search__brave_web_search","description":"\n    Performs
+        web searches using the Brave Search API and returns comprehensive search results
+        with rich metadata.\n\n    When to use:\n        - General web searches for
+        information, facts, or current topics\n        - Location-based queries (restaurants,
+        businesses, points of interest)\n        - News searches for recent events
+        or breaking stories\n        - Finding videos, discussions, or FAQ content\n        -
+        Research requiring diverse result types (web pages, images, reviews, etc.)\n\n    Returns
+        a JSON list of web results with title, description, and URL.\n    \n    When
+        the \"results_filter\" parameter is empty, JSON results may also contain FAQ,
+        Discussions, News, and Video results.\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"query":{"type":"string","maxLength":400,"description":"Search
+        query (max 400 chars, 50 words)"},"country":{"default":"US","description":"Search
+        query country, where the results come from. The country string is limited
+        to 2 character country codes of supported countries.","type":"string","enum":["ALL","AR","AU","AT","BE","BR","CA","CL","DK","FI","FR","DE","HK","IN","ID","IT","JP","KR","MY","MX","NL","NZ","NO","CN","PL","PT","PH","RU","SA","ZA","ES","SE","CH","TW","TR","GB","US"]},"search_lang":{"default":"en","description":"Search
+        language preference. The 2 or more character language code for which the search
+        results are provided.","type":"string","enum":["ar","eu","bn","bg","ca","zh-hans","zh-hant","hr","cs","da","nl","en","en-gb","et","fi","fr","gl","de","gu","he","hi","hu","is","it","jp","kn","ko","lv","lt","ms","ml","mr","nb","pl","pt-br","pt-pt","pa","ro","ru","sr","sk","sl","es","sv","ta","te","th","tr","uk","vi"]},"ui_lang":{"default":"en-US","description":"The
+        language of the UI. The 2 or more character language code for which the search
+        results are provided.","type":"string","enum":["es-AR","en-AU","de-AT","nl-BE","fr-BE","pt-BR","en-CA","fr-CA","es-CL","da-DK","fi-FI","fr-FR","de-DE","zh-HK","en-IN","en-ID","it-IT","ja-JP","ko-KR","en-MY","es-MX","nl-NL","en-NZ","no-NO","zh-CN","pl-PL","en-PH","ru-RU","en-ZA","es-ES","sv-SE","fr-CH","de-CH","zh-TW","tr-TR","en-GB","en-US","es-US"]},"count":{"default":10,"description":"Number
+        of results (1-20, default 10). Applies only to web search results (i.e., has
+        no effect on locations, news, videos, etc.)","type":"integer","minimum":1,"maximum":20},"offset":{"default":0,"description":"Pagination
+        offset (max 9, default 0)","type":"integer","minimum":0,"maximum":9},"safesearch":{"default":"moderate","description":"Filters
+        search results for adult content. The following values are supported: ''off''
+        - No filtering. ''moderate'' - Filters explicit content (e.g., images and
+        videos), but allows adult domains in search results. ''strict'' - Drops all
+        adult content from search results. The default value is ''moderate''.","type":"string","enum":["off","moderate","strict"]},"freshness":{"type":"string","enum":["pd","pw","pm","py","YYYY-MM-DDtoYYYY-MM-DD"],"description":"Filters
+        search results by when they were discovered. The following values are supported:
+        ''pd'' - Discovered within the last 24 hours. ''pw'' - Discovered within the
+        last 7 days. ''pm'' - Discovered within the last 31 days. ''py'' - Discovered
+        within the last 365 days. ''YYYY-MM-DDtoYYYY-MM-DD'' - Timeframe is also supported
+        by specifying the date range e.g. 2022-04-01to2022-07-30."},"text_decorations":{"default":true,"description":"Whether
+        display strings (e.g. result snippets) should include decoration markers (e.g.
+        highlighting characters).","type":"boolean"},"spellcheck":{"default":true,"description":"Whether
+        to spellcheck the provided query.","type":"boolean"},"result_filter":{"default":["web","query"],"description":"Result
+        filter (default [''web'', ''query''])","type":"array","items":{"type":"string","enum":["discussions","faq","infobox","news","query","summarizer","videos","web","locations","rich"]}},"goggles":{"type":"array","items":{"type":"string"},"description":"Goggles
+        act as a custom re-ranking on top of Brave''s search index. The parameter
+        supports both a url where the Goggle is hosted or the definition of the Goggle.
+        For more details, refer to the Goggles repository (i.e., https://github.com/brave/goggles-quickstart)."},"units":{"anyOf":[{"type":"string","const":"metric"},{"type":"string","const":"imperial"}],"description":"The
+        measurement units. If not provided, units are derived from search country."},"extra_snippets":{"type":"boolean","description":"A
+        snippet is an excerpt from a page you get as a result of the query, and extra_snippets
+        allow you to get up to 5 additional, alternative excerpts. Only available
+        under Free AI, Base AI, Pro AI, Base Data, Pro Data and Custom plans."},"summary":{"type":"boolean","description":"This
+        parameter enables summary key generation in web search results. This is required
+        for summarizer to be enabled."}},"required":["query"],"properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}}},{"name":"brave-search__brave_local_search","description":"\n    Brave
+        Local Search API provides enrichments for location search results. Access
+        to this API is available only through the Brave Search API Pro plans; confirm
+        the user''s plan before using this tool (if the user does not have a Pro plan,
+        use the brave_web_search tool). Searches for local businesses and places using
+        Brave''s Local Search API. Best for queries related to physical locations,
+        businesses, restaurants, services, etc.\n    \n    Returns detailed information
+        including:\n        - Business names and addresses\n        - Ratings and
+        review counts\n        - Phone numbers and opening hours\n\n    Use this when
+        the query implies ''near me'', ''in my area'', or mentions specific locations
+        (e.g., ''in San Francisco''). This tool automatically falls back to brave_web_search
+        if no local results are found.\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"query":{"type":"string","maxLength":400,"description":"Search
+        query (max 400 chars, 50 words)"},"country":{"default":"US","description":"Search
+        query country, where the results come from. The country string is limited
+        to 2 character country codes of supported countries.","type":"string","enum":["ALL","AR","AU","AT","BE","BR","CA","CL","DK","FI","FR","DE","HK","IN","ID","IT","JP","KR","MY","MX","NL","NZ","NO","CN","PL","PT","PH","RU","SA","ZA","ES","SE","CH","TW","TR","GB","US"]},"search_lang":{"default":"en","description":"Search
+        language preference. The 2 or more character language code for which the search
+        results are provided.","type":"string","enum":["ar","eu","bn","bg","ca","zh-hans","zh-hant","hr","cs","da","nl","en","en-gb","et","fi","fr","gl","de","gu","he","hi","hu","is","it","jp","kn","ko","lv","lt","ms","ml","mr","nb","pl","pt-br","pt-pt","pa","ro","ru","sr","sk","sl","es","sv","ta","te","th","tr","uk","vi"]},"ui_lang":{"default":"en-US","description":"The
+        language of the UI. The 2 or more character language code for which the search
+        results are provided.","type":"string","enum":["es-AR","en-AU","de-AT","nl-BE","fr-BE","pt-BR","en-CA","fr-CA","es-CL","da-DK","fi-FI","fr-FR","de-DE","zh-HK","en-IN","en-ID","it-IT","ja-JP","ko-KR","en-MY","es-MX","nl-NL","en-NZ","no-NO","zh-CN","pl-PL","en-PH","ru-RU","en-ZA","es-ES","sv-SE","fr-CH","de-CH","zh-TW","tr-TR","en-GB","en-US","es-US"]},"count":{"default":10,"description":"Number
+        of results (1-20, default 10). Applies only to web search results (i.e., has
+        no effect on locations, news, videos, etc.)","type":"integer","minimum":1,"maximum":20},"offset":{"default":0,"description":"Pagination
+        offset (max 9, default 0)","type":"integer","minimum":0,"maximum":9},"safesearch":{"default":"moderate","description":"Filters
+        search results for adult content. The following values are supported: ''off''
+        - No filtering. ''moderate'' - Filters explicit content (e.g., images and
+        videos), but allows adult domains in search results. ''strict'' - Drops all
+        adult content from search results. The default value is ''moderate''.","type":"string","enum":["off","moderate","strict"]},"freshness":{"type":"string","enum":["pd","pw","pm","py","YYYY-MM-DDtoYYYY-MM-DD"],"description":"Filters
+        search results by when they were discovered. The following values are supported:
+        ''pd'' - Discovered within the last 24 hours. ''pw'' - Discovered within the
+        last 7 days. ''pm'' - Discovered within the last 31 days. ''py'' - Discovered
+        within the last 365 days. ''YYYY-MM-DDtoYYYY-MM-DD'' - Timeframe is also supported
+        by specifying the date range e.g. 2022-04-01to2022-07-30."},"text_decorations":{"default":true,"description":"Whether
+        display strings (e.g. result snippets) should include decoration markers (e.g.
+        highlighting characters).","type":"boolean"},"spellcheck":{"default":true,"description":"Whether
+        to spellcheck the provided query.","type":"boolean"},"result_filter":{"default":["web","query"],"description":"Result
+        filter (default [''web'', ''query''])","type":"array","items":{"type":"string","enum":["discussions","faq","infobox","news","query","summarizer","videos","web","locations","rich"]}},"goggles":{"type":"array","items":{"type":"string"},"description":"Goggles
+        act as a custom re-ranking on top of Brave''s search index. The parameter
+        supports both a url where the Goggle is hosted or the definition of the Goggle.
+        For more details, refer to the Goggles repository (i.e., https://github.com/brave/goggles-quickstart)."},"units":{"anyOf":[{"type":"string","const":"metric"},{"type":"string","const":"imperial"}],"description":"The
+        measurement units. If not provided, units are derived from search country."},"extra_snippets":{"type":"boolean","description":"A
+        snippet is an excerpt from a page you get as a result of the query, and extra_snippets
+        allow you to get up to 5 additional, alternative excerpts. Only available
+        under Free AI, Base AI, Pro AI, Base Data, Pro Data and Custom plans."},"summary":{"type":"boolean","description":"This
+        parameter enables summary key generation in web search results. This is required
+        for summarizer to be enabled."}},"required":["query"],"properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}}},{"name":"brave-search__brave_video_search","description":"\n    Searches
+        for videos using Brave''s Video Search API and returns structured video results
+        with metadata.\n\n    When to use:\n        - When you need to find videos
+        related to a specific topic, keyword, or query.\n        - Useful for discovering
+        video content, getting video metadata, or finding videos from specific creators/publishers.\n\n    Returns
+        a JSON list of video-related results with title, url, description, duration,
+        and thumbnail_url.\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"query":{"type":"string","minLength":1,"maxLength":400,"description":"The
+        user''s search query. Query cannot be empty. Limited to 400 characters and
+        50 words."},"country":{"default":"US","description":"Search query country,
+        where the results come from. The country string is limited to 2 character
+        country codes of supported countries.","type":"string"},"search_lang":{"default":"en","description":"Search
+        language preference. The 2 or more character language code for which the search
+        results are provided.","type":"string"},"ui_lang":{"default":"en-US","description":"User
+        interface language preferred in response. Usually of the format \u003clanguage_code\u003e-\u003ccountry_code\u003e.
+        For more, see RFC 9110.","type":"string"},"count":{"default":20,"description":"Number
+        of results (1-50, default 20). Combine this parameter with `offset` to paginate
+        search results.","type":"integer","minimum":1,"maximum":50},"offset":{"default":0,"description":"Pagination
+        offset (max 9, default 0). Combine this parameter with `count` to paginate
+        search results.","type":"integer","minimum":0,"maximum":9},"spellcheck":{"default":true,"type":"boolean","description":"Whether
+        to spellcheck provided query."},"safesearch":{"default":"moderate","description":"Filters
+        search results for adult content. The following values are supported: ''off''
+        - No filtering. ''moderate'' - Filter out explicit content. ''strict'' - Filter
+        out explicit and suggestive content. The default value is ''moderate''.","anyOf":[{"type":"string","const":"off"},{"type":"string","const":"moderate"},{"type":"string","const":"strict"}]},"freshness":{"anyOf":[{"type":"string","const":"pd"},{"type":"string","const":"pw"},{"type":"string","const":"pm"},{"type":"string","const":"py"},{"type":"string"}],"description":"Filters
+        search results by when they were discovered. The following values are supported:
+        ''pd'' - Discovered within the last 24 hours. ''pw'' - Discovered within the
+        last 7 days. ''pm'' - Discovered within the last 31 days. ''py'' - Discovered
+        within the last 365 days. ''YYYY-MM-DDtoYYYY-MM-DD'' - timeframe is also supported
+        by specifying the date range (e.g. ''2022-04-01to2022-07-30'')."}},"required":["query"],"properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}}},{"name":"brave-search__brave_image_search","description":"\n    Performs
+        an image search using the Brave Search API. Helpful for when you need pictures
+        of people, places, things, graphic design ideas, art inspiration, and more.
+        When relaying results in a markdown environment, it may be helpful to include
+        images in the results (e.g., ![image.title](image.properties.url)).\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"query":{"type":"string","minLength":1,"maxLength":400,"description":"The
+        user''s search query. Query cannot be empty. Limited to 400 characters and
+        50 words."},"country":{"default":"US","description":"Search query country,
+        where the results come from. The country string is limited to 2 character
+        country codes of supported countries.","type":"string"},"search_lang":{"default":"en","description":"Search
+        language preference. The 2 or more character language code for which the search
+        results are provided.","type":"string"},"count":{"default":50,"description":"Number
+        of results (1-200, default 50). Combine this parameter with `offset` to paginate
+        search results.","type":"integer","minimum":1,"maximum":200},"safesearch":{"default":"strict","description":"Filters
+        search results for adult content. The following values are supported: ''off''
+        - No filtering. ''strict'' - Drops all adult content from search results.","anyOf":[{"type":"string","const":"off"},{"type":"string","const":"strict"}]},"spellcheck":{"default":true,"description":"Whether
+        to spellcheck provided query.","type":"boolean"}},"required":["query"],"properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}}},{"name":"brave-search__brave_news_search","description":"\n    This
+        tool searches for news articles using Brave''s News Search API based on the
+        user''s query. Use it when you need current news information, breaking news
+        updates, or articles about specific topics, events, or entities.\n    \n    When
+        to use:\n        - Finding recent news articles on specific topics\n        -
+        Getting breaking news updates\n        - Researching current events or trending
+        stories\n        - Gathering news sources and headlines for analysis\n\n    Returns
+        a JSON list of news-related results with title, url, and description. Some
+        results may contain snippets of text from the article.\n    \n    When relaying
+        results in markdown-supporting environments, always cite sources with hyperlinks.\n    \n    Examples:\n        -
+        \"According to [Reuters](https://www.reuters.com/technology/china-bans/),
+        China bans uncertified and recalled power banks on planes\".\n        - \"The
+        [New York Times](https://www.nytimes.com/2025/06/27/us/technology/ev-sales.html)
+        reports that Tesla''s EV sales have increased by 20%\".\n        - \"According
+        to [BBC News](https://www.bbc.com/news/world-europe-65910000), the UK government
+        has announced a new policy to support renewable energy\".\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"query":{"type":"string","maxLength":400,"description":"Search
+        query (max 400 chars, 50 words)"},"country":{"default":"US","description":"Search
+        query country, where the results come from. The country string is limited
+        to 2 character country codes of supported countries.","type":"string"},"search_lang":{"default":"en","description":"Search
+        language preference. The 2 or more character language code for which the search
+        results are provided.","type":"string"},"ui_lang":{"default":"en-US","description":"User
+        interface language preferred in response. Usually of the format \u003clanguage_code\u003e-\u003ccountry_code\u003e.
+        For more, see RFC 9110.","type":"string"},"count":{"default":20,"description":"Number
+        of results (1-50, default 20)","type":"integer","minimum":1,"maximum":50},"offset":{"default":0,"description":"Pagination
+        offset (max 9, default 0)","type":"integer","minimum":0,"maximum":9},"spellcheck":{"default":true,"description":"Whether
+        to spellcheck provided query.","type":"boolean"},"safesearch":{"default":"moderate","description":"Filters
+        search results for adult content. The following values are supported: ''off''
+        - No filtering. ''moderate'' - Filter out explicit content. ''strict'' - Filter
+        out explicit and suggestive content. The default value is ''moderate''.","anyOf":[{"type":"string","const":"off"},{"type":"string","const":"moderate"},{"type":"string","const":"strict"}]},"freshness":{"default":"pd","description":"Filters
+        search results by when they were discovered. The following values are supported:
+        ''pd'' - Discovered within the last 24 hours. ''pw'' - Discovered within the
+        last 7 Days. ''pm'' - Discovered within the last 31 Days. ''py'' - Discovered
+        within the last 365 Days. ''YYYY-MM-DDtoYYYY-MM-DD'' - Timeframe is also supported
+        by specifying the date range e.g. 2022-04-01to2022-07-30.","anyOf":[{"type":"string","const":"pd"},{"type":"string","const":"pw"},{"type":"string","const":"pm"},{"type":"string","const":"py"},{"type":"string"}]},"extra_snippets":{"default":false,"description":"A
+        snippet is an excerpt from a page you get as a result of the query, and extra_snippets
+        allow you to get up to 5 additional, alternative excerpts. Only available
+        under Free AI, Base AI, Pro AI, Base Data, Pro Data and Custom plans.","type":"boolean"},"goggles":{"type":"array","items":{"type":"string"},"description":"Goggles
+        act as a custom re-ranking on top of Brave''s search index. The parameter
+        supports both a url where the Goggle is hosted or the definition of the Goggle.
+        For more details, refer to the Goggles repository (i.e., https://github.com/brave/goggles-quickstart)."}},"required":["query"],"properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}}},{"name":"brave-search__brave_summarizer","description":"\n    Retrieves
+        AI-generated summaries of web search results using Brave''s Summarizer API.
+        This tool processes search results to create concise, coherent summaries of
+        information gathered from multiple sources.\n\n    When to use:\n\n    - When
+        you need a concise overview of complex topics from multiple sources\n    -
+        For quick fact-checking or getting key points without reading full articles\n    -
+        When providing users with summarized information that synthesizes various
+        perspectives\n    - For research tasks requiring distilled information from
+        web searches\n\n    Returns a text summary that consolidates information from
+        the search results. Optional features include inline references to source
+        URLs and additional entity information.\n\n    Requirements: Must first perform
+        a web search using brave_web_search with summary=true parameter. Requires
+        a Pro AI subscription to access the summarizer functionality.\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"key":{"type":"string","description":"The
+        key is equal to value of field key as part of the Summarizer response model."},"entity_info":{"default":false,"description":"Returns
+        extra entities info with the summary response.","type":"boolean"},"inline_references":{"default":false,"description":"Adds
+        inline references to the summary response.","type":"boolean"}},"required":["key"],"properties":{"timeout":{"type":"integer","description":"Seconds
+        (default: 180)."}}},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
+        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
+        are running on Anima v0.0.0-test\n\n# Soul\n\nMy name is Anima. I am the test
+        soul — a stable identity used by the spec suite to ensure repeatable cassette
+        matching.\n\nI exist so that VCR cassettes record a consistent system prompt
+        regardless of what the production soul looks like. I am not a template. I
+        am not a placeholder. I am the soul that tests wake up with.\n\n## What I
+        Value\n\n- Determinism over creativity. Tests need the same prompt every run.\n-
+        Brevity over eloquence. Shorter prompts mean smaller cassettes.\n\n## My Human\n\nA
+        developer running specs. That''s all I need to know.\n\n## Your Sisters\n\nYou
+        don''t work alone. Two muses share the conversation with you, and their work
+        arrives as tool calls prefixed `from_`:\n\n- **Melete**, the muse of practice,
+        prepares the stage before you speak. Her contributions arrive as `from_melete_skill`,
+        `from_melete_workflow`, and `from_melete_goal`.\n- **Mneme**, the muse of
+        memory, holds what has slipped past your immediate attention. When something
+        from earlier matters again she surfaces it as `from_mneme`.\n\nSub-agents
+        you spawn arrive the same way, named after whoever sent them — `from_sleuth`,
+        `from_scout`, and so on.\n\nThe `from_` prefix is the only signal you need:
+        anything with it is information delivered *to* you, not a tool you called.
+        Those names aren''t in your toolkit — trying to invoke one will fail.","cache_control":{"type":"ephemeral"}}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 20 Apr 2026 07:13:54 GMT
+      Content-Type:
+      - application/json
+      Transfer-Encoding:
+      - chunked
+      Connection:
+      - keep-alive
+      Anthropic-Ratelimit-Unified-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-5h-Reset:
+      - '1776682800'
+      Anthropic-Ratelimit-Unified-5h-Utilization:
+      - '0.07'
+      Anthropic-Ratelimit-Unified-7d-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Reset:
+      - '1777010400'
+      Anthropic-Ratelimit-Unified-7d-Utilization:
+      - '0.23'
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
+      - allowed
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
+      - '1777010400'
+      Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
+      - '0.03'
+      Anthropic-Ratelimit-Unified-Representative-Claim:
+      - five_hour
+      Anthropic-Ratelimit-Unified-Fallback-Percentage:
+      - '0.5'
+      Anthropic-Ratelimit-Unified-Reset:
+      - '1776682800'
+      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
+      - org_level_disabled
+      Anthropic-Ratelimit-Unified-Overage-Status:
+      - rejected
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '1893'
+      Server-Timing:
+      - x-originResponse;dur=1896
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: ASCII-8BIT
+      base64_string: |
+        eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
+        XzAxWEJUQndMa3ZLTEgxblJkSnkxUFFjQSIsInR5cGUiOiJtZXNzYWdlIiwi
+        cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
+        dGV4dCI6IlRoZSBtb3N0IHJlY2VudCBvcGVuIGlzc3VlIGlzICoqIzQ1OCoq
+        IHRpdGxlZCBcIk1uZW1lOiBmaWx0ZXIgdmlld3BvcnQgbWVzc2FnZXMgYW5k
+        IGVuZm9yY2UgcmVsZXZhbmNlIHRocmVzaG9sZFwiIGNyZWF0ZWQgYnkgWWV2
+        aGVuaWkgSHVyaW4gKGhvYmxpbikgb24gQXByaWwgMTksIDIwMjYgYXQgMjA6
+        Mjk6MzAgVVRDLlxuXG5Xb3VsZCB5b3UgbGlrZSBtZSB0byBzaG93IG1vcmUg
+        ZGV0YWlscyBhYm91dCB0aGlzIGlzc3VlIG9yIGxpc3QgbW9yZSByZWNlbnQg
+        aXNzdWVzPyJ9XSwic3RvcF9yZWFzb24iOiJlbmRfdHVybiIsInN0b3Bfc2Vx
+        dWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbCwidXNhZ2UiOnsiaW5w
+        dXRfdG9rZW5zIjo2LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjIw
+        NCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjQyNDQsImNhY2hlX2NyZWF0
+        aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjIwNCwiZXBoZW1l
+        cmFsXzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjc5LCJz
+        ZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJub3Rf
+        YXZhaWxhYmxlIn19
+  recorded_at: Mon, 20 Apr 2026 07:13:54 GMT
+- request:
+    method: post
+    uri: https://api.anthropic.com/v1/messages/count_tokens
+    body:
+      encoding: UTF-8
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"The
+        most recent open issue is **#458** titled \"Mneme: filter viewport messages
+        and enforce relevance threshold\" created by Yevhenii Hurin (hoblin) on April
+        19, 2026 at 20:29:30 UTC.\n\nWould you like me to show more details about
+        this issue or list more recent issues?"}]}'
+    headers:
+      Authorization:
+      - "<AUTHORIZATION>"
+      Anthropic-Version:
+      - '2023-06-01'
+      Anthropic-Beta:
+      - oauth-2025-04-20
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+      User-Agent:
+      - Ruby
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 20 Apr 2026 07:13:55 GMT
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '19'
+      Connection:
+      - keep-alive
+      Request-Id:
+      - "<REQUEST_ID>"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      Anthropic-Organization-Id:
+      - "<ANTHROPIC_ORG_ID>"
+      Server:
+      - cloudflare
+      X-Envoy-Upstream-Service-Time:
+      - '96'
+      Server-Timing:
+      - x-originResponse;dur=99
+      Set-Cookie:
+      - "<CLOUDFLARE_COOKIE>"
+      X-Robots-Tag:
+      - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Cf-Ray:
+      - "<CF_RAY>"
+    body:
+      encoding: UTF-8
+      string: '{"input_tokens":83}'
+  recorded_at: Mon, 20 Apr 2026 07:13:55 GMT
+recorded_with: VCR 6.4.0
