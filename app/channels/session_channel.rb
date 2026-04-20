@@ -79,13 +79,13 @@ class SessionChannel < ApplicationCable::Channel
   # Cascades to running sub-agent sessions to avoid burning tokens in
   # child jobs that the parent will discard anyway.
   #
-  # No-op if the session isn't currently processing ({Session#may_interrupt?}
-  # returns false when the AASM state is +:idle+).
+  # No-op on idle sessions — nothing to interrupt, and the flag would
+  # leak into the next round without an AASM transition to clear it.
   #
   # @param _data [Hash] unused
   def interrupt_execution(_data)
     session = Session.find(@current_session_id)
-    return unless session.may_interrupt?
+    return if session.idle?
 
     session.update!(interrupt_requested: true)
     session.child_sessions.processing.update_all(interrupt_requested: true)

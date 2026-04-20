@@ -53,23 +53,6 @@ RSpec.describe Session do
         expect(session.start_processing!).to be_falsey
         expect(session).to be_executing
       end
-
-      it "transitions from awaiting to idle via interrupt!" do
-        session.start_processing!
-        expect(session).to be_awaiting
-
-        expect(session.interrupt!).to be_truthy
-        expect(session).to be_idle
-      end
-
-      it "transitions from executing to idle via interrupt!" do
-        session.start_processing!
-        session.tool_received!
-        expect(session).to be_executing
-
-        expect(session.interrupt!).to be_truthy
-        expect(session).to be_idle
-      end
     end
 
     describe "guards" do
@@ -87,10 +70,6 @@ RSpec.describe Session do
       it "rejects response_complete from idle" do
         expect(session.response_complete!).to be_falsey
       end
-
-      it "rejects interrupt from idle" do
-        expect(session.interrupt!).to be_falsey
-      end
     end
 
     describe "may_ predicates" do
@@ -99,7 +78,6 @@ RSpec.describe Session do
       it "reports valid transitions from idle" do
         expect(session.may_start_processing?).to be true
         expect(session.may_tool_received?).to be false
-        expect(session.may_interrupt?).to be false
       end
 
       it "reports valid transitions from awaiting" do
@@ -107,7 +85,6 @@ RSpec.describe Session do
         expect(session.may_start_processing?).to be false
         expect(session.may_tool_received?).to be true
         expect(session.may_response_complete?).to be true
-        expect(session.may_interrupt?).to be true
       end
 
       it "reports valid transitions from executing" do
@@ -116,7 +93,6 @@ RSpec.describe Session do
         allow(session).to receive(:tool_round_complete?).and_return(true)
         expect(session.may_start_processing?).to be true
         expect(session.may_response_complete?).to be false
-        expect(session.may_interrupt?).to be true
       end
 
       it "denies start_processing from executing while the round is incomplete" do
