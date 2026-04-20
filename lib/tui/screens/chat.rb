@@ -318,7 +318,7 @@ module TUI
           when "sessions_list"
             @sessions_list = msg["sessions"]
           when "pending_message_created"
-            @message_store.add_pending(msg["pending_message_id"], msg["content"]) if msg["pending_message_id"]
+            @message_store.add_pending(msg["pending_message_id"], msg) if msg["pending_message_id"]
           when "pending_message_removed"
             @message_store.remove_pending(msg["pending_message_id"]) if msg["pending_message_id"]
           when "authentication_required"
@@ -897,6 +897,12 @@ module TUI
           render_system_entry(tui, data)
         when "system_prompt"
           render_system_prompt_entry(tui, data)
+        when "pending_subagent"
+          render_pending_subagent_entry(tui, data)
+        when "pending_melete"
+          render_pending_melete_entry(tui, data)
+        when "pending_mneme"
+          render_pending_mneme_entry(tui, data)
         else
           [tui.line(spans: [tui.span(content: data["content"].to_s, style: tui.style(fg: Settings.theme_color_text))])]
         end
@@ -973,6 +979,58 @@ module TUI
         style = tui.style(fg: Settings.theme_color_text)
 
         content_lines = data["content"].to_s.split("\n", -1)
+        lines = [tui.line(spans: [tui.span(content: "#{header} #{content_lines.first}", style: style)])]
+        content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: preserve_indentation("  #{line}"), style: style)]) }
+        lines
+      end
+
+      # Renders a pending sub-agent delivery — a sub-agent's reply that
+      # landed on the parent's mailbox and is queued for promotion. Shows
+      # a +[from <nickname>]+ badge in the muted color so it reads as
+      # in-flight, distinct from a real conversation message.
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param data [Hash] structured data with "source", "content"
+      # @return [Array<RatatuiRuby::Widgets::Line>]
+      def render_pending_subagent_entry(tui, data)
+        render_pending_badge_entry(tui, data, badge: "from #{data["source"]}")
+      end
+
+      # Renders a pending Mneme recall — a memory Mneme will inject as a
+      # phantom tool pair on the next active drain. Visible from verbose
+      # so the user can see what context is about to enter the LLM turn.
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param data [Hash] structured data with "content"
+      # @return [Array<RatatuiRuby::Widgets::Line>]
+      def render_pending_mneme_entry(tui, data)
+        render_pending_badge_entry(tui, data, badge: "Mneme recall")
+      end
+
+      # Renders a pending Melete activation (skill / workflow / goal).
+      # Badge label includes the activation kind and source name, matching
+      # how Melete narrates its own choices in the transcript.
+      # @param tui [RatatuiRuby] TUI rendering API
+      # @param data [Hash] structured data with "kind", "source", "content"
+      # @return [Array<RatatuiRuby::Widgets::Line>]
+      def render_pending_melete_entry(tui, data)
+        render_pending_badge_entry(tui, data, badge: "Melete #{data["kind"]}: #{data["source"]}")
+      end
+
+      # Shared rendering for badge-prefixed pending entries. Header reads
+      # +[<badge>]+ on the first line; body content (when present)
+      # follows on indented continuation lines. Everything renders in the
+      # muted theme color so the eye groups the in-flight pipeline as
+      # distinct from real messages.
+      # @return [Array<RatatuiRuby::Widgets::Line>]
+      def render_pending_badge_entry(tui, data, badge:)
+        style = tui.style(fg: Settings.theme_color_muted)
+        header = "[#{badge}]"
+        first_content = data["content"].to_s
+
+        if first_content.empty?
+          return [tui.line(spans: [tui.span(content: header, style: style)])]
+        end
+
+        content_lines = first_content.split("\n", -1)
         lines = [tui.line(spans: [tui.span(content: "#{header} #{content_lines.first}", style: style)])]
         content_lines.drop(1).each { |line| lines << tui.line(spans: [tui.span(content: preserve_indentation("  #{line}"), style: style)]) }
         lines

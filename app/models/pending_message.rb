@@ -153,6 +153,24 @@ class PendingMessage < ApplicationRecord
     source_type.in?(PHANTOM_PAIR_TYPES)
   end
 
+  # Draper hook: picks the concrete decorator subclass based on
+  # {#message_type}. Mirrors {Message#decorator_class} so each PM type
+  # renders with the same visual treatment as its promoted counterpart,
+  # marked dimmed via +status: "pending"+.
+  #
+  # @return [Class] a {PendingMessageDecorator} subclass
+  def decorator_class
+    case message_type
+    when "user_message" then PendingUserMessageDecorator
+    when "tool_response" then PendingToolResponseDecorator
+    when "subagent" then PendingSubagentDecorator
+    when "from_mneme" then PendingFromMnemeDecorator
+    when "from_melete_skill" then PendingFromMeleteSkillDecorator
+    when "from_melete_workflow" then PendingFromMeleteWorkflowDecorator
+    when "from_melete_goal" then PendingFromMeleteGoalDecorator
+    end
+  end
+
   # Promotes this PendingMessage into the session's conversation history.
   # Dispatches on +message_type+: tool responses become +tool_response+
   # Messages, user messages become +user_message+ Messages, phantom pair
@@ -256,6 +274,22 @@ class PendingMessage < ApplicationRecord
     Events::Bus.emit(event_class.new(session_id: session_id, pending_message_id: id))
   end
 
+  # Builds the structured +pending_message_created+ payload for transmit/
+  # broadcast paths. Wraps the per-mode decorator output in the +rendered+
+  # key so the TUI's existing +extract_rendered+ pipeline applies.
+  #
+  # @param mode [String] view mode for decoration (default: session.view_mode)
+  # @return [Hash] payload ready for ActionCable transmission
+  def broadcast_payload(mode = session.view_mode)
+    {
+      "action" => "pending_message_created",
+      "pending_message_id" => id,
+      "content" => content,
+      "message_type" => message_type,
+      "rendered" => {mode => decorate.render(mode)}
+    }
+  end
+
   private
 
   # Persists a +tool_response+ Message for this PM and returns it.
@@ -342,13 +376,11 @@ class PendingMessage < ApplicationRecord
   end
 
   # Broadcasts a pending message appearance so TUI clients render the
-  # dimmed indicator immediately.
+  # type-specific dimmed indicator immediately. Includes the decorated
+  # payload for the session's current view mode so the TUI can dispatch
+  # by message type without a second round-trip.
   def broadcast_created
-    ActionCable.server.broadcast("session_#{session_id}", {
-      "action" => "pending_message_created",
-      "pending_message_id" => id,
-      "content" => content
-    })
+    ActionCable.server.broadcast("session_#{session_id}", broadcast_payload)
   end
 
   # Broadcasts pending message removal so TUI clients clear the entry.

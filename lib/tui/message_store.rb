@@ -140,24 +140,39 @@ module TUI
       end
     end
 
-    # Adds a pending message to the separate pending list.
+    # Adds a pending message to the separate pending list, or removes any
+    # existing entry when the decorator hides the PM in the current view
+    # mode (rendered hash present but its sole value is nil).
+    #
+    # Accepts the full +pending_message_created+ event payload. Falls back
+    # to a dimmed user-message envelope when no +rendered+ key is present
+    # (legacy producers, simple test fixtures).
+    #
     # Pending messages always render after real messages.
     #
     # @param pending_message_id [Integer] PendingMessage database ID
-    # @param content [String] message text
+    # @param payload [Hash] event payload with "content", "message_type",
+    #   and optionally "rendered" (hash of mode => decorator output)
     # @return [void]
-    def add_pending(pending_message_id, content)
+    def add_pending(pending_message_id, payload)
+      data = pending_entry_data(payload)
+      message_type = payload["message_type"] || "user_message"
+
       @mutex.synchronize do
-        entry = {
-          type: :rendered,
-          data: {"role" => "user", "content" => content, "status" => "pending"},
-          message_type: "user_message",
-          pending_message_id: pending_message_id
-        }
-        old = @pending_by_id[pending_message_id]
+        old = @pending_by_id.delete(pending_message_id)
         @pending_entries.delete(old) if old
-        @pending_entries << entry
-        @pending_by_id[pending_message_id] = entry
+
+        if data
+          entry = {
+            type: :rendered,
+            data: data,
+            message_type: message_type,
+            pending_message_id: pending_message_id
+          }
+          @pending_entries << entry
+          @pending_by_id[pending_message_id] = entry
+        end
+
         @version += 1
       end
     end
@@ -242,6 +257,33 @@ module TUI
         @version += 1
         true
       end
+    end
+
+    # Builds the +data+ hash for a pending entry. Returns nil when the
+    # decorator hid the PM (the +rendered+ key is present but its sole
+    # value is nil), so the caller can treat that as a removal. Falls
+    # back to a dimmed user-message envelope when no +rendered+ key is
+    # present at all (legacy callers, fixtures).
+    #
+    # The decorator's hash already carries its own +"status" => "pending"+
+    # marker; the symbolized form is converted here so the TUI's lookup
+    # via +data["status"]+ remains uniform.
+    def pending_entry_data(payload)
+      if payload.key?("rendered")
+        rendered = payload.dig("rendered")&.values
+        return nil if rendered.nil? || rendered.compact.empty?
+
+        normalize_pending_data(rendered.compact.first)
+      else
+        {"role" => "user", "content" => payload["content"], "status" => "pending"}
+      end
+    end
+
+    # Symbol/string keys arrive interchangeably from decorators that build
+    # hash literals server-side. Normalize keys to strings so chat.rb's
+    # +data["role"]+ / +data["status"]+ lookups always hit.
+    def normalize_pending_data(rendered)
+      rendered.transform_keys(&:to_s)
     end
 
     # Extracts the first non-nil structured data hash from the rendered payload.
