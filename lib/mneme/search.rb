@@ -9,10 +9,10 @@ module Mneme
   # and never touch FTS5 directly. A future semantic search backend (embeddings,
   # BM25 + re-ranking) can replace the implementation without changing callers.
   #
-  # @example Passive recall — Mneme searches on behalf of a main session
+  # @example Mneme's recall muse searching for the main session
   #   Mneme::Search.query("authentication flow", caller_session: session)
   #
-  # @example Active recall — Aoide searches from inside her own session
+  # @example Aoide searching actively from her own session
   #   Mneme::Search.query("OAuth config", caller_session: session)
   class Search
     # A single search result with enough context for display and drill-down.
