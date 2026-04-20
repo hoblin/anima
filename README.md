@@ -431,7 +431,7 @@ When content exceeds the panel height, the HUD scrolls. Three input methods:
 | `Escape` or `C-a` | Exit HUD focus mode |
 | Mouse wheel over HUD | Scroll without entering focus mode |
 
-**Escape key interrupt:** Press `Escape` while the agent is working to stop execution mid-tool. Running shell commands receive Ctrl+C and return partial output; pending tool calls are skipped; LLM text generation is discarded. The interrupt cascades to active sub-agents.
+**Escape key interrupt:** Press `Escape` while the agent is working to signal an interrupt. Running shell commands cooperatively abort — they receive Ctrl+C and return partial output tagged `Your human wants your attention`, which the LLM sees on the next round and pivots from. The interrupt cascades to active sub-agents.
 
 Three switchable view modes let you control how much detail the TUI shows. Cycle with `C-a → v`:
 

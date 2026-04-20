@@ -54,10 +54,6 @@ class Session < ApplicationRecord
     event :response_complete do
       transitions from: :awaiting, to: :idle
     end
-
-    event :interrupt do
-      transitions from: [:awaiting, :executing], to: :idle
-    end
   end
 
   attribute :view_mode, :string, default: -> { Anima::Settings.default_view_mode }
@@ -539,7 +535,6 @@ class Session < ApplicationRecord
   # emitted nothing, so without this callback the message would sit
   # forever once the LLM call completed.
   #
-  # The +:executing → :idle+ path (interrupt) is also covered here.
   # The +:executing → :awaiting+ path (tool round close) does not need
   # this callback — the closing tool_response PM is itself the wake.
   #
