@@ -55,7 +55,7 @@ RSpec.configure do |config|
       "melete" => {"max_tokens" => 4096, "blocking_on_user_message" => true, "blocking_on_agent_message" => false, "message_window" => 20},
       "environment" => {"project_files" => ["CLAUDE.md", "AGENTS.md", "README.md", "CONTRIBUTING.md"], "project_files_max_depth" => 3},
       "mneme" => {"max_tokens" => 2048, "viewport_fraction" => 0.33, "l1_budget_fraction" => 0.15, "l2_budget_fraction" => 0.05, "l2_snapshot_threshold" => 5, "pinned_budget_fraction" => 0.05},
-      "recall" => {"max_results" => 5, "budget_fraction" => 0.05, "max_snippet_tokens" => 512, "recency_decay" => 0.3, "relevance_gate_enabled" => false, "relevance_gate_max_tokens" => 512}
+      "recall" => {"max_results" => 5, "budget_fraction" => 0.05, "max_snippet_tokens" => 512, "recency_decay" => 0.3}
     )
   end
 end

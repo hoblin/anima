@@ -10,7 +10,15 @@ RSpec.describe Mneme::PassiveRecall do
     allow(Anima::Settings).to receive(:recall_budget_fraction).and_return(0.05)
     allow(Anima::Settings).to receive(:recall_max_results).and_return(5)
     allow(Anima::Settings).to receive(:recall_max_snippet_tokens).and_return(512)
-    allow(Anima::Settings).to receive(:recall_relevance_gate_enabled).and_return(false)
+
+    # Default: gate keeps every candidate the filter lets through, so dedup
+    # and enqueue behavior can be asserted without an LLM stub. Tests that
+    # exercise the gate replace this stub inline.
+    passthrough = instance_double(Mneme::RelevanceGate)
+    allow(Mneme::RelevanceGate).to receive(:new) { |candidates:, **|
+      allow(passthrough).to receive(:call).and_return(candidates)
+      passthrough
+    }
   end
 
   def create_message(sess, type:, content:)
@@ -138,40 +146,34 @@ RSpec.describe Mneme::PassiveRecall do
       expect(pkce_recalls).to be_empty
     end
 
-    context "with the relevance gate enabled" do
-      before do
-        allow(Anima::Settings).to receive(:recall_relevance_gate_enabled).and_return(true)
-      end
+    it "enqueues only the candidates the relevance gate keeps" do
+      other_session = Session.create!
+      keeper = create_message(other_session, type: "user_message",
+        content: "OAuth authentication flow keeps returning 401 for refresh tokens.")
+      dropped = create_message(other_session, type: "user_message",
+        content: "The authentication page CSS is off by one pixel.")
 
-      it "only enqueues candidates the gate keeps" do
-        other_session = Session.create!
-        keeper = create_message(other_session, type: "user_message",
-          content: "OAuth authentication flow keeps returning 401 for refresh tokens.")
-        dropped = create_message(other_session, type: "user_message",
-          content: "The authentication page CSS is off by one pixel.")
+      session.goals.create!(description: "Fix authentication OAuth refresh token flow")
 
-        session.goals.create!(description: "Fix authentication OAuth refresh token flow")
+      gate = instance_double(Mneme::RelevanceGate)
+      allow(Mneme::RelevanceGate).to receive(:new) { |candidates:, **|
+        expect(candidates.map(&:message_id)).to contain_exactly(keeper.id, dropped.id)
+        allow(gate).to receive(:call).and_return(candidates.select { |c| c.message_id == keeper.id })
+        gate
+      }
 
-        gate = instance_double(Mneme::RelevanceGate)
-        expect(Mneme::RelevanceGate).to receive(:new) { |candidates:, **|
-          expect(candidates.map(&:message_id)).to contain_exactly(keeper.id, dropped.id)
-          allow(gate).to receive(:call).and_return(candidates.select { |c| c.message_id == keeper.id })
-          gate
-        }
+      described_class.new(session).call
 
-        described_class.new(session).call
+      recall_names = session.pending_messages.where(source_type: "recall").pluck(:source_name)
+      expect(recall_names).to eq([keeper.id.to_s])
+    end
 
-        recall_names = session.pending_messages.where(source_type: "recall").pluck(:source_name)
-        expect(recall_names).to eq([keeper.id.to_s])
-      end
+    it "skips the relevance gate when there are no candidates to judge" do
+      session.goals.create!(description: "Fix something nobody has ever mentioned")
 
-      it "skips the gate when there are no candidates to judge" do
-        session.goals.create!(description: "Fix something nobody has ever mentioned")
+      expect(Mneme::RelevanceGate).not_to receive(:new)
 
-        expect(Mneme::RelevanceGate).not_to receive(:new)
-
-        described_class.new(session).call
-      end
+      described_class.new(session).call
     end
   end
 end

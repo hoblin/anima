@@ -42,14 +42,13 @@ module Mneme
 
     private
 
-    # Runs the relevance gate on the remaining candidates. No-op when the
-    # gate is disabled in settings or the candidate list is empty.
+    # Runs the relevance gate on the remaining candidates. Empty input
+    # short-circuits the LLM call.
     #
     # @param results [Array<Mneme::Search::Result>]
     # @param goals [ActiveRecord::Relation<Goal>]
     # @return [Array<Mneme::Search::Result>]
     def gate_for_relevance(results, goals)
-      return results unless Anima::Settings.recall_relevance_gate_enabled
       return results if results.empty?
 
       RelevanceGate.new(goals: goals, candidates: results).call

@@ -270,16 +270,6 @@ module Anima
       # @return [Float]
       def recall_recency_decay = get("recall", "recency_decay")
 
-      # Whether to run the LLM relevance gate after FTS5 search.
-      # Disabled short-circuits PassiveRecall back to keyword-only surfacing.
-      # @return [Boolean]
-      def recall_relevance_gate_enabled = get("recall", "relevance_gate_enabled")
-
-      # Maximum tokens the fast model may spend answering the relevance gate.
-      # The gate only has to emit a short JSON array of ids.
-      # @return [Integer]
-      def recall_relevance_gate_max_tokens = get("recall", "relevance_gate_max_tokens")
-
       private
 
       # Reads a setting from the config file.

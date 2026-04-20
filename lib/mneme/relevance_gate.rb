@@ -15,6 +15,10 @@ module Mneme
   #     candidates: search_results
   #   ).call
   class RelevanceGate
+    # The gate's response is a short JSON keep-list by design; this budget
+    # is a structural ceiling, not a tunable.
+    MAX_TOKENS = 512
+
     SYSTEM_PROMPT = <<~PROMPT
       You are the relevance gate of Mneme, the muse of memory. Aoide is working on a goal. Full-text search has surfaced candidate memories from past conversations that share keywords with the goal. Most of them will be noise — keyword overlap without substance.
 
@@ -57,7 +61,7 @@ module Mneme
     def default_client
       LLM::Client.new(
         model: Anima::Settings.fast_model,
-        max_tokens: Anima::Settings.recall_relevance_gate_max_tokens,
+        max_tokens: MAX_TOKENS,
         logger: Mneme.logger
       )
     end
