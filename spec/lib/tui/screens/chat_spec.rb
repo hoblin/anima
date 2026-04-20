@@ -364,10 +364,36 @@ RSpec.describe TUI::Screens::Chat do
       end
 
       it "removes pending entry on pending_message_removed" do
-        message_store.add_pending(42, "waiting")
+        message_store.add_pending(42, {"content" => "waiting"})
 
         allow(cable_client).to receive(:drain_messages).and_return([
           {"action" => "pending_message_removed", "pending_message_id" => 42}
+        ])
+        screen.send(:process_incoming_messages)
+
+        expect(screen.messages).to be_empty
+      end
+
+      it "dispatches per-type for non-user pending messages via the rendered payload" do
+        rendered = {"role" => "pending_subagent", "source" => "scout", "content" => "delivery", "status" => "pending"}
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "pending_message_created", "pending_message_id" => 7,
+           "content" => "delivery", "message_type" => "subagent",
+           "rendered" => {"verbose" => rendered}}
+        ])
+        screen.send(:process_incoming_messages)
+
+        entry = screen.messages.last
+        expect(entry[:data]["role"]).to eq("pending_subagent")
+        expect(entry[:data]["source"]).to eq("scout")
+        expect(entry[:message_type]).to eq("subagent")
+      end
+
+      it "skips the pending entry when the decorator hides it in the current mode" do
+        allow(cable_client).to receive(:drain_messages).and_return([
+          {"action" => "pending_message_created", "pending_message_id" => 7,
+           "content" => "background", "message_type" => "from_mneme",
+           "rendered" => {"basic" => nil}}
         ])
         screen.send(:process_incoming_messages)
 
@@ -799,7 +825,7 @@ RSpec.describe TUI::Screens::Chat do
       end
 
       it "recalls last pending message into input buffer" do
-        message_store.add_pending(42, "pending msg")
+        message_store.add_pending(42, {"content" => "pending msg"})
 
         expect(screen.handle_event(key_event(code: "up"))).to be true
         expect(screen.input).to eq("pending msg")
@@ -807,7 +833,7 @@ RSpec.describe TUI::Screens::Chat do
       end
 
       it "removes recalled message from message store" do
-        message_store.add_pending(42, "pending msg")
+        message_store.add_pending(42, {"content" => "pending msg"})
 
         screen.handle_event(key_event(code: "up"))
         expect(screen.messages).to be_empty
@@ -1069,7 +1095,7 @@ RSpec.describe TUI::Screens::Chat do
         set_input("sent")
         screen.handle_event(key_event(code: "enter"))
 
-        message_store.add_pending(42, "pending msg")
+        message_store.add_pending(42, {"content" => "pending msg"})
 
         screen.handle_event(key_event(code: "up"))
         expect(screen.input).to eq("pending msg")
@@ -2024,6 +2050,63 @@ RSpec.describe TUI::Screens::Chat do
       entry = {type: :message, content: "hello"}
       height = screen.send(:estimate_entry_height, entry, 0)
       expect(height).to be >= 1
+    end
+  end
+
+  describe "pending render methods (private)" do
+    let(:tui) do
+      stub = Object.new
+      def stub.style(fg: nil, bg: nil, modifiers: nil) = {fg: fg, bg: bg, modifiers: modifiers}
+      def stub.span(content:, style: nil) = {content: content, style: style}
+      def stub.line(spans:) = {spans: spans}
+      stub
+    end
+    let(:muted_color) { TUI::Settings.theme_color_muted }
+
+    describe "#render_pending_subagent_entry" do
+      it "renders the badge + content in muted color" do
+        data = {"role" => "pending_subagent", "source" => "scout", "content" => "found 3 matches"}
+        lines = screen.send(:render_pending_subagent_entry, tui, data)
+
+        expect(lines.first[:spans].first[:content]).to eq("[from scout] found 3 matches")
+        expect(lines.first[:spans].first[:style][:fg]).to eq(muted_color)
+      end
+
+      it "wraps multiline content as continuation lines" do
+        data = {"role" => "pending_subagent", "source" => "scout", "content" => "first\nsecond"}
+        lines = screen.send(:render_pending_subagent_entry, tui, data)
+
+        expect(lines.length).to eq(2)
+        expect(lines.last[:spans].first[:content]).to eq("\u00a0\u00a0second")
+      end
+    end
+
+    describe "#render_pending_mneme_entry" do
+      it "renders the [Mneme recall] badge in muted color" do
+        data = {"role" => "pending_mneme", "content" => "recalled context"}
+        lines = screen.send(:render_pending_mneme_entry, tui, data)
+
+        expect(lines.first[:spans].first[:content]).to eq("[Mneme recall] recalled context")
+        expect(lines.first[:spans].first[:style][:fg]).to eq(muted_color)
+      end
+    end
+
+    describe "#render_pending_melete_entry" do
+      it "renders [Melete <kind>: <source>] for skill activations" do
+        data = {"role" => "pending_melete", "kind" => "skill", "source" => "gh-issue", "content" => "skill body"}
+        lines = screen.send(:render_pending_melete_entry, tui, data)
+
+        expect(lines.first[:spans].first[:content]).to eq("[Melete skill: gh-issue] skill body")
+        expect(lines.first[:spans].first[:style][:fg]).to eq(muted_color)
+      end
+
+      it "drops the trailing space when content is empty" do
+        data = {"role" => "pending_melete", "kind" => "workflow", "source" => "feature", "content" => ""}
+        lines = screen.send(:render_pending_melete_entry, tui, data)
+
+        expect(lines.length).to eq(1)
+        expect(lines.first[:spans].first[:content]).to eq("[Melete workflow: feature]")
+      end
     end
   end
 end

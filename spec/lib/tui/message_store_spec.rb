@@ -432,10 +432,18 @@ RSpec.describe TUI::MessageStore do
   end
 
   describe "#add_pending / #remove_pending / #last_pending_user_message" do
+    def user_pending(content)
+      {
+        "content" => content,
+        "message_type" => "user_message",
+        "rendered" => {"basic" => {"role" => "user", "content" => content, "status" => "pending"}}
+      }
+    end
+
     it "adds a pending entry that appears after real messages" do
       store.process_event({"type" => "user_message", "id" => 1,
                            "rendered" => {"basic" => {"role" => "user", "content" => "first"}}})
-      store.add_pending(42, "waiting")
+      store.add_pending(42, user_pending("waiting"))
 
       msgs = store.messages
       expect(msgs.size).to eq(2)
@@ -443,8 +451,28 @@ RSpec.describe TUI::MessageStore do
       expect(msgs.last.dig(:data, "content")).to eq("waiting")
     end
 
+    it "falls back to a dimmed user envelope when no rendered hash is present" do
+      store.add_pending(42, {"content" => "raw"})
+
+      entry = store.messages.last
+      expect(entry[:data]).to eq({"role" => "user", "content" => "raw", "status" => "pending"})
+    end
+
+    it "skips the entry when the decorator hides the PM in the current mode" do
+      store.add_pending(42, {"content" => "background", "rendered" => {"basic" => nil}})
+
+      expect(store.messages).to be_empty
+    end
+
+    it "removes any prior entry when re-broadcast as hidden (mode change)" do
+      store.add_pending(42, user_pending("visible"))
+      store.add_pending(42, {"content" => "now hidden", "rendered" => {"basic" => nil}})
+
+      expect(store.messages).to be_empty
+    end
+
     it "returns the last pending user message" do
-      store.add_pending(42, "pending msg")
+      store.add_pending(42, user_pending("pending msg"))
 
       result = store.last_pending_user_message
       expect(result).to eq({pending_message_id: 42, content: "pending msg"})
@@ -462,7 +490,7 @@ RSpec.describe TUI::MessageStore do
     end
 
     it "removes a pending entry by pending_message_id" do
-      store.add_pending(42, "will remove")
+      store.add_pending(42, user_pending("will remove"))
       expect(store.remove_pending(42)).to be true
       expect(store.messages.size).to eq(0)
     end
@@ -472,7 +500,7 @@ RSpec.describe TUI::MessageStore do
     end
 
     it "clears pending entries on clear" do
-      store.add_pending(42, "pending")
+      store.add_pending(42, user_pending("pending"))
       store.clear
       expect(store.last_pending_user_message).to be_nil
     end

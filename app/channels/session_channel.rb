@@ -262,7 +262,7 @@ class SessionChannel < ApplicationCable::Channel
     end
 
     session.pending_messages.find_each do |pm|
-      transmit({"action" => "pending_message_created", "pending_message_id" => pm.id, "content" => pm.content})
+      transmit(pm.broadcast_payload(session.view_mode))
     end
   end
 
@@ -281,7 +281,7 @@ class SessionChannel < ApplicationCable::Channel
     end
 
     session.pending_messages.find_each do |pm|
-      ActionCable.server.broadcast(stream_name, {"action" => "pending_message_created", "pending_message_id" => pm.id, "content" => pm.content})
+      ActionCable.server.broadcast(stream_name, pm.broadcast_payload(session.view_mode))
     end
   end
 

@@ -444,8 +444,8 @@ Three switchable view modes let you control how much detail the TUI shows. Cycle
 View modes are implemented as a three-layer decorator architecture:
 
 - **ToolDecorator** (server-side, pre-event) — transforms raw tool responses for LLM consumption. Content-Type dispatch converts HTML → Markdown, JSON → TOON. Sits between tool execution and the event stream.
-- **EventDecorator** (server-side, Draper) — uniform per event type (`UserMessageDecorator`, `ToolCallDecorator`, etc.). Decides WHAT structured data enters the wire for each view mode.
-- **TUI Decorator** (client-side) — unique per tool name (`BashDecorator`, `ReadDecorator`, `EditDecorator`, etc.). Decides HOW each tool looks on screen — tool-specific icons, colors, and formatting.
+- **EventDecorator** (server-side, Draper) — uniform per message type (`UserMessageDecorator`, `ToolCallDecorator`, etc.) for promoted messages, and a parallel family (`PendingUserMessageDecorator`, `PendingToolResponseDecorator`, `PendingSubagentDecorator`, `PendingFromMnemeDecorator`, `PendingFromMelete{Skill,Workflow,Goal}Decorator`) for in-flight `PendingMessage` rows. Decides WHAT structured data enters the wire for each view mode; pending payloads carry `status: "pending"` so the TUI dims them.
+- **TUI Decorator** (client-side) — unique per tool name (`BashDecorator`, `ReadDecorator`, `EditDecorator`, etc.). Decides HOW each tool looks on screen — tool-specific icons, colors, and formatting. Honors `status: "pending"` to render in-flight content in the muted theme color.
 
 Mode is stored on the `Session` model server-side, so it persists across reconnections.
 

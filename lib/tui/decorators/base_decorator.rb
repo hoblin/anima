@@ -24,7 +24,7 @@ module TUI
     # making the target file immediately visible — like bash shows its command.
     module FileCallBehavior
       def render_call(tui)
-        style = tui.style(fg: color)
+        style = tui.style(fg: effective_color)
         input_lines = data["input"].to_s.split("\n", -1)
         path_line = input_lines.first.to_s
 
@@ -81,7 +81,7 @@ module TUI
       # @param tui [RatatuiRuby] TUI rendering API
       # @return [Array<RatatuiRuby::Widgets::Line>]
       def render_call(tui)
-        style = tui.style(fg: color)
+        style = tui.style(fg: effective_color)
         header = build_call_header
         lines = [tui.line(spans: [tui.span(content: header, style: style)])]
         data["input"].to_s.split("\n", -1).each do |line|
@@ -101,7 +101,7 @@ module TUI
         indicator = (data["success"] == false) ? ERROR_ICON : CHECKMARK
         tool_id = data["tool_use_id"]
         tokens = data["tokens"]
-        style = tui.style(fg: response_color)
+        style = tui.style(fg: effective_response_color)
 
         meta_parts = []
         meta_parts << "[#{tool_id}]" if tool_id
@@ -147,6 +147,27 @@ module TUI
       # @return [String]
       def response_color
         Settings.theme_color_text
+      end
+
+      # @return [Boolean] true when the underlying message is still in the
+      #   pending mailbox (not yet promoted to a {Message}). Drives muted
+      #   styling so in-flight pipeline content reads as distinct from
+      #   committed conversation.
+      def pending?
+        data["status"] == "pending"
+      end
+
+      # Tool-call color, dimmed to the muted theme color while pending so
+      # subclass overrides of {#color} don't have to know about pending state.
+      # @return [String]
+      def effective_color
+        pending? ? Settings.theme_color_muted : color
+      end
+
+      # Tool-response color, dimmed to the muted theme color while pending.
+      # @return [String]
+      def effective_response_color
+        pending? ? Settings.theme_color_muted : response_color
       end
 
       private

@@ -2,8 +2,45 @@
 
 require "rails_helper"
 
+# Covers the abstract base behavior — dispatch by mode, delegation,
+# truncation helpers — and the cross-type table-driven assertions for
+# Melete/Mneme transcript lines. Per-type render_basic/verbose/debug
+# specs live alongside each concrete subclass spec
+# (e.g. spec/decorators/pending_user_message_decorator_spec.rb).
 RSpec.describe PendingMessageDecorator do
   let(:session) { create(:session) }
+
+  describe "dispatch" do
+    it "raises on an unknown mode" do
+      pm = build(:pending_message, session: session)
+      expect { pm.decorate.render("nope") }.to raise_error(ArgumentError)
+    end
+
+    it "selects the right subclass per message_type" do
+      {
+        user_message: PendingUserMessageDecorator,
+        subagent: PendingSubagentDecorator,
+        tool_response: PendingToolResponseDecorator,
+        from_mneme: PendingFromMnemeDecorator,
+        from_melete_skill: PendingFromMeleteSkillDecorator,
+        from_melete_workflow: PendingFromMeleteWorkflowDecorator,
+        from_melete_goal: PendingFromMeleteGoalDecorator
+      }.each do |trait, klass|
+        args = (trait == :user_message) ? [] : [trait]
+        pm = build(:pending_message, *args, session: session)
+
+        expect(pm.decorator_class).to eq(klass)
+        expect(pm.decorate).to be_a(klass)
+      end
+    end
+
+    it "raises on an unmapped message_type so missing decorators surface immediately" do
+      pm = build(:pending_message, session: session)
+      pm.message_type = "from_some_future_subsystem"
+
+      expect { pm.decorator_class }.to raise_error(ArgumentError, /No decorator/)
+    end
+  end
 
   describe "#render('melete')" do
     # Factory default already produces a user_message PM; other rows use traits.
@@ -60,13 +97,6 @@ RSpec.describe PendingMessageDecorator do
     it "skips enrichment-side types so they don't pollute associative recall" do
       pm = build(:pending_message, :from_mneme, session: session)
       expect(pm.decorate.render("mneme")).to be_nil
-    end
-  end
-
-  describe "#render" do
-    it "raises on unknown mode" do
-      pm = build(:pending_message, session: session)
-      expect { pm.decorate.render("basic") }.to raise_error(ArgumentError)
     end
   end
 end

@@ -153,6 +153,31 @@ class PendingMessage < ApplicationRecord
     source_type.in?(PHANTOM_PAIR_TYPES)
   end
 
+  # Draper hook: picks the concrete decorator subclass based on
+  # {#message_type}. Mirrors {Message#decorator_class} so each PM type
+  # renders with the same visual treatment as its promoted counterpart,
+  # marked dimmed via +status: "pending"+.
+  #
+  # PMs are the universal intake queue — every new message_type added
+  # under #427 lands here first. Raises on unmapped types so a missing
+  # decorator surfaces immediately as a hard failure instead of a
+  # silent nil that breaks downstream rendering.
+  #
+  # @return [Class] a {PendingMessageDecorator} subclass
+  # @raise [ArgumentError] if no decorator is registered for the message_type
+  def decorator_class
+    case message_type
+    when "user_message" then PendingUserMessageDecorator
+    when "tool_response" then PendingToolResponseDecorator
+    when "subagent" then PendingSubagentDecorator
+    when "from_mneme" then PendingFromMnemeDecorator
+    when "from_melete_skill" then PendingFromMeleteSkillDecorator
+    when "from_melete_workflow" then PendingFromMeleteWorkflowDecorator
+    when "from_melete_goal" then PendingFromMeleteGoalDecorator
+    else raise ArgumentError, "No decorator for PendingMessage message_type: #{message_type.inspect}"
+    end
+  end
+
   # Promotes this PendingMessage into the session's conversation history.
   # Dispatches on +message_type+: tool responses become +tool_response+
   # Messages, user messages become +user_message+ Messages, phantom pair
@@ -256,6 +281,30 @@ class PendingMessage < ApplicationRecord
     Events::Bus.emit(event_class.new(session_id: session_id, pending_message_id: id))
   end
 
+  # Builds the structured +pending_message_created+ payload for transmit/
+  # broadcast paths. Wraps the per-mode decorator output in the +rendered+
+  # key so the TUI's existing +extract_rendered+ pipeline applies.
+  #
+  # Required arg — callers always know the session view_mode. A default
+  # of +session.view_mode+ would trigger a SELECT per +after_create_commit+
+  # when the association isn't preloaded.
+  #
+  # The raw +content+ field is intentionally absent: decorators decide
+  # what crosses the wire per view_mode (e.g. background PMs return nil
+  # in basic so the user doesn't see internal pipeline noise). Sending
+  # raw content alongside +rendered+ would undercut that boundary.
+  #
+  # @param mode [String] view mode for decoration
+  # @return [Hash] payload ready for ActionCable transmission
+  def broadcast_payload(mode)
+    {
+      "action" => "pending_message_created",
+      "pending_message_id" => id,
+      "message_type" => message_type,
+      "rendered" => {mode => decorate.render(mode)}
+    }
+  end
+
   private
 
   # Persists a +tool_response+ Message for this PM and returns it.
@@ -342,13 +391,11 @@ class PendingMessage < ApplicationRecord
   end
 
   # Broadcasts a pending message appearance so TUI clients render the
-  # dimmed indicator immediately.
+  # type-specific dimmed indicator immediately. Includes the decorated
+  # payload for the session's current view mode so the TUI can dispatch
+  # by message type without a second round-trip.
   def broadcast_created
-    ActionCable.server.broadcast("session_#{session_id}", {
-      "action" => "pending_message_created",
-      "pending_message_id" => id,
-      "content" => content
-    })
+    ActionCable.server.broadcast("session_#{session_id}", broadcast_payload(session.view_mode))
   end
 
   # Broadcasts pending message removal so TUI clients clear the entry.

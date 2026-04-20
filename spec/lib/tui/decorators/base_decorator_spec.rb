@@ -216,4 +216,29 @@ RSpec.describe TUI::Decorators::BaseDecorator do
       expect(style[:fg]).to eq("magenta")
     end
   end
+
+  describe "pending state" do
+    let(:muted_color) { TUI::Settings.theme_color_muted }
+
+    it "dims tool_call headers when status is pending so per-tool subclass colors don't have to know" do
+      data = {"role" => "tool_call", "tool" => "bash", "input" => "$ ls", "status" => "pending"}
+      lines = TUI::Decorators::BashDecorator.new(data).render_call(tui)
+
+      expect(lines.first[:spans].first[:style][:fg]).to eq(muted_color)
+    end
+
+    it "dims tool_response output when status is pending — even subclasses with their own response_color" do
+      data = {"role" => "tool_response", "tool" => "bash", "content" => "ok", "success" => true, "status" => "pending"}
+      lines = TUI::Decorators::BashDecorator.new(data).render_response(tui)
+
+      expect(lines.first[:spans].first[:style][:fg]).to eq(muted_color)
+    end
+
+    it "leaves bash response color (success green) alone when not pending" do
+      data = {"role" => "tool_response", "tool" => "bash", "content" => "ok", "success" => true}
+      lines = TUI::Decorators::BashDecorator.new(data).render_response(tui)
+
+      expect(lines.first[:spans].first[:style][:fg]).not_to eq(muted_color)
+    end
+  end
 end

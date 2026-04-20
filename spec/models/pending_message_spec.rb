@@ -79,7 +79,19 @@ RSpec.describe PendingMessage do
     it "broadcasts pending_message_created on create" do
       expect { create(:pending_message, session: session, content: "waiting") }
         .to have_broadcasted_to("session_#{session.id}")
-        .with(a_hash_including("action" => "pending_message_created", "content" => "waiting"))
+        .with(a_hash_including(
+          "action" => "pending_message_created",
+          "message_type" => "user_message",
+          "rendered" => a_hash_including("basic" => a_hash_including("content" => "waiting"))
+        ))
+    end
+
+    it "includes the rendered payload for the session's view mode" do
+      session.update!(view_mode: "verbose")
+
+      expect { create(:pending_message, :tool_response, session: session, content: "ok", source_name: "bash", tool_use_id: "toolu_x") }
+        .to have_broadcasted_to("session_#{session.id}")
+        .with(a_hash_including("rendered" => a_hash_including("verbose" => a_hash_including("role" => "tool_response"))))
     end
 
     it "broadcasts pending_message_removed on destroy" do

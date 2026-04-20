@@ -1,30 +1,38 @@
 # frozen_string_literal: true
 
-# Decorates {PendingMessage} records so Mneme and Melete can render them
-# alongside real {Message} rows in their extended-context transcripts
-# (brainstorm: "peek into the future" — PMs are what will be in the
-# LLM conversation once the drain promotes them).
+# Base decorator for {PendingMessage} records, providing multi-resolution
+# rendering for the TUI ("basic" / "verbose" / "debug") and for the
+# enrichment subsystems Mneme and Melete.
 #
-# Not used by the main TUI. Skills/workflows/goals/recall PMs become
-# phantom pairs in real Messages on promotion and render there; this
-# decorator only covers the pre-promotion view that enrichment
-# subsystems consume.
+# Each PM type has a dedicated subclass that mirrors the visual treatment
+# of its promoted-{Message} counterpart, with +status: "pending"+ added
+# so the TUI can render it dimmed.
 #
-# @example
-#   pm.decorate.render("melete") #=> "User: please ship the fix"
+# Subclasses must override {#render_basic}. Default delegations form a
+# two-step chain: +render_debug → render_verbose → render_basic+. A
+# subclass that only overrides +render_verbose+ inherits its
+# +render_debug+ for free. Melete and Mneme transcript modes return nil
+# by default — subclasses opt in by overriding {#render_melete} or
+# {#render_mneme}.
+#
+# Instantiate via +pending_message.decorate+ — {PendingMessage#decorator_class}
+# picks the concrete subclass based on +message_type+.
 class PendingMessageDecorator < ApplicationDecorator
   delegate_all
 
   RENDER_DISPATCH = {
+    "basic" => :render_basic,
+    "verbose" => :render_verbose,
+    "debug" => :render_debug,
     "melete" => :render_melete,
     "mneme" => :render_mneme
   }.freeze
   private_constant :RENDER_DISPATCH
 
-  # Dispatches to the render method for the given enrichment subsystem.
+  # Dispatches to the render method for the given view mode.
   #
-  # @param mode [String] "melete" or "mneme"
-  # @return [String, nil] transcript line, or nil to skip
+  # @param mode [String] one of "basic", "verbose", "debug", "melete", "mneme"
+  # @return [Hash, String, nil] structured TUI payload, transcript line, or nil to hide
   # @raise [ArgumentError] if the mode is not supported
   def render(mode)
     method = RENDER_DISPATCH[mode]
@@ -33,55 +41,38 @@ class PendingMessageDecorator < ApplicationDecorator
     public_send(method)
   end
 
-  # Transcript line for Melete. Includes the raw user prompt (her main
-  # signal for skill/workflow choice) and attribution-formatted
-  # sub-agent replies, Mneme recalls, and goal events from earlier
-  # stages of the pipeline.
-  #
-  # @return [String] single-line transcript entry
+  # @abstract Subclasses must implement to render the pending message for basic view mode.
+  # @return [Hash, nil] structured payload, or nil to hide
+  def render_basic
+    raise NotImplementedError, "#{self.class} must implement #render_basic"
+  end
+
+  # @return [Hash, nil] verbose payload (defaults to basic)
+  def render_verbose
+    render_basic
+  end
+
+  # @return [Hash, nil] debug payload (defaults to verbose)
+  def render_debug
+    render_verbose
+  end
+
+  # @return [String, nil] Melete transcript line, or nil to skip
   def render_melete
-    case message_type
-    when "user_message"
-      "User (pending): #{truncate_middle(content)}"
-    when "subagent"
-      "Sub-agent #{source_name} (pending): #{truncate_middle(content)}"
-    when "tool_response"
-      "tool_response #{tool_use_id} (pending): #{truncate_middle(content)}"
-    when "from_mneme"
-      "Mneme recalled (pending): #{truncate_middle(content)}"
-    when "from_melete_skill"
-      "Melete activated skill: #{source_name}"
-    when "from_melete_workflow"
-      "Melete activated workflow: #{source_name}"
-    when "from_melete_goal"
-      "Melete logged goal #{source_name}: #{truncate_middle(content)}"
-    end
+    nil
   end
 
-  # Transcript line for Mneme. User messages and agent-bound tool
-  # responses feed her associative recall; enrichment-side PMs
-  # (skills/workflows/goals/recall) are noise for the passive-recall
-  # query and are skipped.
-  #
-  # @return [String, nil] transcript line, or nil to skip
+  # @return [String, nil] Mneme transcript line, or nil to skip
   def render_mneme
-    case message_type
-    when "user_message"
-      "User (pending): #{truncate_middle(content)}"
-    when "subagent"
-      "Sub-agent #{source_name} (pending): #{truncate_middle(content)}"
-    when "tool_response"
-      "tool_response #{tool_use_id} (pending): #{truncate_middle(content)}"
-    end
+    nil
   end
 
-  private
+  protected
 
   MIDDLE_TRUNCATION_MARKER = MessageDecorator::MIDDLE_TRUNCATION_MARKER
 
-  # Mirror of {MessageDecorator#truncate_middle} — duplicated here
-  # rather than inherited to keep the two decorator families
-  # independent.
+  # Mirror of {MessageDecorator#truncate_middle} — duplicated here rather than
+  # inherited to keep the two decorator families independent.
   def truncate_middle(text, max_chars: 500)
     str = text.to_s
     return str if str.length <= max_chars
@@ -90,5 +81,14 @@ class PendingMessageDecorator < ApplicationDecorator
     head = keep / 2
     tail = keep - head
     "#{str[0, head]}#{MIDDLE_TRUNCATION_MARKER}#{str[-tail, tail]}"
+  end
+
+  # Mirror of {MessageDecorator#truncate_lines}.
+  def truncate_lines(text, max_lines:)
+    str = text.to_s
+    lines = str.split("\n")
+    return str unless lines.size > max_lines
+
+    lines.first(max_lines).push("...").join("\n")
   end
 end

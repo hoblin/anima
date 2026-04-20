@@ -50,9 +50,10 @@ RSpec.describe Mneme::RecallRunner do
         system = captured[:opts][:system]
         expect(system).to include("Mneme")
         expect(system).to include("recall")
-        expect(system).to include("search_messages")
-        expect(system).to include("surface_memory")
-        expect(system).to include("nothing_to_surface")
+        # Tool names live in the schemas, not in the prompt — see
+        # registered_tool_set spec below for tool registration.
+        expect(system).to include("query")
+        expect(system).to include("surface")
       end
 
       it "registers the recall tool set" do
