@@ -977,7 +977,7 @@ RSpec.describe Session do
       expect(prompt).to include("from_melete_skill")
       expect(prompt).to include("Mneme")
       expect(prompt).to include("from_mneme")
-      expect(prompt).to include("`from_` prefix")
+      expect(prompt).to include("**How delivery works:**")
     end
 
     it "places the sisters block after the soul and before snapshots" do
