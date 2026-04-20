@@ -158,7 +158,13 @@ class PendingMessage < ApplicationRecord
   # renders with the same visual treatment as its promoted counterpart,
   # marked dimmed via +status: "pending"+.
   #
+  # PMs are the universal intake queue — every new message_type added
+  # under #427 lands here first. Raises on unmapped types so a missing
+  # decorator surfaces immediately as a hard failure instead of a
+  # silent nil that breaks downstream rendering.
+  #
   # @return [Class] a {PendingMessageDecorator} subclass
+  # @raise [ArgumentError] if no decorator is registered for the message_type
   def decorator_class
     case message_type
     when "user_message" then PendingUserMessageDecorator
@@ -168,6 +174,7 @@ class PendingMessage < ApplicationRecord
     when "from_melete_skill" then PendingFromMeleteSkillDecorator
     when "from_melete_workflow" then PendingFromMeleteWorkflowDecorator
     when "from_melete_goal" then PendingFromMeleteGoalDecorator
+    else raise ArgumentError, "No decorator for PendingMessage message_type: #{message_type.inspect}"
     end
   end
 
@@ -278,13 +285,21 @@ class PendingMessage < ApplicationRecord
   # broadcast paths. Wraps the per-mode decorator output in the +rendered+
   # key so the TUI's existing +extract_rendered+ pipeline applies.
   #
-  # @param mode [String] view mode for decoration (default: session.view_mode)
+  # Required arg — callers always know the session view_mode. A default
+  # of +session.view_mode+ would trigger a SELECT per +after_create_commit+
+  # when the association isn't preloaded.
+  #
+  # The raw +content+ field is intentionally absent: decorators decide
+  # what crosses the wire per view_mode (e.g. background PMs return nil
+  # in basic so the user doesn't see internal pipeline noise). Sending
+  # raw content alongside +rendered+ would undercut that boundary.
+  #
+  # @param mode [String] view mode for decoration
   # @return [Hash] payload ready for ActionCable transmission
-  def broadcast_payload(mode = session.view_mode)
+  def broadcast_payload(mode)
     {
       "action" => "pending_message_created",
       "pending_message_id" => id,
-      "content" => content,
       "message_type" => message_type,
       "rendered" => {mode => decorate.render(mode)}
     }
@@ -380,7 +395,7 @@ class PendingMessage < ApplicationRecord
   # payload for the session's current view mode so the TUI can dispatch
   # by message type without a second round-trip.
   def broadcast_created
-    ActionCable.server.broadcast("session_#{session_id}", broadcast_payload)
+    ActionCable.server.broadcast("session_#{session_id}", broadcast_payload(session.view_mode))
   end
 
   # Broadcasts pending message removal so TUI clients clear the entry.

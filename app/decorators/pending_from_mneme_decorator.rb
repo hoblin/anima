@@ -35,4 +35,10 @@ class PendingFromMnemeDecorator < PendingMessageDecorator
   def render_melete
     "Mneme recalled (pending): #{truncate_middle(content)}"
   end
+
+  # +render_mneme+ is intentionally NOT overridden — Mneme runs recall
+  # over the conversation transcript, and surfacing pending Mneme
+  # recalls back to herself would create a circular injection where
+  # she keeps re-discovering her own queued contributions. Inherits
+  # the base nil so they stay invisible to her recall mode.
 end

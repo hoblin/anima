@@ -2,10 +2,11 @@
 
 require "rails_helper"
 
-# Shared assertions for the three Melete-activation pending decorators —
-# they share the visual treatment, only the kind label and source field
-# differ.
-RSpec.describe "Pending Melete activation decorators" do
+# Covers the shared TUI rendering shape — render_basic/verbose/debug
+# delegation and payload structure — across the three Melete-activation
+# pending decorators. Per-subclass Melete transcript lines are covered
+# in the cross-type table in pending_message_decorator_spec.rb.
+RSpec.describe PendingFromMeleteDecorator do
   let(:session) { create(:session) }
 
   {

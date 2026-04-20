@@ -2052,4 +2052,61 @@ RSpec.describe TUI::Screens::Chat do
       expect(height).to be >= 1
     end
   end
+
+  describe "pending render methods (private)" do
+    let(:tui) do
+      stub = Object.new
+      def stub.style(fg: nil, bg: nil, modifiers: nil) = {fg: fg, bg: bg, modifiers: modifiers}
+      def stub.span(content:, style: nil) = {content: content, style: style}
+      def stub.line(spans:) = {spans: spans}
+      stub
+    end
+    let(:muted_color) { TUI::Settings.theme_color_muted }
+
+    describe "#render_pending_subagent_entry" do
+      it "renders the badge + content in muted color" do
+        data = {"role" => "pending_subagent", "source" => "scout", "content" => "found 3 matches"}
+        lines = screen.send(:render_pending_subagent_entry, tui, data)
+
+        expect(lines.first[:spans].first[:content]).to eq("[from scout] found 3 matches")
+        expect(lines.first[:spans].first[:style][:fg]).to eq(muted_color)
+      end
+
+      it "wraps multiline content as continuation lines" do
+        data = {"role" => "pending_subagent", "source" => "scout", "content" => "first\nsecond"}
+        lines = screen.send(:render_pending_subagent_entry, tui, data)
+
+        expect(lines.length).to eq(2)
+        expect(lines.last[:spans].first[:content]).to eq("\u00a0\u00a0second")
+      end
+    end
+
+    describe "#render_pending_mneme_entry" do
+      it "renders the [Mneme recall] badge in muted color" do
+        data = {"role" => "pending_mneme", "content" => "recalled context"}
+        lines = screen.send(:render_pending_mneme_entry, tui, data)
+
+        expect(lines.first[:spans].first[:content]).to eq("[Mneme recall] recalled context")
+        expect(lines.first[:spans].first[:style][:fg]).to eq(muted_color)
+      end
+    end
+
+    describe "#render_pending_melete_entry" do
+      it "renders [Melete <kind>: <source>] for skill activations" do
+        data = {"role" => "pending_melete", "kind" => "skill", "source" => "gh-issue", "content" => "skill body"}
+        lines = screen.send(:render_pending_melete_entry, tui, data)
+
+        expect(lines.first[:spans].first[:content]).to eq("[Melete skill: gh-issue] skill body")
+        expect(lines.first[:spans].first[:style][:fg]).to eq(muted_color)
+      end
+
+      it "drops the trailing space when content is empty" do
+        data = {"role" => "pending_melete", "kind" => "workflow", "source" => "feature", "content" => ""}
+        lines = screen.send(:render_pending_melete_entry, tui, data)
+
+        expect(lines.length).to eq(1)
+        expect(lines.first[:spans].first[:content]).to eq("[Melete workflow: feature]")
+      end
+    end
+  end
 end

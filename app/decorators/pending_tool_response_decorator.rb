@@ -18,6 +18,9 @@ class PendingToolResponseDecorator < PendingMessageDecorator
       role: :tool_response,
       tool: source_name,
       content: truncate_lines(content, max_lines: 3),
+      # nil treated as success; only an explicit false flips the indicator
+      # — mirrors {ToolResponseDecorator}'s convention so legacy PMs
+      # without an explicit success column don't render as failures.
       success: success != false,
       tool_use_id: tool_use_id,
       status: "pending"

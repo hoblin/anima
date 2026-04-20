@@ -270,10 +270,10 @@ module TUI
     # via +data["status"]+ remains uniform.
     def pending_entry_data(payload)
       if payload.key?("rendered")
-        rendered = payload.dig("rendered")&.values
-        return nil if rendered.nil? || rendered.compact.empty?
+        values = payload["rendered"]&.values&.compact
+        return nil if values.nil? || values.empty?
 
-        normalize_pending_data(rendered.compact.first)
+        normalize_pending_data(values.first)
       else
         {"role" => "user", "content" => payload["content"], "status" => "pending"}
       end

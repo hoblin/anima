@@ -81,8 +81,8 @@ RSpec.describe PendingMessage do
         .to have_broadcasted_to("session_#{session.id}")
         .with(a_hash_including(
           "action" => "pending_message_created",
-          "content" => "waiting",
-          "message_type" => "user_message"
+          "message_type" => "user_message",
+          "rendered" => a_hash_including("basic" => a_hash_including("content" => "waiting"))
         ))
     end
 

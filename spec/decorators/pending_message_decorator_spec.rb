@@ -33,6 +33,13 @@ RSpec.describe PendingMessageDecorator do
         expect(pm.decorate).to be_a(klass)
       end
     end
+
+    it "raises on an unmapped message_type so missing decorators surface immediately" do
+      pm = build(:pending_message, session: session)
+      pm.message_type = "from_some_future_subsystem"
+
+      expect { pm.decorator_class }.to raise_error(ArgumentError, /No decorator/)
+    end
   end
 
   describe "#render('melete')" do

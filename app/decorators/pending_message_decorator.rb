@@ -8,9 +8,12 @@
 # of its promoted-{Message} counterpart, with +status: "pending"+ added
 # so the TUI can render it dimmed.
 #
-# Subclasses must override {#render_basic}. Verbose, debug, melete, and
-# mneme delegate to basic until subclasses provide their own
-# implementations.
+# Subclasses must override {#render_basic}. Default delegations form a
+# two-step chain: +render_debug → render_verbose → render_basic+. A
+# subclass that only overrides +render_verbose+ inherits its
+# +render_debug+ for free. Melete and Mneme transcript modes return nil
+# by default — subclasses opt in by overriding {#render_melete} or
+# {#render_mneme}.
 #
 # Instantiate via +pending_message.decorate+ — {PendingMessage#decorator_class}
 # picks the concrete subclass based on +message_type+.
