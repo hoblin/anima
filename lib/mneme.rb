@@ -7,6 +7,12 @@
 # Operates as a phantom LLM loop: observes the main session, creates
 # snapshots, but leaves no trace of her own reasoning.
 module Mneme
+  # Estimated token overhead for a synthetic +tool_use+/+tool_result+
+  # pair — the wrapper JSON that phantom promotions emit around their
+  # content (tool name, input hash, ids, framing). Added to the content's
+  # token estimate when sizing phantom pairs in the viewport.
+  TOOL_PAIR_OVERHEAD_TOKENS = 50
+
   # Dev-only logger that writes to log/mneme.log.
   # In non-development environments returns a null logger so
   # call sites don't need conditionals.

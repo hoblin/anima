@@ -300,7 +300,7 @@ class PendingMessage < ApplicationRecord
         "content" => display_content.lines.first.chomp
       },
       timestamp: now,
-      token_count: Mneme::PassiveRecall::TOOL_PAIR_OVERHEAD_TOKENS
+      token_count: Mneme::TOOL_PAIR_OVERHEAD_TOKENS
     )
 
     session.messages.create!(

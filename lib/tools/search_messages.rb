@@ -2,52 +2,48 @@
 
 module Tools
   # Keyword search across long-term memory — every message Anima has
-  # ever seen, across every session. Wraps {Mneme::Search} (FTS5) and
-  # returns ranked snippets with message IDs for drill-down via
-  # {ViewMessages}.
+  # ever seen, across every session, *except* what the agent is already
+  # looking at right now. Results sit below her current viewport; anything
+  # still in front of her is excluded, so every slot the search returns is
+  # new information.
   #
   # Two-step memory workflow:
   #   1. `search_messages(query: "auth flow")` → discovers relevant messages
   #   2. `view_messages(message_id: 42)` → fractal zoom into full context
   #
-  # Same FTS5 engine Mneme uses for passive recall — but this variant
-  # fires on demand when Aoide reaches for a memory herself.
+  # Same FTS5 engine Mneme uses for passive recall — this variant fires
+  # on demand when Aoide reaches for a memory herself.
   #
-  # @example Search across all sessions
+  # @example
   #   search_messages(query: "authentication flow")
-  #
-  # @example Restrict to the current session
-  #   search_messages(query: "OAuth config", session_only: true)
   class SearchMessages < Base
     def self.tool_name = "search_messages"
 
-    def self.description = "Search long-term memory (past conversations) by keyword. Returns ranked message snippets with IDs — pass any ID to view_messages to see the full context around it."
+    def self.description = "Search long-term memory (past conversations outside your current viewport) by keyword. Returns ranked message snippets with IDs — pass any ID to view_messages to see the full context around it."
 
     def self.input_schema
       {
         type: "object",
         properties: {
-          query: {type: "string"},
-          session_only: {type: "boolean", description: "Default: all sessions"}
+          query: {type: "string"}
         },
         required: ["query"]
       }
     end
 
-    # @param session [Session] the current session (used for session_only scoping)
+    # @param session [Session] the calling session — drives viewport exclusion
     def initialize(session:, **)
       @session = session
     end
 
-    # @param input [Hash] with "query" and optional "session_only"
+    # @param input [Hash] with "query"
     # @return [String] formatted search results with message IDs
     # @return [Hash] with :error key when query is blank
     def execute(input)
       query = input["query"].to_s.strip
       return {error: "Query cannot be blank"} if query.empty?
 
-      session_id = (input["session_only"] == true) ? @session.id : nil
-      results = Mneme::Search.query(query, session_id: session_id)
+      results = Mneme::Search.query(query, caller_session: @session)
 
       return "No results found for \"#{query}\"." if results.empty?
 

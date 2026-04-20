@@ -4,10 +4,10 @@ require "rails_helper"
 
 RSpec.describe MnemeEnrichmentJob do
   let(:session) { Session.create! }
-  let(:recall) { instance_double(Mneme::PassiveRecall, call: nil) }
+  let(:recall) { instance_double(Mneme::RecallRunner, call: nil) }
 
   before do
-    allow(Mneme::PassiveRecall).to receive(:new).with(session).and_return(recall)
+    allow(Mneme::RecallRunner).to receive(:new).with(session).and_return(recall)
     allow(Session).to receive(:find).with(session.id).and_return(session)
     allow(Session).to receive(:find).with(-1).and_call_original
   end
@@ -16,7 +16,7 @@ RSpec.describe MnemeEnrichmentJob do
     expect { described_class.perform_now(-1) }.not_to raise_error
   end
 
-  it "runs Mneme::PassiveRecall for the session" do
+  it "runs the Mneme recall loop for the session" do
     allow(Events::Bus).to receive(:emit)
 
     described_class.perform_now(session.id)
@@ -35,7 +35,7 @@ RSpec.describe MnemeEnrichmentJob do
     expect(melete.pending_message_id).to eq(42)
   end
 
-  it "propagates exceptions from PassiveRecall (no defensive rescue)" do
+  it "propagates exceptions from the recall loop (no defensive rescue)" do
     allow(recall).to receive(:call).and_raise(StandardError.new("recall crashed"))
 
     expect {
