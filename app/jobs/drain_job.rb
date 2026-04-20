@@ -60,8 +60,6 @@ class DrainJob < ApplicationJob
   rescue => error
     release_after_failure(error) if @session
     raise unless @active_pm&.bounce_back?
-  ensure
-    @shell_session&.finalize
   end
 
   private

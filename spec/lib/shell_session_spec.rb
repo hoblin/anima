@@ -229,6 +229,44 @@ RSpec.describe ShellSession do
     end
   end
 
+  describe ".login_shell" do
+    # before/after instead of around: the outer `after { shell.finalize }`
+    # lazily spawns the subject, and an around-block's restoration runs too
+    # late to prevent it from reading a stubbed $SHELL pointing at a path
+    # that may not exist on CI (e.g. /bin/zsh).
+    before { @saved_shell = ENV["SHELL"] }
+    after { ENV["SHELL"] = @saved_shell }
+
+    it "returns $SHELL when it is set" do
+      ENV["SHELL"] = "/bin/zsh"
+      expect(described_class.login_shell).to eq("/bin/zsh")
+    end
+
+    it "falls back to /bin/bash when $SHELL is unset" do
+      ENV.delete("SHELL")
+      expect(described_class.login_shell).to eq("/bin/bash")
+    end
+
+    it "falls back to /bin/bash when $SHELL is empty" do
+      ENV["SHELL"] = ""
+      expect(described_class.login_shell).to eq("/bin/bash")
+    end
+  end
+
+  describe "shell selection" do
+    it "sources the user's login profile then hands off to a bare bash" do
+      allow(PTY).to receive(:spawn).and_call_original
+
+      described_class.new(session_id: "spawn-#{SecureRandom.hex(4)}").finalize
+
+      expect(PTY).to have_received(:spawn).with(
+        described_class.const_get(:SHELL_ENV),
+        described_class.login_shell,
+        "-l", "-c", described_class.const_get(:BARE_SHELL_EXEC)
+      ).at_least(:once)
+    end
+  end
+
   describe "environment tracking" do
     describe "seed_env_snapshot" do
       it "sets @env_snapshot to real startup state on initialization" do
@@ -356,6 +394,92 @@ RSpec.describe ShellSession do
       shell.finalize
       expect(File.exist?(fifo_path)).to be false
       expect { Process.kill(0, pid) }.to raise_error(Errno::ESRCH)
+    end
+  end
+
+  describe ".for_session" do
+    let(:session) { instance_double("Session", id: "test-session-#{SecureRandom.hex(4)}", initial_cwd: "/tmp") }
+
+    after { described_class.release(session.id) }
+
+    it "spawns a shell and cd's into initial_cwd on first call" do
+      shell = described_class.for_session(session)
+      expect(shell.pwd).to eq("/tmp")
+    end
+
+    it "returns the same shell across repeated calls (persistence)" do
+      shell1 = described_class.for_session(session)
+      shell1.run("cd /")
+      shell2 = described_class.for_session(session)
+
+      expect(shell2).to equal(shell1)
+      expect(shell2.pwd).to eq("/")
+    end
+
+    it "preserves exported env vars between for_session calls" do
+      described_class.for_session(session).run("export MY_PERSIST_VAR=42")
+      result = described_class.for_session(session).run("echo $MY_PERSIST_VAR")
+
+      expect(result[:stdout]).to eq("42")
+    end
+
+    it "replaces a dead cached shell with a fresh one on the next lookup" do
+      shell1 = described_class.for_session(session)
+      shell1.finalize
+
+      shell2 = described_class.for_session(session)
+
+      expect(shell2).not_to equal(shell1)
+      expect(shell2.alive?).to be true
+    end
+
+    it "isolates shells across different sessions" do
+      other = instance_double("Session", id: "other-#{SecureRandom.hex(4)}", initial_cwd: "/tmp")
+
+      a = described_class.for_session(session)
+      b = described_class.for_session(other)
+
+      a.run("cd /")
+      expect(b.pwd).to eq("/tmp")
+      expect(a).not_to equal(b)
+    ensure
+      described_class.release(other.id)
+    end
+
+    it "hands the same shell to concurrent callers racing on one session" do
+      threads = Array.new(4) { Thread.new { described_class.for_session(session) } }
+      shells = threads.map(&:value)
+
+      expect(shells.uniq.size).to eq(1)
+      expect(shells.first).to be_alive
+    end
+  end
+
+  describe ".release" do
+    let(:session) { instance_double("Session", id: "release-test-#{SecureRandom.hex(4)}", initial_cwd: nil) }
+
+    it "finalizes the cached shell and evicts the cache entry" do
+      shell = described_class.for_session(session)
+
+      described_class.release(session.id)
+
+      expect(shell.alive?).to be false
+      expect(described_class.for_session(session)).not_to equal(shell)
+    ensure
+      described_class.release(session.id)
+    end
+
+    it "is a no-op when no shell is cached" do
+      expect { described_class.release("never-seen-#{SecureRandom.hex(4)}") }.not_to raise_error
+    end
+
+    it "is safe to call twice on the same session" do
+      described_class.for_session(session)
+
+      expect {
+        described_class.release(session.id)
+        described_class.release(session.id)
+      }.not_to raise_error
     end
   end
 

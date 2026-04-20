@@ -179,6 +179,60 @@ RSpec.describe Mneme::Search do
       expect { described_class.query("test{query}", caller_session: caller_session) }.not_to raise_error
     end
 
+    # Regression: hyphenated words in user input used to parse as the FTS5
+    # NOT operator (`sub-agents` → `sub NOT agents`), which then tried to
+    # resolve `agents` as a column name and crashed the whole drain
+    # pipeline with "no such column: agents".
+    it "treats hyphens as token separators instead of the NOT operator" do
+      agents = create_message(other_session, type: "agent_message",
+        content: "We should discuss sub-agents next.")
+
+      expect { described_class.query("sub-agents", caller_session: caller_session) }.not_to raise_error
+
+      results = described_class.query("sub-agents", caller_session: caller_session)
+      expect(results.map(&:message_id)).to include(agents.id)
+    end
+
+    it "neutralizes colon-injected column filters" do
+      create_message(other_session, type: "user_message",
+        content: "Check the agents column once.")
+
+      # `agents:foo` would historically try to restrict search to a column
+      # called "agents" (which does not exist) and crash.
+      expect { described_class.query("agents:foo", caller_session: caller_session) }.not_to raise_error
+    end
+
+    it "returns no results for queries with only FTS5 operators" do
+      create_message(other_session, type: "user_message",
+        content: "Authentication flow question.")
+
+      # `AND OR NOT` would become a syntactically invalid FTS5 query on
+      # its own — an empty body around pass-through operators. Caller
+      # should get back an empty result, not a crash.
+      expect { described_class.query("AND OR NOT", caller_session: caller_session) }.not_to raise_error
+    end
+
+    it "treats lowercase and/or/not as literal search terms, not operators" do
+      msg = create_message(other_session, type: "user_message",
+        content: "The signal and the noise.")
+
+      # Lowercase operators are NOT in the allowlist, so `and` must be
+      # quote-wrapped and matched as a plain word — not parsed as a
+      # boolean connective.
+      expect { described_class.query("signal and noise", caller_session: caller_session) }.not_to raise_error
+      expect(described_class.query("signal and noise", caller_session: caller_session).map(&:message_id))
+        .to include(msg.id)
+    end
+
+    it "escapes embedded double quotes in user tokens" do
+      create_message(other_session, type: "user_message", content: "She said hello to me.")
+
+      # A stray or unbalanced quote in user input historically produced an
+      # FTS5 syntax error; quote-doubling now neutralizes it.
+      expect { described_class.query('say "hello', caller_session: caller_session) }.not_to raise_error
+      expect { described_class.query('a "double" quote', caller_session: caller_session) }.not_to raise_error
+    end
+
     it "handles quoted phrases" do
       create_message(other_session, type: "user_message", content: "The full text search works well.")
 

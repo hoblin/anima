@@ -24,8 +24,12 @@ class ToolExecutionJob < ApplicationJob
   # @param tool_input [Hash]
   def perform(session_id, tool_use_id:, tool_name:, tool_input:)
     session = Session.find(session_id)
-    @shell_session = ShellSession.for_session(session)
-    registry = Tools::Registry.build(session: session, shell_session: @shell_session)
+    # ShellSession.for_session returns the conversation's persistent shell
+    # — spawned on first use, reused on every subsequent tool call so the
+    # agent's cd's and exported env vars survive between calls. We do NOT
+    # finalize it here; the shell's lifetime is the Session's lifetime.
+    shell_session = ShellSession.for_session(session)
+    registry = Tools::Registry.build(session: session, shell_session: shell_session)
 
     content, success = execute(registry, tool_name, tool_input)
 
@@ -48,8 +52,6 @@ class ToolExecutionJob < ApplicationJob
       content: "#{error.class}: #{error.message}",
       success: false
     ))
-  ensure
-    @shell_session&.finalize
   end
 
   private
