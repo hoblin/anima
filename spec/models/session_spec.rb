@@ -1020,7 +1020,8 @@ RSpec.describe Session do
       expect(prompt).to match(/## Tool Guidelines\n\n- /)
       expect(prompt).to include("Working directory persists between bash calls")
       expect(prompt).to include("prefer edit_file over `sed`")
-      expect(prompt).to include("write_file replaces the whole file")
+      expect(prompt).to include("Reach for edit_file whenever you'd otherwise pipe")
+      expect(prompt).to include("Use write_file only for new files or full rewrites")
     end
 
     context "with multiple skills" do
@@ -1115,7 +1116,8 @@ RSpec.describe Session do
       expect(section).to start_with("## Tool Guidelines\n\n")
       expect(section).to include("- Working directory persists between bash calls")
       expect(section).to include("- For targeted text changes, prefer edit_file over `sed`")
-      expect(section).to include("- write_file replaces the whole file")
+      expect(section).to include("- Reach for edit_file whenever you'd otherwise pipe")
+      expect(section).to include("- Use write_file only for new files or full rewrites")
     end
 
     it "returns nil when no tool contributes guidelines" do

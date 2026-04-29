@@ -30,7 +30,7 @@ RSpec.describe Tools::Write do
 
   describe ".prompt_guidelines" do
     it "steers the agent toward edit_file for targeted changes" do
-      expect(described_class.prompt_guidelines).to include(a_string_matching(/replaces the whole file.*use edit_file/))
+      expect(described_class.prompt_guidelines).to include(a_string_matching(/full rewrites.*edit_file leaves the rest/))
     end
   end
 

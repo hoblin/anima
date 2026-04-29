@@ -35,8 +35,8 @@ RSpec.describe Tools::Edit do
   end
 
   describe ".prompt_guidelines" do
-    it "contributes no guidelines — the input schema already documents old_text uniqueness" do
-      expect(described_class.prompt_guidelines).to eq([])
+    it "owns the case for choosing edit_file over sed/awk/heredoc rewrites" do
+      expect(described_class.prompt_guidelines).to include(a_string_matching(/edit_file whenever you'd otherwise pipe.*`sed`/))
     end
   end
 

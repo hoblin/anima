@@ -22,6 +22,10 @@ module Tools
 
     def self.prompt_snippet = "Replace exact text in a file."
 
+    def self.prompt_guidelines = [
+      "Reach for edit_file whenever you'd otherwise pipe a file through `sed`, `awk`, or a heredoc rewrite — exact-text replacement is faster, leaves the rest of the file untouched, and returns a diff."
+    ]
+
     def self.input_schema
       {
         type: "object",

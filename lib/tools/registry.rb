@@ -40,21 +40,34 @@ module Tools
       def build(session:, shell_session:)
         registry = new(context: {shell_session: shell_session, session: session})
 
-        granted_standard_tools(session).each { |tool| registry.register(tool) }
-
-        if session.sub_agent?
-          registry.register(Tools::MarkGoalCompleted)
-        else
-          registry.register(Tools::SpawnSubagent)
-          registry.register(Tools::SpawnSpecialist)
-          registry.register(Tools::OpenIssue)
-        end
+        tool_classes_for(session).each { |tool| registry.register(tool) }
 
         Mcp::ClientManager.new.register_tools(registry).each do |message|
           Events::Bus.emit(Events::SystemMessage.new(content: message, session_id: session.id))
         end
 
         registry
+      end
+
+      # Resolves the ordered tool-class list for a session: granted standard
+      # tools (or all of them when +granted_tools+ is nil), plus spawn tools
+      # for main sessions or +mark_goal_completed+ for sub-agents. MCP tools
+      # are excluded — they are dynamic and registered separately by
+      # {.build}. Single source of truth for {.build}, {Session#tool_schemas},
+      # and the system-prompt section assemblers.
+      #
+      # @param session [Session]
+      # @return [Array<Class<Tools::Base>>]
+      def tool_classes_for(session)
+        tools = granted_standard_tools(session).dup
+
+        if session.sub_agent?
+          tools.push(Tools::MarkGoalCompleted)
+        else
+          tools.push(Tools::SpawnSubagent, Tools::SpawnSpecialist, Tools::OpenIssue)
+        end
+
+        tools
       end
 
       private

@@ -62,8 +62,11 @@ http_interactions:
         directory persists between bash calls — `cd` once or use absolute paths.\n-
         For targeted text changes, prefer edit_file over `sed`/`awk` — exact-match
         replacement is safer than pattern matching.\n- For reading files, prefer read_file
-        over `cat`.\n- write_file replaces the whole file. For targeted changes, use
-        edit_file.","cache_control":{"type":"ephemeral"}}]}'
+        over `cat`.\n- Use write_file only for new files or full rewrites — for targeted
+        changes, edit_file leaves the rest of the file untouched.\n- Reach for edit_file
+        whenever you''d otherwise pipe a file through `sed`, `awk`, or a heredoc rewrite
+        — exact-text replacement is faster, leaves the rest of the file untouched,
+        and returns a diff.","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"

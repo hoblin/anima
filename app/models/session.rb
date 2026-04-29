@@ -743,17 +743,19 @@ class Session < ApplicationRecord
   #
   # @return [String, nil] available tools section, or nil when empty
   def assemble_available_tools_section
-    menu = resolved_tool_classes.filter_map { |tool| advertise_tool(tool) }
+    menu = resolved_tool_classes.filter_map do |tool|
+      snippet = tool.prompt_snippet
+      "- #{tool.tool_name}: #{snippet}" if snippet
+    end
     return if menu.empty?
 
     "## Available Tools\n\n#{menu.join("\n")}"
   end
 
   # Concatenates each available tool's {Tools::Base.prompt_guidelines}
-  # into a single behavioural-guidance section. Guidelines steer
-  # cross-tool selection (e.g. prefer edit_file over `sed`) and reinforce
-  # non-obvious behaviour the schema cannot convey at every reasoning
-  # token.
+  # into a single behavioral guidance section. Guidelines steer cross-tool
+  # selection (e.g. prefer edit_file over `sed`) and reinforce non-obvious
+  # behaviour the schema cannot convey at every reasoning token.
   #
   # @return [String, nil] tool guidelines section, or nil when empty
   def assemble_tool_guidelines_section
@@ -763,36 +765,15 @@ class Session < ApplicationRecord
     "## Tool Guidelines\n\n#{bullets.join("\n")}"
   end
 
-  # Renders a single tool's menu entry for the available tools section.
-  #
-  # @param tool [Class<Tools::Base>] tool class
-  # @return [String, nil] Markdown bullet, or nil when the tool opts out
-  def advertise_tool(tool)
-    snippet = tool.prompt_snippet
-    "- #{tool.tool_name}: #{snippet}" if snippet
-  end
-
-  # Resolves the active tool classes for this session, applying the same
-  # +granted_tools+ filter and main/sub-agent split as
-  # {Tools::Registry.build}. Used by {#tool_schemas} and the prompt
-  # section assemblers so all three views stay in sync.
+  # Memoizes the active tool classes for this session by delegating to
+  # {Tools::Registry.tool_classes_for} — the shared resolver used by
+  # {.build}, {#tool_schemas}, and the prompt section assemblers so all
+  # views stay in sync. Safe to memoize: +granted_tools+ and +sub_agent?+
+  # are immutable post-creation.
   #
   # @return [Array<Class>] tool classes (no MCP tools — those are dynamic)
   def resolved_tool_classes
-    tools = if granted_tools
-      granted = granted_tools.filter_map { |name| Tools::Registry::STANDARD_TOOLS_BY_NAME[name] }
-      (Tools::Registry::ALWAYS_GRANTED_TOOLS + granted).uniq
-    else
-      Tools::Registry::STANDARD_TOOLS.dup
-    end
-
-    if sub_agent?
-      tools.push(Tools::MarkGoalCompleted)
-    else
-      tools.push(Tools::SpawnSubagent, Tools::SpawnSpecialist, Tools::OpenIssue)
-    end
-
-    tools
+    @resolved_tool_classes ||= Tools::Registry.tool_classes_for(self)
   end
 
   # Assembles the task section for sub-agent system prompts.
