@@ -1,19 +1,21 @@
 # frozen_string_literal: true
 
-# First stage of the drain pipeline: runs Mneme's recall loop so any
+# Second stage of the drain pipeline: runs Mneme's recall loop so any
 # older memory she judges useful lands in the mailbox as background
-# {PendingMessage}s, then hands off to Melete via {Events::StartMelete}.
+# {PendingMessage}s, then hands off to the drain loop via
+# {Events::StartProcessing}.
 #
 # Triggered by {Events::Subscribers::MnemeKickoff} in response to
-# {Events::StartMneme}. Runs the phantom {Mneme::RecallRunner} loop —
-# the event is only the entry/exit plumbing.
+# {Events::StartMneme}, which {MeleteEnrichmentJob} only emits when goals
+# changed during the preceding Melete run. Runs the phantom
+# {Mneme::RecallRunner} loop — the event is only the entry/exit plumbing.
 #
 # Mneme recall is *enrichment* — it adds recalled memories as background
 # phantom pairs but is never required for the primary pipeline to make
 # progress. If recall raises (bad FTS5 input, SQL glitch, …) the handoff
-# to Melete must still happen, otherwise the session's user message is
-# stranded in the mailbox with no retry trigger. Exceptions are logged
-# loudly so failures stay visible — they just don't gate the drain.
+# to the drain loop must still happen, otherwise the session's user
+# message is stranded in the mailbox with no retry trigger. Exceptions
+# are logged loudly so failures stay visible — they just don't gate the drain.
 class MnemeEnrichmentJob < ApplicationJob
   queue_as :default
 
@@ -26,7 +28,7 @@ class MnemeEnrichmentJob < ApplicationJob
 
     run_recall(session)
 
-    Events::Bus.emit(Events::StartMelete.new(
+    Events::Bus.emit(Events::StartProcessing.new(
       session_id: session_id,
       pending_message_id: pending_message_id
     ))

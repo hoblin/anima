@@ -389,7 +389,7 @@ class Session < ApplicationRecord
   # Enqueues an inbound human-side message (direct user input or a
   # sub-agent reply) as an active {PendingMessage}. The PM's
   # +after_create_commit+ emits the appropriate pipeline event when the
-  # session is idle (+StartMneme+ for user input, +StartProcessing+ for
+  # session is idle (+StartMelete+ for user input, +StartProcessing+ for
   # sub-agent deliveries). On a busy session the PM queues silently and
   # {#wake_drain_pipeline_if_pending} picks it up on the next transition
   # into +:idle+.

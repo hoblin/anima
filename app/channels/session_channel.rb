@@ -42,7 +42,7 @@ class SessionChannel < ApplicationCable::Channel
 
   # Processes user input by enqueuing a bounce-back-flagged user_message
   # PendingMessage on the session. The PM's +after_create_commit+ kicks
-  # off the drain pipeline — Mneme → Melete → {DrainJob} — when the
+  # off the drain pipeline — Melete → (Mneme) → {DrainJob} — when the
   # session is idle; otherwise the PM queues silently and the idle-wake
   # rule on {Session} picks it up on the next transition to +:idle+.
   # If the first LLM call after promotion fails, {DrainJob} emits a

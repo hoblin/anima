@@ -24,15 +24,15 @@ RSpec.describe MnemeEnrichmentJob do
     expect(recall).to have_received(:call)
   end
 
-  it "emits StartMelete to hand off to the next pipeline stage" do
+  it "emits StartProcessing to hand off to the drain loop" do
     emitted = capture_emissions
 
     described_class.perform_now(session.id, pending_message_id: 42)
 
-    melete = emitted.find { |e| e.is_a?(Events::StartMelete) }
-    expect(melete).to be_present
-    expect(melete.session_id).to eq(session.id)
-    expect(melete.pending_message_id).to eq(42)
+    processing = emitted.find { |e| e.is_a?(Events::StartProcessing) }
+    expect(processing).to be_present
+    expect(processing.session_id).to eq(session.id)
+    expect(processing.pending_message_id).to eq(42)
   end
 
   context "when the recall loop raises" do
@@ -52,12 +52,12 @@ RSpec.describe MnemeEnrichmentJob do
       expect(Mneme.logger).to have_received(:error).with(/recall crashed/)
     end
 
-    it "still emits StartMelete so the session is not stranded" do
+    it "still emits StartProcessing so the session is not stranded" do
       emitted = capture_emissions
 
       described_class.perform_now(session.id, pending_message_id: 42)
 
-      expect(emitted.map(&:class)).to include(Events::StartMelete)
+      expect(emitted.map(&:class)).to include(Events::StartProcessing)
     end
   end
 end

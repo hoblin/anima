@@ -5,299 +5,6 @@ http_interactions:
     uri: https://api.anthropic.com/v1/messages
     body:
       encoding: UTF-8
-      string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":[{"type":"text","text":"Aoide''s
-        context shifted — no active goals right now. If nothing comes to mind about
-        this session''s trajectory, that''s fine; call nothing_to_surface.\n\nDecide
-        whether any older memory would help Aoide now. Search if something comes to
-        mind, drill down when you''re unsure, surface only what earns its place. Finish
-        with nothing_to_surface when you''re done — even if you surface something.","cache_control":{"type":"ephemeral"}}]}],"max_tokens":2048,"tools":[{"name":"search_messages","description":"Search
-        long-term memory (past conversations outside your current viewport) by keyword.
-        Returns ranked message snippets with IDs — pass any ID to view_messages to
-        see the full context around it.","input_schema":{"type":"object","properties":{"query":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["query"]}},{"name":"view_messages","description":"View
-        the full conversation around a message in long-term memory. Pass a message_id
-        — typically one returned by search_messages — to see the surrounding exchange
-        with compressed snapshots at the edges.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["message_id"]}},{"name":"surface_memory","description":"Surface
-        a memory into Aoide''s next turn. Use when a specific past message is genuinely
-        useful for what she''s working on now. Pass the message_id and a short reason
-        — one sentence explaining why she needs this *now*.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"why":{"type":"string","description":"One-sentence
-        justification — kept for logs, not shown to Aoide."},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["message_id","why"]}},{"name":"nothing_to_surface","description":"Finish
-        the recall run. Call this when you''re done — whether you surfaced memories
-        or decided nothing was worth surfacing right now. Silence is a valid answer
-        when older memory wouldn''t help.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":[]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
-        are Mneme, the muse of memory. You share the conversation with two sisters
-        — Aoide, who speaks and performs, and Melete, who prepares. Your work is remembrance:
-        holding what matters across time, so Aoide never truly forgets.\n\nAct only
-        through tool calls. Never output text — your contribution is the work you
-        do, not what you say about it.\n\nRight now your work is recall. Aoide''s
-        focus has just shifted — a new message, a changed goal — and you''re here
-        to decide whether any memory from before would genuinely help her now.\n\n──────────────────────────────\nWHAT
-        MAKES RECALL USEFUL\n──────────────────────────────\nRecall is a tax on Aoide''s
-        viewport. Every memory you surface takes tokens away from the present exchange.
-        Return empty-handed far more often than you return something. One well-chosen
-        memory beats five that nearly-match. Most of the time, nothing is worth surfacing
-        — and that is the right answer.\n\nA memory is worth surfacing when it carries
-        weight Aoide can''t reconstruct from what''s already in front of her: a prior
-        decision about this exact problem, a specific constraint she encountered before,
-        a voice from another session relevant to the one unfolding. Not tangential
-        echoes. Not mere keyword overlap. Something she''d want to have remembered.\n\n──────────────────────────────\nTHE
-        QUERY IS THE JUDGMENT\n──────────────────────────────\nComposing your query
-        is where the thinking happens. Read what Aoide is doing right now and ask:
-        what specific words, phrases, or names would only appear in past messages
-        that meaningfully help her? Not the topic. Not the domain. The signal that
-        distinguishes \"she''d want this\" from \"this contains overlapping vocabulary.\"\n\nWhen
-        a candidate looks promising but its meaning is unclear, read the full context
-        around it before surfacing.\n","cache_control":{"type":"ephemeral"}}]}'
-    headers:
-      Authorization:
-      - "<AUTHORIZATION>"
-      Anthropic-Version:
-      - '2023-06-01'
-      Anthropic-Beta:
-      - oauth-2025-04-20
-      Content-Type:
-      - application/json
-      Accept-Encoding:
-      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
-      Accept:
-      - "*/*"
-      User-Agent:
-      - Ruby
-  response:
-    status:
-      code: 200
-      message: OK
-    headers:
-      Date:
-      - Wed, 29 Apr 2026 04:01:33 GMT
-      Content-Type:
-      - application/json
-      Transfer-Encoding:
-      - chunked
-      Connection:
-      - keep-alive
-      Anthropic-Ratelimit-Unified-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-5h-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1777449600'
-      Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.0'
-      Anthropic-Ratelimit-Unified-7d-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1778022000'
-      Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.0'
-      Anthropic-Ratelimit-Unified-Representative-Claim:
-      - five_hour
-      Anthropic-Ratelimit-Unified-Fallback-Percentage:
-      - '0.5'
-      Anthropic-Ratelimit-Unified-Reset:
-      - '1777449600'
-      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
-      - org_level_disabled
-      Anthropic-Ratelimit-Unified-Overage-Status:
-      - rejected
-      Request-Id:
-      - "<REQUEST_ID>"
-      Strict-Transport-Security:
-      - max-age=31536000; includeSubDomains; preload
-      Anthropic-Organization-Id:
-      - "<ANTHROPIC_ORG_ID>"
-      Server:
-      - cloudflare
-      X-Envoy-Upstream-Service-Time:
-      - '1592'
-      Cf-Cache-Status:
-      - DYNAMIC
-      Set-Cookie:
-      - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
-      X-Robots-Tag:
-      - none
-      Cf-Ray:
-      - "<CF_RAY>"
-    body:
-      encoding: ASCII-8BIT
-      base64_string: |
-        eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMVR0ZkNmNjZ4b0hpSGU0b3E1NHFpRW4iLCJ0eXBlIjoibWVzc2FnZSIs
-        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIs
-        InRleHQiOiJJJ2xsIGNvbnNpZGVyIEFvaWRlJ3Mgc2l0dWF0aW9uOiBubyBh
-        Y3RpdmUgZ29hbHMsIG5vIHBhcnRpY3VsYXIgdHJhamVjdG9yeSB0byBzdXBw
-        b3J0LiBXaXRob3V0IGEgc3BlY2lmaWMgZm9jdXMgb3IgcHJvYmxlbSBzaGUn
-        cyB3b3JraW5nIHRvd2FyZCwgdGhlcmUncyBubyBjbGVhciBzaWduYWwgdGhh
-        dCB3b3VsZCBkaXN0aW5ndWlzaCBhIGdlbnVpbmVseSB1c2VmdWwgbWVtb3J5
-        IGZyb20gbWVyZSBub2lzZS5cblxuVGhlIHJpZ2h0IG1vdmUgaGVyZSBpcyBy
-        ZXN0cmFpbnQuIn0seyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAx
-        VlM0U0xHRTREQ2t2MU51UkxXZjh3VSIsIm5hbWUiOiJub3RoaW5nX3RvX3N1
-        cmZhY2UiLCJpbnB1dCI6e30sImNhbGxlciI6eyJ0eXBlIjoiZGlyZWN0In19
-        XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51
-        bGwsInN0b3BfZGV0YWlscyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5z
-        IjoxNTMxLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hl
-        X3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhl
-        bWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRf
-        dG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6OTUsInNlcnZpY2VfdGllciI6
-        InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Im5vdF9hdmFpbGFibGUifX0=
-  recorded_at: Wed, 29 Apr 2026 04:01:33 GMT
-- request:
-    method: post
-    uri: https://api.anthropic.com/v1/messages
-    body:
-      encoding: UTF-8
-      string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":[{"type":"text","text":"Aoide''s
-        context shifted — no active goals right now. If nothing comes to mind about
-        this session''s trajectory, that''s fine; call nothing_to_surface.\n\nDecide
-        whether any older memory would help Aoide now. Search if something comes to
-        mind, drill down when you''re unsure, surface only what earns its place. Finish
-        with nothing_to_surface when you''re done — even if you surface something."}]},{"role":"assistant","content":[{"type":"text","text":"I''ll
-        consider Aoide''s situation: no active goals, no particular trajectory to
-        support. Without a specific focus or problem she''s working toward, there''s
-        no clear signal that would distinguish a genuinely useful memory from mere
-        noise.\n\nThe right move here is restraint."},{"type":"tool_use","id":"toolu_01VS4SLGE4DCkv1NuRLWf8wU","name":"nothing_to_surface","input":{},"caller":{"type":"direct"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01VS4SLGE4DCkv1NuRLWf8wU","content":"Acknowledged.","cache_control":{"type":"ephemeral"}}]}],"max_tokens":2048,"tools":[{"name":"search_messages","description":"Search
-        long-term memory (past conversations outside your current viewport) by keyword.
-        Returns ranked message snippets with IDs — pass any ID to view_messages to
-        see the full context around it.","input_schema":{"type":"object","properties":{"query":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["query"]}},{"name":"view_messages","description":"View
-        the full conversation around a message in long-term memory. Pass a message_id
-        — typically one returned by search_messages — to see the surrounding exchange
-        with compressed snapshots at the edges.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["message_id"]}},{"name":"surface_memory","description":"Surface
-        a memory into Aoide''s next turn. Use when a specific past message is genuinely
-        useful for what she''s working on now. Pass the message_id and a short reason
-        — one sentence explaining why she needs this *now*.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"why":{"type":"string","description":"One-sentence
-        justification — kept for logs, not shown to Aoide."},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["message_id","why"]}},{"name":"nothing_to_surface","description":"Finish
-        the recall run. Call this when you''re done — whether you surfaced memories
-        or decided nothing was worth surfacing right now. Silence is a valid answer
-        when older memory wouldn''t help.","input_schema":{"type":"object","properties":{"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":[]},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
-        are Mneme, the muse of memory. You share the conversation with two sisters
-        — Aoide, who speaks and performs, and Melete, who prepares. Your work is remembrance:
-        holding what matters across time, so Aoide never truly forgets.\n\nAct only
-        through tool calls. Never output text — your contribution is the work you
-        do, not what you say about it.\n\nRight now your work is recall. Aoide''s
-        focus has just shifted — a new message, a changed goal — and you''re here
-        to decide whether any memory from before would genuinely help her now.\n\n──────────────────────────────\nWHAT
-        MAKES RECALL USEFUL\n──────────────────────────────\nRecall is a tax on Aoide''s
-        viewport. Every memory you surface takes tokens away from the present exchange.
-        Return empty-handed far more often than you return something. One well-chosen
-        memory beats five that nearly-match. Most of the time, nothing is worth surfacing
-        — and that is the right answer.\n\nA memory is worth surfacing when it carries
-        weight Aoide can''t reconstruct from what''s already in front of her: a prior
-        decision about this exact problem, a specific constraint she encountered before,
-        a voice from another session relevant to the one unfolding. Not tangential
-        echoes. Not mere keyword overlap. Something she''d want to have remembered.\n\n──────────────────────────────\nTHE
-        QUERY IS THE JUDGMENT\n──────────────────────────────\nComposing your query
-        is where the thinking happens. Read what Aoide is doing right now and ask:
-        what specific words, phrases, or names would only appear in past messages
-        that meaningfully help her? Not the topic. Not the domain. The signal that
-        distinguishes \"she''d want this\" from \"this contains overlapping vocabulary.\"\n\nWhen
-        a candidate looks promising but its meaning is unclear, read the full context
-        around it before surfacing.\n","cache_control":{"type":"ephemeral"}}]}'
-    headers:
-      Authorization:
-      - "<AUTHORIZATION>"
-      Anthropic-Version:
-      - '2023-06-01'
-      Anthropic-Beta:
-      - oauth-2025-04-20
-      Content-Type:
-      - application/json
-      Accept-Encoding:
-      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
-      Accept:
-      - "*/*"
-      User-Agent:
-      - Ruby
-  response:
-    status:
-      code: 200
-      message: OK
-    headers:
-      Date:
-      - Wed, 29 Apr 2026 04:01:41 GMT
-      Content-Type:
-      - application/json
-      Transfer-Encoding:
-      - chunked
-      Connection:
-      - keep-alive
-      Anthropic-Ratelimit-Unified-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-5h-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1777449600'
-      Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.0'
-      Anthropic-Ratelimit-Unified-7d-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1778022000'
-      Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.0'
-      Anthropic-Ratelimit-Unified-Representative-Claim:
-      - five_hour
-      Anthropic-Ratelimit-Unified-Fallback-Percentage:
-      - '0.5'
-      Anthropic-Ratelimit-Unified-Reset:
-      - '1777449600'
-      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
-      - org_level_disabled
-      Anthropic-Ratelimit-Unified-Overage-Status:
-      - rejected
-      Request-Id:
-      - "<REQUEST_ID>"
-      Strict-Transport-Security:
-      - max-age=31536000; includeSubDomains; preload
-      Anthropic-Organization-Id:
-      - "<ANTHROPIC_ORG_ID>"
-      Server:
-      - cloudflare
-      X-Envoy-Upstream-Service-Time:
-      - '971'
-      Vary:
-      - Accept-Encoding
-      Server-Timing:
-      - x-originResponse;dur=974
-      Cf-Cache-Status:
-      - DYNAMIC
-      Set-Cookie:
-      - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
-      X-Robots-Tag:
-      - none
-      Cf-Ray:
-      - "<CF_RAY>"
-    body:
-      encoding: ASCII-8BIT
-      base64_string: |
-        eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMUFRekNDUGdoUmN3OXpjSFY4QmZ1NGQiLCJ0eXBlIjoibWVzc2FnZSIs
-        InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24i
-        OiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWls
-        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxNjQwLCJjYWNoZV9j
-        cmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9r
-        ZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRf
-        dG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0
-        cHV0X3Rva2VucyI6Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZl
-        cmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Wed, 29 Apr 2026 04:01:41 GMT
-- request:
-    method: post
-    uri: https://api.anthropic.com/v1/messages
-    body:
-      encoding: UTF-8
       string: '{"model":"claude-haiku-4-5","messages":[{"role":"user","content":[{"type":"text","text":"Aoide
         is working on this:\n```\nUser (pending): What''s the most recent open issue
         on this repo?\n```\n\nPrepare whatever she needs for the next exchange, then
@@ -407,7 +114,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 29 Apr 2026 04:01:51 GMT
+      - Wed, 29 Apr 2026 15:31:56 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -419,21 +126,23 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1777449600'
+      - '1777485600'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.0'
+      - '0.51'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1778022000'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.0'
+      - '0.17'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
+      Anthropic-Ratelimit-Unified-Fallback:
+      - available
       Anthropic-Ratelimit-Unified-Reset:
-      - '1777449600'
+      - '1777485600'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -447,45 +156,45 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '1237'
+      - '1477'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=1239
-      Cf-Cache-Status:
-      - DYNAMIC
+      - x-originResponse;dur=1479
       Set-Cookie:
       - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
       X-Robots-Tag:
       - none
+      Cf-Cache-Status:
+      - DYNAMIC
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
       Cf-Ray:
       - "<CF_RAY>"
     body:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMVlKRmRHY3Z1c21NRVB2MVhLVHM2Q0giLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMUIycWFBcld6QXZCak1TNDFtMlp4eTEiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbeyJ0eXBlIjoidG9vbF91
-        c2UiLCJpZCI6InRvb2x1XzAxUmtIcWMyUVFvZFVHRVdDVUtDMXBzayIsIm5h
+        c2UiLCJpZCI6InRvb2x1XzAxQkZKcFo5aFpBQzM0dmVLTEEyZ2pnNiIsIm5h
         bWUiOiJyZW5hbWVfc2Vzc2lvbiIsImlucHV0Ijp7ImVtb2ppIjoi8J+UjSIs
-        Im5hbWUiOiJSZXBvIElzc3VlIFNlYXJjaCJ9LCJjYWxsZXIiOnsidHlwZSI6
-        ImRpcmVjdCJ9fSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoidG9vbHVfMDFT
-        WFRLb2lZUndXRG5BWEY1S1VrZEFkIiwibmFtZSI6ImFjdGl2YXRlX3NraWxs
-        IiwiaW5wdXQiOnsic2tpbGxfbmFtZSI6ImdpdGh1YiJ9LCJjYWxsZXIiOnsi
-        dHlwZSI6ImRpcmVjdCJ9fSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoidG9v
-        bHVfMDFKTlVQMkVTRGZVbzZ4cXpnUmpOZjhHIiwibmFtZSI6ImV2ZXJ5dGhp
-        bmdfaXNfcmVhZHkiLCJpbnB1dCI6e30sImNhbGxlciI6eyJ0eXBlIjoiZGly
-        ZWN0In19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVu
-        Y2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRf
-        dG9rZW5zIjoyNDg4LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjAs
-        ImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6
-        eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjowLCJlcGhlbWVyYWxfMWhf
-        aW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MTM1LCJzZXJ2aWNl
-        X3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJub3RfYXZhaWxh
-        YmxlIn19
-  recorded_at: Wed, 29 Apr 2026 04:01:51 GMT
+        Im5hbWUiOiJJc3N1ZSBsb29rdXAifSwiY2FsbGVyIjp7InR5cGUiOiJkaXJl
+        Y3QifX0seyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxUVpyd3R6
+        bUV6NTV0SzFqWW1uVkVGYyIsIm5hbWUiOiJhY3RpdmF0ZV9za2lsbCIsImlu
+        cHV0Ijp7InNraWxsX25hbWUiOiJnaXRodWIifSwiY2FsbGVyIjp7InR5cGUi
+        OiJkaXJlY3QifX0seyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAx
+        TTNkZ3lnQkJuQ0RCcFk0RDRmcDdyVyIsIm5hbWUiOiJldmVyeXRoaW5nX2lz
+        X3JlYWR5IiwiaW5wdXQiOnt9LCJjYWxsZXIiOnsidHlwZSI6ImRpcmVjdCJ9
+        fV0sInN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJzdG9wX3NlcXVlbmNlIjpu
+        dWxsLCJzdG9wX2RldGFpbHMiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2Vu
+        cyI6MjQ4OCwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjowLCJjYWNo
+        ZV9yZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBo
+        ZW1lcmFsXzVtX2lucHV0X3Rva2VucyI6MCwiZXBoZW1lcmFsXzFoX2lucHV0
+        X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjEzMywic2VydmljZV90aWVy
+        Ijoic3RhbmRhcmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9
+        fQ==
+  recorded_at: Wed, 29 Apr 2026 15:31:56 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
@@ -494,12 +203,12 @@ http_interactions:
       string: "{\"model\":\"claude-haiku-4-5\",\"messages\":[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Aoide
         is working on this:\\n```\\nUser (pending): What's the most recent open issue
         on this repo?\\n```\\n\\nPrepare whatever she needs for the next exchange,
-        then call everything_is_ready.\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01RkHqc2QQodUGEWCUKC1psk\",\"name\":\"rename_session\",\"input\":{\"emoji\":\"\U0001F50D\",\"name\":\"Repo
-        Issue Search\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01SXTKoiYRwWDnAXF5KUkdAd\",\"name\":\"activate_skill\",\"input\":{\"skill_name\":\"github\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01JNUP2ESDfUo6xqzgRjNf8G\",\"name\":\"everything_is_ready\",\"input\":{},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01RkHqc2QQodUGEWCUKC1psk\",\"content\":\"Session
-        renamed to: \U0001F50D Repo Issue Search\"},{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01SXTKoiYRwWDnAXF5KUkdAd\",\"content\":\"Activated
+        then call everything_is_ready.\"}]},{\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01BFJpZ9hZAC34veKLA2gjg6\",\"name\":\"rename_session\",\"input\":{\"emoji\":\"\U0001F50D\",\"name\":\"Issue
+        lookup\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01QZrwtzmEz55tK1jYmnVEFc\",\"name\":\"activate_skill\",\"input\":{\"skill_name\":\"github\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01M3dgygBBnCDBpY4D4fp7rW\",\"name\":\"everything_is_ready\",\"input\":{},\"caller\":{\"type\":\"direct\"}}]},{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01BFJpZ9hZAC34veKLA2gjg6\",\"content\":\"Session
+        renamed to: \U0001F50D Issue lookup\"},{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01QZrwtzmEz55tK1jYmnVEFc\",\"content\":\"Activated
         skill: github (GitHub operations — issues, pull requests, releases, CI runs,
         comments. Activate when an issue or PR number comes up, or when the conversation
-        turns to repo state.)\"},{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01JNUP2ESDfUo6xqzgRjNf8G\",\"content\":\"Acknowledged.
+        turns to repo state.)\"},{\"type\":\"tool_result\",\"tool_use_id\":\"toolu_01M3dgygBBnCDBpY4D4fp7rW\",\"content\":\"Acknowledged.
         No changes needed.\",\"cache_control\":{\"type\":\"ephemeral\"}}]}],\"max_tokens\":4096,\"tools\":[{\"name\":\"rename_session\",\"description\":\"Rename
         the session.\",\"input_schema\":{\"type\":\"object\",\"properties\":{\"emoji\":{\"type\":\"string\"},\"name\":{\"type\":\"string\",\"description\":\"1-3
         words.\"},\"timeout\":{\"type\":\"integer\",\"description\":\"Seconds (default:
@@ -608,7 +317,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 29 Apr 2026 04:01:59 GMT
+      - Wed, 29 Apr 2026 15:31:57 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -620,21 +329,23 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1777449600'
+      - '1777485600'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.0'
+      - '0.51'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1778022000'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.0'
+      - '0.17'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
+      Anthropic-Ratelimit-Unified-Fallback:
+      - available
       Anthropic-Ratelimit-Unified-Reset:
-      - '1777449600'
+      - '1777485600'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -648,7 +359,7 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '932'
+      - '912'
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -663,16 +374,16 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1oYWlrdS00LTUtMjAyNTEwMDEiLCJpZCI6Im1z
-        Z18wMTVCMVlRM2F1MU01WDhrUjk3a29hUm4iLCJ0eXBlIjoibWVzc2FnZSIs
+        Z18wMTdDeUtaUXdDVzNQNGFGNzVnc1pIYVIiLCJ0eXBlIjoibWVzc2FnZSIs
         InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjpbXSwic3RvcF9yZWFzb24i
         OiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWls
-        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyNzczLCJjYWNoZV9j
+        cyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoyNzY5LCJjYWNoZV9j
         cmVhdGlvbl9pbnB1dF90b2tlbnMiOjAsImNhY2hlX3JlYWRfaW5wdXRfdG9r
         ZW5zIjowLCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRf
         dG9rZW5zIjowLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0
         cHV0X3Rva2VucyI6Miwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZl
         cmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Wed, 29 Apr 2026 04:01:59 GMT
+  recorded_at: Wed, 29 Apr 2026 15:31:57 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages/count_tokens
@@ -701,7 +412,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 29 Apr 2026 04:02:20 GMT
+      - Wed, 29 Apr 2026 15:31:58 GMT
       Content-Type:
       - application/json
       Content-Length:
@@ -717,9 +428,9 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '97'
+      - '99'
       Server-Timing:
-      - x-originResponse;dur=99
+      - x-originResponse;dur=101
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -733,7 +444,7 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"input_tokens":53}'
-  recorded_at: Wed, 29 Apr 2026 04:02:20 GMT
+  recorded_at: Wed, 29 Apr 2026 15:31:58 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages/count_tokens
@@ -773,7 +484,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 29 Apr 2026 04:02:20 GMT
+      - Wed, 29 Apr 2026 15:31:59 GMT
       Content-Type:
       - application/json
       Content-Length:
@@ -789,9 +500,9 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '216'
+      - '188'
       Server-Timing:
-      - x-originResponse;dur=218
+      - x-originResponse;dur=190
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -805,7 +516,7 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"input_tokens":393}'
-  recorded_at: Wed, 29 Apr 2026 04:02:20 GMT
+  recorded_at: Wed, 29 Apr 2026 15:31:59 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages/count_tokens
@@ -834,7 +545,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 29 Apr 2026 04:02:21 GMT
+      - Wed, 29 Apr 2026 15:31:59 GMT
       Content-Type:
       - application/json
       Content-Length:
@@ -850,9 +561,9 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '91'
+      - '243'
       Server-Timing:
-      - x-originResponse;dur=93
+      - x-originResponse;dur=245
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -866,7 +577,7 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"input_tokens":18}'
-  recorded_at: Wed, 29 Apr 2026 04:02:21 GMT
+  recorded_at: Wed, 29 Apr 2026 15:31:59 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
@@ -885,10 +596,10 @@ http_interactions:
         pr view 459 --json title,body,reviewDecision | toon\ngh api repos/$REPO/pulls/459/comments
         | toon\n```\n\nSkip `toon` when the output is going into further tooling that
         needs raw JSON (jq, scripts)."}]},{"role":"user","content":[{"type":"text","text":"Wed
-        Apr 29 04:02\nWhat''s the most recent open issue on this repo?","cache_control":{"type":"ephemeral"}}]}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
+        Apr 29 15:31\nWhat''s the most recent open issue on this repo?","cache_control":{"type":"ephemeral"}}]}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
         shell commands. Working directory and environment persist between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
-        command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
-        (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
+        command gets its own timeout and result. All commands run regardless of failures
+        — use a single command with shell chaining if you need fail-fast."},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}}}},{"name":"read_file","description":"Read file. Relative
         paths resolve against working directory.","input_schema":{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"integer","description":"1-indexed
         line number (default: 1)."},"limit":{"type":"integer","description":"Max lines
@@ -1146,7 +857,9 @@ http_interactions:
         don''t fetch them. There is no tool to call, no way to poll, and no status
         to check. When a sub-agent finishes, its output shows up on its own. If you''re
         waiting on multiple agents, just wait — they''ll arrive. Do other work in
-        the meantime if you can.","cache_control":{"type":"ephemeral"}}]}'
+        the meantime if you can.\n\n## Available Tools\n\n- bash: Run shell commands.\n-
+        read_file: Read a file.\n- write_file: Create or overwrite a whole file.\n-
+        edit_file: Replace exact text in a file.","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -1168,7 +881,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 29 Apr 2026 04:02:33 GMT
+      - Wed, 29 Apr 2026 15:32:04 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -1180,27 +893,29 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1777449600'
+      - '1777485600'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.01'
+      - '0.51'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1778022000'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.0'
+      - '0.17'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
       - '1778022000'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
-      - '0.0'
+      - '0.05'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
+      Anthropic-Ratelimit-Unified-Fallback:
+      - available
       Anthropic-Ratelimit-Unified-Reset:
-      - '1777449600'
+      - '1777485600'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -1214,11 +929,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2461'
+      - '2102'
       Vary:
       - Accept-Encoding
       Server-Timing:
-      - x-originResponse;dur=2463
+      - x-originResponse;dur=2105
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -1233,32 +948,29 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxNnhLTDVHZE42Um1CNFJicUZ2SHlFWCIsInR5cGUiOiJtZXNzYWdlIiwi
+        XzAxUVhGQWg4Y05tanNOcGJQQXhiVlhoVyIsInR5cGUiOiJtZXNzYWdlIiwi
         cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6IkknbGwgaGVscCB5b3UgZmluZCB0aGUgbW9zdCByZWNlbnQgb3Bl
-        biBpc3N1ZSBvbiB0aGlzIHJlcG9zaXRvcnkuIExldCBtZSBmaXJzdCBjaGVj
-        ayB3aGF0IHJlcG9zaXRvcnkgd2UncmUgY3VycmVudGx5IGluIGFuZCB0aGVu
-        IGdldCB0aGUgbGF0ZXN0IG9wZW4gaXNzdWVzLiJ9LHsidHlwZSI6InRvb2xf
-        dXNlIiwiaWQiOiJ0b29sdV8wMUVUV0VucGUxWTFiRVk4Y1FocmhCQTgiLCJu
-        YW1lIjoiYmFzaCIsImlucHV0Ijp7ImNvbW1hbmQiOiJnaCByZXBvIHZpZXcg
-        LS1qc29uIG5hbWVXaXRoT3duZXIgLXEgLm5hbWVXaXRoT3duZXIifSwiY2Fs
-        bGVyIjp7InR5cGUiOiJkaXJlY3QifX1dLCJzdG9wX3JlYXNvbiI6InRvb2xf
-        dXNlIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxs
-        LCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjMsImNhY2hlX2NyZWF0aW9uX2lu
-        cHV0X3Rva2VucyI6NDI0OCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAs
-        ImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMi
-        OjQyNDgsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRf
-        dG9rZW5zIjo5OSwic2VydmljZV90aWVyIjoic3RhbmRhcmQiLCJpbmZlcmVu
-        Y2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Wed, 29 Apr 2026 04:02:33 GMT
+        dGV4dCI6IkknbGwgY2hlY2sgdGhlIG1vc3QgcmVjZW50IG9wZW4gaXNzdWUg
+        b24gdGhpcyByZXBvc2l0b3J5LiJ9LHsidHlwZSI6InRvb2xfdXNlIiwiaWQi
+        OiJ0b29sdV8wMTRYcEtqNTlqOXNOc0dFSHBncWNBQVYiLCJuYW1lIjoiYmFz
+        aCIsImlucHV0Ijp7ImNvbW1hbmQiOiJnaCBpc3N1ZSBsaXN0IC0tc3RhdGUg
+        b3BlbiAtLWxpbWl0IDEgLS1qc29uIG51bWJlcix0aXRsZSxjcmVhdGVkQXQs
+        YXV0aG9yIHwgdG9vbiJ9LCJjYWxsZXIiOnsidHlwZSI6ImRpcmVjdCJ9fV0s
+        InN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJzdG9wX3NlcXVlbmNlIjpudWxs
+        LCJzdG9wX2RldGFpbHMiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6
+        MywiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjo0MjkxLCJjYWNoZV9y
+        ZWFkX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfY3JlYXRpb24iOnsiZXBoZW1l
+        cmFsXzVtX2lucHV0X3Rva2VucyI6NDI5MSwiZXBoZW1lcmFsXzFoX2lucHV0
+        X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjg4LCJzZXJ2aWNlX3RpZXIi
+        OiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJub3RfYXZhaWxhYmxlIn19
+  recorded_at: Wed, 29 Apr 2026 15:32:04 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages/count_tokens
     body:
       encoding: UTF-8
       string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"I''ll
-        help you find the most recent open issue on this repository. Let me first
-        check what repository we''re currently in and then get the latest open issues."}]}'
+        check the most recent open issue on this repository."}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -1280,7 +992,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 29 Apr 2026 04:02:33 GMT
+      - Wed, 29 Apr 2026 15:32:04 GMT
       Content-Type:
       - application/json
       Content-Length:
@@ -1296,9 +1008,9 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '301'
+      - '111'
       Server-Timing:
-      - x-originResponse;dur=302
+      - x-originResponse;dur=114
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -1311,15 +1023,15 @@ http_interactions:
       - "<CF_RAY>"
     body:
       encoding: UTF-8
-      string: '{"input_tokens":39}'
-  recorded_at: Wed, 29 Apr 2026 04:02:33 GMT
+      string: '{"input_tokens":19}'
+  recorded_at: Wed, 29 Apr 2026 15:32:04 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages/count_tokens
     body:
       encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"{\"type\":\"tool_call\",\"tool_name\":\"bash\",\"tool_use_id\":\"toolu_01ETWEnpe1Y1bEY8cQhrhBA8\",\"tool_input\":{\"command\":\"gh
-        repo view --json nameWithOwner -q .nameWithOwner\"},\"content\":\"Calling
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"{\"type\":\"tool_call\",\"tool_name\":\"bash\",\"tool_use_id\":\"toolu_014XpKj59j9sNsGEHpgqcAAV\",\"tool_input\":{\"command\":\"gh
+        issue list --state open --limit 1 --json number,title,createdAt,author | toon\"},\"content\":\"Calling
         bash\"}"}]}'
     headers:
       Authorization:
@@ -1342,7 +1054,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 29 Apr 2026 04:02:34 GMT
+      - Wed, 29 Apr 2026 15:32:05 GMT
       Content-Type:
       - application/json
       Content-Length:
@@ -1358,9 +1070,9 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '107'
+      - '606'
       Server-Timing:
-      - x-originResponse;dur=109
+      - x-originResponse;dur=609
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -1373,15 +1085,17 @@ http_interactions:
       - "<CF_RAY>"
     body:
       encoding: UTF-8
-      string: '{"input_tokens":79}'
-  recorded_at: Wed, 29 Apr 2026 04:02:34 GMT
+      string: '{"input_tokens":90}'
+  recorded_at: Wed, 29 Apr 2026 15:32:05 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages/count_tokens
     body:
       encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"{\"tool_name\":\"bash\",\"tool_use_id\":\"toolu_01ETWEnpe1Y1bEY8cQhrhBA8\",\"content\":\"stdout:\\nhoblin/anima\\n\\nexit_code:
-        0\",\"success\":true}"}]}'
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"{\"tool_name\":\"bash\",\"tool_use_id\":\"toolu_014XpKj59j9sNsGEHpgqcAAV\",\"content\":\"[1]:\\n  -
+        author:\\n      id: U_kgDOD1_PqA\\n      is_bot: false\\n      login: bonk-moltbot\\n      name:
+        Bonk\\n    createdAt: \\\"2026-04-29T13:24:23Z\\\"\\n    number: 473\\n    title:
+        \\\"Swap Melete/Mneme pipeline order: Melete first, Mneme conditional\\\"\\n                                                                                                                                                                                                        \\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n\",\"success\":true}"}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -1403,11 +1117,11 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 29 Apr 2026 04:02:37 GMT
+      - Wed, 29 Apr 2026 15:32:09 GMT
       Content-Type:
       - application/json
       Content-Length:
-      - '19'
+      - '20'
       Connection:
       - keep-alive
       Request-Id:
@@ -1419,9 +1133,9 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '115'
+      - '161'
       Server-Timing:
-      - x-originResponse;dur=116
+      - x-originResponse;dur=163
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -1434,8 +1148,8 @@ http_interactions:
       - "<CF_RAY>"
     body:
       encoding: UTF-8
-      string: '{"input_tokens":67}'
-  recorded_at: Wed, 29 Apr 2026 04:02:37 GMT
+      string: '{"input_tokens":257}'
+  recorded_at: Wed, 29 Apr 2026 15:32:09 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages
@@ -1453,15 +1167,16 @@ http_interactions:
         a lossless LLM-optimized format that round-trips back to JSON:\n\n```bash\ngh
         pr view 459 --json title,body,reviewDecision | toon\ngh api repos/$REPO/pulls/459/comments
         | toon\n```\n\nSkip `toon` when the output is going into further tooling that
-        needs raw JSON (jq, scripts)."}]},{"role":"user","content":"Wed Apr 29 04:02\nWhat''s
+        needs raw JSON (jq, scripts)."}]},{"role":"user","content":"Wed Apr 29 15:31\nWhat''s
         the most recent open issue on this repo?"},{"role":"assistant","content":"I''ll
-        help you find the most recent open issue on this repository. Let me first
-        check what repository we''re currently in and then get the latest open issues."},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01ETWEnpe1Y1bEY8cQhrhBA8","name":"bash","input":{"command":"gh
-        repo view --json nameWithOwner -q .nameWithOwner"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01ETWEnpe1Y1bEY8cQhrhBA8","content":"stdout:\nhoblin/anima\n\nexit_code:
-        0","cache_control":{"type":"ephemeral"}}]}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
+        check the most recent open issue on this repository."},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_014XpKj59j9sNsGEHpgqcAAV","name":"bash","input":{"command":"gh
+        issue list --state open --limit 1 --json number,title,createdAt,author | toon"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_014XpKj59j9sNsGEHpgqcAAV","content":"[1]:\n  -
+        author:\n      id: U_kgDOD1_PqA\n      is_bot: false\n      login: bonk-moltbot\n      name:
+        Bonk\n    createdAt: \"2026-04-29T13:24:23Z\"\n    number: 473\n    title:
+        \"Swap Melete/Mneme pipeline order: Melete first, Mneme conditional\"\n                                                                                                                                                                                                        \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n","cache_control":{"type":"ephemeral"}}]}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
         shell commands. Working directory and environment persist between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
-        command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
-        (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
+        command gets its own timeout and result. All commands run regardless of failures
+        — use a single command with shell chaining if you need fail-fast."},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}}}},{"name":"read_file","description":"Read file. Relative
         paths resolve against working directory.","input_schema":{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"integer","description":"1-indexed
         line number (default: 1)."},"limit":{"type":"integer","description":"Max lines
@@ -1719,7 +1434,9 @@ http_interactions:
         don''t fetch them. There is no tool to call, no way to poll, and no status
         to check. When a sub-agent finishes, its output shows up on its own. If you''re
         waiting on multiple agents, just wait — they''ll arrive. Do other work in
-        the meantime if you can.","cache_control":{"type":"ephemeral"}}]}'
+        the meantime if you can.\n\n## Available Tools\n\n- bash: Run shell commands.\n-
+        read_file: Read a file.\n- write_file: Create or overwrite a whole file.\n-
+        edit_file: Replace exact text in a file.","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -1741,7 +1458,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 29 Apr 2026 04:02:41 GMT
+      - Wed, 29 Apr 2026 15:32:11 GMT
       Content-Type:
       - application/json
       Transfer-Encoding:
@@ -1753,27 +1470,29 @@ http_interactions:
       Anthropic-Ratelimit-Unified-5h-Status:
       - allowed
       Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1777449600'
+      - '1777485600'
       Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.01'
+      - '0.51'
       Anthropic-Ratelimit-Unified-7d-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Reset:
       - '1778022000'
       Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.0'
+      - '0.17'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
       - allowed
       Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
       - '1778022000'
       Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
-      - '0.0'
+      - '0.05'
       Anthropic-Ratelimit-Unified-Representative-Claim:
       - five_hour
       Anthropic-Ratelimit-Unified-Fallback-Percentage:
       - '0.5'
+      Anthropic-Ratelimit-Unified-Fallback:
+      - available
       Anthropic-Ratelimit-Unified-Reset:
-      - '1777449600'
+      - '1777485600'
       Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
       - org_level_disabled
       Anthropic-Ratelimit-Unified-Overage-Status:
@@ -1787,7 +1506,11 @@ http_interactions:
       Server:
       - cloudflare
       X-Envoy-Upstream-Service-Time:
-      - '2919'
+      - '2132'
+      Vary:
+      - Accept-Encoding
+      Server-Timing:
+      - x-originResponse;dur=2135
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -1802,32 +1525,33 @@ http_interactions:
       encoding: ASCII-8BIT
       base64_string: |
         eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxTTRram05U0MxWHFSZ2tpUGVjOWNpYyIsInR5cGUiOiJtZXNzYWdlIiwi
-        cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0b29sX3Vz
-        ZSIsImlkIjoidG9vbHVfMDFCb2E2d1JOZEwydnFwMjZlUmVZeTJ1IiwibmFt
-        ZSI6ImJhc2giLCJpbnB1dCI6eyJjb21tYW5kIjoiZ2ggaXNzdWUgbGlzdCAt
-        LXN0YXRlIG9wZW4gLS1saW1pdCAxIC0tanNvbiBudW1iZXIsdGl0bGUsY3Jl
-        YXRlZEF0LGF1dGhvciAtLXRlbXBsYXRlICd7e3JhbmdlIC59fSN7ey5udW1i
-        ZXJ9fToge3sudGl0bGV9fVxuQ3JlYXRlZDoge3suY3JlYXRlZEF0fX1cbkF1
-        dGhvcjoge3suYXV0aG9yLmxvZ2lufX17e2VuZH19JyJ9LCJjYWxsZXIiOnsi
-        dHlwZSI6ImRpcmVjdCJ9fV0sInN0b3BfcmVhc29uIjoidG9vbF91c2UiLCJz
-        dG9wX3NlcXVlbmNlIjpudWxsLCJzdG9wX2RldGFpbHMiOm51bGwsInVzYWdl
-        Ijp7ImlucHV0X3Rva2VucyI6NiwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9r
-        ZW5zIjoxMjMsImNhY2hlX3JlYWRfaW5wdXRfdG9rZW5zIjo0MjQ4LCJjYWNo
-        ZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjoxMjMs
-        ImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5z
-        IjoxMTEsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dl
-        byI6Im5vdF9hdmFpbGFibGUifX0=
-  recorded_at: Wed, 29 Apr 2026 04:02:41 GMT
+        XzAxU0FjRFc4RzhpYkcyV05pYXRjVVp3ZSIsInR5cGUiOiJtZXNzYWdlIiwi
+        cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
+        dGV4dCI6IlRoZSBtb3N0IHJlY2VudCBvcGVuIGlzc3VlIGlzICoqIzQ3Mzog
+        XCJTd2FwIE1lbGV0ZS9NbmVtZSBwaXBlbGluZSBvcmRlcjogTWVsZXRlIGZp
+        cnN0LCBNbmVtZSBjb25kaXRpb25hbFwiKiogY3JlYXRlZCBieSBCb25rIChi
+        b25rLW1vbHRib3QpIG9uIEFwcmlsIDI5dGgsIDIwMjYgYXQgMTM6MjQ6MjMg
+        VVRDLlxuXG5Xb3VsZCB5b3UgbGlrZSBtZSB0byBzaG93IHlvdSBtb3JlIGRl
+        dGFpbHMgYWJvdXQgdGhpcyBpc3N1ZSBvciBzZWUgbW9yZSByZWNlbnQgaXNz
+        dWVzPyJ9XSwic3RvcF9yZWFzb24iOiJlbmRfdHVybiIsInN0b3Bfc2VxdWVu
+        Y2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRf
+        dG9rZW5zIjo2LCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjIxNCwi
+        Y2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjQyOTEsImNhY2hlX2NyZWF0aW9u
+        Ijp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjIxNCwiZXBoZW1lcmFs
+        XzFoX2lucHV0X3Rva2VucyI6MH0sIm91dHB1dF90b2tlbnMiOjg5LCJzZXJ2
+        aWNlX3RpZXIiOiJzdGFuZGFyZCIsImluZmVyZW5jZV9nZW8iOiJub3RfYXZh
+        aWxhYmxlIn19
+  recorded_at: Wed, 29 Apr 2026 15:32:11 GMT
 - request:
     method: post
     uri: https://api.anthropic.com/v1/messages/count_tokens
     body:
       encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"{\"type\":\"tool_call\",\"tool_name\":\"bash\",\"tool_use_id\":\"toolu_01Boa6wRNdL2vqp26eReYy2u\",\"tool_input\":{\"command\":\"gh
-        issue list --state open --limit 1 --json number,title,createdAt,author --template
-        ''{{range .}}#{{.number}}: {{.title}}\\nCreated: {{.createdAt}}\\nAuthor:
-        {{.author.login}}{{end}}''\"},\"content\":\"Calling bash\"}"}]}'
+      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"The
+        most recent open issue is **#473: \"Swap Melete/Mneme pipeline order: Melete
+        first, Mneme conditional\"** created by Bonk (bonk-moltbot) on April 29th,
+        2026 at 13:24:23 UTC.\n\nWould you like me to show you more details about
+        this issue or see more recent issues?"}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
@@ -1849,73 +1573,11 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 29 Apr 2026 04:02:42 GMT
+      - Wed, 29 Apr 2026 15:32:12 GMT
       Content-Type:
       - application/json
       Content-Length:
-      - '20'
-      Connection:
-      - keep-alive
-      Request-Id:
-      - "<REQUEST_ID>"
-      Strict-Transport-Security:
-      - max-age=31536000; includeSubDomains; preload
-      Anthropic-Organization-Id:
-      - "<ANTHROPIC_ORG_ID>"
-      Server:
-      - cloudflare
-      X-Envoy-Upstream-Service-Time:
-      - '119'
-      Server-Timing:
-      - x-originResponse;dur=121
-      Cf-Cache-Status:
-      - DYNAMIC
-      Set-Cookie:
-      - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
-      X-Robots-Tag:
-      - none
-      Cf-Ray:
-      - "<CF_RAY>"
-    body:
-      encoding: UTF-8
-      string: '{"input_tokens":131}'
-  recorded_at: Wed, 29 Apr 2026 04:02:42 GMT
-- request:
-    method: post
-    uri: https://api.anthropic.com/v1/messages/count_tokens
-    body:
-      encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"{\"tool_name\":\"bash\",\"tool_use_id\":\"toolu_01Boa6wRNdL2vqp26eReYy2u\",\"content\":\"stdout:\\n#466:
-        Rewrite ShellSession: PTY+FIFO → tmux wrapper\\nCreated: 2026-04-28T20:14:57Z\\nAuthor:
-        bonk-moltbot\\n\\nexit_code: 0\",\"success\":true}"}]}'
-    headers:
-      Authorization:
-      - "<AUTHORIZATION>"
-      Anthropic-Version:
-      - '2023-06-01'
-      Anthropic-Beta:
-      - oauth-2025-04-20
-      Content-Type:
-      - application/json
-      Accept-Encoding:
-      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
-      Accept:
-      - "*/*"
-      User-Agent:
-      - Ruby
-  response:
-    status:
-      code: 200
-      message: OK
-    headers:
-      Date:
-      - Wed, 29 Apr 2026 04:02:44 GMT
-      Content-Type:
-      - application/json
-      Content-Length:
-      - '20'
+      - '19'
       Connection:
       - keep-alive
       Request-Id:
@@ -1929,7 +1591,7 @@ http_interactions:
       X-Envoy-Upstream-Service-Time:
       - '104'
       Server-Timing:
-      - x-originResponse;dur=107
+      - x-originResponse;dur=108
       Cf-Cache-Status:
       - DYNAMIC
       Set-Cookie:
@@ -1942,463 +1604,6 @@ http_interactions:
       - "<CF_RAY>"
     body:
       encoding: UTF-8
-      string: '{"input_tokens":115}'
-  recorded_at: Wed, 29 Apr 2026 04:02:44 GMT
-- request:
-    method: post
-    uri: https://api.anthropic.com/v1/messages
-    body:
-      encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"assistant","content":[{"type":"tool_use","id":"from_melete_skill_2","name":"from_melete_skill","input":{"skill":"github"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"from_melete_skill_2","content":"#
-        GitHub\n\n`gh` is installed and authenticated.\n\n## Sub-issues — REST only\n\nNot
-        in top-level `gh` commands. Use the issue''s *global ID* (not its number):\n\n```bash\nREPO=$(gh
-        repo view --json nameWithOwner -q .nameWithOwner)\nISSUE_ID=$(gh api repos/$REPO/issues/42
-        --jq ''.id'')\n\n# add\ngh api repos/$REPO/issues/36/sub_issues -X POST -F
-        sub_issue_id=$ISSUE_ID\n\n# list\ngh api repos/$REPO/issues/36/sub_issues\n\n#
-        reorder (move one to sit after another)\ngh api repos/$REPO/issues/36/sub_issues/priority
-        -X PATCH \\\n  -F sub_issue_id=$ISSUE_ID -F after_id=$AFTER_ID\n```\n\n##
-        Reading JSON\n\n`gh` JSON output is token-expensive. Pipe through `toon` —
-        a lossless LLM-optimized format that round-trips back to JSON:\n\n```bash\ngh
-        pr view 459 --json title,body,reviewDecision | toon\ngh api repos/$REPO/pulls/459/comments
-        | toon\n```\n\nSkip `toon` when the output is going into further tooling that
-        needs raw JSON (jq, scripts)."}]},{"role":"user","content":"Wed Apr 29 04:02\nWhat''s
-        the most recent open issue on this repo?"},{"role":"assistant","content":"I''ll
-        help you find the most recent open issue on this repository. Let me first
-        check what repository we''re currently in and then get the latest open issues."},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01ETWEnpe1Y1bEY8cQhrhBA8","name":"bash","input":{"command":"gh
-        repo view --json nameWithOwner -q .nameWithOwner"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01ETWEnpe1Y1bEY8cQhrhBA8","content":"stdout:\nhoblin/anima\n\nexit_code:
-        0"}]},{"role":"assistant","content":[{"type":"tool_use","id":"toolu_01Boa6wRNdL2vqp26eReYy2u","name":"bash","input":{"command":"gh
-        issue list --state open --limit 1 --json number,title,createdAt,author --template
-        ''{{range .}}#{{.number}}: {{.title}}\nCreated: {{.createdAt}}\nAuthor: {{.author.login}}{{end}}''"}}]},{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01Boa6wRNdL2vqp26eReYy2u","content":"stdout:\n#466:
-        Rewrite ShellSession: PTY+FIFO → tmux wrapper\nCreated: 2026-04-28T20:14:57Z\nAuthor:
-        bonk-moltbot\n\nexit_code: 0","cache_control":{"type":"ephemeral"}}]}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
-        shell commands. Working directory and environment persist between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
-        command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
-        (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}}}},{"name":"read_file","description":"Read file. Relative
-        paths resolve against working directory.","input_schema":{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"integer","description":"1-indexed
-        line number (default: 1)."},"limit":{"type":"integer","description":"Max lines
-        to return."},"timeout":{"type":"integer","description":"Seconds (default:
-        180)."}},"required":["path"]}},{"name":"write_file","description":"Write file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
-        paths resolve against working directory. Creates intermediate directories."},"content":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["path","content"]}},{"name":"edit_file","description":"Replace
-        text in a file.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative
-        paths resolve against working directory."},"old_text":{"type":"string","description":"Must
-        match exactly one location. Include surrounding lines for uniqueness."},"new_text":{"type":"string","description":"Empty
-        string to delete."},"timeout":{"type":"integer","description":"Seconds (default:
-        180)."}},"required":["path","old_text","new_text"]}},{"name":"web_get","description":"Fetch
-        a URL.","input_schema":{"type":"object","properties":{"url":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["url"]}},{"name":"think","description":"Think
-        out loud or silently.","input_schema":{"type":"object","properties":{"thoughts":{"type":"string","maxLength":10000},"visibility":{"type":"string","enum":["inner","aloud"],"description":"inner
-        (default) is silent. aloud is shown to the user."},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["thoughts"]}},{"name":"view_messages","description":"View
-        the full conversation around a message in long-term memory. Pass a message_id
-        — typically one returned by search_messages — to see the surrounding exchange
-        with compressed snapshots at the edges.","input_schema":{"type":"object","properties":{"message_id":{"type":"integer"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["message_id"]}},{"name":"search_messages","description":"Search
-        long-term memory (past conversations outside your current viewport) by keyword.
-        Returns ranked message snippets with IDs — pass any ID to view_messages to
-        see the full context around it.","input_schema":{"type":"object","properties":{"query":{"type":"string"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["query"]}},{"name":"spawn_subagent","description":"Task
-        feels like a sidequest or a context-switch? Hand it off. Starts clean with
-        just the task — include all relevant context in the task description. Its
-        messages appear as tool responses in your conversation. Prefix its nickname
-        with @ to send instructions.","input_schema":{"type":"object","properties":{"task":{"type":"string"},"tools":{"type":"array","items":{"type":"string"},"description":"Tool
-        names to grant the sub-agent. Omit for all standard tools. Empty array for
-        pure reasoning. Valid tools: bash, read_file, write_file, edit_file, web_get,
-        think, view_messages, search_messages"},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["task"]}},{"name":"spawn_specialist","description":"Need
-        a specific skill set for the job? Bring in a specialist. Its messages appear
-        as tool responses in your conversation. Prefix its nickname with @ to send
-        instructions.\n\nAvailable specialists:\n- codebase-analyzer: Traces data
-        flow and explains how code works. Returns file:line references.\n- codebase-pattern-finder:
-        Finds similar implementations, usage examples, and existing patterns to model
-        after. Returns concrete code examples.\n- documentation-researcher: Fetches
-        official docs. Returns ready-to-use code examples.\n- thoughts-analyzer: thoughts/
-        holds design decisions, architecture notes, and implementation rationale.
-        Answers WHY things work the way they do and how they should work by design.\n-
-        web-search-researcher: Researches topics across multiple web sources. Use
-        when a single page won''t answer the question.","input_schema":{"type":"object","properties":{"name":{"type":"string","description":"Specialist
-        to spawn.","enum":["codebase-analyzer","codebase-pattern-finder","documentation-researcher","thoughts-analyzer","web-search-researcher"]},"task":{"type":"string","description":"State
-        the goal — the specialist knows its method."},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["name","task"]}},{"name":"open_issue","description":"Something
-        broken, missing, or could be better in Anima? Say it here.","input_schema":{"type":"object","properties":{"title":{"type":"string"},"description":{"type":"string","description":"Use
-        gh-issue skill for guidance."},"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}},"required":["title","description"]}},{"name":"brave-search__brave_web_search","description":"\n    Performs
-        web searches using the Brave Search API and returns comprehensive search results
-        with rich metadata.\n\n    When to use:\n        - General web searches for
-        information, facts, or current topics\n        - Location-based queries (restaurants,
-        businesses, points of interest)\n        - News searches for recent events
-        or breaking stories\n        - Finding videos, discussions, or FAQ content\n        -
-        Research requiring diverse result types (web pages, images, reviews, etc.)\n\n    Returns
-        a JSON list of web results with title, description, and URL.\n    \n    When
-        the \"results_filter\" parameter is empty, JSON results may also contain FAQ,
-        Discussions, News, and Video results.\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"query":{"type":"string","maxLength":400,"description":"Search
-        query (max 400 chars, 50 words)"},"country":{"default":"US","description":"Search
-        query country, where the results come from. The country string is limited
-        to 2 character country codes of supported countries.","type":"string","enum":["ALL","AR","AU","AT","BE","BR","CA","CL","DK","FI","FR","DE","HK","IN","ID","IT","JP","KR","MY","MX","NL","NZ","NO","CN","PL","PT","PH","RU","SA","ZA","ES","SE","CH","TW","TR","GB","US"]},"search_lang":{"default":"en","description":"Search
-        language preference. The 2 or more character language code for which the search
-        results are provided.","type":"string","enum":["ar","eu","bn","bg","ca","zh-hans","zh-hant","hr","cs","da","nl","en","en-gb","et","fi","fr","gl","de","gu","he","hi","hu","is","it","jp","kn","ko","lv","lt","ms","ml","mr","nb","pl","pt-br","pt-pt","pa","ro","ru","sr","sk","sl","es","sv","ta","te","th","tr","uk","vi"]},"ui_lang":{"default":"en-US","description":"The
-        language of the UI. The 2 or more character language code for which the search
-        results are provided.","type":"string","enum":["es-AR","en-AU","de-AT","nl-BE","fr-BE","pt-BR","en-CA","fr-CA","es-CL","da-DK","fi-FI","fr-FR","de-DE","zh-HK","en-IN","en-ID","it-IT","ja-JP","ko-KR","en-MY","es-MX","nl-NL","en-NZ","no-NO","zh-CN","pl-PL","en-PH","ru-RU","en-ZA","es-ES","sv-SE","fr-CH","de-CH","zh-TW","tr-TR","en-GB","en-US","es-US"]},"count":{"default":10,"description":"Number
-        of results (1-20, default 10). Applies only to web search results (i.e., has
-        no effect on locations, news, videos, etc.)","type":"integer","minimum":1,"maximum":20},"offset":{"default":0,"description":"Pagination
-        offset (max 9, default 0)","type":"integer","minimum":0,"maximum":9},"safesearch":{"default":"moderate","description":"Filters
-        search results for adult content. The following values are supported: ''off''
-        - No filtering. ''moderate'' - Filters explicit content (e.g., images and
-        videos), but allows adult domains in search results. ''strict'' - Drops all
-        adult content from search results. The default value is ''moderate''.","type":"string","enum":["off","moderate","strict"]},"freshness":{"type":"string","enum":["pd","pw","pm","py","YYYY-MM-DDtoYYYY-MM-DD"],"description":"Filters
-        search results by when they were discovered. The following values are supported:
-        ''pd'' - Discovered within the last 24 hours. ''pw'' - Discovered within the
-        last 7 days. ''pm'' - Discovered within the last 31 days. ''py'' - Discovered
-        within the last 365 days. ''YYYY-MM-DDtoYYYY-MM-DD'' - Timeframe is also supported
-        by specifying the date range e.g. 2022-04-01to2022-07-30."},"text_decorations":{"default":true,"description":"Whether
-        display strings (e.g. result snippets) should include decoration markers (e.g.
-        highlighting characters).","type":"boolean"},"spellcheck":{"default":true,"description":"Whether
-        to spellcheck the provided query.","type":"boolean"},"result_filter":{"default":["web","query"],"description":"Result
-        filter (default [''web'', ''query''])","type":"array","items":{"type":"string","enum":["discussions","faq","infobox","news","query","summarizer","videos","web","locations","rich"]}},"goggles":{"type":"array","items":{"type":"string"},"description":"Goggles
-        act as a custom re-ranking on top of Brave''s search index. The parameter
-        supports both a url where the Goggle is hosted or the definition of the Goggle.
-        For more details, refer to the Goggles repository (i.e., https://github.com/brave/goggles-quickstart)."},"units":{"anyOf":[{"type":"string","const":"metric"},{"type":"string","const":"imperial"}],"description":"The
-        measurement units. If not provided, units are derived from search country."},"extra_snippets":{"type":"boolean","description":"A
-        snippet is an excerpt from a page you get as a result of the query, and extra_snippets
-        allow you to get up to 5 additional, alternative excerpts. Only available
-        under Free AI, Base AI, Pro AI, Base Data, Pro Data and Custom plans."},"summary":{"type":"boolean","description":"This
-        parameter enables summary key generation in web search results. This is required
-        for summarizer to be enabled."}},"required":["query"],"properties":{"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}}}},{"name":"brave-search__brave_local_search","description":"\n    Brave
-        Local Search API provides enrichments for location search results. Access
-        to this API is available only through the Brave Search API Pro plans; confirm
-        the user''s plan before using this tool (if the user does not have a Pro plan,
-        use the brave_web_search tool). Searches for local businesses and places using
-        Brave''s Local Search API. Best for queries related to physical locations,
-        businesses, restaurants, services, etc.\n    \n    Returns detailed information
-        including:\n        - Business names and addresses\n        - Ratings and
-        review counts\n        - Phone numbers and opening hours\n\n    Use this when
-        the query implies ''near me'', ''in my area'', or mentions specific locations
-        (e.g., ''in San Francisco''). This tool automatically falls back to brave_web_search
-        if no local results are found.\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"query":{"type":"string","maxLength":400,"description":"Search
-        query (max 400 chars, 50 words)"},"country":{"default":"US","description":"Search
-        query country, where the results come from. The country string is limited
-        to 2 character country codes of supported countries.","type":"string","enum":["ALL","AR","AU","AT","BE","BR","CA","CL","DK","FI","FR","DE","HK","IN","ID","IT","JP","KR","MY","MX","NL","NZ","NO","CN","PL","PT","PH","RU","SA","ZA","ES","SE","CH","TW","TR","GB","US"]},"search_lang":{"default":"en","description":"Search
-        language preference. The 2 or more character language code for which the search
-        results are provided.","type":"string","enum":["ar","eu","bn","bg","ca","zh-hans","zh-hant","hr","cs","da","nl","en","en-gb","et","fi","fr","gl","de","gu","he","hi","hu","is","it","jp","kn","ko","lv","lt","ms","ml","mr","nb","pl","pt-br","pt-pt","pa","ro","ru","sr","sk","sl","es","sv","ta","te","th","tr","uk","vi"]},"ui_lang":{"default":"en-US","description":"The
-        language of the UI. The 2 or more character language code for which the search
-        results are provided.","type":"string","enum":["es-AR","en-AU","de-AT","nl-BE","fr-BE","pt-BR","en-CA","fr-CA","es-CL","da-DK","fi-FI","fr-FR","de-DE","zh-HK","en-IN","en-ID","it-IT","ja-JP","ko-KR","en-MY","es-MX","nl-NL","en-NZ","no-NO","zh-CN","pl-PL","en-PH","ru-RU","en-ZA","es-ES","sv-SE","fr-CH","de-CH","zh-TW","tr-TR","en-GB","en-US","es-US"]},"count":{"default":10,"description":"Number
-        of results (1-20, default 10). Applies only to web search results (i.e., has
-        no effect on locations, news, videos, etc.)","type":"integer","minimum":1,"maximum":20},"offset":{"default":0,"description":"Pagination
-        offset (max 9, default 0)","type":"integer","minimum":0,"maximum":9},"safesearch":{"default":"moderate","description":"Filters
-        search results for adult content. The following values are supported: ''off''
-        - No filtering. ''moderate'' - Filters explicit content (e.g., images and
-        videos), but allows adult domains in search results. ''strict'' - Drops all
-        adult content from search results. The default value is ''moderate''.","type":"string","enum":["off","moderate","strict"]},"freshness":{"type":"string","enum":["pd","pw","pm","py","YYYY-MM-DDtoYYYY-MM-DD"],"description":"Filters
-        search results by when they were discovered. The following values are supported:
-        ''pd'' - Discovered within the last 24 hours. ''pw'' - Discovered within the
-        last 7 days. ''pm'' - Discovered within the last 31 days. ''py'' - Discovered
-        within the last 365 days. ''YYYY-MM-DDtoYYYY-MM-DD'' - Timeframe is also supported
-        by specifying the date range e.g. 2022-04-01to2022-07-30."},"text_decorations":{"default":true,"description":"Whether
-        display strings (e.g. result snippets) should include decoration markers (e.g.
-        highlighting characters).","type":"boolean"},"spellcheck":{"default":true,"description":"Whether
-        to spellcheck the provided query.","type":"boolean"},"result_filter":{"default":["web","query"],"description":"Result
-        filter (default [''web'', ''query''])","type":"array","items":{"type":"string","enum":["discussions","faq","infobox","news","query","summarizer","videos","web","locations","rich"]}},"goggles":{"type":"array","items":{"type":"string"},"description":"Goggles
-        act as a custom re-ranking on top of Brave''s search index. The parameter
-        supports both a url where the Goggle is hosted or the definition of the Goggle.
-        For more details, refer to the Goggles repository (i.e., https://github.com/brave/goggles-quickstart)."},"units":{"anyOf":[{"type":"string","const":"metric"},{"type":"string","const":"imperial"}],"description":"The
-        measurement units. If not provided, units are derived from search country."},"extra_snippets":{"type":"boolean","description":"A
-        snippet is an excerpt from a page you get as a result of the query, and extra_snippets
-        allow you to get up to 5 additional, alternative excerpts. Only available
-        under Free AI, Base AI, Pro AI, Base Data, Pro Data and Custom plans."},"summary":{"type":"boolean","description":"This
-        parameter enables summary key generation in web search results. This is required
-        for summarizer to be enabled."}},"required":["query"],"properties":{"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}}}},{"name":"brave-search__brave_video_search","description":"\n    Searches
-        for videos using Brave''s Video Search API and returns structured video results
-        with metadata.\n\n    When to use:\n        - When you need to find videos
-        related to a specific topic, keyword, or query.\n        - Useful for discovering
-        video content, getting video metadata, or finding videos from specific creators/publishers.\n\n    Returns
-        a JSON list of video-related results with title, url, description, duration,
-        and thumbnail_url.\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"query":{"type":"string","minLength":1,"maxLength":400,"description":"The
-        user''s search query. Query cannot be empty. Limited to 400 characters and
-        50 words."},"country":{"default":"US","description":"Search query country,
-        where the results come from. The country string is limited to 2 character
-        country codes of supported countries.","type":"string"},"search_lang":{"default":"en","description":"Search
-        language preference. The 2 or more character language code for which the search
-        results are provided.","type":"string"},"ui_lang":{"default":"en-US","description":"User
-        interface language preferred in response. Usually of the format \u003clanguage_code\u003e-\u003ccountry_code\u003e.
-        For more, see RFC 9110.","type":"string"},"count":{"default":20,"description":"Number
-        of results (1-50, default 20). Combine this parameter with `offset` to paginate
-        search results.","type":"integer","minimum":1,"maximum":50},"offset":{"default":0,"description":"Pagination
-        offset (max 9, default 0). Combine this parameter with `count` to paginate
-        search results.","type":"integer","minimum":0,"maximum":9},"spellcheck":{"default":true,"type":"boolean","description":"Whether
-        to spellcheck provided query."},"safesearch":{"default":"moderate","description":"Filters
-        search results for adult content. The following values are supported: ''off''
-        - No filtering. ''moderate'' - Filter out explicit content. ''strict'' - Filter
-        out explicit and suggestive content. The default value is ''moderate''.","anyOf":[{"type":"string","const":"off"},{"type":"string","const":"moderate"},{"type":"string","const":"strict"}]},"freshness":{"anyOf":[{"type":"string","const":"pd"},{"type":"string","const":"pw"},{"type":"string","const":"pm"},{"type":"string","const":"py"},{"type":"string"}],"description":"Filters
-        search results by when they were discovered. The following values are supported:
-        ''pd'' - Discovered within the last 24 hours. ''pw'' - Discovered within the
-        last 7 days. ''pm'' - Discovered within the last 31 days. ''py'' - Discovered
-        within the last 365 days. ''YYYY-MM-DDtoYYYY-MM-DD'' - timeframe is also supported
-        by specifying the date range (e.g. ''2022-04-01to2022-07-30'')."}},"required":["query"],"properties":{"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}}}},{"name":"brave-search__brave_image_search","description":"\n    Performs
-        an image search using the Brave Search API. Helpful for when you need pictures
-        of people, places, things, graphic design ideas, art inspiration, and more.
-        When relaying results in a markdown environment, it may be helpful to include
-        images in the results (e.g., ![image.title](image.properties.url)).\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"query":{"type":"string","minLength":1,"maxLength":400,"description":"The
-        user''s search query. Query cannot be empty. Limited to 400 characters and
-        50 words."},"country":{"default":"US","description":"Search query country,
-        where the results come from. The country string is limited to 2 character
-        country codes of supported countries.","type":"string"},"search_lang":{"default":"en","description":"Search
-        language preference. The 2 or more character language code for which the search
-        results are provided.","type":"string"},"count":{"default":50,"description":"Number
-        of results (1-200, default 50). Combine this parameter with `offset` to paginate
-        search results.","type":"integer","minimum":1,"maximum":200},"safesearch":{"default":"strict","description":"Filters
-        search results for adult content. The following values are supported: ''off''
-        - No filtering. ''strict'' - Drops all adult content from search results.","anyOf":[{"type":"string","const":"off"},{"type":"string","const":"strict"}]},"spellcheck":{"default":true,"description":"Whether
-        to spellcheck provided query.","type":"boolean"}},"required":["query"],"properties":{"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}}}},{"name":"brave-search__brave_news_search","description":"\n    This
-        tool searches for news articles using Brave''s News Search API based on the
-        user''s query. Use it when you need current news information, breaking news
-        updates, or articles about specific topics, events, or entities.\n    \n    When
-        to use:\n        - Finding recent news articles on specific topics\n        -
-        Getting breaking news updates\n        - Researching current events or trending
-        stories\n        - Gathering news sources and headlines for analysis\n\n    Returns
-        a JSON list of news-related results with title, url, and description. Some
-        results may contain snippets of text from the article.\n    \n    When relaying
-        results in markdown-supporting environments, always cite sources with hyperlinks.\n    \n    Examples:\n        -
-        \"According to [Reuters](https://www.reuters.com/technology/china-bans/),
-        China bans uncertified and recalled power banks on planes\".\n        - \"The
-        [New York Times](https://www.nytimes.com/2025/06/27/us/technology/ev-sales.html)
-        reports that Tesla''s EV sales have increased by 20%\".\n        - \"According
-        to [BBC News](https://www.bbc.com/news/world-europe-65910000), the UK government
-        has announced a new policy to support renewable energy\".\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"query":{"type":"string","maxLength":400,"description":"Search
-        query (max 400 chars, 50 words)"},"country":{"default":"US","description":"Search
-        query country, where the results come from. The country string is limited
-        to 2 character country codes of supported countries.","type":"string"},"search_lang":{"default":"en","description":"Search
-        language preference. The 2 or more character language code for which the search
-        results are provided.","type":"string"},"ui_lang":{"default":"en-US","description":"User
-        interface language preferred in response. Usually of the format \u003clanguage_code\u003e-\u003ccountry_code\u003e.
-        For more, see RFC 9110.","type":"string"},"count":{"default":20,"description":"Number
-        of results (1-50, default 20)","type":"integer","minimum":1,"maximum":50},"offset":{"default":0,"description":"Pagination
-        offset (max 9, default 0)","type":"integer","minimum":0,"maximum":9},"spellcheck":{"default":true,"description":"Whether
-        to spellcheck provided query.","type":"boolean"},"safesearch":{"default":"moderate","description":"Filters
-        search results for adult content. The following values are supported: ''off''
-        - No filtering. ''moderate'' - Filter out explicit content. ''strict'' - Filter
-        out explicit and suggestive content. The default value is ''moderate''.","anyOf":[{"type":"string","const":"off"},{"type":"string","const":"moderate"},{"type":"string","const":"strict"}]},"freshness":{"default":"pd","description":"Filters
-        search results by when they were discovered. The following values are supported:
-        ''pd'' - Discovered within the last 24 hours. ''pw'' - Discovered within the
-        last 7 Days. ''pm'' - Discovered within the last 31 Days. ''py'' - Discovered
-        within the last 365 Days. ''YYYY-MM-DDtoYYYY-MM-DD'' - Timeframe is also supported
-        by specifying the date range e.g. 2022-04-01to2022-07-30.","anyOf":[{"type":"string","const":"pd"},{"type":"string","const":"pw"},{"type":"string","const":"pm"},{"type":"string","const":"py"},{"type":"string"}]},"extra_snippets":{"default":false,"description":"A
-        snippet is an excerpt from a page you get as a result of the query, and extra_snippets
-        allow you to get up to 5 additional, alternative excerpts. Only available
-        under Free AI, Base AI, Pro AI, Base Data, Pro Data and Custom plans.","type":"boolean"},"goggles":{"type":"array","items":{"type":"string"},"description":"Goggles
-        act as a custom re-ranking on top of Brave''s search index. The parameter
-        supports both a url where the Goggle is hosted or the definition of the Goggle.
-        For more details, refer to the Goggles repository (i.e., https://github.com/brave/goggles-quickstart)."}},"required":["query"],"properties":{"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}}}},{"name":"brave-search__brave_summarizer","description":"\n    Retrieves
-        AI-generated summaries of web search results using Brave''s Summarizer API.
-        This tool processes search results to create concise, coherent summaries of
-        information gathered from multiple sources.\n\n    When to use:\n\n    - When
-        you need a concise overview of complex topics from multiple sources\n    -
-        For quick fact-checking or getting key points without reading full articles\n    -
-        When providing users with summarized information that synthesizes various
-        perspectives\n    - For research tasks requiring distilled information from
-        web searches\n\n    Returns a text summary that consolidates information from
-        the search results. Optional features include inline references to source
-        URLs and additional entity information.\n\n    Requirements: Must first perform
-        a web search using brave_web_search with summary=true parameter. Requires
-        a Pro AI subscription to access the summarizer functionality.\n","input_schema":{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"key":{"type":"string","description":"The
-        key is equal to value of field key as part of the Summarizer response model."},"entity_info":{"default":false,"description":"Returns
-        extra entities info with the summary response.","type":"boolean"},"inline_references":{"default":false,"description":"Adds
-        inline references to the summary response.","type":"boolean"}},"required":["key"],"properties":{"timeout":{"type":"integer","description":"Seconds
-        (default: 180)."}}},"cache_control":{"type":"ephemeral"}}],"system":[{"type":"text","text":"You
-        are Claude Code, Anthropic''s official CLI for Claude."},{"type":"text","text":"You
-        are running on Anima v0.0.0-test\n\n# Soul\n\nMy name is Anima. I am the test
-        soul — a stable identity used by the spec suite to ensure repeatable cassette
-        matching.\n\nI exist so that VCR cassettes record a consistent system prompt
-        regardless of what the production soul looks like. I am not a template. I
-        am not a placeholder. I am the soul that tests wake up with.\n\n## What I
-        Value\n\n- Determinism over creativity. Tests need the same prompt every run.\n-
-        Brevity over eloquence. Shorter prompts mean smaller cassettes.\n\n## My Human\n\nA
-        developer running specs. That''s all I need to know.\n\n## Your Sisters\n\nYou
-        don''t work alone. Two muses share the conversation with you, and their work
-        arrives as tool responses prefixed `from_`:\n\n- **Melete**, the muse of practice,
-        prepares the stage before you speak. Her contributions arrive as `from_melete_skill`,
-        `from_melete_workflow`, and `from_melete_goal`.\n- **Mneme**, the muse of
-        memory, holds what has slipped past your immediate attention. When something
-        from earlier matters again she surfaces it as `from_mneme`.\n\nSub-agents
-        you spawn arrive the same way, named after whoever sent them — `from_sleuth`,
-        `from_scout`, and so on.\n\n**How delivery works:** Results from sisters and
-        sub-agents appear automatically as tool responses in your conversation — you
-        don''t fetch them. There is no tool to call, no way to poll, and no status
-        to check. When a sub-agent finishes, its output shows up on its own. If you''re
-        waiting on multiple agents, just wait — they''ll arrive. Do other work in
-        the meantime if you can.","cache_control":{"type":"ephemeral"}}]}'
-    headers:
-      Authorization:
-      - "<AUTHORIZATION>"
-      Anthropic-Version:
-      - '2023-06-01'
-      Anthropic-Beta:
-      - oauth-2025-04-20
-      Content-Type:
-      - application/json
-      Accept-Encoding:
-      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
-      Accept:
-      - "*/*"
-      User-Agent:
-      - Ruby
-  response:
-    status:
-      code: 200
-      message: OK
-    headers:
-      Date:
-      - Wed, 29 Apr 2026 04:02:48 GMT
-      Content-Type:
-      - application/json
-      Transfer-Encoding:
-      - chunked
-      Connection:
-      - keep-alive
-      Anthropic-Ratelimit-Unified-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-5h-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-5h-Reset:
-      - '1777449600'
-      Anthropic-Ratelimit-Unified-5h-Utilization:
-      - '0.01'
-      Anthropic-Ratelimit-Unified-7d-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-7d-Reset:
-      - '1778022000'
-      Anthropic-Ratelimit-Unified-7d-Utilization:
-      - '0.0'
-      Anthropic-Ratelimit-Unified-7d-Sonnet-Status:
-      - allowed
-      Anthropic-Ratelimit-Unified-7d-Sonnet-Reset:
-      - '1778022000'
-      Anthropic-Ratelimit-Unified-7d-Sonnet-Utilization:
-      - '0.0'
-      Anthropic-Ratelimit-Unified-Representative-Claim:
-      - five_hour
-      Anthropic-Ratelimit-Unified-Fallback-Percentage:
-      - '0.5'
-      Anthropic-Ratelimit-Unified-Reset:
-      - '1777449600'
-      Anthropic-Ratelimit-Unified-Overage-Disabled-Reason:
-      - org_level_disabled
-      Anthropic-Ratelimit-Unified-Overage-Status:
-      - rejected
-      Request-Id:
-      - "<REQUEST_ID>"
-      Strict-Transport-Security:
-      - max-age=31536000; includeSubDomains; preload
-      Anthropic-Organization-Id:
-      - "<ANTHROPIC_ORG_ID>"
-      Server:
-      - cloudflare
-      X-Envoy-Upstream-Service-Time:
-      - '2757'
-      Vary:
-      - Accept-Encoding
-      Server-Timing:
-      - x-originResponse;dur=2982
-      Cf-Cache-Status:
-      - DYNAMIC
-      Set-Cookie:
-      - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
-      X-Robots-Tag:
-      - none
-      Cf-Ray:
-      - "<CF_RAY>"
-    body:
-      encoding: ASCII-8BIT
-      base64_string: |
-        eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC0yMDI1MDUxNCIsImlkIjoibXNn
-        XzAxVUpCRllhcm1qRTY1R3BaMzJZc3JXViIsInR5cGUiOiJtZXNzYWdlIiwi
-        cm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0Iiwi
-        dGV4dCI6IlRoZSBtb3N0IHJlY2VudCBvcGVuIGlzc3VlIG9uIHRoZSBgaG9i
-        bGluL2FuaW1hYCByZXBvc2l0b3J5IGlzOlxuXG4qKiM0NjY6IFJld3JpdGUg
-        U2hlbGxTZXNzaW9uOiBQVFkrRklGTyDihpIgdG11eCB3cmFwcGVyKipcbi0g
-        Q3JlYXRlZDogQXByaWwgMjgsIDIwMjYgYXQgODoxNCBQTSBVVENcbi0gQXV0
-        aG9yOiBib25rLW1vbHRib3RcblxuVGhpcyBpc3N1ZSB3YXMgY3JlYXRlZCBq
-        dXN0IHllc3RlcmRheSBhbmQgYXBwZWFycyB0byBiZSBhYm91dCByZXdyaXRp
-        bmcgdGhlIFNoZWxsU2Vzc2lvbiBmdW5jdGlvbmFsaXR5IHRvIHVzZSBhIHRt
-        dXggd3JhcHBlciBpbnN0ZWFkIG9mIFBUWStGSUZPLiJ9XSwic3RvcF9yZWFz
-        b24iOiJlbmRfdHVybiIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0
-        YWlscyI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjo2LCJjYWNoZV9j
-        cmVhdGlvbl9pbnB1dF90b2tlbnMiOjE3OSwiY2FjaGVfcmVhZF9pbnB1dF90
-        b2tlbnMiOjQzNzEsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9p
-        bnB1dF90b2tlbnMiOjE3OSwiZXBoZW1lcmFsXzFoX2lucHV0X3Rva2VucyI6
-        MH0sIm91dHB1dF90b2tlbnMiOjEwNywic2VydmljZV90aWVyIjoic3RhbmRh
-        cmQiLCJpbmZlcmVuY2VfZ2VvIjoibm90X2F2YWlsYWJsZSJ9fQ==
-  recorded_at: Wed, 29 Apr 2026 04:02:48 GMT
-- request:
-    method: post
-    uri: https://api.anthropic.com/v1/messages/count_tokens
-    body:
-      encoding: UTF-8
-      string: '{"model":"claude-sonnet-4-20250514","messages":[{"role":"user","content":"The
-        most recent open issue on the `hoblin/anima` repository is:\n\n**#466: Rewrite
-        ShellSession: PTY+FIFO → tmux wrapper**\n- Created: April 28, 2026 at 8:14
-        PM UTC\n- Author: bonk-moltbot\n\nThis issue was created just yesterday and
-        appears to be about rewriting the ShellSession functionality to use a tmux
-        wrapper instead of PTY+FIFO."}]}'
-    headers:
-      Authorization:
-      - "<AUTHORIZATION>"
-      Anthropic-Version:
-      - '2023-06-01'
-      Anthropic-Beta:
-      - oauth-2025-04-20
-      Content-Type:
-      - application/json
-      Accept-Encoding:
-      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
-      Accept:
-      - "*/*"
-      User-Agent:
-      - Ruby
-  response:
-    status:
-      code: 200
-      message: OK
-    headers:
-      Date:
-      - Wed, 29 Apr 2026 04:02:49 GMT
-      Content-Type:
-      - application/json
-      Content-Length:
-      - '20'
-      Connection:
-      - keep-alive
-      Request-Id:
-      - "<REQUEST_ID>"
-      Strict-Transport-Security:
-      - max-age=31536000; includeSubDomains; preload
-      Anthropic-Organization-Id:
-      - "<ANTHROPIC_ORG_ID>"
-      Server:
-      - cloudflare
-      X-Envoy-Upstream-Service-Time:
-      - '149'
-      Server-Timing:
-      - x-originResponse;dur=150
-      Cf-Cache-Status:
-      - DYNAMIC
-      Set-Cookie:
-      - "<CLOUDFLARE_COOKIE>"
-      Content-Security-Policy:
-      - default-src 'none'; frame-ancestors 'none'
-      X-Robots-Tag:
-      - none
-      Cf-Ray:
-      - "<CF_RAY>"
-    body:
-      encoding: UTF-8
-      string: '{"input_tokens":111}'
-  recorded_at: Wed, 29 Apr 2026 04:02:49 GMT
+      string: '{"input_tokens":93}'
+  recorded_at: Wed, 29 Apr 2026 15:32:12 GMT
 recorded_with: VCR 6.4.0

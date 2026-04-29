@@ -22,7 +22,7 @@
 #
 # @see Session#enqueue_user_message
 # @see DrainJob — promotes PMs into Messages
-# @see Events::StartMneme
+# @see Events::StartMelete
 # @see Events::StartProcessing
 class PendingMessage < ApplicationRecord
   # Phantom tool names follow the `from_<sender>` convention: the prefix
@@ -77,12 +77,14 @@ class PendingMessage < ApplicationRecord
   MESSAGE_TYPES = MESSAGE_TYPE_KINDS.keys.freeze
 
   # Routes active message types to the event that begins the drain pipeline.
-  # User messages enrich context first (Mneme → Melete → Processing);
-  # tool responses and sub-agent deliveries bypass enrichment and go
+  # User messages enter through Melete (skill/workflow/goal preparation);
+  # Mneme then runs conditionally only when Melete actually mutates goals
+  # (set_goal / update_goal), so recall always fires against fresh goals.
+  # Tool responses and sub-agent deliveries bypass enrichment and go
   # straight to the drain loop. Background message types route to nothing
   # — they wait in the mailbox until an active turn drains them.
   MESSAGE_TYPE_ROUTES = {
-    "user_message" => Events::StartMneme,
+    "user_message" => Events::StartMelete,
     "tool_response" => Events::StartProcessing,
     "subagent" => Events::StartProcessing
   }.freeze

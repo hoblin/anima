@@ -37,7 +37,8 @@ class Goal < ApplicationRecord
   scope :evictable, -> { completed.where(evicted_at: nil) }
 
   after_commit :broadcast_goals_update
-  after_commit :schedule_passive_recall, on: [:create, :update]
+  after_commit :emit_goal_created, on: :create
+  after_commit :emit_goal_updated, on: :update, if: :saved_change_to_description?
 
   # @return [Boolean] true if this goal has been completed
   def completed? = status == "completed"
@@ -107,14 +108,24 @@ class Goal < ApplicationRecord
     errors.add(:parent_goal, "cannot nest deeper than two levels")
   end
 
-  # Triggers passive recall when goals change so relevant memories
-  # surface in the viewport automatically.
+  # Announces a freshly created goal so the active drain pipeline can
+  # decide whether Mneme should recall against the updated goal set.
+  # Only {MeleteEnrichmentJob}'s scoped listener observes these events;
+  # outside of a Melete run they are silently dropped.
   #
   # @return [void]
-  def schedule_passive_recall
-    return if session.sub_agent?
+  def emit_goal_created
+    Events::Bus.emit(Events::GoalCreated.new(session_id: session_id, goal_id: id))
+  end
 
-    PassiveRecallJob.perform_later(session_id)
+  # Announces a description-level change to an existing goal. Status-only
+  # updates (finish, cascade, mark_goal_completed) are filtered out by the
+  # +saved_change_to_description?+ guard on the callback — a completed goal
+  # carries no new search seed for Mneme.
+  #
+  # @return [void]
+  def emit_goal_updated
+    Events::Bus.emit(Events::GoalUpdated.new(session_id: session_id, goal_id: id))
   end
 
   # Broadcasts goal changes to all clients subscribed to this session.

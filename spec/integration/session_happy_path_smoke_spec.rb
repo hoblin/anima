@@ -4,7 +4,7 @@ require "rails_helper"
 
 # End-to-end smoke test for the happy path of a main session: a user
 # message enters through the same entry point the client uses, flows
-# through the full event-driven drain pipeline (Mneme → Melete → Drain),
+# through the full event-driven drain pipeline (Melete → (Mneme) → Drain),
 # and produces an assistant response.
 #
 # The prompt is deliberately open-ended — we're testing an agent, not a
@@ -41,6 +41,6 @@ RSpec.describe "Session happy path smoke", vcr: {match_requests_on: [:method, :u
     session.reload
 
     final_answer = session.messages.where(message_type: "agent_message").last&.payload&.dig("content")
-    expect(final_answer).to include("466")
+    expect(final_answer).to include("473")
   end
 end

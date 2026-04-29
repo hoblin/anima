@@ -138,11 +138,11 @@ RSpec.describe PendingMessage do
     before { allow(Events::Bus).to receive(:emit).and_call_original }
 
     context "when session is idle" do
-      it "emits StartMneme for user_message" do
+      it "emits StartMelete for user_message" do
         pm = create(:pending_message, session: session)
 
         expect(Events::Bus).to have_received(:emit).with(
-          an_instance_of(Events::StartMneme).and(have_attributes(session_id: session.id, pending_message_id: pm.id))
+          an_instance_of(Events::StartMelete).and(have_attributes(session_id: session.id, pending_message_id: pm.id))
         )
       end
 
@@ -166,7 +166,7 @@ RSpec.describe PendingMessage do
         create(:pending_message, :from_mneme, session: session)
 
         expect(Events::Bus).not_to have_received(:emit).with(
-          an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
+          an_instance_of(Events::StartMelete).or(an_instance_of(Events::StartProcessing))
         )
       end
     end
@@ -178,7 +178,7 @@ RSpec.describe PendingMessage do
         create(:pending_message, session: session)
 
         expect(Events::Bus).not_to have_received(:emit).with(
-          an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
+          an_instance_of(Events::StartMelete).or(an_instance_of(Events::StartProcessing))
         )
       end
     end
@@ -193,7 +193,7 @@ RSpec.describe PendingMessage do
         create(:pending_message, :tool_response, session: session, tool_use_id: "tu_1")
 
         expect(Events::Bus).not_to have_received(:emit).with(
-          an_instance_of(Events::StartMneme).or(an_instance_of(Events::StartProcessing))
+          an_instance_of(Events::StartMelete).or(an_instance_of(Events::StartProcessing))
         )
       end
     end
