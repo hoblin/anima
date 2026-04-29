@@ -34,7 +34,6 @@ class ShellSession
   PANE_WIDTH = 200
   PANE_HEIGHT = 50
   HISTORY_LIMIT = 5_000
-  IDLE_POLL_INTERVAL = 0.1
 
   # Env vars that disable interactive pagers and credential prompts in
   # the shell. Without these, tools like +gh+, +git+, +man+, +journalctl+
@@ -218,29 +217,27 @@ class ShellSession
     line = "#{exports}; tmux wait-for -S init-#{uuid}"
     system("tmux", "send-keys", "-t", @target, line, "Enter", out: File::NULL, err: File::NULL)
     pid = Process.spawn("tmux", "wait-for", "init-#{uuid}", out: File::NULL, err: File::NULL)
-    deadline = monotonic_now + 5
-    loop do
-      _, status = Process.wait2(pid, Process::WNOHANG)
-      break if status
-      if monotonic_now > deadline
-        begin
-          Process.kill("TERM", pid)
-        rescue
-          Errno::ESRCH
-        end
-        begin
-          Process.wait(pid)
-        rescue
-          Errno::ECHILD
-        end
-        raise "tmux session #{@target} init timed out"
-      end
-      sleep IDLE_POLL_INTERVAL
+    waiter = Process.detach(pid)
+    return if waiter.join(5)
+
+    begin
+      Process.kill("TERM", pid)
+    rescue
+      Errno::ESRCH
     end
+    waiter.join
+    raise "tmux session #{@target} init timed out"
   end
 
-  # Blocks on +tmux wait-for+, polling for interrupt and timeout. On
-  # cancel we send +C-c+ to abort the running command, then kill the
+  # Blocks until the +tmux wait-for+ child exits (= the bash command in
+  # the pane finished and ran +tmux wait-for -S+), the deadline expires,
+  # or the user requests an interrupt.
+  #
+  # No polling: {Process.detach} returns a Thread that waits on the
+  # child, and {Thread#join} blocks until either the thread finishes or
+  # the timeout fires — returning immediately when the child exits.
+  #
+  # On cancel we send +C-c+ to abort the running command, then kill the
   # wait-for child directly — interactive bash discards the rest of the
   # input line on SIGINT, so the trailing +tmux wait-for -S+ never fires
   # and we can't rely on natural signaling.
@@ -248,41 +245,34 @@ class ShellSession
   # @return [Symbol] +:done+, +:interrupted+, or +:timeout+
   def wait_for_completion(uuid, timeout, interrupt_check)
     pid = Process.spawn("tmux", "wait-for", "done-#{uuid}", out: File::NULL, err: File::NULL)
+    waiter = Process.detach(pid)
     deadline = monotonic_now + timeout
-    poll_interval = interrupt_check ? Anima::Settings.interrupt_check_interval : IDLE_POLL_INTERVAL
+    interrupt_interval = interrupt_check ? Anima::Settings.interrupt_check_interval : timeout
 
     loop do
-      _, status = Process.wait2(pid, Process::WNOHANG)
-      return :done if status
+      remaining = deadline - monotonic_now
+      return cancel_command(pid, waiter, :timeout) if remaining <= 0
 
-      if interrupt_check&.call
-        cancel_command(pid)
-        return :interrupted
-      end
+      # Block until child exits, the next interrupt-check tick, or the deadline.
+      slice = [remaining, interrupt_interval].min
+      return :done if waiter.join(slice)
 
-      if monotonic_now > deadline
-        cancel_command(pid)
-        return :timeout
-      end
-
-      sleep poll_interval
+      return cancel_command(pid, waiter, :interrupted) if interrupt_check&.call
     end
   end
 
-  # Sends Ctrl+C to abort the running command, then reaps the
-  # wait-for child. Idempotent against already-dead processes.
-  def cancel_command(wait_for_pid)
+  # Sends Ctrl+C to abort the running command, kills the wait-for
+  # child, and waits for the detach thread to reap it. Returns +state+
+  # so call sites can inline +return cancel_command(...)+.
+  def cancel_command(pid, waiter, state)
     send_ctrl_c
     begin
-      Process.kill("TERM", wait_for_pid)
-    rescue Errno::ESRCH
-      # Already exited — wait-for unblocked between our last poll and now
+      Process.kill("TERM", pid)
+    rescue
+      Errno::ESRCH
     end
-    begin
-      Process.wait(wait_for_pid)
-    rescue Errno::ECHILD
-      # Already reaped
-    end
+    waiter.join
+    state
   end
 
   def send_ctrl_c
