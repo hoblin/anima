@@ -322,4 +322,43 @@ RSpec.describe Mcp::StdioTransport do
       pid_file&.unlink
     end
   end
+
+  describe "concurrent send_request" do
+    # Echoes the request id back after a small delay, so concurrent
+    # callers serialize through @mutex but each must still receive
+    # the response matching its own id.
+    def slow_echo_server_script
+      ["-e", <<~RUBY]
+        require "json"
+        $stdout.sync = true
+        $stdin.each_line do |line|
+          req = JSON.parse(line)
+          sleep 0.05
+          $stdout.puts(JSON.generate({"jsonrpc" => "2.0", "id" => req["id"], "result" => {"echo" => req["id"]}}))
+        end
+      RUBY
+    end
+
+    it "routes each response to the thread that sent the matching request" do
+      transport = described_class.new(command: "ruby", args: slow_echo_server_script)
+      transport.send_request(request: json_rpc_request(id: "warmup"))
+
+      threads = Array.new(5) do |i|
+        Thread.new do
+          id = "thread-#{i}"
+          response = transport.send_request(request: {jsonrpc: "2.0", id: id, method: "echo"})
+          {sent: id, received_id: response["id"], echoed: response.dig("result", "echo")}
+        end
+      end
+
+      results = threads.map(&:value)
+
+      results.each do |r|
+        expect(r[:received_id]).to eq(r[:sent])
+        expect(r[:echoed]).to eq(r[:sent])
+      end
+    ensure
+      transport&.shutdown
+    end
+  end
 end

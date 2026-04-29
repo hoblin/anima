@@ -13,10 +13,14 @@ module Mcp
   # Spawned stdio processes are reaped on worker exit via
   # {Mcp::StdioTransport.cleanup_all}.
   #
+  # The cache is built once on the first {#register_tools} call and
+  # never invalidated; edits to +mcp.toml+ require a worker restart.
+  #
   # @example
   #   Mcp::ClientManager.shared.register_tools(registry)
   class ClientManager
-    # Process-wide shared instance.
+    # Lazily-instantiated process-wide manager. Production code should
+    # call {.shared}; {.new} is reserved for tests and internal use.
     # @return [Mcp::ClientManager]
     def self.shared
       @shared ||= new
@@ -45,11 +49,11 @@ module Mcp
     def load_servers
       @wrappers = []
       @warnings = []
-      register_transport(@config.http_servers) { |server| build_http_client(server) }
-      register_transport(@config.stdio_servers) { |server| build_stdio_client(server) }
+      register_transport_tools(@config.http_servers) { |server| build_http_client(server) }
+      register_transport_tools(@config.stdio_servers) { |server| build_stdio_client(server) }
     end
 
-    def register_transport(servers)
+    def register_transport_tools(servers)
       servers.each do |server|
         client = yield(server)
         wrappers = client.tools.map { |mcp_tool|

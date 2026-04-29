@@ -304,10 +304,45 @@ RSpec.describe Mcp::ClientManager do
         expect(registry_b.registered?("brave-search__search")).to be true
       end
     end
+
+    context "when a server fails on the first call" do
+      let(:working_tool) do
+        MCP::Client::Tool.new(name: "ok", description: "ok", input_schema: {})
+      end
+
+      before do
+        allow(config).to receive(:http_servers).and_return([
+          {name: "broken", url: "http://broken.test/mcp", headers: {}},
+          {name: "working", url: "http://working.test/mcp", headers: {}}
+        ])
+
+        broken_client = instance_double(MCP::Client)
+        allow(broken_client).to receive(:tools)
+          .and_raise(MCP::Client::RequestHandlerError.new("boom", {method: "tools/list"}))
+        working_client = instance_double(MCP::Client, tools: [working_tool])
+
+        allow(MCP::Client::HTTP).to receive(:new).and_return(instance_double(MCP::Client::HTTP))
+        allow(MCP::Client).to receive(:new).and_return(broken_client, working_client)
+        allow(Rails.logger).to receive(:warn)
+        allow(Rails.logger).to receive(:info)
+      end
+
+      it "does not retry the broken server on subsequent calls" do
+        manager.register_tools(Tools::Registry.new)
+        manager.register_tools(Tools::Registry.new)
+        manager.register_tools(Tools::Registry.new)
+
+        expect(MCP::Client).to have_received(:new).twice
+      end
+    end
   end
 
   describe ".shared" do
-    after { described_class.instance_variable_set(:@shared, nil) }
+    around do |example|
+      example.run
+    ensure
+      described_class.instance_variable_set(:@shared, nil)
+    end
 
     it "returns the same instance across calls" do
       expect(described_class.shared).to be(described_class.shared)
