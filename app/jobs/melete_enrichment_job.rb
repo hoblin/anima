@@ -8,12 +8,11 @@
 # {Events::StartMelete}. Runs the existing synchronous {Melete::Runner}
 # — the event is only the entry/exit plumbing.
 #
-# A scoped {GoalChangeListener} subscribes to {Events::GoalCreated} and
-# {Events::GoalUpdated} for the duration of the runner call. When the
-# listener sees a goal mutation, the job emits {Events::StartMneme} so
-# Mneme recalls against the fresh goal set. Otherwise the job emits
-# {Events::StartProcessing} and Mneme is skipped — there is no new
-# search seed to recall against.
+# A {GoalChangeListener} observes {Events::GoalCreated} and
+# {Events::GoalUpdated} for the duration of the runner call. When a goal
+# mutation is heard the job emits {Events::StartMneme} so Mneme recalls
+# against the fresh goal set; otherwise it emits {Events::StartProcessing}
+# and Mneme is skipped — there is no new search seed to recall against.
 #
 # Sub-agents skip Melete entirely (sub-agent nickname assignment is a
 # one-time step, not part of the recurring pipeline). With no runner
@@ -27,28 +26,6 @@
 # the failure being visible anywhere (anti-pattern per the project's
 # "soft error paths" principle).
 class MeleteEnrichmentJob < ApplicationJob
-  # Tiny purpose-built listener: flips a flag the first time it sees a
-  # goal mutation event. Lives only for the scope of one perform call so
-  # subscribe / unsubscribe stay paired.
-  class GoalChangeListener
-    def initialize
-      @triggered = false
-    end
-
-    def emit(_event)
-      @triggered = true
-    end
-
-    def triggered?
-      @triggered
-    end
-  end
-
-  GOAL_CHANGE_EVENT_NAMES = [
-    "#{Events::Bus::NAMESPACE}.#{Events::GoalCreated::TYPE}",
-    "#{Events::Bus::NAMESPACE}.#{Events::GoalUpdated::TYPE}"
-  ].freeze
-
   queue_as :default
 
   discard_on ActiveRecord::RecordNotFound
@@ -57,20 +34,12 @@ class MeleteEnrichmentJob < ApplicationJob
   # @param pending_message_id [Integer, nil] the PM that kicked off the chain
   def perform(session_id, pending_message_id: nil)
     session = Session.find(session_id)
-    listener = GoalChangeListener.new
 
-    Events::Bus.subscribe(listener) do |event|
-      GOAL_CHANGE_EVENT_NAMES.include?(event[:name]) &&
-        event[:payload][:session_id] == session_id
-    end
-
-    begin
+    goal_changed = GoalChangeListener.observe(session_id: session_id) do
       Melete::Runner.new(session).call unless session.sub_agent?
-    ensure
-      Events::Bus.unsubscribe(listener)
     end
 
-    next_event_class = listener.triggered? ? Events::StartMneme : Events::StartProcessing
+    next_event_class = goal_changed ? Events::StartMneme : Events::StartProcessing
     Events::Bus.emit(next_event_class.new(
       session_id: session_id,
       pending_message_id: pending_message_id
