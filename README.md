@@ -415,8 +415,8 @@ The right-side HUD panel shows session state at a glance: session name, goals (w
 |-----|-------------|
 | `5h` | 5-hour rate limit utilization with progress bar and reset countdown |
 | `7d` | 7-day rate limit utilization with progress bar |
-| `⚡` | Cache hit rate — percentage of input tokens served from cache |
-| `💾` | Cumulative tokens saved by cache hits |
+| `⚡` | Cache hit rate of the latest call — percentage of input tokens served from cache |
+| `💾` | Tokens served from cache on the latest call |
 | `⠛⣿` | Braille sparkline — per-call cache hit history (2 calls per character); drops signal cache busts |
 | `🟢` | Connection status and current view mode |
 
