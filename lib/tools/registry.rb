@@ -50,7 +50,7 @@ module Tools
           registry.register(Tools::OpenIssue)
         end
 
-        Mcp::ClientManager.new.register_tools(registry).each do |message|
+        Mcp::ClientManager.shared.register_tools(registry).each do |message|
           Events::Bus.emit(Events::SystemMessage.new(content: message, session_id: session.id))
         end
 

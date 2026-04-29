@@ -115,8 +115,11 @@ module Mcp
       @wait_thread&.alive? || false
     end
 
+    # +pgroup: true+ so {#terminate_process} can group-signal the
+    # entire descendant tree — npm/npx wrappers leak their +node+
+    # children otherwise.
     def spawn_process
-      @stdin, @stdout, @wait_thread = Open3.popen2(@env, @command, *@args)
+      @stdin, @stdout, @wait_thread = Open3.popen2(@env, @command, *@args, pgroup: true)
       @stdin.set_encoding("UTF-8")
       @stdout.set_encoding("UTF-8")
       self.class.register(self)
@@ -164,14 +167,15 @@ module Mcp
       @stdout&.close rescue IOError # rubocop:disable Style/RescueModifier
     end
 
-    # Sends SIGTERM and waits up to 2 seconds for the process to exit.
-    # Falls back to SIGKILL if the process does not terminate in time.
+    # Sends SIGTERM to the process group; escalates to SIGKILL on the
+    # group after +GRACEFUL_SHUTDOWN_TIMEOUT+ seconds. Negative PID
+    # signals the whole group (see {#spawn_process}).
     def terminate_process
       return unless @wait_thread
 
       pid = @wait_thread.pid
       begin
-        Process.kill("TERM", pid)
+        Process.kill("TERM", -pid)
       rescue Errno::ESRCH, Errno::EPERM
         return
       end
@@ -181,7 +185,7 @@ module Mcp
         _, status = Process.wait2(pid, Process::WNOHANG)
         break if status
         if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
-          Process.kill("KILL", pid) rescue Errno::ESRCH # rubocop:disable Style/RescueModifier
+          Process.kill("KILL", -pid) rescue Errno::ESRCH # rubocop:disable Style/RescueModifier
           Process.wait(pid) rescue Errno::ECHILD # rubocop:disable Style/RescueModifier
           break
         end

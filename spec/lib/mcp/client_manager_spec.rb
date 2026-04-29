@@ -261,5 +261,91 @@ RSpec.describe Mcp::ClientManager do
         expect(registry.any?).to be false
       end
     end
+
+    context "when called multiple times against the same manager" do
+      let(:mcp_tool) do
+        MCP::Client::Tool.new(name: "search", description: "Search", input_schema: {})
+      end
+      let(:mcp_client) { instance_double(MCP::Client, tools: [mcp_tool]) }
+
+      before do
+        allow(config).to receive(:stdio_servers).and_return([
+          {name: "brave-search", command: "npx", args: [], env: {}}
+        ])
+        allow(Mcp::StdioTransport).to receive(:new).and_return(instance_double(Mcp::StdioTransport))
+        allow(MCP::Client).to receive(:new).and_return(mcp_client)
+        allow(Rails.logger).to receive(:info)
+      end
+
+      it "spawns each transport exactly once across repeated register_tools calls" do
+        manager.register_tools(Tools::Registry.new)
+        manager.register_tools(Tools::Registry.new)
+        manager.register_tools(Tools::Registry.new)
+
+        expect(Mcp::StdioTransport).to have_received(:new).once
+        expect(MCP::Client).to have_received(:new).once
+      end
+
+      it "fetches the tool catalog from each server only once" do
+        manager.register_tools(Tools::Registry.new)
+        manager.register_tools(Tools::Registry.new)
+
+        expect(mcp_client).to have_received(:tools).once
+      end
+
+      it "still attaches cached tools to every registry it is given" do
+        registry_a = Tools::Registry.new
+        registry_b = Tools::Registry.new
+
+        manager.register_tools(registry_a)
+        manager.register_tools(registry_b)
+
+        expect(registry_a.registered?("brave-search__search")).to be true
+        expect(registry_b.registered?("brave-search__search")).to be true
+      end
+    end
+
+    context "when a server fails on the first call" do
+      let(:working_tool) do
+        MCP::Client::Tool.new(name: "ok", description: "ok", input_schema: {})
+      end
+
+      before do
+        allow(config).to receive(:http_servers).and_return([
+          {name: "broken", url: "http://broken.test/mcp", headers: {}},
+          {name: "working", url: "http://working.test/mcp", headers: {}}
+        ])
+
+        broken_client = instance_double(MCP::Client)
+        allow(broken_client).to receive(:tools)
+          .and_raise(MCP::Client::RequestHandlerError.new("boom", {method: "tools/list"}))
+        working_client = instance_double(MCP::Client, tools: [working_tool])
+
+        allow(MCP::Client::HTTP).to receive(:new).and_return(instance_double(MCP::Client::HTTP))
+        allow(MCP::Client).to receive(:new).and_return(broken_client, working_client)
+        allow(Rails.logger).to receive(:warn)
+        allow(Rails.logger).to receive(:info)
+      end
+
+      it "does not retry the broken server on subsequent calls" do
+        manager.register_tools(Tools::Registry.new)
+        manager.register_tools(Tools::Registry.new)
+        manager.register_tools(Tools::Registry.new)
+
+        expect(MCP::Client).to have_received(:new).twice
+      end
+    end
+  end
+
+  describe ".shared" do
+    around do |example|
+      example.run
+    ensure
+      described_class.instance_variable_set(:@shared, nil)
+    end
+
+    it "returns the same instance across calls" do
+      expect(described_class.shared).to be(described_class.shared)
+    end
   end
 end
