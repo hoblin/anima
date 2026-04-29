@@ -22,12 +22,6 @@ module Tools
 
     def self.prompt_snippet = "Run shell commands."
 
-    def self.prompt_guidelines = [
-      "Working directory persists between bash calls — `cd` once or use absolute paths.",
-      "For targeted text changes, prefer edit_file over `sed`/`awk` — exact-match replacement is safer than pattern matching.",
-      "For reading files, prefer read_file over `cat`."
-    ]
-
     def self.input_schema
       {
         type: "object",

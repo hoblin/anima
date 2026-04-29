@@ -58,15 +58,7 @@ http_interactions:
         waiting on multiple agents, just wait — they''ll arrive. Do other work in
         the meantime if you can.\n\n## Available Tools\n\n- bash: Run shell commands.\n-
         read_file: Read a file.\n- write_file: Create or overwrite a whole file.\n-
-        edit_file: Replace exact text in a file.\n\n## Tool Guidelines\n\n- Working
-        directory persists between bash calls — `cd` once or use absolute paths.\n-
-        For targeted text changes, prefer edit_file over `sed`/`awk` — exact-match
-        replacement is safer than pattern matching.\n- For reading files, prefer read_file
-        over `cat`.\n- Use write_file only for new files or full rewrites — for targeted
-        changes, edit_file leaves the rest of the file untouched.\n- Reach for edit_file
-        whenever you''d otherwise pipe a file through `sed`, `awk`, or a heredoc rewrite
-        — exact-text replacement is faster, leaves the rest of the file untouched,
-        and returns a diff.","cache_control":{"type":"ephemeral"}}]}'
+        edit_file: Replace exact text in a file.","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"
