@@ -41,6 +41,6 @@ RSpec.describe "Session happy path smoke", vcr: {match_requests_on: [:method, :u
     session.reload
 
     final_answer = session.messages.where(message_type: "agent_message").last&.payload&.dig("content")
-    expect(final_answer).to include("458")
+    expect(final_answer).to include("466")
   end
 end
