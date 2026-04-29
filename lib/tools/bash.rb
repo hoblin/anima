@@ -7,9 +7,12 @@ module Tools
   # would see it — including the prompt, which doubles as live cwd/branch
   # telemetry for the agent.
   #
-  # Supports two modes:
-  # - Single command via +command+ (string)
-  # - Batch via +commands+ (array) with +mode+ controlling error handling
+  # Two input shapes:
+  # - +command+ (string) — one command, one result.
+  # - +commands+ (array) — runs each command in order in the same shell;
+  #   all run regardless of failures (the agent reads merged output and
+  #   decides what to do). Use shell chaining (+&&+) inside a single
+  #   command if you need fail-fast.
   #
   # @see ShellSession#run
   class Bash < Base

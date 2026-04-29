@@ -42,6 +42,16 @@ RSpec.describe ShellSession do
       expect(result[:output]).to include("persistent")
     end
 
+    it "injects pager-disabling env vars after the user's rcfiles run" do
+      # The pager block matters most for tools like `gh`, `git`, `man` that
+      # otherwise spawn `less` and stall the pane. Verifying the export
+      # took effect — beating any `export PAGER=less` from ~/.zshrc.
+      result = shell.run("echo PAGER=$PAGER GIT_PAGER=$GIT_PAGER LESS=$LESS")
+      expect(result[:output]).to include("PAGER=cat")
+      expect(result[:output]).to include("GIT_PAGER=cat")
+      expect(result[:output]).to include("LESS=-eFRX")
+    end
+
     it "handles multi-line output" do
       result = shell.run("printf 'line1\\nline2\\nline3\\n'")
       expect(result[:output]).to include("line1")

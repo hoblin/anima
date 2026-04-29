@@ -31,8 +31,16 @@ class ShellSession
   # (current and future) match on to leave unrelated tmux sessions alone.
   TMUX_SESSION_PREFIX = "anima-shell-"
 
+  # Pane geometry — 200×50 is wide enough for most tool output without
+  # forcing wraps that would inflate captures, and tall enough that the
+  # agent sees normal command runs without scrollback in the visible area.
   PANE_WIDTH = 200
   PANE_HEIGHT = 50
+
+  # Scrollback cap. tmux retains the last N lines of output per pane,
+  # discarding older ones automatically — this is what bounds memory and
+  # closes the OOM bug from the old PTY+FIFO design. Each line costs
+  # roughly 1–2KB inside tmux, so 5000 lines ≈ 5–10MB resident per pane.
   HISTORY_LIMIT = 5_000
 
   # Env vars that disable interactive pagers and credential prompts in
@@ -222,8 +230,8 @@ class ShellSession
 
     begin
       Process.kill("TERM", pid)
-    rescue
-      Errno::ESRCH
+    rescue Errno::ESRCH
+      # Already exited between waiter.join's deadline and our kill — fine.
     end
     waiter.join
     raise "tmux session #{@target} init timed out"
@@ -268,8 +276,8 @@ class ShellSession
     send_ctrl_c
     begin
       Process.kill("TERM", pid)
-    rescue
-      Errno::ESRCH
+    rescue Errno::ESRCH
+      # wait-for already exited (raced with our kill) — fine.
     end
     waiter.join
     state
@@ -291,10 +299,15 @@ class ShellSession
     truncate(raw.dup.force_encoding("UTF-8").scrub)
   end
 
+  # Truncates +output+ to {Anima::Settings.max_output_bytes}. The
+  # truncation notice itself counts against the cap, so the returned
+  # string is always +<= max_output_bytes+ — a contract callers can rely
+  # on for context-window budgeting.
   def truncate(output)
     max = Anima::Settings.max_output_bytes
     return output if output.bytesize <= max
-    output.byteslice(0, max).scrub + "\n\n[Truncated: output exceeded #{max} bytes]"
+    notice = "\n\n[Truncated: output exceeded #{max} bytes]"
+    output.byteslice(0, max - notice.bytesize).scrub + notice
   end
 
   def monotonic_now
