@@ -66,6 +66,20 @@ class ShellSession
   # server-side, so Ruby must pass the literal string.
   PANE_CWD_FORMAT = '#{pane_current_path}' # rubocop:disable Lint/InterpolationCheck
 
+  # Grace period before escalating SIGTERM → SIGKILL when reaping a
+  # wedged +tmux wait-for+ child. tmux clients normally exit on TERM
+  # within milliseconds; 5 seconds is generous enough that a healthy
+  # one always makes it, while an unkillable one never hangs the shell.
+  WAITER_KILL_GRACE = 5
+
+  # Serializes the cold-start path of {.for_session} / {#initialize} —
+  # +alive?+ → +new-session+ → +inject_shell_env+. Without it, two
+  # threads racing on the same +session_id+ both see +alive?+ false,
+  # both run +new-session+ (the second silently fails), and both run
+  # +inject_shell_env+, double-exporting and corrupting the pane.
+  # Held only during cold start; warm-path callers don't contend.
+  INIT_MUTEX = Mutex.new
+
   # @return [Integer, String] identifier of the {Session} this shell belongs to
   attr_reader :session_id
 
@@ -124,7 +138,7 @@ class ShellSession
   def initialize(session_id:, initial_cwd: nil)
     @session_id = session_id
     @target = "#{TMUX_SESSION_PREFIX}#{session_id}"
-    ensure_session(initial_cwd)
+    INIT_MUTEX.synchronize { ensure_session(initial_cwd) }
   end
 
   # Execute a command in the persistent shell.
@@ -164,12 +178,17 @@ class ShellSession
     state = wait_for_completion(uuid, timeout, interrupt_check)
     output = capture_output
 
+    return {error: "tmux capture-pane failed (session may have died)"} if output.nil?
+
     case state
     when :done then {output: output}
     when :interrupted then {output: output, interrupted: true}
     when :timeout then {error: "Command timed out after #{timeout} seconds.\n\n#{output}"}
     end
-  rescue => error # rubocop:disable Lint/RescueException -- LLM must always get a result hash, never a stack trace
+  rescue => error
+    # Catch-all isolates the LLM tool-call boundary: a stray exception
+    # from tmux internals must surface as a result hash rather than tear
+    # down the conversation pipeline.
     {error: "#{error.class}: #{error.message}"}
   end
 
@@ -226,14 +245,9 @@ class ShellSession
     system("tmux", "send-keys", "-t", @target, line, "Enter", out: File::NULL, err: File::NULL)
     pid = Process.spawn("tmux", "wait-for", "init-#{uuid}", out: File::NULL, err: File::NULL)
     waiter = Process.detach(pid)
-    return if waiter.join(5)
+    return if waiter.join(WAITER_KILL_GRACE)
 
-    begin
-      Process.kill("TERM", pid)
-    rescue Errno::ESRCH
-      # Already exited between waiter.join's deadline and our kill — fine.
-    end
-    waiter.join
+    reap_waiter(pid, waiter)
     raise "tmux session #{@target} init timed out"
   end
 
@@ -269,18 +283,33 @@ class ShellSession
     end
   end
 
-  # Sends Ctrl+C to abort the running command, kills the wait-for
-  # child, and waits for the detach thread to reap it. Returns +state+
-  # so call sites can inline +return cancel_command(...)+.
+  # Sends Ctrl+C to abort the running command and reaps the wait-for
+  # child. Returns +state+ so call sites can inline
+  # +return cancel_command(...)+.
   def cancel_command(pid, waiter, state)
     send_ctrl_c
+    reap_waiter(pid, waiter)
+    state
+  end
+
+  # Reaps a +tmux wait-for+ child after a cancel decision (Ctrl+C or
+  # init timeout). Sends SIGTERM, waits up to {WAITER_KILL_GRACE}
+  # seconds, escalates to SIGKILL if the client is wedged. Guarantees
+  # the caller never blocks indefinitely on a stuck tmux client.
+  def reap_waiter(pid, waiter)
     begin
       Process.kill("TERM", pid)
     rescue Errno::ESRCH
-      # wait-for already exited (raced with our kill) — fine.
+      # Already exited (raced with our kill) — fine.
+    end
+    return if waiter.join(WAITER_KILL_GRACE)
+
+    begin
+      Process.kill("KILL", pid)
+    rescue Errno::ESRCH
+      # Exited between TERM and KILL — fine.
     end
     waiter.join
-    state
   end
 
   def send_ctrl_c
@@ -304,9 +333,15 @@ class ShellSession
   # trailing prompt — nothing leaked from the previous pane state.
   # The +-J+ flag joins terminal-wrapped lines so a long single-line
   # output comes back whole.
+  # @return [String] rendered terminal text on success
+  # @return [nil] when +capture-pane+ exits non-zero (e.g. the session
+  #   died between {#wait_for_completion} and the capture). Caller
+  #   surfaces this as an error to the LLM rather than letting an empty
+  #   string be mistaken for a silent command success.
   def capture_output
-    raw, _ = Open3.capture2("tmux", "capture-pane", "-pJ", "-t", @target, "-S", "-", err: File::NULL)
-    output = truncate(raw.dup.force_encoding("UTF-8").scrub)
+    raw, status = Open3.capture2("tmux", "capture-pane", "-pJ", "-t", @target, "-S", "-", err: File::NULL)
+    return nil unless status.success?
+    output = truncate(raw.force_encoding("UTF-8").scrub)
     output.strip.empty? ? EMPTY_OUTPUT_PLACEHOLDER : output
   end
 

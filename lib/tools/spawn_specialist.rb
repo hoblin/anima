@@ -102,7 +102,8 @@ module Tools
         parent_session_id: @session.id,
         prompt: build_prompt(definition),
         granted_tools: definition.tools,
-        spawn_tool_use_id: @tool_use_id
+        spawn_tool_use_id: @tool_use_id,
+        initial_cwd: ShellSession.cwd_via_tmux(@session.id) || @session.initial_cwd
       )
       create_goal_with_pinned_task(child, task)
       assign_nickname_via_melete(child)

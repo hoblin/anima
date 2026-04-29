@@ -148,6 +148,24 @@ RSpec.describe ShellSession do
         expect(result[:output]).to be_valid_encoding
       end
     end
+
+    context "when capture-pane fails" do
+      # Simulates the tmux session dying between `wait-for -S` firing and
+      # the `capture-pane` call. Without an explicit error, the empty
+      # capture would collapse to the EMPTY_OUTPUT_PLACEHOLDER and the LLM
+      # would see "OK" — indistinguishable from a silent command success.
+      it "returns an error so silent session death isn't reported as success" do
+        failed_status = instance_double(Process::Status, success?: false)
+        allow(Open3).to receive(:capture2).and_call_original
+        expect(Open3).to receive(:capture2)
+          .with("tmux", "capture-pane", "-pJ", "-t", anything, "-S", "-", err: File::NULL)
+          .and_return(["", failed_status])
+
+        result = shell.run("echo hello")
+
+        expect(result[:error]).to include("capture-pane failed")
+      end
+    end
   end
 
   describe "#pwd" do

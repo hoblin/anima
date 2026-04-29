@@ -107,6 +107,30 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(child.granted_tools).to eq(%w[read_file bash])
     end
 
+    context "initial_cwd inheritance" do
+      # The child's running shell looks up parent cwd via tmux dynamically,
+      # but +initial_cwd+ is the persisted fallback used when the parent's
+      # tmux session is gone (e.g. across an Anima restart). Snapshotting
+      # parent's current cwd at spawn time keeps that fallback useful
+      # rather than letting it default to nil → process cwd.
+      it "snapshots parent's current tmux cwd as the child's initial_cwd" do
+        allow(ShellSession).to receive(:cwd_via_tmux).with(parent_session.id).and_return("/tmp/work")
+
+        tool.execute(input)
+
+        expect(Session.last.initial_cwd).to eq("/tmp/work")
+      end
+
+      it "falls back to parent's initial_cwd when parent's tmux session is gone" do
+        parent_session.update!(initial_cwd: "/home/agent")
+        allow(ShellSession).to receive(:cwd_via_tmux).with(parent_session.id).and_return(nil)
+
+        tool.execute(input)
+
+        expect(Session.last.initial_cwd).to eq("/home/agent")
+      end
+    end
+
     it "prepends identity context to the specialist prompt" do
       tool.execute(input)
 
