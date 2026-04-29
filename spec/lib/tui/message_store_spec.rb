@@ -741,13 +741,27 @@ RSpec.describe TUI::MessageStore do
           }
         }
       })
+      store.process_event({
+        "type" => "agent_message",
+        "content" => "third",
+        "api_metrics" => {
+          "usage" => {
+            "input_tokens" => 5,
+            "output_tokens" => 3,
+            "cache_read_input_tokens" => 45,
+            "cache_creation_input_tokens" => 0
+          }
+        }
+      })
 
       stats = store.token_economy
-      expect(stats[:input_tokens]).to eq(30)
-      expect(stats[:output_tokens]).to eq(15)
-      expect(stats[:cache_read_input_tokens]).to eq(200)
+      expect(stats[:input_tokens]).to eq(5)
+      expect(stats[:output_tokens]).to eq(3)
+      expect(stats[:cache_read_input_tokens]).to eq(45)
       expect(stats[:cache_creation_input_tokens]).to eq(0)
-      expect(stats[:call_count]).to eq(2)
+      expect(stats[:cache_hit_rate]).to be_within(0.001).of(45.0 / 50)
+      expect(stats[:call_count]).to eq(3)
+      expect(stats[:cache_history].size).to eq(3)
     end
 
     it "calculates cache hit rate correctly" do

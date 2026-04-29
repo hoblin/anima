@@ -100,7 +100,8 @@ module TUI
     # Events with `"action" => "update"` and a matching `"id"` replace
     # the existing entry's data in-place rather than appending.
     #
-    # Extracts api_metrics when present and accumulates token economy data.
+    # Extracts api_metrics when present and records the latest call's
+    # token economy data for the HUD.
     #
     # @param event_data [Hash] Action Cable event payload with "type", "content",
     #   and optionally "rendered" (hash of mode => lines), "id", "action", "api_metrics"
