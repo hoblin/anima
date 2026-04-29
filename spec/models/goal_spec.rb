@@ -169,17 +169,45 @@ RSpec.describe Goal do
     end
   end
 
-  describe "#schedule_passive_recall" do
-    it "enqueues PassiveRecallJob on create and update" do
-      goal = nil
-      expect { goal = create(:goal, session: session) }.to have_enqueued_job(PassiveRecallJob).with(session.id)
-      expect { goal.update!(description: "revised") }.to have_enqueued_job(PassiveRecallJob).with(session.id)
+  describe "goal mutation events" do
+    before { allow(Events::Bus).to receive(:emit).and_call_original }
+
+    it "emits GoalCreated on create" do
+      goal = create(:goal, session: session)
+
+      expect(Events::Bus).to have_received(:emit).with(
+        an_instance_of(Events::GoalCreated)
+          .and(have_attributes(session_id: session.id, goal_id: goal.id))
+      )
     end
 
-    it "skips enqueue for sub-agent sessions (they manage their own memory)" do
-      sub_session = create(:session, :sub_agent)
+    it "emits GoalUpdated when description changes" do
+      goal = create(:goal, session: session)
 
-      expect { create(:goal, session: sub_session) }.not_to have_enqueued_job(PassiveRecallJob)
+      goal.update!(description: "revised")
+
+      expect(Events::Bus).to have_received(:emit).with(
+        an_instance_of(Events::GoalUpdated)
+          .and(have_attributes(session_id: session.id, goal_id: goal.id))
+      )
+    end
+
+    it "stays silent on status-only updates (finish_goal / mark_goal_completed)" do
+      goal = create(:goal, session: session)
+
+      goal.update!(status: "completed", completed_at: Time.current)
+
+      expect(Events::Bus).not_to have_received(:emit).with(an_instance_of(Events::GoalUpdated))
+    end
+
+    it "stays silent on cascade completion (update_all skips callbacks)" do
+      root = create(:goal, session: session)
+      sub = create(:goal, session: session, parent_goal: root)
+
+      root.cascade_completion!
+
+      expect(sub.reload.status).to eq("completed")
+      expect(Events::Bus).not_to have_received(:emit).with(an_instance_of(Events::GoalUpdated))
     end
   end
 

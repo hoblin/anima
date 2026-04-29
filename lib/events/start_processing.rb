@@ -2,11 +2,12 @@
 
 module Events
   # Emitted when an active PendingMessage lands on an idle session and does
-  # not require the Mneme/Melete enrichment pipeline (tool calls, tool
-  # responses, sub-agent replies), or when Melete finishes the enrichment
-  # chain. The drain loop subscribes and begins processing the mailbox.
+  # not require the Melete/Mneme enrichment pipeline (tool calls, tool
+  # responses, sub-agent replies), or when {MeleteEnrichmentJob} finishes
+  # without a goal change, or when {MnemeEnrichmentJob} finishes recall.
+  # The drain loop subscribes and begins processing the mailbox.
   #
-  # Final stage of the +start_mneme → start_melete → start_processing+
+  # Final stage of the +start_melete → (start_mneme) → start_processing+
   # chain.
   class StartProcessing
     TYPE = "session.start_processing"

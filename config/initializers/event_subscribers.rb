@@ -5,12 +5,15 @@
 # process emitted them (brain server, background job, etc.).
 #
 # Three event layers:
-# 1. Domain events (anima.agent_message, anima.system_message, etc.) — raw intent
+# 1. Domain events (anima.agent_message, anima.system_message,
+#    anima.goal.created, anima.goal.updated, etc.) — raw intent
 # 2. Lifecycle events (anima.message.created) — emitted after persistence
-# 3. Drain pipeline events (anima.session.start_mneme, start_melete,
+# 3. Drain pipeline events (anima.session.start_melete, start_mneme,
 #    start_processing, llm_responded, tool_executed) — the event-driven
 #    agent loop that promotes PendingMessages into the conversation,
-#    calls the LLM, and dispatches tool execution (epic #427).
+#    calls the LLM, and dispatches tool execution (epic #427). Pipeline
+#    order: Melete first; Mneme conditional on a goal change during the
+#    Melete run; Processing always closes the chain.
 #
 # Persister bridges layer 1 → 2 by creating Message records whose
 # after_create_commit emits MessageCreated events.

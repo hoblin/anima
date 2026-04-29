@@ -33,15 +33,42 @@ RSpec.describe MeleteEnrichmentJob do
     expect(runner).not_to have_received(:call)
   end
 
-  it "emits StartProcessing after the runner finishes" do
-    emitted = capture_emissions
+  describe "conditional handoff" do
+    it "emits StartMneme when the runner mutates a goal" do
+      allow(runner).to receive(:call) do
+        Events::Bus.emit(Events::GoalCreated.new(session_id: session.id, goal_id: 1))
+      end
+      emitted = capture_emissions
 
-    described_class.perform_now(session.id, pending_message_id: 99)
+      described_class.perform_now(session.id, pending_message_id: 99)
 
-    processing = emitted.find { |e| e.is_a?(Events::StartProcessing) }
-    expect(processing).to be_present
-    expect(processing.session_id).to eq(session.id)
-    expect(processing.pending_message_id).to eq(99)
+      mneme = emitted.find { |e| e.is_a?(Events::StartMneme) }
+      expect(mneme).to be_present
+      expect(mneme.session_id).to eq(session.id)
+      expect(mneme.pending_message_id).to eq(99)
+      expect(emitted.map(&:class)).not_to include(Events::StartProcessing)
+    end
+
+    it "emits StartProcessing when the runner does not mutate a goal" do
+      emitted = capture_emissions
+
+      described_class.perform_now(session.id, pending_message_id: 99)
+
+      processing = emitted.find { |e| e.is_a?(Events::StartProcessing) }
+      expect(processing).to be_present
+      expect(processing.pending_message_id).to eq(99)
+      expect(emitted.map(&:class)).not_to include(Events::StartMneme)
+    end
+
+    it "emits StartProcessing for sub-agents (runner skipped, no goal events possible)" do
+      allow(session).to receive(:sub_agent?).and_return(true)
+      emitted = capture_emissions
+
+      described_class.perform_now(session.id, pending_message_id: 7)
+
+      expect(emitted.map(&:class)).to include(Events::StartProcessing)
+      expect(emitted.map(&:class)).not_to include(Events::StartMneme)
+    end
   end
 
   it "propagates exceptions from the runner (no defensive rescue)" do

@@ -71,7 +71,7 @@ module Tools
     # Creates a child session with the specialist's predefined prompt and
     # tools, pins the task as a Goal, and enqueues the task as the
     # child's first user_message PendingMessage — which kicks the
-    # standard inbound pipeline (Mneme → Melete → StartProcessing →
+    # standard inbound pipeline (Melete → (Mneme) → StartProcessing →
     # DrainJob) so the specialist self-starts the same way a human-typed
     # message would. Returns immediately after Melete completes.
     #

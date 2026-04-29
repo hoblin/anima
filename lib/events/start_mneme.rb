@@ -1,13 +1,15 @@
 # frozen_string_literal: true
 
 module Events
-  # Emitted when a new +user_message+ PendingMessage lands on an idle
-  # session. Mneme subscribes and performs associative recall, then
-  # enqueues its memories as background PendingMessages and emits
-  # {Events::StartMelete} to continue the pipeline.
+  # Emitted by {MeleteEnrichmentJob} when goals changed during the Melete
+  # run, signalling that Mneme should recall against the fresh goal set.
+  # Mneme subscribes via {Events::Subscribers::MnemeKickoff}, performs
+  # associative recall, enqueues its memories as background PendingMessages,
+  # and emits {Events::StartProcessing} to continue the drain.
   #
-  # First stage of the +start_mneme → start_melete → start_processing+
-  # chain that orchestrates context enrichment before the LLM is called.
+  # Second stage of the +start_melete → (start_mneme) → start_processing+
+  # chain. Conditional — when goals are untouched the pipeline jumps
+  # straight from {Events::StartMelete} to {Events::StartProcessing}.
   class StartMneme
     TYPE = "session.start_mneme"
 

@@ -1,12 +1,17 @@
 # frozen_string_literal: true
 
 module Events
-  # Emitted when Mneme finishes enriching context with recalled memories.
-  # Melete subscribes and performs its own enrichment — activating skills,
-  # evaluating goals, renaming the session — before yielding to the drain
-  # loop via {Events::StartProcessing}.
+  # Emitted when a +user_message+ PendingMessage lands on an idle session.
+  # Melete subscribes via {Events::Subscribers::MeleteKickoff} and runs
+  # its enrichment loop — activating skills, reading workflows, refining
+  # goals, renaming the session — then either:
   #
-  # Second stage of the +start_mneme → start_melete → start_processing+
+  # * emits {Events::StartMneme} when a goal changed during the run, so
+  #   Mneme can recall against the fresh goal set, or
+  # * emits {Events::StartProcessing} when goals were untouched, skipping
+  #   Mneme entirely (no new search seed to recall against).
+  #
+  # First stage of the +start_melete → (start_mneme) → start_processing+
   # chain that orchestrates context enrichment before the LLM is called.
   class StartMelete
     TYPE = "session.start_melete"

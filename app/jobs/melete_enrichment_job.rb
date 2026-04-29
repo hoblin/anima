@@ -1,15 +1,23 @@
 # frozen_string_literal: true
 
-# Second stage of the drain pipeline: runs Melete to activate skills,
-# evaluate goals, and prepare the session, then hands off to the drain
-# loop via {Events::StartProcessing}.
+# First stage of the drain pipeline: runs Melete to activate skills,
+# read workflows, and refine goals. Hands off to either Mneme (when goals
+# changed during this run) or directly to the drain loop.
 #
 # Triggered by {Events::Subscribers::MeleteKickoff} in response to
 # {Events::StartMelete}. Runs the existing synchronous {Melete::Runner}
 # — the event is only the entry/exit plumbing.
 #
+# A {GoalChangeListener} observes {Events::GoalCreated} and
+# {Events::GoalUpdated} for the duration of the runner call. When a goal
+# mutation is heard the job emits {Events::StartMneme} so Mneme recalls
+# against the fresh goal set; otherwise it emits {Events::StartProcessing}
+# and Mneme is skipped — there is no new search seed to recall against.
+#
 # Sub-agents skip Melete entirely (sub-agent nickname assignment is a
-# one-time step, not part of the recurring pipeline).
+# one-time step, not part of the recurring pipeline). With no runner
+# call, the listener never fires and the job falls through to
+# {Events::StartProcessing}.
 #
 # Exceptions from {Melete::Runner#call} propagate — no defensive rescue.
 # A crashed Melete leaves the session idle with the PM still in the
@@ -27,9 +35,12 @@ class MeleteEnrichmentJob < ApplicationJob
   def perform(session_id, pending_message_id: nil)
     session = Session.find(session_id)
 
-    Melete::Runner.new(session).call unless session.sub_agent?
+    goal_changed = GoalChangeListener.observe(session_id: session_id) do
+      Melete::Runner.new(session).call unless session.sub_agent?
+    end
 
-    Events::Bus.emit(Events::StartProcessing.new(
+    next_event_class = goal_changed ? Events::StartMneme : Events::StartProcessing
+    Events::Bus.emit(next_event_class.new(
       session_id: session_id,
       pending_message_id: pending_message_id
     ))

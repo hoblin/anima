@@ -179,7 +179,7 @@ RSpec.describe Tools::SpawnSubagent do
       pm = child.pending_messages.find_by(message_type: "user_message")
       expect(pm).to be_present
       expect(pm.content).to eq(input["task"])
-      expect(MnemeEnrichmentJob).to have_been_enqueued.with(child.id, pending_message_id: pm.id)
+      expect(MeleteEnrichmentJob).to have_been_enqueued.with(child.id, pending_message_id: pm.id)
     end
 
     it "broadcasts children update to parent session" do
