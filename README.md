@@ -64,7 +64,7 @@ Inside the Brain, three independent LLM processes run in parallel on a shared ev
 
 ### Three Muses
 
-**Aoide — the performer.** The main LLM (Claude Opus 4.6), the muse of voice and performance. Thinks, decides, uses tools, talks to the user. Reads a system prompt assembled fresh every turn (soul + sisters block + snapshots) and a live **viewport** of events from the database — never a static array. Everything the agent outputs is Aoide; her sisters stay silent in her voice.
+**Aoide — the performer.** The main LLM (Claude Opus 4.6), the muse of voice and performance. Thinks, decides, uses tools, talks to the user. Reads a system prompt assembled fresh every turn (soul + sisters block + tool menu + tool guidelines + snapshots) and a live **viewport** of events from the database — never a static array. Everything the agent outputs is Aoide; her sisters stay silent in her voice.
 
 **Melete — the preparer.** A separate LLM process (Claude Haiku 4.5) that runs as Aoide's subconscious between turns. She observes the conversation and handles everything Aoide shouldn't break flow for: activating relevant skills, managing workflows, tracking goals, naming the session. The first microservice on Anima's event bus — the working proof that background subscribers scale. → [Preparation as a Second Brain (Melete)](#preparation-as-a-second-brain-melete)
 
@@ -294,7 +294,7 @@ The TUI is a standalone client with zero Rails dependency. Its settings cover co
 
 ### Three Layers (mirroring biology)
 
-1. **Cortex (Aoide)** — the main LLM, the muse of performance. Thinking, decisions, tool use. Reads the system prompt (soul + sisters + snapshots) and the event viewport. This layer is fully implemented.
+1. **Cortex (Aoide)** — the main LLM, the muse of performance. Thinking, decisions, tool use. Reads the system prompt (soul + sisters + tool menu + tool guidelines + snapshots) and the event viewport. This layer is fully implemented.
 
 2. **Endocrine system (Thymos)** [planned] — a lightweight background process. Reads recent events. Doesn't respond. Just updates hormone levels. Pure stimulus→response, like a biological gland. Melete is the architectural proof that background subscribers work — Thymos plugs into the same event bus.
 
@@ -318,7 +318,7 @@ Events flow through two channels:
 1. **In-process** — Rails Structured Event Reporter (local subscribers like Persister)
 2. **Over the wire** — Action Cable WebSocket (`Event::Broadcasting` callbacks push to connected TUI clients)
 
-Events fire, subscribers react, state updates. The system prompt — soul, sisters block, and snapshots — is assembled fresh for each LLM call. Skills, workflows, and goals flow through the message stream as phantom tool pairs instead, keeping the system prompt stable for prompt caching. The agent's identity (soul.md) is always current, never stale.
+Events fire, subscribers react, state updates. The system prompt — soul, sisters block, tool menu, tool guidelines, and snapshots — is assembled fresh for each LLM call. Skills, workflows, and goals flow through the message stream as phantom tool pairs instead, keeping the system prompt stable for prompt caching. The agent's identity (soul.md) is always current, never stale.
 
 ### Context as Viewport, Not Tape
 

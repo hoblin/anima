@@ -28,6 +28,18 @@ RSpec.describe Tools::Edit do
     end
   end
 
+  describe ".prompt_snippet" do
+    it "advertises edit_file in the system prompt menu" do
+      expect(described_class.prompt_snippet).to eq("Replace exact text in a file.")
+    end
+  end
+
+  describe ".prompt_guidelines" do
+    it "contributes no guidelines — the input schema already documents old_text uniqueness" do
+      expect(described_class.prompt_guidelines).to eq([])
+    end
+  end
+
   describe ".input_schema" do
     it "defines path, old_text, and new_text as required string properties" do
       schema = described_class.input_schema

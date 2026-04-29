@@ -22,6 +22,22 @@ RSpec.describe Tools::Bash do
     end
   end
 
+  describe ".prompt_snippet" do
+    it "advertises bash to the agent in the system prompt menu" do
+      expect(described_class.prompt_snippet).to eq("Run shell commands.")
+    end
+  end
+
+  describe ".prompt_guidelines" do
+    it "steers the agent toward edit_file/read_file and away from cd repetition" do
+      guidelines = described_class.prompt_guidelines
+
+      expect(guidelines).to include(a_string_matching(/Working directory persists/))
+      expect(guidelines).to include(a_string_matching(/prefer edit_file over `sed`/))
+      expect(guidelines).to include(a_string_matching(/prefer read_file over `cat`/))
+    end
+  end
+
   describe "#execute" do
     context "with single command" do
       it "returns the rendered output" do

@@ -22,6 +22,18 @@ RSpec.describe Tools::Write do
     end
   end
 
+  describe ".prompt_snippet" do
+    it "advertises write_file in the system prompt menu" do
+      expect(described_class.prompt_snippet).to eq("Create or overwrite a whole file.")
+    end
+  end
+
+  describe ".prompt_guidelines" do
+    it "steers the agent toward edit_file for targeted changes" do
+      expect(described_class.prompt_guidelines).to include(a_string_matching(/replaces the whole file.*use edit_file/))
+    end
+  end
+
   describe ".input_schema" do
     it "defines path and content as required string properties" do
       schema = described_class.input_schema

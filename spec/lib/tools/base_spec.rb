@@ -68,4 +68,40 @@ RSpec.describe Tools::Base do
       expect { described_class.new.execute({}) }.to raise_error(NotImplementedError)
     end
   end
+
+  describe ".prompt_snippet" do
+    it "defaults to nil so tools opt in to the available-tools menu" do
+      expect(described_class.prompt_snippet).to be_nil
+    end
+
+    context "when overridden by a subclass" do
+      let(:custom_tool) do
+        Class.new(described_class) do
+          def self.prompt_snippet = "Do the thing."
+        end
+      end
+
+      it "uses the subclass value" do
+        expect(custom_tool.prompt_snippet).to eq("Do the thing.")
+      end
+    end
+  end
+
+  describe ".prompt_guidelines" do
+    it "defaults to an empty array so tools contribute nothing by default" do
+      expect(described_class.prompt_guidelines).to eq([])
+    end
+
+    context "when overridden by a subclass" do
+      let(:custom_tool) do
+        Class.new(described_class) do
+          def self.prompt_guidelines = ["Prefer X over Y."]
+        end
+      end
+
+      it "uses the subclass value" do
+        expect(custom_tool.prompt_guidelines).to eq(["Prefer X over Y."])
+      end
+    end
+  end
 end

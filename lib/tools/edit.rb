@@ -20,6 +20,8 @@ module Tools
 
     def self.description = "Replace text in a file."
 
+    def self.prompt_snippet = "Replace exact text in a file."
+
     def self.input_schema
       {
         type: "object",

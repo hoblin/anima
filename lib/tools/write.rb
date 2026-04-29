@@ -19,6 +19,12 @@ module Tools
 
     def self.description = "Write file."
 
+    def self.prompt_snippet = "Create or overwrite a whole file."
+
+    def self.prompt_guidelines = [
+      "write_file replaces the whole file. For targeted changes, use edit_file."
+    ]
+
     def self.input_schema
       {
         type: "object",

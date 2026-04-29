@@ -22,6 +22,18 @@ RSpec.describe Tools::Read do
     end
   end
 
+  describe ".prompt_snippet" do
+    it "advertises read_file in the system prompt menu" do
+      expect(described_class.prompt_snippet).to eq("Read a file.")
+    end
+  end
+
+  describe ".prompt_guidelines" do
+    it "contributes no guidelines — the bash steering already names read_file" do
+      expect(described_class.prompt_guidelines).to eq([])
+    end
+  end
+
   describe ".input_schema" do
     it "defines path as a required string property" do
       schema = described_class.input_schema
