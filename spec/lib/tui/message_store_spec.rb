@@ -692,7 +692,7 @@ RSpec.describe TUI::MessageStore do
       expect(stats[:rate_limits]).to be_nil
     end
 
-    it "accumulates token counts from api_metrics" do
+    it "tracks token counts from api_metrics" do
       store.process_event({
         "type" => "agent_message",
         "content" => "Hello",
@@ -714,21 +714,54 @@ RSpec.describe TUI::MessageStore do
       expect(stats[:call_count]).to eq(1)
     end
 
-    it "accumulates across multiple messages" do
-      2.times do
-        store.process_event({
-          "type" => "agent_message",
-          "content" => "msg",
-          "api_metrics" => {
-            "usage" => {"input_tokens" => 50, "output_tokens" => 25}
+    # Regression: cumulative summing produced impossibly large values
+    # (1M+ cached tokens in a single context). See issue #424.
+    it "tracks the most recent call's token counts, not a running sum" do
+      store.process_event({
+        "type" => "agent_message",
+        "content" => "first",
+        "api_metrics" => {
+          "usage" => {
+            "input_tokens" => 100,
+            "output_tokens" => 50,
+            "cache_read_input_tokens" => 80,
+            "cache_creation_input_tokens" => 20
           }
-        })
-      end
+        }
+      })
+      store.process_event({
+        "type" => "agent_message",
+        "content" => "second",
+        "api_metrics" => {
+          "usage" => {
+            "input_tokens" => 30,
+            "output_tokens" => 15,
+            "cache_read_input_tokens" => 200,
+            "cache_creation_input_tokens" => 0
+          }
+        }
+      })
+      store.process_event({
+        "type" => "agent_message",
+        "content" => "third",
+        "api_metrics" => {
+          "usage" => {
+            "input_tokens" => 5,
+            "output_tokens" => 3,
+            "cache_read_input_tokens" => 45,
+            "cache_creation_input_tokens" => 0
+          }
+        }
+      })
 
       stats = store.token_economy
-      expect(stats[:input_tokens]).to eq(100)
-      expect(stats[:output_tokens]).to eq(50)
-      expect(stats[:call_count]).to eq(2)
+      expect(stats[:input_tokens]).to eq(5)
+      expect(stats[:output_tokens]).to eq(3)
+      expect(stats[:cache_read_input_tokens]).to eq(45)
+      expect(stats[:cache_creation_input_tokens]).to eq(0)
+      expect(stats[:cache_hit_rate]).to be_within(0.001).of(45.0 / 50)
+      expect(stats[:call_count]).to eq(3)
+      expect(stats[:cache_history].size).to eq(3)
     end
 
     it "calculates cache hit rate correctly" do
@@ -770,7 +803,7 @@ RSpec.describe TUI::MessageStore do
       expect(stats[:rate_limits]["5h_utilization"]).to eq(0.25)
     end
 
-    it "does not accumulate metrics on update actions" do
+    it "ignores api_metrics on update actions so call_count stays accurate" do
       store.process_event({
         "type" => "agent_message",
         "id" => 1,
@@ -782,7 +815,7 @@ RSpec.describe TUI::MessageStore do
         "id" => 1,
         "action" => "update",
         "content" => "updated",
-        "api_metrics" => {"usage" => {"input_tokens" => 50}}
+        "api_metrics" => {"usage" => {"input_tokens" => 999}}
       })
 
       expect(store.token_economy[:input_tokens]).to eq(50)

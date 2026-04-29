@@ -63,17 +63,23 @@ module TUI
       @mutex.synchronize { @entries.size + @pending_entries.size }
     end
 
-    # Returns aggregated token economy data for HUD display.
-    # Includes running totals, cache hit rate, and latest rate limit snapshot.
+    # Returns token economy data for HUD display.
+    #
+    # Token counts, rate limits, and cache hit rate reflect the most recent API
+    # call — accumulating them across a session produces values larger than the
+    # context window, which is meaningless. `call_count` and `cache_history`
+    # remain session-wide so the HUD can detect "any metrics yet?" and render
+    # the per-call sparkline.
     #
     # @return [Hash] token economy stats:
-    #   - :input_tokens [Integer] total input tokens across all calls
-    #   - :output_tokens [Integer] total output tokens
-    #   - :cache_read_input_tokens [Integer] total cached token reads
-    #   - :cache_creation_input_tokens [Integer] total cache writes
-    #   - :call_count [Integer] number of API calls tracked
-    #   - :cache_hit_rate [Float] percentage of input served from cache (0.0-1.0)
+    #   - :input_tokens [Integer] uncached input tokens from the latest call
+    #   - :output_tokens [Integer] output tokens from the latest call
+    #   - :cache_read_input_tokens [Integer] cached token reads from the latest call
+    #   - :cache_creation_input_tokens [Integer] cache writes from the latest call
+    #   - :call_count [Integer] number of API calls tracked this session
+    #   - :cache_hit_rate [Float] hit rate of the latest call (0.0-1.0)
     #   - :rate_limits [Hash, nil] latest rate limit values from API
+    #   - :cache_history [Array<Float>] per-call hit rates for the sparkline
     def token_economy
       @mutex.synchronize do
         stats = @token_economy.dup
@@ -94,7 +100,8 @@ module TUI
     # Events with `"action" => "update"` and a matching `"id"` replace
     # the existing entry's data in-place rather than appending.
     #
-    # Extracts api_metrics when present and accumulates token economy data.
+    # Extracts api_metrics when present and records the latest call's
+    # token economy data for the HUD.
     #
     # @param event_data [Hash] Action Cable event payload with "type", "content",
     #   and optionally "rendered" (hash of mode => lines), "id", "action", "api_metrics"
@@ -104,7 +111,7 @@ module TUI
 
       # Track API metrics for token economy HUD (only on create, not update)
       if event_data["action"] != "update"
-        accumulate_api_metrics(event_data["api_metrics"])
+        track_api_metrics(event_data["api_metrics"])
       end
 
       if event_data["action"] == "update" && message_id
@@ -436,12 +443,15 @@ module TUI
       }
     end
 
-    # Accumulates API metrics from a message into running totals.
-    # Updates rate limits with the latest snapshot (most recent wins).
+    # Records API metrics from the most recent message.
+    #
+    # Token counts and rate limits are last-wins (per-request semantics);
+    # `call_count` increments and `cache_history` appends so the HUD can
+    # show a sparkline of per-call hit rates.
     #
     # @param api_metrics [Hash, nil] metrics from API response with "usage" and "rate_limits"
     # @return [void]
-    def accumulate_api_metrics(api_metrics)
+    def track_api_metrics(api_metrics)
       return unless api_metrics.is_a?(Hash)
 
       @mutex.synchronize do
@@ -451,10 +461,10 @@ module TUI
           cache_read = usage["cache_read_input_tokens"].to_i
           cache_create = usage["cache_creation_input_tokens"].to_i
 
-          @token_economy[:input_tokens] += input
-          @token_economy[:output_tokens] += usage["output_tokens"].to_i
-          @token_economy[:cache_read_input_tokens] += cache_read
-          @token_economy[:cache_creation_input_tokens] += cache_create
+          @token_economy[:input_tokens] = input
+          @token_economy[:output_tokens] = usage["output_tokens"].to_i
+          @token_economy[:cache_read_input_tokens] = cache_read
+          @token_economy[:cache_creation_input_tokens] = cache_create
           @token_economy[:call_count] += 1
 
           # Per-call cache hit rate for sparkline graph
