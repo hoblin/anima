@@ -266,14 +266,7 @@ RSpec.describe Mcp::StdioTransport do
     end
   end
 
-  # Regression coverage for issue #469. Wrappers like +npm+/+npx+ spawn
-  # +node+ children that orphan when only the wrapper PID is signalled.
-  # The transport now spawns the server in its own process group and
-  # signals the whole group, so descendants die with their parent.
   describe "process group isolation" do
-    # Server that forks a long-lived grandchild before entering the
-    # request loop. Writes the grandchild's PID to +pid_path+ so the test
-    # can probe it after shutdown.
     def grandchild_spawning_server_script(pid_path)
       ["-e", <<~RUBY]
         require "json"
@@ -318,9 +311,7 @@ RSpec.describe Mcp::StdioTransport do
 
       transport.shutdown
 
-      # The shutdown path includes a 2s SIGTERM grace and reaping; once
-      # it returns the leader is gone. Allow a brief moment for the
-      # kernel to finish reaping the grandchild before re-checking.
+      # Group-signaled grandchild may take a few ms after shutdown returns.
       deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 1.0
       until !process_alive?(grandchild_pid) || Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
         sleep 0.05

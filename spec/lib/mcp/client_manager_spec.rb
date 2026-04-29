@@ -262,11 +262,6 @@ RSpec.describe Mcp::ClientManager do
       end
     end
 
-    # Regression coverage for issue #469: every Tools::Registry.build
-    # used to construct a fresh manager, which spawned a fresh stdio
-    # process per job. Tool wrappers are now cached for the worker's
-    # lifetime — so repeated register_tools calls must reuse, not
-    # respawn.
     context "when called multiple times against the same manager" do
       let(:mcp_tool) do
         MCP::Client::Tool.new(name: "search", description: "Search", input_schema: {})
@@ -312,8 +307,6 @@ RSpec.describe Mcp::ClientManager do
   end
 
   describe ".shared" do
-    # Reset the class-level memo so this group doesn't leak a
-    # process-wide instance into other specs.
     after { described_class.instance_variable_set(:@shared, nil) }
 
     it "returns the same instance across calls" do

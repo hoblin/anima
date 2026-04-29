@@ -4,23 +4,19 @@ require "mcp"
 
 module Mcp
   # Connects to MCP servers and registers their tools with
-  # {Tools::Registry}. Each configured server (HTTP or stdio) is
-  # connected on first use and the resulting tool wrappers are cached
-  # for the worker's lifetime — so {Tools::Registry.build}, which fires
-  # per job, reuses the same MCP clients instead of respawning a fresh
-  # subprocess per server per job (issue #469).
+  # {Tools::Registry}. Each configured server (HTTP or stdio) gets a
+  # dedicated {MCP::Client} instance, cached for the worker's
+  # lifetime. Connection failures are logged and skipped — a
+  # misconfigured or unavailable server does not prevent other servers
+  # or built-in tools from working.
   #
-  # Spawned stdio server processes are reaped on worker exit by
-  # {Mcp::StdioTransport.cleanup_all} (registered as an at_exit hook).
-  #
-  # Connection failures are logged and skipped — a misconfigured or
-  # unavailable server does not prevent other servers or built-in tools
-  # from working.
+  # Spawned stdio processes are reaped on worker exit via
+  # {Mcp::StdioTransport.cleanup_all}.
   #
   # @example
   #   Mcp::ClientManager.shared.register_tools(registry)
   class ClientManager
-    # Process-wide shared instance. Lazily constructed on first call.
+    # Process-wide shared instance.
     # @return [Mcp::ClientManager]
     def self.shared
       @shared ||= new
@@ -31,10 +27,9 @@ module Mcp
       @config = config
     end
 
-    # Connects to every configured MCP server on first call, caches the
-    # resulting tool wrappers, and registers them in the given registry.
-    # Subsequent calls reuse the cache — no respawn, no extra
-    # +tools/list+ round-trip.
+    # Connects to every configured MCP server on first call, caches
+    # the resulting tool wrappers, and registers them in the given
+    # registry.
     #
     # @param registry [Tools::Registry] the registry to add tools to
     # @return [Array<String>] warning messages from configuration plus
@@ -54,9 +49,6 @@ module Mcp
       register_transport(@config.stdio_servers) { |server| build_stdio_client(server) }
     end
 
-    # Iterates server configs, builds a client for each via the block,
-    # caches the resulting tool wrappers. Failures are logged and
-    # collected as warnings.
     def register_transport(servers)
       servers.each do |server|
         client = yield(server)
