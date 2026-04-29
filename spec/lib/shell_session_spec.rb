@@ -19,6 +19,15 @@ RSpec.describe ShellSession do
       expect(result[:output]).to include("error")
     end
 
+    it "substitutes a placeholder when a command produces no output" do
+      # `tmux wait-for -S` releases us before bash can redraw its prompt,
+      # so commands with no output occasionally yield an all-whitespace
+      # pane. Downstream Message#content validation would reject that.
+      result = shell.run("true")
+      expect(result[:output]).not_to be_empty
+      expect(result[:output].strip).not_to be_empty
+    end
+
     it "captures both stdout and stderr together" do
       result = shell.run("echo out && echo err >&2")
       expect(result[:output]).to include("out")

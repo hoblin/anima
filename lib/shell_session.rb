@@ -287,6 +287,16 @@ class ShellSession
     system("tmux", "send-keys", "-t", @target, "C-c", out: File::NULL, err: File::NULL)
   end
 
+  # Placeholder substituted when a command produces no visible output.
+  # Two cases collapse to the same message:
+  # 1. The command genuinely had nothing to say (+true+, +cd /+,
+  #    +find ... 2>/dev/null+ with no matches).
+  # 2. We captured in the brief race window between +wait-for -S+ firing
+  #    and bash redrawing its prompt — the pane is all whitespace.
+  # Either way the LLM gets a coherent message, and the downstream
+  # +Message#content+ validation doesn't reject the empty result.
+  EMPTY_OUTPUT_PLACEHOLDER = "(command produced no output)"
+
   # Captures the pane scrollback + visible content. Because we ran
   # +tmux clear-history+ before sending and the shell +clear+ wiped both
   # visible pane and scrollback (via the +\e[3J+ sequence on modern
@@ -296,7 +306,8 @@ class ShellSession
   # output comes back whole.
   def capture_output
     raw, _ = Open3.capture2("tmux", "capture-pane", "-pJ", "-t", @target, "-S", "-", err: File::NULL)
-    truncate(raw.dup.force_encoding("UTF-8").scrub)
+    output = truncate(raw.dup.force_encoding("UTF-8").scrub)
+    output.strip.empty? ? EMPTY_OUTPUT_PLACEHOLDER : output
   end
 
   # Truncates +output+ to {Anima::Settings.max_output_bytes}. The
