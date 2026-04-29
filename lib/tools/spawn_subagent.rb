@@ -44,13 +44,11 @@ module Tools
     end
 
     # @param session [Session] the parent session spawning the sub-agent
-    # @param shell_session [ShellSession] the parent's persistent shell (for CWD inheritance)
     # @param tool_use_id [String, nil] the invoking +spawn_subagent+ tool_call's
     #   pairing id, captured so the spawn pair can later be located by the
     #   HUD visibility sweep in {Mneme::Runner}
-    def initialize(session:, shell_session:, tool_use_id: nil, **)
+    def initialize(session:, tool_use_id: nil, **)
       @session = session
-      @shell_session = shell_session
       @tool_use_id = tool_use_id
     end
 
@@ -89,8 +87,8 @@ module Tools
         parent_session_id: @session.id,
         prompt: GENERIC_PROMPT,
         granted_tools: granted_tools,
-        initial_cwd: @shell_session.pwd,
-        spawn_tool_use_id: @tool_use_id
+        spawn_tool_use_id: @tool_use_id,
+        initial_cwd: ShellSession.cwd_via_tmux(@session.id) || @session.initial_cwd
       )
       create_goal_with_pinned_task(child, task)
       assign_nickname_via_melete(child)

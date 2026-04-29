@@ -194,16 +194,6 @@ module Anima
       # @return [String] absolute path
       def soul_path = get("paths", "soul")
 
-      # ─── Environment ──────────────────────────────────────────────
-
-      # Filenames to scan for in the working directory.
-      # @return [Array<String>]
-      def project_files_whitelist = get("environment", "project_files")
-
-      # Maximum directory depth for project file scanning.
-      # @return [Integer]
-      def project_files_max_depth = get("environment", "project_files_max_depth")
-
       # ─── GitHub ─────────────────────────────────────────────────────
 
       # Repository for feature requests (+owner/repo+ format).

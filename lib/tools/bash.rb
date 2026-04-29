@@ -3,12 +3,16 @@
 module Tools
   # Executes bash commands in a persistent {ShellSession}. Commands share
   # working directory, environment variables, and shell history within a
-  # conversation. Output is truncated and timeouts are enforced by the
-  # underlying session.
+  # conversation. Output is the rendered terminal text exactly as a human
+  # would see it — including the prompt, which doubles as live cwd/branch
+  # telemetry for the agent.
   #
-  # Supports two modes:
-  # - Single command via +command+ (string) — backward compatible
-  # - Batch via +commands+ (array) with +mode+ controlling error handling
+  # Two input shapes:
+  # - +command+ (string) — one command, one result.
+  # - +commands+ (array) — runs each command in order in the same shell;
+  #   all run regardless of failures (the agent reads merged output and
+  #   decides what to do). Use shell chaining (+&&+) inside a single
+  #   command if you need fail-fast.
   #
   # @see ShellSession#run
   class Bash < Base
@@ -26,12 +30,7 @@ module Tools
           commands: {
             type: "array",
             items: {type: "string"},
-            description: "Each command gets its own timeout and result."
-          },
-          mode: {
-            type: "string",
-            enum: ["sequential", "parallel"],
-            description: "sequential (default) stops on first failure."
+            description: "Each command gets its own timeout and result. All commands run regardless of failures — use a single command with shell chaining if you need fail-fast."
           }
         }
       }
@@ -47,7 +46,7 @@ module Tools
     # @param input [Hash<String, Object>] string-keyed hash from the Anthropic API.
     #   Supports optional "timeout" key (seconds) to override the global
     #   command_timeout setting for long-running operations.
-    # @return [String] formatted output with stdout, stderr, and exit code
+    # @return [String] rendered terminal output
     # @return [Hash] with :error key on failure
     def execute(input)
       timeout = input["timeout"]
@@ -57,7 +56,7 @@ module Tools
       if has_command && has_commands
         {error: "Provide either 'command' or 'commands', not both"}
       elsif has_commands
-        execute_batch(input["commands"], mode: input.fetch("mode", "sequential"), timeout: timeout)
+        execute_batch(input["commands"], timeout: timeout)
       elsif has_command
         execute_single(input["command"], timeout: timeout)
       else
@@ -77,40 +76,31 @@ module Tools
       return format_interrupted(result) if result[:interrupted]
       return result if result.key?(:error)
 
-      output = format_result(result[:stdout], result[:stderr], result[:exit_code])
-      append_env_summary(output, result[:env_summary])
+      result[:output]
     end
 
-    # Executes an array of commands, returning a combined result string.
-    # Checks for user interrupt between commands and during each command
-    # via the {ShellSession} interrupt_check callback.
+    # Executes an array of commands sequentially through the shared
+    # shell. Continues past errors — the LLM reads the merged output
+    # and decides what to do. The only short-circuit is a user interrupt,
+    # which skips the remaining commands.
     #
     # @param commands [Array<String>] commands to execute
-    # @param mode [String] "sequential" (stop on first failure) or "parallel" (run all)
     # @param timeout [Integer, nil] per-command timeout override
     # @return [String] combined results with per-command headers
     # @return [Hash] with :error key if commands array is invalid
-    def execute_batch(commands, mode:, timeout: nil)
+    def execute_batch(commands, timeout: nil)
       return {error: "Commands array cannot be empty"} unless commands.is_a?(Array) && commands.any?
 
       checker = interrupt_checker
       total = commands.size
       results = []
-      failed = false
       interrupted = false
-
-      last_env_summary = nil
 
       commands.each_with_index do |command, index|
         position = "[#{index + 1}/#{total}]"
 
         if interrupted
           results << "#{position} $ #{command}\n(skipped — interrupted by user)"
-          next
-        end
-
-        if failed && mode == "sequential"
-          results << "#{position} $ #{command}\n(skipped)"
           next
         end
 
@@ -127,47 +117,23 @@ module Tools
           interrupted = true
         elsif result.key?(:error)
           results << "#{position} $ #{command}\n#{result[:error]}"
-          failed = true
         else
-          exit_code = result[:exit_code]
-          output = format_result(result[:stdout], result[:stderr], exit_code)
-          results << "#{position} $ #{command}\n#{output}"
-          last_env_summary = result[:env_summary]
-          failed = true if exit_code != 0
+          results << "#{position} $ #{command}\n#{result[:output]}"
         end
       end
 
-      append_env_summary(results.join("\n\n"), last_env_summary)
-    end
-
-    # Appends environment summary to tool output when present.
-    #
-    # @param output [String] formatted tool response
-    # @param env_summary [String, nil] natural-language environment change summary
-    # @return [String] output with env summary appended
-    def append_env_summary(output, env_summary)
-      env_summary ? "#{output}\n\n#{env_summary}" : output
-    end
-
-    def format_result(stdout, stderr, exit_code)
-      parts = []
-      parts << "stdout:\n#{stdout}" unless stdout.empty?
-      parts << "stderr:\n#{stderr}" unless stderr.empty?
-      parts << "exit_code: #{exit_code}"
-      parts.join("\n\n")
+      results.join("\n\n")
     end
 
     # Formats the result of an interrupted command for the LLM.
     # Includes partial output captured before the interrupt.
     #
-    # @param result [Hash] ShellSession result with :stdout, :stderr keys
+    # @param result [Hash] ShellSession result with :output key
     # @return [String] formatted message for the LLM
     def format_interrupted(result)
-      stdout = result[:stdout].to_s
-      stderr = result[:stderr].to_s
+      output = result[:output].to_s
       parts = [LLM::Client::INTERRUPT_MESSAGE]
-      parts << "Partial stdout:\n#{stdout}" unless stdout.empty?
-      parts << "stderr:\n#{stderr}" unless stderr.empty?
+      parts << "Partial output:\n#{output}" unless output.empty?
       parts.join("\n\n")
     end
 

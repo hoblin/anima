@@ -102,16 +102,6 @@ max_tool_response_chars = 6_000
 # ~24000 chars ≈ ~8000 tokens.
 max_subagent_response_chars = 24_000
 
-# ─── Environment ──────────────────────────────────────────────
-
-[environment]
-
-# Files to scan for in the working directory (at root and up to project_files_max_depth subdirectories deep).
-project_files = ["CLAUDE.md", "AGENTS.md", "README.md", "CONTRIBUTING.md"]
-
-# Maximum directory depth for project file scanning.
-project_files_max_depth = 3
-
 # ─── GitHub ─────────────────────────────────────────────────────
 
 [github]

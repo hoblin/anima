@@ -1,775 +1,362 @@
 # frozen_string_literal: true
 
-require "io/console"
-require "monitor"
 require "open3"
-require "pathname"
-require "pty"
 require "securerandom"
 require "shellwords"
-require "uri"
 
-# Immutable snapshot of the shell's environment for change detection.
-# Compared between commands to produce natural-language summaries of what
-# changed — the agent discovers its environment through Bash tool responses.
+# Persistent shell session backed by a tmux session. Commands share
+# working directory, environment, and shell history within a conversation.
+# Multiple tools share the same session via {.for_session}.
 #
-# @!attribute [r] pwd
-#   @return [String, nil] current working directory
-# @!attribute [r] branch
-#   @return [String, nil] current git branch name
-# @!attribute [r] repo
-#   @return [String, nil] "owner/repo" extracted from git origin remote
-# @!attribute [r] project_files
-#   @return [Array<String>] sorted relative paths to project instruction files
-EnvironmentSnapshot = Data.define(:pwd, :branch, :repo, :project_files) do
-  # Sentinel for "never detected" — diffs against this produce a full snapshot.
-  def self.blank = new(pwd: nil, branch: nil, repo: nil, project_files: [])
-end
-
-# Persistent shell session backed by a PTY with FIFO-based stderr separation.
-# Commands share working directory, environment variables, and shell history
-# within a conversation. Multiple tools share the same session.
+# tmux is the source of truth — the {ShellSession} object is a disposable
+# handle. The tmux session survives Anima crashes; teardown happens only
+# through {.release} or {#finalize} (e.g. when the owning {Session} record
+# is deleted).
 #
-# Auto-recovers from timeouts and crashes: if the shell dies, the next command
-# transparently respawns a fresh shell and restores the working directory.
+# Sub-agents inherit cwd from their parent's tmux session at the moment
+# the child shell is created. The lookup is dynamic — the parent's
+# *current* cwd is captured, not a snapshot from spawn time.
 #
-# After each successful command, detects environment changes (CWD, git branch,
-# project files) and includes a natural-language summary in the result hash.
-# This replaces the old EnvironmentProbe system-prompt injection, keeping the
-# system prompt static for prompt caching.
-#
-# Uses IO.select-based deadlines instead of Timeout.timeout for all PTY reads.
-# Timeout.timeout is unsafe with PTY I/O — it uses Thread.raise which can
-# corrupt mutex state, leave resources inconsistent, and cause exceptions
-# to fire outside handler blocks when nested.
+# tmux is a hard runtime dependency. {#initialize} raises a clear error if
+# tmux is missing.
 #
 # @example
-#   session = ShellSession.new(session_id: 42)
-#   session.run("cd /tmp")
-#   session.run("pwd")
-#   # => {stdout: "/tmp", stderr: "", exit_code: 0}
-#   session.finalize
+#   shell = ShellSession.for_session(session)
+#   shell.run("cd /tmp")
+#   shell.run("pwd")
+#   # => {output: "/tmp"}
 class ShellSession
-  # @return [Integer, String] identifier of the {Session} (or spec fixture)
-  #   this shell belongs to
+  # Prefix for every tmux session Anima owns. The full session name is
+  # +anima-shell-{session_id}+; this prefix is what cleanup sweeps
+  # (current and future) match on to leave unrelated tmux sessions alone.
+  TMUX_SESSION_PREFIX = "anima-shell-"
+
+  # Pane geometry — 200×50 is wide enough for most tool output without
+  # forcing wraps that would inflate captures, and tall enough that the
+  # agent sees normal command runs without scrollback in the visible area.
+  PANE_WIDTH = 200
+  PANE_HEIGHT = 50
+
+  # Scrollback cap. tmux retains the last N lines of output per pane,
+  # discarding older ones automatically — this is what bounds memory and
+  # closes the OOM bug from the old PTY+FIFO design. Each line costs
+  # roughly 1–2KB inside tmux, so 5000 lines ≈ 5–10MB resident per pane.
+  HISTORY_LIMIT = 5_000
+
+  # Env vars that disable interactive pagers and credential prompts in
+  # the shell. Without these, tools like +gh+, +git+, +man+, +journalctl+
+  # spawn +less+ and block the pane waiting for keypresses — our
+  # +wait-for -S+ never fires, the run hangs to timeout. Set once at
+  # session creation via +new-session -e+ so they propagate to every
+  # command.
+  SHELL_ENV = {
+    "PAGER" => "cat",
+    "GIT_PAGER" => "cat",
+    "MANPAGER" => "cat",
+    "LESS" => "-eFRX",
+    "SYSTEMD_PAGER" => "",
+    "AWS_PAGER" => "",
+    "PSQL_PAGER" => "cat",
+    "BAT_PAGER" => "cat",
+    "GIT_TERMINAL_PROMPT" => "0"
+  }.freeze
+
+  # tmux format-string for the pane's current working directory.
+  # Single-quoted intentionally — tmux performs the +#{...}+ substitution
+  # server-side, so Ruby must pass the literal string.
+  PANE_CWD_FORMAT = '#{pane_current_path}' # rubocop:disable Lint/InterpolationCheck
+
+  # Grace period before escalating SIGTERM → SIGKILL when reaping a
+  # wedged +tmux wait-for+ child. tmux clients normally exit on TERM
+  # within milliseconds; 5 seconds is generous enough that a healthy
+  # one always makes it, while an unkillable one never hangs the shell.
+  WAITER_KILL_GRACE = 5
+
+  # Serializes the cold-start path of {.for_session} / {#initialize} —
+  # +alive?+ → +new-session+ → +inject_shell_env+. Without it, two
+  # threads racing on the same +session_id+ both see +alive?+ false,
+  # both run +new-session+ (the second silently fails), and both run
+  # +inject_shell_env+, double-exporting and corrupting the pane.
+  # Held only during cold start; warm-path callers don't contend.
+  INIT_MUTEX = Mutex.new
+
+  # @return [Integer, String] identifier of the {Session} this shell belongs to
   attr_reader :session_id
 
-  # @return [String, nil] current working directory of the shell process
-  attr_reader :pwd
-
-  # Returns the live shell bound to +session+, spawning one the first time
-  # a conversation reaches for bash and reusing it for every subsequent
-  # call. The expensive steps (login shell profile load, PTY + FIFO setup,
-  # +cd+ into +session.initial_cwd+) happen once per conversation, not
-  # once per tool call — so the user's PATH, aliases, and any env vars the
-  # agent sets along the way survive between commands within that session.
-  #
-  # Dead cached shells (after a crash or explicit finalize) are replaced
-  # transparently; {#run} would respawn on its own anyway, but we also
-  # reset +initial_cwd+ on a fresh spawn so the new shell lands where the
-  # conversation started.
+  # Returns the shell bound to +session+. Sub-agents inherit cwd from
+  # their parent's tmux session via {.cwd_via_tmux}, falling back to
+  # +session.initial_cwd+ for root sessions or when the parent's tmux
+  # session is gone.
   #
   # @param session [Session] owning conversation
   # @return [ShellSession]
   def self.for_session(session)
-    id = session.id
-
-    existing, shell = @sessions_mutex.synchronize do
-      cached = @sessions_by_id[id]
-      next [cached, nil] if cached&.alive?
-
-      release(id) if cached
-      [nil, new(session_id: id)]
-    end
-    return existing if existing
-
-    cwd = session.initial_cwd
-    shell.run("cd #{Shellwords.shellescape(cwd)}") if cwd.present? && File.directory?(cwd)
-    shell
+    cwd = parent_cwd_for(session) || session.initial_cwd
+    new(session_id: session.id, initial_cwd: cwd)
   end
 
-  # @param session_id [Integer, String] unique identifier for logging/diagnostics
-  def initialize(session_id:)
+  # Kills the tmux session for +session_id+. Idempotent — silently
+  # succeeds when no such session exists.
+  #
+  # @param session_id [Integer, String]
+  # @return [void]
+  def self.release(session_id)
+    target = "#{TMUX_SESSION_PREFIX}#{session_id}"
+    system("tmux", "kill-session", "-t", target, out: File::NULL, err: File::NULL)
+    nil
+  end
+
+  # Reads the working directory of +session_id+'s tmux pane directly
+  # from the tmux server. Works even when the pane is mid-command — the
+  # +pane_current_path+ format variable is a server-side property
+  # (kernel +/proc/{pid}/cwd+ readlink), not shell-mediated.
+  #
+  # @param session_id [Integer, String]
+  # @return [String, nil] absolute path, or nil when the session is gone
+  def self.cwd_via_tmux(session_id)
+    target = "#{TMUX_SESSION_PREFIX}#{session_id}"
+    output, status = Open3.capture2(
+      "tmux", "display-message", "-p", "-t", target, PANE_CWD_FORMAT,
+      err: File::NULL
+    )
+    return nil unless status.success?
+    cwd = output.strip
+    cwd.empty? ? nil : cwd
+  end
+
+  # @return [String, nil] parent's current working directory, or nil for
+  #   root sessions and when the parent's tmux session is gone
+  def self.parent_cwd_for(session)
+    return nil unless session.parent_session_id
+    cwd_via_tmux(session.parent_session_id)
+  end
+  private_class_method :parent_cwd_for
+
+  # @param session_id [Integer, String]
+  # @param initial_cwd [String, nil] starting working directory
+  # @raise [RuntimeError] if tmux is missing or the session can't be created
+  def initialize(session_id:, initial_cwd: nil)
     @session_id = session_id
-    @mutex = Mutex.new
-    @fifo_path = File.join(Dir.tmpdir, "anima-stderr-#{Process.pid}-#{SecureRandom.hex(8)}")
-    @alive = false
-    @finalized = false
-    @pwd = nil
-    @env_snapshot = nil
-    @read_buffer = +""
-    self.class.cleanup_orphans
-    begin
-      start
-    rescue
-      # Reap the half-spawned PTY, FIFO, and stderr thread before bailing —
-      # otherwise a failed init_shell leaks a live process with no handle on it.
-      teardown
-      raise
-    end
-    self.class.register(self)
+    @target = "#{TMUX_SESSION_PREFIX}#{session_id}"
+    INIT_MUTEX.synchronize { ensure_session(initial_cwd) }
   end
 
-  # Execute a command in the persistent shell. Respawns the shell
-  # automatically if the previous session died (timeout, crash, etc.).
+  # Execute a command in the persistent shell.
+  #
+  # Capture sequence:
+  # 1. +tmux clear-history+ wipes off-screen scrollback.
+  # 2. +send-keys "clear; <cmd>; tmux wait-for -S done-<uuid>"+ — bash
+  #    receives the line: shell +clear+ erases the visible pane (and
+  #    scrollback via the +\e[3J+ sequence on modern terminfo), +<cmd>+
+  #    runs, then +wait-for -S+ signals the synchronization channel.
+  # 3. We block on +tmux wait-for done-<uuid>+ in a child process and
+  #    poll for interrupt/timeout. On either we send +C-c+ to the pane
+  #    and kill the wait-for child — interactive bash discards the
+  #    rest of the input line on SIGINT, so the trailing +wait-for -S+
+  #    never fires and we can't rely on natural signaling.
+  # 4. +capture-pane -pJ -S -+ pulls scrollback + visible pane, which
+  #    (after +clear+ wiped both) is exactly the new command's output
+  #    and trailing prompt.
   #
   # @param command [String] bash command to execute
-  # @param timeout [Integer, nil] per-call timeout in seconds; overrides
-  #   Settings.command_timeout when provided
+  # @param timeout [Integer, nil] per-call timeout in seconds; defaults to
+  #   {Anima::Settings.command_timeout}
   # @param interrupt_check [Proc, nil] callable returning truthy when the
-  #   user has requested an interrupt. Polled every
-  #   {Anima::Settings.interrupt_check_interval} seconds during command execution.
-  # @return [Hash] with :stdout, :stderr, :exit_code keys on success
-  # @return [Hash] with :interrupted, :stdout, :stderr keys on user interrupt
-  # @return [Hash] with :error key on failure
+  #   user has requested an interrupt
+  # @return [Hash{Symbol => Object}] +:output+ on success;
+  #   +:output+ + +:interrupted+ on user cancel; +:error+ on failure
   def run(command, timeout: nil, interrupt_check: nil)
-    @mutex.synchronize do
-      return {error: "Shell session is not running"} if @finalized
-      restart unless @alive
-      execute_in_pty(command, timeout: timeout, interrupt_check: interrupt_check)
+    return {error: "Shell session is not running"} unless alive?
+
+    uuid = SecureRandom.hex(8)
+    timeout ||= Anima::Settings.command_timeout
+
+    system("tmux", "clear-history", "-t", @target, out: File::NULL, err: File::NULL)
+    line = "clear; #{command}; tmux wait-for -S done-#{uuid}"
+    system("tmux", "send-keys", "-t", @target, line, "Enter", out: File::NULL, err: File::NULL)
+
+    state = wait_for_completion(uuid, timeout, interrupt_check)
+    output = capture_output
+
+    return {error: "tmux capture-pane failed (session may have died)"} if output.nil?
+
+    case state
+    when :done then {output: output}
+    when :interrupted then {output: output, interrupted: true}
+    when :timeout then {error: "Command timed out after #{timeout} seconds.\n\n#{output}"}
     end
-  rescue => error # rubocop:disable Lint/RescueException -- LLM must always get a result hash, never a stack trace
+  rescue => error
+    # Catch-all isolates the LLM tool-call boundary: a stray exception
+    # from tmux internals must surface as a result hash rather than tear
+    # down the conversation pipeline.
     {error: "#{error.class}: #{error.message}"}
   end
 
-  # Clean up PTY, FIFO, and child process. Permanent — the session
-  # will not auto-respawn after this call.
-  def finalize
-    @mutex.synchronize do
-      @finalized = true
-      teardown
-    end
-    self.class.unregister(self)
-  end
-
-  # @return [Boolean] whether the shell process is still running
+  # @return [Boolean] whether the underlying tmux session exists
   def alive?
-    @mutex.synchronize { @alive }
+    !!system("tmux", "has-session", "-t", @target, out: File::NULL, err: File::NULL)
   end
 
-  # --- Class-level session tracking for at_exit cleanup ---
+  # Kills the underlying tmux session. Idempotent.
+  def finalize
+    self.class.release(@session_id)
+  end
 
-  # One live ShellSession per Session id. Conversations rent a shell from
-  # this map via {.for_session}; the map is the single source of truth for
-  # "which shells exist in this process". It has two readers: {.for_session}
-  # (cache lookup) and {.cleanup_all} (at_exit sweep).
+  # Reads the shell's current working directory directly from the tmux
+  # server. Works even mid-command — the lookup is server-side, not
+  # shell-mediated.
   #
-  # {Monitor} (not {Mutex}) because {.for_session} holds the lock across
-  # +new+, whose {#initialize} re-enters the same lock via {.register}. A
-  # plain mutex would deadlock.
-  @sessions_by_id = {}
-  @sessions_mutex = Monitor.new
-
-  class << self
-    # @api private
-    def register(session)
-      @sessions_mutex.synchronize { @sessions_by_id[session.session_id] = session }
-    end
-
-    # @api private
-    def unregister(session)
-      @sessions_mutex.synchronize do
-        @sessions_by_id.delete(session.session_id) if @sessions_by_id[session.session_id].equal?(session)
-      end
-    end
-
-    # Finalize the shell bound to +session_id+, if any. Called when a
-    # conversation is deliberately retired; idempotent if nothing is cached.
-    #
-    # @param session_id [Integer, String]
-    # @return [void]
-    def release(session_id)
-      shell = @sessions_mutex.synchronize { @sessions_by_id.delete(session_id) }
-      shell&.finalize
-    end
-
-    # Finalize all live sessions. Called automatically via at_exit.
-    def cleanup_all
-      @sessions_mutex.synchronize do
-        @sessions_by_id.each_value { |session| session.send(:teardown) }
-        @sessions_by_id.clear
-      end
-    end
-
-    # Resolves the shell to spawn. Falls back to /bin/bash when +$SHELL+ is
-    # unset or empty (e.g. cron, systemd, minimal containers).
-    #
-    # @return [String] absolute path to the login shell
-    def login_shell
-      ENV["SHELL"].presence || "/bin/bash"
-    end
-
-    # Remove stale FIFO files left by crashed processes.
-    # FIFO naming format: anima-stderr-{pid}-{hex}
-    def cleanup_orphans
-      Dir.glob(File.join(Dir.tmpdir, "anima-stderr-*")).each do |path|
-        match = File.basename(path).match(/\Aanima-stderr-(\d+)-/)
-        next unless match
-
-        pid = match[1].to_i
-        next if pid <= 0
-
-        begin
-          Process.kill(0, pid)
-        rescue Errno::ESRCH
-          begin
-            File.delete(path)
-          rescue SystemCallError
-            # Best-effort cleanup
-          end
-        rescue Errno::EPERM
-          # Process exists but we can't signal it — leave it
-        end
-      end
-    end
+  # @return [String, nil]
+  def pwd
+    self.class.cwd_via_tmux(@session_id)
   end
-
-  at_exit { ShellSession.cleanup_all }
 
   private
 
-  def start
-    create_fifo
-    spawn_shell
-    start_stderr_reader
-    init_shell
-    update_pwd
-    seed_env_snapshot
-    @alive = true
-  end
+  def ensure_session(cwd)
+    return if alive?
 
-  # Shuts down the current shell and spawns a fresh one, restoring the
-  # previous working directory. Called automatically when @alive is false.
-  def restart
-    saved_pwd = @pwd
-    teardown
-    @fifo_path = File.join(Dir.tmpdir, "anima-stderr-#{Process.pid}-#{SecureRandom.hex(8)}")
-    start
-    restore_working_directory(saved_pwd)
-  end
-
-  # Restores the shell's working directory after a respawn.
-  # Skips silently if the directory no longer exists.
-  #
-  # @param saved_pwd [String, nil] directory path to restore
-  # @return [void]
-  def restore_working_directory(saved_pwd)
-    return unless saved_pwd && File.directory?(saved_pwd)
-    execute_in_pty("cd #{Shellwords.shellescape(saved_pwd)}")
-  end
-
-  def create_fifo
-    File.mkfifo(@fifo_path, 0o600)
-  rescue Errno::EEXIST
-    # FIFO already exists — reuse it
-  end
-
-  # Env vars that prevent interactive pagers and credential prompts from
-  # hanging the PTY. We need a PTY (not pipes) for pwd tracking via /proc
-  # and signal handling, but this makes programs think they're on a terminal
-  # and launch pagers. No single switch disables all pagers — each tool has
-  # its own env var — so we set a comprehensive list plus LESS flags as a
-  # safety net for direct `less` invocations.
-  SHELL_ENV = {
-    "TERM" => "dumb",
-    "PAGER" => "cat",                   # Default pager for most Unix tools
-    "LESS" => "-eFRX",                  # Safety net: make less auto-exit at EOF, no screen clear
-    "GIT_PAGER" => "cat",              # Git checks this before PAGER
-    "MANPAGER" => "cat",               # man pages
-    "SYSTEMD_PAGER" => "",             # journalctl, systemctl (empty = disable)
-    "BAT_PAGER" => "cat",             # bat (cat alternative)
-    "AWS_PAGER" => "",                 # AWS CLI v2 (empty = disable)
-    "PSQL_PAGER" => "cat",            # PostgreSQL psql
-    "GIT_TERMINAL_PROMPT" => "0"       # Fail immediately instead of prompting for credentials
-  }.freeze
-
-  # Boots the user's login shell just long enough to source their profile
-  # (/etc/profile, ~/.zprofile, ~/.bash_profile, ~/.zshenv — whichever
-  # applies), then +exec+s a bare +bash+ that handles our command stream.
-  #
-  # Sourcing profile is what makes the agent see the same PATH, tool
-  # locations, and env vars the user has in their own terminal. Handing off
-  # to a bare +bash+ afterwards avoids the mess that comes with attaching a
-  # real interactive shell to a PTY — prompts, line editors, syntax
-  # highlighting, bracketed paste, and title-setting escapes would all
-  # corrupt our marker-based output parsing.
-  #
-  # {SHELL_ENV} still merges on top to keep pagers and credential prompts
-  # from hanging the PTY.
-  def spawn_shell
-    @pty_stdout, @pty_stdin, @pid = PTY.spawn(SHELL_ENV, self.class.login_shell, "-l", "-c", BARE_SHELL_EXEC)
-    # Disable terminal echo via termios before the shell can echo our commands.
-    # This is instant (kernel-level), unlike stty -echo which races with input.
-    @pty_stdin.echo = false
-  end
-
-  # Payload handed to the login shell via +-c+. Replaces the login shell's
-  # process with a bare bash so the user's profile env carries forward, but
-  # the interactive shell machinery (ZLE, prompts, syntax highlighting) does
-  # not. Must be bash specifically — the command stream relies on bash-safe
-  # POSIX syntax, and the +--norc --noprofile+ flags are bash-specific.
-  BARE_SHELL_EXEC = "exec bash --norc --noprofile"
-
-  def start_stderr_reader
-    @stderr_mutex = Mutex.new
-    @stderr_buffer = []
-    @stderr_bytes = 0
-    @stderr_truncated = false
-    @max_output_bytes = Anima::Settings.max_output_bytes
-    @stderr_thread = Thread.new do
-      max_bytes = @max_output_bytes
-      File.open(@fifo_path, "r") do |fifo|
-        while (line = fifo.gets)
-          cleaned = line.chomp.delete("\r")
-          @stderr_mutex.synchronize do
-            if @stderr_bytes < max_bytes
-              @stderr_buffer << cleaned
-              @stderr_bytes += cleaned.bytesize
-            else
-              @stderr_truncated = true
-            end
-          end
-        end
-      end
-    rescue Errno::ENOENT, IOError
-      # FIFO was cleaned up or closed
+    unless system("tmux", "-V", out: File::NULL, err: File::NULL)
+      raise "tmux is not installed. Install it with your package manager (e.g. `apt install tmux`)."
     end
+
+    args = ["tmux", "new-session", "-d", "-s", @target, "-x", PANE_WIDTH.to_s, "-y", PANE_HEIGHT.to_s]
+    args.push("-c", cwd) if cwd && File.directory?(cwd)
+    system(*args, out: File::NULL, err: File::NULL)
+
+    raise "tmux session #{@target} could not be created" unless alive?
+
+    system(
+      "tmux", "set-option", "-t", @target, "history-limit", HISTORY_LIMIT.to_s,
+      out: File::NULL, err: File::NULL
+    )
+
+    inject_shell_env
   end
 
-  # With echo already off (set in spawn_shell), only command output appears.
-  # The initial bash prompt merges with the marker output on one gets line.
-  def init_shell
-    marker = "__ANIMA_INIT_#{SecureRandom.hex(8)}__"
-    @pty_stdin.puts "PS1=''"
-    @pty_stdin.puts "exec 2>#{@fifo_path}"
-    @pty_stdin.puts "echo '#{marker}'"
-    unless consume_until(marker, deadline: monotonic_now + 10)
-      raise IOError, "Shell initialization timed out"
-    end
+  # Sends +export+ statements to the pane after the user's login shell
+  # has sourced its rcfiles, so our pager-disabling env beats any
+  # +export PAGER=less+ in +~/.zshrc+ etc. Blocks via +wait-for+ so
+  # subsequent {#run} calls see the new env.
+  def inject_shell_env
+    uuid = SecureRandom.hex(8)
+    exports = SHELL_ENV.map { |k, v| "export #{k}=#{v.empty? ? "''" : v.shellescape}" }.join("; ")
+    line = "#{exports}; tmux wait-for -S init-#{uuid}"
+    system("tmux", "send-keys", "-t", @target, line, "Enter", out: File::NULL, err: File::NULL)
+    pid = Process.spawn("tmux", "wait-for", "init-#{uuid}", out: File::NULL, err: File::NULL)
+    waiter = Process.detach(pid)
+    return if waiter.join(WAITER_KILL_GRACE)
+
+    reap_waiter(pid, waiter)
+    raise "tmux session #{@target} init timed out"
   end
 
-  def execute_in_pty(command, timeout: nil, interrupt_check: nil)
-    clear_stderr
-    marker = "__ANIMA_#{SecureRandom.hex(8)}__"
-    timeout ||= Anima::Settings.command_timeout
+  # Blocks until the +tmux wait-for+ child exits (= the bash command in
+  # the pane finished and ran +tmux wait-for -S+), the deadline expires,
+  # or the user requests an interrupt.
+  #
+  # No polling: {Process.detach} returns a Thread that waits on the
+  # child, and {Thread#join} blocks until either the thread finishes or
+  # the timeout fires — returning immediately when the child exits.
+  #
+  # On cancel we send +C-c+ to abort the running command, then kill the
+  # wait-for child directly — interactive bash discards the rest of the
+  # input line on SIGINT, so the trailing +tmux wait-for -S+ never fires
+  # and we can't rely on natural signaling.
+  #
+  # @return [Symbol] +:done+, +:interrupted+, or +:timeout+
+  def wait_for_completion(uuid, timeout, interrupt_check)
+    pid = Process.spawn("tmux", "wait-for", "done-#{uuid}", out: File::NULL, err: File::NULL)
+    waiter = Process.detach(pid)
     deadline = monotonic_now + timeout
-
-    @pty_stdin.puts "#{command}; __anima_ec=$?; echo; echo '#{marker}' $__anima_ec"
-
-    stdout, exit_code = read_until_marker(marker, deadline: deadline, interrupt_check: interrupt_check)
-
-    if exit_code == :interrupted
-      recover_shell
-      update_pwd
-      stderr = drain_stderr
-      return {
-        interrupted: true,
-        stdout: truncate(stdout),
-        stderr: truncate(stderr)
-      }
-    end
-
-    if exit_code.nil?
-      recover_shell
-      stderr = drain_stderr
-      parts = ["Command timed out after #{timeout} seconds."]
-      parts << "Partial stdout:\n#{truncate(stdout)}" unless stdout.empty?
-      parts << "stderr:\n#{truncate(stderr)}" unless stderr.empty?
-      return {error: parts.join("\n\n")}
-    end
-
-    env_summary = update_environment
-    stderr = drain_stderr
-
-    result = {
-      stdout: truncate(stdout),
-      stderr: truncate(stderr),
-      exit_code: exit_code
-    }
-    result[:env_summary] = env_summary if env_summary
-    result
-  rescue Errno::EIO, IOError
-    @alive = false
-    {error: "Shell session terminated unexpectedly"}
-  rescue => error # rubocop:disable Lint/RescueException -- LLM must always get a result hash, never a stack trace
-    {error: "#{error.class}: #{error.message}"}
-  end
-
-  # Reads lines from the PTY until the marker appears.
-  #
-  # @param marker [String] unique marker to detect command completion
-  # @param deadline [Float] monotonic clock deadline
-  # @param interrupt_check [Proc, nil] callable returning truthy on user interrupt
-  # @return [Array(String, Integer)] stdout and exit code on success
-  # @return [Array(String, Symbol)] partial stdout and +:interrupted+ on user interrupt
-  # @return [Array(String, nil)] partial stdout and nil exit code on timeout
-  def read_until_marker(marker, deadline:, interrupt_check: nil)
-    lines = []
-    exit_code = nil
-    check_interval = interrupt_check ? [Anima::Settings.interrupt_check_interval, 0.5].max : nil
+    interrupt_interval = interrupt_check ? Anima::Settings.interrupt_check_interval : timeout
 
     loop do
-      line = gets_with_deadline(deadline, interrupt_check: interrupt_check, check_interval: check_interval)
-
-      if line == :interrupted
-        exit_code = :interrupted
-        break
-      end
-
-      break if line.nil?
-
-      line = line.chomp.delete("\r")
-
-      if line.include?(marker)
-        exit_code = line.split.last.to_i
-        break
-      end
-
-      lines << line
-    end
-
-    # Strip trailing empty line added by our separator echo
-    lines.pop if lines.last == ""
-
-    [lines.join("\n"), exit_code]
-  end
-
-  # Reads and discards PTY output until the marker appears or deadline expires.
-  #
-  # @param marker [String] unique marker to wait for
-  # @param deadline [Float] monotonic clock deadline
-  # @return [Boolean] true if marker was found, false if deadline expired
-  # @raise [Errno::EIO] when the PTY child process has exited
-  # @raise [IOError] when the PTY file descriptor is closed
-  def consume_until(marker, deadline:)
-    loop do
-      line = gets_with_deadline(deadline)
-      return false if line.nil?
-      return true if line.chomp.delete("\r").include?(marker)
-    end
-  end
-
-  # Reads a single line from the PTY, respecting a deadline.
-  # Caller must hold @mutex — @read_buffer is not independently synchronized.
-  #
-  # Uses IO.select for safe, non-interruptive timeout handling instead of
-  # Timeout.timeout (which uses Thread.raise that can corrupt mutex state
-  # and leave resources inconsistent).
-  #
-  # When +interrupt_check+ is provided, IO.select uses a shorter timeout
-  # (capped at {Anima::Settings.interrupt_check_interval}) and polls the
-  # callback between iterations. Returns +:interrupted+ when the callback
-  # fires, allowing the caller to send Ctrl+C and return partial output.
-  #
-  # @param deadline [Float] monotonic clock deadline
-  # @param interrupt_check [Proc, nil] callable returning truthy on user interrupt
-  # @param check_interval [Float, nil] resolved interrupt check interval (seconds);
-  #   pre-computed by the caller to avoid re-reading Settings on every line
-  # @return [String] line including trailing newline
-  # @return [:interrupted] when user interrupt detected
-  # @return [nil] if deadline expired
-  # @raise [Errno::EIO] when the PTY child process exits (Linux)
-  # @raise [IOError] when the PTY file descriptor is closed
-  def gets_with_deadline(deadline, interrupt_check: nil, check_interval: nil)
-    loop do
-      if (idx = @read_buffer.index("\n"))
-        return @read_buffer.slice!(0..idx)
-      end
-
       remaining = deadline - monotonic_now
-      return nil if remaining <= 0
+      return cancel_command(pid, waiter, :timeout) if remaining <= 0
 
-      select_timeout = check_interval ? [remaining, check_interval].min : remaining
+      # Block until child exits, the next interrupt-check tick, or the deadline.
+      slice = [remaining, interrupt_interval].min
+      return :done if waiter.join(slice)
 
-      ready = IO.select([@pty_stdout], nil, nil, select_timeout)
-
-      if ready
-        begin
-          @read_buffer << @pty_stdout.read_nonblock(4096)
-        rescue IO::WaitReadable
-          # Spurious wakeup from IO.select — retry
-        end
-      end
-
-      return :interrupted if interrupt_check&.call
+      return cancel_command(pid, waiter, :interrupted) if interrupt_check&.call
     end
   end
 
-  # Sends Ctrl+C and drains leftover output after a timeout or user interrupt.
-  # If recovery fails, marks the session as dead (will be respawned on next run).
-  #
-  # @return [void]
-  # @raise [Errno::EIO] when the PTY child process has exited
-  # @raise [IOError] when the PTY file descriptor is closed
-  def recover_shell
-    @pty_stdin.write("\x03")
-    sleep 0.1
-    marker = "__ANIMA_RECOVER_#{SecureRandom.hex(8)}__"
-    @pty_stdin.puts "echo '#{marker}'"
-    recovered = consume_until(marker, deadline: monotonic_now + 3)
-    @alive = false unless recovered
-  rescue Errno::EIO, IOError
-    @alive = false
+  # Sends Ctrl+C to abort the running command and reaps the wait-for
+  # child. Returns +state+ so call sites can inline
+  # +return cancel_command(...)+.
+  def cancel_command(pid, waiter, state)
+    send_ctrl_c
+    reap_waiter(pid, waiter)
+    state
   end
 
-  def clear_stderr
-    @stderr_mutex.synchronize do
-      @stderr_buffer.clear
-      @stderr_bytes = 0
-      @stderr_truncated = false
+  # Reaps a +tmux wait-for+ child after a cancel decision (Ctrl+C or
+  # init timeout). Sends SIGTERM, waits up to {WAITER_KILL_GRACE}
+  # seconds, escalates to SIGKILL if the client is wedged. Guarantees
+  # the caller never blocks indefinitely on a stuck tmux client.
+  def reap_waiter(pid, waiter)
+    begin
+      Process.kill("TERM", pid)
+    rescue Errno::ESRCH
+      # Already exited (raced with our kill) — fine.
     end
-  end
+    return if waiter.join(WAITER_KILL_GRACE)
 
-  def drain_stderr
-    # Allow FIFO reader thread time to flush kernel buffers into @stderr_buffer.
-    # Without this, stderr arriving just before the marker may be missed.
-    sleep 0.01
-    @stderr_mutex.synchronize do
-      result = @stderr_buffer.join("\n")
-      truncated = @stderr_truncated
-      @stderr_buffer.clear
-      @stderr_bytes = 0
-      @stderr_truncated = false
-      truncated ? result + "\n\n[Truncated: output exceeded #{@max_output_bytes} bytes]" : result
+    begin
+      Process.kill("KILL", pid)
+    rescue Errno::ESRCH
+      # Exited between TERM and KILL — fine.
     end
+    waiter.join
   end
 
-  # Captures the initial environment snapshot so the first real Bash call
-  # can diff against the actual shell state rather than a blank sentinel
-  # whose nil pwd would always trigger a "location changed" report.
-  #
-  # Sets {#env_snapshot} to a real snapshot of the current pwd, git branch,
-  # repo, and project files. Called within {#start} after {#update_pwd}
-  # and before the session is marked alive.
-  #
-  # @return [void]
-  def seed_env_snapshot
-    @env_snapshot = take_env_snapshot(EnvironmentSnapshot.blank)
+  def send_ctrl_c
+    system("tmux", "send-keys", "-t", @target, "C-c", out: File::NULL, err: File::NULL)
   end
 
-  # Snapshots the shell's environment and returns a natural-language summary
-  # of what changed since the last snapshot. The agent discovers its
-  # environment through these summaries in Bash tool responses.
-  #
-  # Each call only mentions what changed. Returns nil when nothing did.
-  #
-  # @return [String, nil] human-readable summary of environment changes
-  def update_environment
-    update_pwd
-    previous = @env_snapshot || EnvironmentSnapshot.blank
-    @env_snapshot = take_env_snapshot(previous)
-    describe_env_changes(previous, @env_snapshot)
+  # Placeholder substituted when a command produces no visible output.
+  # Two cases collapse to the same message:
+  # 1. The command genuinely had nothing to say (+true+, +cd /+,
+  #    +find ... 2>/dev/null+ with no matches).
+  # 2. We captured in the brief race window between +wait-for -S+ firing
+  #    and bash redrawing its prompt — the pane is all whitespace.
+  # Either way the LLM gets a coherent message, and the downstream
+  # +Message#content+ validation doesn't reject the empty result.
+  EMPTY_OUTPUT_PLACEHOLDER = "OK"
+
+  # Captures the pane scrollback + visible content. Because we ran
+  # +tmux clear-history+ before sending and the shell +clear+ wiped both
+  # visible pane and scrollback (via the +\e[3J+ sequence on modern
+  # terminfo), what we capture is exactly the new command's output and
+  # trailing prompt — nothing leaked from the previous pane state.
+  # The +-J+ flag joins terminal-wrapped lines so a long single-line
+  # output comes back whole.
+  # @return [String] rendered terminal text on success
+  # @return [nil] when +capture-pane+ exits non-zero (e.g. the session
+  #   died between {#wait_for_completion} and the capture). Caller
+  #   surfaces this as an error to the LLM rather than letting an empty
+  #   string be mistaken for a silent command success.
+  def capture_output
+    raw, status = Open3.capture2("tmux", "capture-pane", "-pJ", "-t", @target, "-S", "-", err: File::NULL)
+    return nil unless status.success?
+    output = truncate(raw.force_encoding("UTF-8").scrub)
+    output.strip.empty? ? EMPTY_OUTPUT_PLACEHOLDER : output
   end
 
-  # Reads the shell's current working directory via the /proc filesystem.
-  # @note Linux-only. Falls back silently on other platforms or if the
-  #   process has exited.
-  def update_pwd
-    @pwd = File.readlink("/proc/#{@pid}/cwd")
-  rescue Errno::ENOENT, Errno::EACCES
-    # Process exited or no access — @pwd retains its previous value
-  end
-
-  # Captures the current environment as an immutable snapshot.
-  # Re-detects git state on every call (branch can change without cd).
-  # Re-scans project files only when the working directory changed.
-  #
-  # @param previous [EnvironmentSnapshot] the last known snapshot
-  # @return [EnvironmentSnapshot]
-  def take_env_snapshot(previous)
-    branch, repo = detect_git
-    files = (@pwd != previous.pwd) ? scan_project_files : previous.project_files
-
-    EnvironmentSnapshot.new(pwd: @pwd, branch: branch, repo: repo, project_files: files)
-  end
-
-  # Detects git branch and repo name for the current working directory.
-  #
-  # @return [Array(String, String)] branch and repo name
-  # @return [Array(nil, nil)] when not inside a git repository
-  def detect_git
-    return [nil, nil] unless @pwd
-
-    _, status = Open3.capture2("git", "-C", @pwd, "rev-parse", "--is-inside-work-tree", err: File::NULL)
-    return [nil, nil] unless status.success?
-
-    branch = detect_git_branch
-    repo = detect_git_repo
-    [branch, repo]
-  rescue Errno::ENOENT
-    [nil, nil]
-  end
-
-  # @return [String, nil] current branch name
-  def detect_git_branch
-    output, = Open3.capture2("git", "-C", @pwd, "rev-parse", "--abbrev-ref", "HEAD", err: File::NULL)
-    output.strip.presence
-  end
-
-  # @return [String, nil] "owner/repo" extracted from the origin remote
-  def detect_git_repo
-    output, = Open3.capture2("git", "-C", @pwd, "remote", "get-url", "origin", err: File::NULL)
-    remote = output.strip
-    return unless remote.present?
-
-    extract_repo_name(remote)
-  end
-
-  # Scans for well-known project files in the current working directory.
-  #
-  # @return [Array<String>] sorted relative paths
-  def scan_project_files
-    return [] unless @pwd
-
-    base = Pathname.new(@pwd)
-    whitelist = Anima::Settings.project_files_whitelist
-    max_depth = Anima::Settings.project_files_max_depth
-
-    patterns = whitelist.product((0..max_depth).to_a).map do |filename, depth|
-      File.join(@pwd, Array.new(depth, "*"), filename)
-    end
-
-    patterns.flat_map { |pattern| Dir.glob(pattern) }
-      .map { |path| Pathname.new(path).relative_path_from(base).to_s }
-      .sort
-      .uniq
-  end
-
-  # Extracts owner/repo from a Git remote URL (SSH or HTTPS).
-  #
-  # @param remote_url [String] SSH or HTTPS remote URL
-  # @return [String] "owner/repo" path
-  def extract_repo_name(remote_url)
-    path = if remote_url.match?(%r{\A\w+://})
-      URI.parse(remote_url).path
-    else
-      remote_url.split(":").last
-    end
-    path.delete_prefix("/").delete_suffix(".git")
-  rescue URI::InvalidURIError
-    remote_url
-  end
-
-  # ─── Environment change description ──────────────────────────────
-
-  # Builds a natural-language summary describing what changed between two
-  # environment snapshots. Returns nil when nothing changed.
-  #
-  # @param old_snap [EnvironmentSnapshot]
-  # @param new_snap [EnvironmentSnapshot]
-  # @return [String, nil]
-  def describe_env_changes(old_snap, new_snap)
-    parts = []
-    parts << describe_location_change(old_snap, new_snap)
-    parts << describe_project_files(old_snap, new_snap)
-    parts.compact!
-    parts.empty? ? nil : parts.join("\n")
-  end
-
-  # @return [String, nil] location/branch change line
-  def describe_location_change(old_snap, new_snap)
-    if new_snap.pwd != old_snap.pwd
-      format_full_location(new_snap)
-    elsif new_snap.branch != old_snap.branch && new_snap.branch
-      "Branch changed to #{new_snap.branch}."
-    end
-  end
-
-  # @return [String, nil] project files line
-  def describe_project_files(old_snap, new_snap)
-    return unless new_snap.project_files.any?
-    return unless new_snap.pwd != old_snap.pwd || new_snap.project_files != old_snap.project_files
-
-    "Project has instructions in #{new_snap.project_files.join(", ")}."
-  end
-
-  # Formats the full location line for display in tool responses.
-  #
-  # @param snap [EnvironmentSnapshot]
-  # @return [String]
-  def format_full_location(snap)
-    parts = ["You are now in #{snap.pwd}"]
-    if snap.repo && snap.branch
-      parts << ", git repo #{snap.repo} on branch #{snap.branch}"
-    elsif snap.branch
-      parts << " on branch #{snap.branch}"
-    end
-    parts.join + "."
-  end
-
+  # Truncates +output+ to {Anima::Settings.max_output_bytes}. The
+  # truncation notice itself counts against the cap, so the returned
+  # string is always +<= max_output_bytes+ — a contract callers can rely
+  # on for context-window budgeting.
   def truncate(output)
-    max_bytes = @max_output_bytes
-    output = output.dup.force_encoding("UTF-8").scrub
-
-    return output if output.bytesize <= max_bytes
-
-    output.byteslice(0, max_bytes)
-      .scrub +
-      "\n\n[Truncated: output exceeded #{max_bytes} bytes]"
+    max = Anima::Settings.max_output_bytes
+    return output if output.bytesize <= max
+    notice = "\n\n[Truncated: output exceeded #{max} bytes]"
+    output.byteslice(0, max - notice.bytesize).scrub + notice
   end
 
   def monotonic_now
     Process.clock_gettime(Process::CLOCK_MONOTONIC)
-  end
-
-  # Unconditionally cleans up all shell resources (PTY, FIFO, child process).
-  # Does NOT short-circuit when @alive is already false — this ensures leaked
-  # processes are reaped even after failed recovery marked the session dead.
-  #
-  # @return [void]
-  def teardown
-    @alive = false
-    @read_buffer = +""
-
-    if @pid
-      begin
-        pgid = Process.getpgid(@pid)
-        Process.kill("TERM", -pgid)
-      rescue Errno::ESRCH, Errno::EPERM
-        # Process group already gone
-      end
-    end
-
-    begin
-      @pty_stdin&.close
-    rescue IOError
-      # Already closed
-    end
-
-    begin
-      @pty_stdout&.close
-    rescue IOError
-      # Already closed
-    end
-
-    begin
-      @stderr_thread&.join(1)
-      @stderr_thread&.kill
-    rescue ThreadError
-      # Thread already dead
-    end
-
-    File.delete(@fifo_path) if @fifo_path && File.exist?(@fifo_path)
-
-    if @pid
-      begin
-        # Non-blocking reap with SIGKILL fallback if process doesn't exit in time
-        deadline = monotonic_now + 2
-        loop do
-          _, status = Process.wait2(@pid, Process::WNOHANG)
-          break if status
-          if monotonic_now > deadline
-            Process.kill("KILL", @pid)
-            Process.wait(@pid)
-            break
-          end
-          sleep 0.05
-        end
-      rescue Errno::ECHILD, Errno::ESRCH
-        # Already reaped
-      end
-
-      @pid = nil
-    end
   end
 end

@@ -4,9 +4,8 @@ require "rails_helper"
 
 RSpec.describe Tools::SpawnSubagent do
   let!(:parent_session) { Session.create! }
-  let(:shell_session) { instance_double(ShellSession, pwd: "/home/user/project") }
 
-  subject(:tool) { described_class.new(session: parent_session, shell_session: shell_session) }
+  subject(:tool) { described_class.new(session: parent_session) }
 
   before do
     # Stub Melete to simulate nickname assignment
@@ -96,23 +95,39 @@ RSpec.describe Tools::SpawnSubagent do
       expect(child.parent_session).to eq(parent_session)
     end
 
+    context "initial_cwd inheritance" do
+      # The child's running shell looks up parent cwd via tmux dynamically,
+      # but +initial_cwd+ is the persisted fallback used when the parent's
+      # tmux session is gone (e.g. across an Anima restart). Snapshotting
+      # parent's current cwd at spawn time keeps that fallback useful
+      # rather than letting it default to nil → process cwd.
+      it "snapshots parent's current tmux cwd as the child's initial_cwd" do
+        allow(ShellSession).to receive(:cwd_via_tmux).with(parent_session.id).and_return("/tmp/work")
+
+        tool.execute(input)
+
+        expect(Session.last.initial_cwd).to eq("/tmp/work")
+      end
+
+      it "falls back to parent's initial_cwd when parent's tmux session is gone" do
+        parent_session.update!(initial_cwd: "/home/agent")
+        allow(ShellSession).to receive(:cwd_via_tmux).with(parent_session.id).and_return(nil)
+
+        tool.execute(input)
+
+        expect(Session.last.initial_cwd).to eq("/home/agent")
+      end
+    end
+
     it "captures the invoking tool_call's id on the child as spawn_tool_use_id" do
       tool = described_class.new(
         session: parent_session,
-        shell_session: shell_session,
         tool_use_id: "toolu_spawn_abc"
       )
 
       tool.execute(input)
 
       expect(Session.last.spawn_tool_use_id).to eq("toolu_spawn_abc")
-    end
-
-    it "inherits the parent shell's working directory" do
-      tool.execute(input)
-
-      child = Session.last
-      expect(child.initial_cwd).to eq("/home/user/project")
     end
 
     it "sets the child session's prompt with identity context" do

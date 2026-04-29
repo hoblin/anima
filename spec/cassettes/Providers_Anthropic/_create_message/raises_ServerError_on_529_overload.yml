@@ -8,8 +8,8 @@ http_interactions:
       string: '{"model":"claude-opus-4-6","messages":[{"role":"user","content":[{"type":"text","text":"Hey,
         how are you doing today?","cache_control":{"type":"ephemeral"}}]}],"max_tokens":8192,"tools":[{"name":"bash","description":"Execute
         shell commands. Working directory and environment persist between calls.","input_schema":{"type":"object","properties":{"command":{"type":"string"},"commands":{"type":"array","items":{"type":"string"},"description":"Each
-        command gets its own timeout and result."},"mode":{"type":"string","enum":["sequential","parallel"],"description":"sequential
-        (default) stops on first failure."},"timeout":{"type":"integer","description":"Seconds
+        command gets its own timeout and result. All commands run regardless of failures
+        — use a single command with shell chaining if you need fail-fast."},"timeout":{"type":"integer","description":"Seconds
         (default: 180)."}}}},{"name":"read_file","description":"Read file. Relative
         paths resolve against working directory.","input_schema":{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"integer","description":"1-indexed
         line number (default: 1)."},"limit":{"type":"integer","description":"Max lines
@@ -51,12 +51,12 @@ http_interactions:
         memory, holds what has slipped past your immediate attention. When something
         from earlier matters again she surfaces it as `from_mneme`.\n\nSub-agents
         you spawn arrive the same way, named after whoever sent them — `from_sleuth`,
-        `from_scout`, and so on.\n\n**How delivery works:** Results from sisters and sub-agents appear
-        automatically as tool responses in your conversation — you don''t fetch
-        them. There is no tool to call, no way to poll, and no status to check.
-        When a sub-agent finishes, its output shows up on its own. If you''re waiting
-        on multiple agents, just wait — they''ll arrive. Do other work in the
-        meantime if you can.","cache_control":{"type":"ephemeral"}}]}'
+        `from_scout`, and so on.\n\n**How delivery works:** Results from sisters and
+        sub-agents appear automatically as tool responses in your conversation — you
+        don''t fetch them. There is no tool to call, no way to poll, and no status
+        to check. When a sub-agent finishes, its output shows up on its own. If you''re
+        waiting on multiple agents, just wait — they''ll arrive. Do other work in
+        the meantime if you can.","cache_control":{"type":"ephemeral"}}]}'
     headers:
       Authorization:
       - "<AUTHORIZATION>"

@@ -4,7 +4,6 @@ require "rails_helper"
 
 RSpec.describe Tools::SpawnSpecialist do
   let!(:parent_session) { Session.create! }
-  let(:shell_session) { instance_double(ShellSession, pwd: "/home/user/project") }
   let(:tmp_dir) { Dir.mktmpdir }
   let(:agent_registry) do
     registry = Agents::Registry.new
@@ -12,7 +11,7 @@ RSpec.describe Tools::SpawnSpecialist do
     registry
   end
 
-  subject(:tool) { described_class.new(session: parent_session, shell_session: shell_session, agent_registry: agent_registry) }
+  subject(:tool) { described_class.new(session: parent_session, agent_registry: agent_registry) }
 
   before do
     # Stub Melete to simulate nickname assignment
@@ -108,6 +107,30 @@ RSpec.describe Tools::SpawnSpecialist do
       expect(child.granted_tools).to eq(%w[read_file bash])
     end
 
+    context "initial_cwd inheritance" do
+      # The child's running shell looks up parent cwd via tmux dynamically,
+      # but +initial_cwd+ is the persisted fallback used when the parent's
+      # tmux session is gone (e.g. across an Anima restart). Snapshotting
+      # parent's current cwd at spawn time keeps that fallback useful
+      # rather than letting it default to nil → process cwd.
+      it "snapshots parent's current tmux cwd as the child's initial_cwd" do
+        allow(ShellSession).to receive(:cwd_via_tmux).with(parent_session.id).and_return("/tmp/work")
+
+        tool.execute(input)
+
+        expect(Session.last.initial_cwd).to eq("/tmp/work")
+      end
+
+      it "falls back to parent's initial_cwd when parent's tmux session is gone" do
+        parent_session.update!(initial_cwd: "/home/agent")
+        allow(ShellSession).to receive(:cwd_via_tmux).with(parent_session.id).and_return(nil)
+
+        tool.execute(input)
+
+        expect(Session.last.initial_cwd).to eq("/home/agent")
+      end
+    end
+
     it "prepends identity context to the specialist prompt" do
       tool.execute(input)
 
@@ -159,13 +182,6 @@ RSpec.describe Tools::SpawnSpecialist do
 
       child = Session.last
       expect(child.parent_session).to eq(parent_session)
-    end
-
-    it "inherits the parent shell's working directory" do
-      tool.execute(input)
-
-      child = Session.last
-      expect(child.initial_cwd).to eq("/home/user/project")
     end
 
     it "creates a Goal on the child session with the task as description" do

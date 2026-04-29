@@ -78,6 +78,8 @@ Two more subsystems are designed but not yet implemented: **Thymos** (a hormonal
 
 Anima is a Rails app distributed as a gem, following Unix philosophy: immutable program separate from mutable data.
 
+**Requirements:** Ruby 3.4+, `tmux` (used as the persistent shell backend for the bash tool), `gh` (GitHub CLI, for issue/PR tools).
+
 ```bash
 gem install anima-core       # Install the Rails app as a gem
 anima install                # Create ~/.anima/, set up databases, start brain as systemd service

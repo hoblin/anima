@@ -17,68 +17,37 @@ RSpec.describe Tools::Bash do
       expect(schema).to include(name: "bash", description: a_kind_of(String))
       expect(schema[:input_schema][:properties]).to include(
         command: include(type: "string"),
-        commands: include(type: "array", items: {type: "string"}),
-        mode: include(type: "string", enum: contain_exactly("sequential", "parallel"))
+        commands: include(type: "array", items: {type: "string"})
       )
     end
   end
 
   describe "#execute" do
     context "with single command" do
-      it "returns stdout and exit code" do
+      it "returns the rendered output" do
         result = tool.execute("command" => "echo hello")
-        expect(result).to include("stdout:\nhello")
-        expect(result).to include("exit_code: 0")
+        expect(result).to include("hello")
       end
 
-      it "captures stderr" do
+      it "includes stderr in the merged stream" do
         result = tool.execute("command" => "echo oops >&2")
-        expect(result).to include("stderr:")
         expect(result).to include("oops")
-      end
-
-      it "captures both stdout and stderr" do
-        result = tool.execute("command" => "echo out && echo err >&2")
-        expect(result).to include("stdout:\nout")
-        expect(result).to include("err")
-      end
-
-      it "returns non-zero exit code" do
-        result = tool.execute("command" => "(exit 42)")
-        expect(result).to include("exit_code: 42")
-      end
-
-      it "returns only exit code for silent commands (after env warmup)" do
-        tool.execute("command" => "true")
-        result = tool.execute("command" => "true")
-        expect(result).to eq("exit_code: 0")
       end
 
       it "preserves working directory between calls" do
         tool.execute("command" => "cd /tmp")
         result = tool.execute("command" => "pwd")
-        expect(result).to include("stdout:\n/tmp")
-      end
-
-      it "appends environment summary when directory changes" do
-        result = tool.execute("command" => "cd /tmp")
-        expect(result).to include("You are now in /tmp")
-      end
-
-      it "omits environment summary when nothing changes" do
-        tool.execute("command" => "cd /tmp")
-        result = tool.execute("command" => "echo hello")
-        expect(result).not_to include("You are now in")
+        expect(result).to include("/tmp")
       end
 
       it "preserves environment variables between calls" do
         tool.execute("command" => "export MY_PERSIST_VAR=kept")
         result = tool.execute("command" => "echo $MY_PERSIST_VAR")
-        expect(result).to include("stdout:\nkept")
+        expect(result).to include("kept")
       end
 
-      it "passes timeout parameter to shell session" do
-        expect(shell_session).to receive(:run).with("echo hi", timeout: 300, interrupt_check: an_instance_of(Proc)).and_return(stdout: "hi\n", stderr: "", exit_code: 0)
+      it "passes timeout parameter to the shell session" do
+        expect(shell_session).to receive(:run).with("echo hi", timeout: 300, interrupt_check: an_instance_of(Proc)).and_return(output: "hi")
         tool.execute("command" => "echo hi", "timeout" => 300)
       end
 
@@ -88,7 +57,7 @@ RSpec.describe Tools::Bash do
         expect(result[:error]).to include("blank")
       end
 
-      it "delegates errors from shell session" do
+      it "delegates errors from the shell session" do
         shell_session.finalize
         result = tool.execute("command" => "echo hello")
         expect(result).to be_a(Hash)
@@ -96,81 +65,34 @@ RSpec.describe Tools::Bash do
       end
     end
 
-    context "with batch commands in sequential mode" do
-      it "runs all commands and returns combined results" do
+    context "with batch commands" do
+      it "runs all commands and returns combined results with per-command headers" do
         result = tool.execute("commands" => ["echo first", "echo second", "echo third"])
         expect(result).to include("[1/3] $ echo first")
         expect(result).to include("[2/3] $ echo second")
         expect(result).to include("[3/3] $ echo third")
-        expect(result).to include("stdout:\nfirst")
-        expect(result).to include("stdout:\nsecond")
-        expect(result).to include("stdout:\nthird")
+        expect(result).to include("first")
+        expect(result).to include("second")
+        expect(result).to include("third")
       end
 
-      it "defaults to sequential mode" do
-        result = tool.execute("commands" => ["(exit 1)", "echo should-not-run"])
-        expect(result).to include("[1/2] $ (exit 1)")
-        expect(result).to include("exit_code: 1")
-        expect(result).to include("[2/2] $ echo should-not-run\n(skipped)")
-        expect(result).not_to include("should-not-run\nexit_code")
-      end
-
-      it "stops on first non-zero exit code" do
-        result = tool.execute("commands" => ["echo ok", "(exit 2)", "echo never"], "mode" => "sequential")
-        expect(result).to include("[1/3] $ echo ok")
-        expect(result).to include("stdout:\nok")
-        expect(result).to include("[2/3] $ (exit 2)")
-        expect(result).to include("exit_code: 2")
-        expect(result).to include("[3/3] $ echo never\n(skipped)")
-      end
-
-      it "stops on shell session errors" do
+      it "continues past shell session errors — agent reads merged output" do
         allow(shell_session).to receive(:run).with(anything, hash_including(:timeout, :interrupt_check)).and_return(
-          {stdout: "ok\n", stderr: "", exit_code: 0},
+          {output: "ok"},
           {error: "Command timed out after 30s"},
-          {stdout: "unreachable\n", stderr: "", exit_code: 0}
+          {output: "still running"}
         )
-        result = tool.execute("commands" => ["echo ok", "sleep 999", "echo unreachable"])
+        result = tool.execute("commands" => ["echo ok", "sleep 999", "echo still running"])
         expect(result).to include("[1/3] $ echo ok")
         expect(result).to include("[2/3] $ sleep 999")
         expect(result).to include("Command timed out")
-        expect(result).to include("[3/3] $ echo unreachable\n(skipped)")
+        expect(result).to include("[3/3] $ echo still running")
+        expect(result).to include("still running")
       end
 
       it "preserves working directory across batch commands" do
         result = tool.execute("commands" => ["cd /tmp", "pwd"])
-        expect(result).to include("stdout:\n/tmp")
-      end
-
-      it "appends environment summary only once at the end" do
-        result = tool.execute("commands" => ["cd /tmp", "cd /var"])
-        # env_summary appears once at the end, not per-command
-        expect(result).to include("You are now in /var")
-        expect(result.scan("You are now in").length).to eq(1)
-      end
-    end
-
-    context "with batch commands in parallel mode" do
-      it "runs all commands regardless of failures" do
-        result = tool.execute("commands" => ["echo first", "(exit 1)", "echo third"], "mode" => "parallel")
-        expect(result).to include("[1/3] $ echo first")
-        expect(result).to include("stdout:\nfirst")
-        expect(result).to include("[2/3] $ (exit 1)")
-        expect(result).to include("exit_code: 1")
-        expect(result).to include("[3/3] $ echo third")
-        expect(result).to include("stdout:\nthird")
-      end
-
-      it "continues past shell session errors" do
-        allow(shell_session).to receive(:run).with(anything, hash_including(:timeout, :interrupt_check)).and_return(
-          {error: "Command timed out after 30s"},
-          {stdout: "still running\n", stderr: "", exit_code: 0}
-        )
-        result = tool.execute("commands" => ["sleep 999", "echo still running"], "mode" => "parallel")
-        expect(result).to include("[1/2] $ sleep 999")
-        expect(result).to include("Command timed out")
-        expect(result).to include("[2/2] $ echo still running")
-        expect(result).to include("stdout:\nstill running")
+        expect(result).to include("/tmp")
       end
     end
 
@@ -195,8 +117,8 @@ RSpec.describe Tools::Bash do
       end
 
       it "passes timeout to each command in batch" do
-        expect(shell_session).to receive(:run).with("echo a", timeout: 60, interrupt_check: an_instance_of(Proc)).and_return(stdout: "a\n", stderr: "", exit_code: 0)
-        expect(shell_session).to receive(:run).with("echo b", timeout: 60, interrupt_check: an_instance_of(Proc)).and_return(stdout: "b\n", stderr: "", exit_code: 0)
+        expect(shell_session).to receive(:run).with("echo a", timeout: 60, interrupt_check: an_instance_of(Proc)).and_return(output: "a")
+        expect(shell_session).to receive(:run).with("echo b", timeout: 60, interrupt_check: an_instance_of(Proc)).and_return(output: "b")
         tool.execute("commands" => ["echo a", "echo b"], "timeout" => 60)
       end
     end
@@ -204,28 +126,28 @@ RSpec.describe Tools::Bash do
     context "when interrupted by user" do
       it "returns interrupted message for single command" do
         allow(shell_session).to receive(:run).and_return(
-          {interrupted: true, stdout: "", stderr: ""}
+          {interrupted: true, output: ""}
         )
 
         result = tool.execute("command" => "sleep 30")
         expect(result).to include(LLM::Client::INTERRUPT_MESSAGE)
       end
 
-      it "includes partial stdout in interrupted result" do
+      it "includes partial output in interrupted result" do
         allow(shell_session).to receive(:run).and_return(
-          {interrupted: true, stdout: "partial output", stderr: ""}
+          {interrupted: true, output: "partial output"}
         )
         result = tool.execute("command" => "long-command")
-        expect(result).to include("Your human wants your attention")
-        expect(result).to include("Partial stdout:\npartial output")
+        expect(result).to include(LLM::Client::INTERRUPT_MESSAGE)
+        expect(result).to include("Partial output:\npartial output")
       end
 
       it "skips remaining batch commands after interrupt" do
         allow(shell_session).to receive(:run).with("echo first", hash_including(:interrupt_check)).and_return(
-          {stdout: "first\n", stderr: "", exit_code: 0}
+          {output: "first"}
         )
         allow(shell_session).to receive(:run).with("sleep 999", hash_including(:interrupt_check)).and_return(
-          {interrupted: true, stdout: "", stderr: ""}
+          {interrupted: true, output: ""}
         )
         expect(shell_session).not_to receive(:run).with("echo third", anything)
 
@@ -234,15 +156,6 @@ RSpec.describe Tools::Bash do
         expect(result).to include("[2/3] $ sleep 999")
         expect(result).to include(LLM::Client::INTERRUPT_MESSAGE)
         expect(result).to include("[3/3] $ echo third\n(skipped — interrupted by user)")
-      end
-
-      it "includes stderr in interrupted result" do
-        allow(shell_session).to receive(:run).and_return(
-          {interrupted: true, stdout: "", stderr: "warning: something"}
-        )
-        result = tool.execute("command" => "failing-command")
-        expect(result).to include(LLM::Client::INTERRUPT_MESSAGE)
-        expect(result).to include("stderr:\nwarning: something")
       end
     end
 
