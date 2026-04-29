@@ -29,12 +29,8 @@ RSpec.describe Tools::Bash do
   end
 
   describe ".prompt_guidelines" do
-    it "steers the agent toward edit_file/read_file and away from cd repetition" do
-      guidelines = described_class.prompt_guidelines
-
-      expect(guidelines).to include(a_string_matching(/Working directory persists/))
-      expect(guidelines).to include(a_string_matching(/prefer edit_file over `sed`/))
-      expect(guidelines).to include(a_string_matching(/prefer read_file over `cat`/))
+    it "contributes nothing — guideline text is deferred to a follow-up ticket" do
+      expect(described_class.prompt_guidelines).to eq([])
     end
   end
 

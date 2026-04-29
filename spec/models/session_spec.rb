@@ -995,14 +995,12 @@ RSpec.describe Session do
       expect(session.assemble_system_prompt).not_to include("WHAT/WHY/HOW")
     end
 
-    it "includes the available tools menu and tool guidelines after the sisters block" do
+    it "places the available tools menu after the sisters block" do
       prompt = session.assemble_system_prompt
       sisters_idx = prompt.index("## Your Sisters")
       tools_idx = prompt.index("## Available Tools")
-      guidelines_idx = prompt.index("## Tool Guidelines")
 
       expect(tools_idx).to be > sisters_idx
-      expect(guidelines_idx).to be > tools_idx
     end
 
     it "lists each opted-in built-in tool by name in the available tools menu" do
@@ -1014,14 +1012,8 @@ RSpec.describe Session do
       expect(prompt).to include("- edit_file: Replace exact text in a file.")
     end
 
-    it "concatenates per-tool prompt_guidelines into the tool guidelines section" do
-      prompt = session.assemble_system_prompt
-
-      expect(prompt).to match(/## Tool Guidelines\n\n- /)
-      expect(prompt).to include("Working directory persists between bash calls")
-      expect(prompt).to include("prefer edit_file over `sed`")
-      expect(prompt).to include("Reach for edit_file whenever you'd otherwise pipe")
-      expect(prompt).to include("Use write_file only for new files or full rewrites")
+    it "omits the tool guidelines section while no tool contributes guideline text" do
+      expect(session.assemble_system_prompt).not_to include("## Tool Guidelines")
     end
 
     context "with multiple skills" do
@@ -1108,26 +1100,22 @@ RSpec.describe Session do
   end
 
   describe "#assemble_tool_guidelines_section" do
-    it "joins each tool's prompt_guidelines into a single bullet list" do
+    it "returns nil while no tool contributes guideline text" do
       session = Session.create!
+
+      expect(session.send(:assemble_tool_guidelines_section)).to be_nil
+    end
+
+    it "joins each opted-in tool's prompt_guidelines into a bullet list when tools provide them" do
+      session = Session.create!
+      allow(Tools::Bash).to receive(:prompt_guidelines).and_return(["First bullet."])
+      allow(Tools::Edit).to receive(:prompt_guidelines).and_return(["Second bullet."])
 
       section = session.send(:assemble_tool_guidelines_section)
 
       expect(section).to start_with("## Tool Guidelines\n\n")
-      expect(section).to include("- Working directory persists between bash calls")
-      expect(section).to include("- For targeted text changes, prefer edit_file over `sed`")
-      expect(section).to include("- Reach for edit_file whenever you'd otherwise pipe")
-      expect(section).to include("- Use write_file only for new files or full rewrites")
-    end
-
-    it "returns nil when no tool contributes guidelines" do
-      session = Session.create!
-      stub_const("Tools::Registry::STANDARD_TOOLS", [])
-      stub_const("Tools::Registry::ALWAYS_GRANTED_TOOLS", [])
-      allow(session).to receive(:sub_agent?).and_return(true)
-      allow(Tools::MarkGoalCompleted).to receive(:prompt_guidelines).and_return([])
-
-      expect(session.send(:assemble_tool_guidelines_section)).to be_nil
+      expect(section).to include("- First bullet.")
+      expect(section).to include("- Second bullet.")
     end
   end
 

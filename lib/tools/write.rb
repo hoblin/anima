@@ -21,10 +21,6 @@ module Tools
 
     def self.prompt_snippet = "Create or overwrite a whole file."
 
-    def self.prompt_guidelines = [
-      "Use write_file only for new files or full rewrites — for targeted changes, edit_file leaves the rest of the file untouched."
-    ]
-
     def self.input_schema
       {
         type: "object",

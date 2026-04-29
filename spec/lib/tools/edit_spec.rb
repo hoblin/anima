@@ -35,8 +35,8 @@ RSpec.describe Tools::Edit do
   end
 
   describe ".prompt_guidelines" do
-    it "owns the case for choosing edit_file over sed/awk/heredoc rewrites" do
-      expect(described_class.prompt_guidelines).to include(a_string_matching(/edit_file whenever you'd otherwise pipe.*`sed`/))
+    it "contributes nothing — guideline text is deferred to a follow-up ticket" do
+      expect(described_class.prompt_guidelines).to eq([])
     end
   end
 
