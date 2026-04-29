@@ -295,7 +295,7 @@ class ShellSession
   #    and bash redrawing its prompt — the pane is all whitespace.
   # Either way the LLM gets a coherent message, and the downstream
   # +Message#content+ validation doesn't reject the empty result.
-  EMPTY_OUTPUT_PLACEHOLDER = "(command produced no output)"
+  EMPTY_OUTPUT_PLACEHOLDER = "OK"
 
   # Captures the pane scrollback + visible content. Because we ran
   # +tmux clear-history+ before sending and the shell +clear+ wiped both
