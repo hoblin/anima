@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "rails_helper"
+require "tempfile"
 
 RSpec.describe Mcp::StdioTransport do
   # Simple MCP server that echoes back JSON-RPC responses for any request.
@@ -262,6 +263,72 @@ RSpec.describe Mcp::StdioTransport do
 
       expect(t1.send(:alive?)).to be false
       expect(t2.send(:alive?)).to be false
+    end
+  end
+
+  # Regression coverage for issue #469. Wrappers like +npm+/+npx+ spawn
+  # +node+ children that orphan when only the wrapper PID is signalled.
+  # The transport now spawns the server in its own process group and
+  # signals the whole group, so descendants die with their parent.
+  describe "process group isolation" do
+    # Server that forks a long-lived grandchild before entering the
+    # request loop. Writes the grandchild's PID to +pid_path+ so the test
+    # can probe it after shutdown.
+    def grandchild_spawning_server_script(pid_path)
+      ["-e", <<~RUBY]
+        require "json"
+        $stdout.sync = true
+        grandchild_pid = Process.spawn("sleep", "600", out: File::NULL, err: File::NULL)
+        File.write(#{pid_path.inspect}, grandchild_pid.to_s)
+        $stdin.each_line do |line|
+          req = JSON.parse(line)
+          $stdout.puts(JSON.generate({"jsonrpc" => "2.0", "id" => req["id"], "result" => {}}))
+        end
+      RUBY
+    end
+
+    def process_alive?(pid)
+      Process.kill(0, pid)
+      true
+    rescue Errno::ESRCH
+      false
+    end
+
+    it "spawns the server as its own process group leader" do
+      transport = described_class.new(command: "ruby", args: echo_server_script)
+      transport.send_request(request: json_rpc_request)
+      pid = transport.instance_variable_get(:@wait_thread).pid
+
+      expect(Process.getpgid(pid)).to eq(pid)
+    ensure
+      transport&.shutdown
+    end
+
+    it "terminates grandchildren when shutting down the wrapper" do
+      pid_file = Tempfile.new(["mcp-grandchild", ".pid"])
+      pid_file.close
+      transport = described_class.new(
+        command: "ruby",
+        args: grandchild_spawning_server_script(pid_file.path)
+      )
+
+      transport.send_request(request: json_rpc_request)
+      grandchild_pid = Integer(File.read(pid_file.path).strip)
+      expect(process_alive?(grandchild_pid)).to be true
+
+      transport.shutdown
+
+      # The shutdown path includes a 2s SIGTERM grace and reaping; once
+      # it returns the leader is gone. Allow a brief moment for the
+      # kernel to finish reaping the grandchild before re-checking.
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 1.0
+      until !process_alive?(grandchild_pid) || Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+        sleep 0.05
+      end
+
+      expect(process_alive?(grandchild_pid)).to be false
+    ensure
+      pid_file&.unlink
     end
   end
 end

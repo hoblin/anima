@@ -115,8 +115,14 @@ module Mcp
       @wait_thread&.alive? || false
     end
 
+    # Spawns the server in its own process group (+pgroup: true+) so its
+    # PID equals its process-group ID. This is required for clean teardown:
+    # +npm+ and +npx+ wrappers spawn child processes (e.g. +node+) that
+    # would otherwise outlive a single-PID kill. Process-group signaling
+    # in {#terminate_process} reaches the wrapper and every descendant
+    # atomically.
     def spawn_process
-      @stdin, @stdout, @wait_thread = Open3.popen2(@env, @command, *@args)
+      @stdin, @stdout, @wait_thread = Open3.popen2(@env, @command, *@args, pgroup: true)
       @stdin.set_encoding("UTF-8")
       @stdout.set_encoding("UTF-8")
       self.class.register(self)
@@ -164,14 +170,22 @@ module Mcp
       @stdout&.close rescue IOError # rubocop:disable Style/RescueModifier
     end
 
-    # Sends SIGTERM and waits up to 2 seconds for the process to exit.
-    # Falls back to SIGKILL if the process does not terminate in time.
+    # Sends SIGTERM to the entire process group and waits up to
+    # +GRACEFUL_SHUTDOWN_TIMEOUT+ seconds for the leader to exit. Falls
+    # back to SIGKILL on the group if the process does not terminate in
+    # time.
+    #
+    # The negative PID passed to {Process.kill} signals the process group.
+    # Because {#spawn_process} sets +pgroup: true+, the wrapper PID is also
+    # the group ID, so a single signal reaches +npx+, its +node+ child,
+    # and any other descendants together. Without this, +npm+/+npx+ would
+    # exit while their +node+ grandchildren orphaned to PID 1.
     def terminate_process
       return unless @wait_thread
 
       pid = @wait_thread.pid
       begin
-        Process.kill("TERM", pid)
+        Process.kill("TERM", -pid)
       rescue Errno::ESRCH, Errno::EPERM
         return
       end
@@ -181,7 +195,7 @@ module Mcp
         _, status = Process.wait2(pid, Process::WNOHANG)
         break if status
         if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
-          Process.kill("KILL", pid) rescue Errno::ESRCH # rubocop:disable Style/RescueModifier
+          Process.kill("KILL", -pid) rescue Errno::ESRCH # rubocop:disable Style/RescueModifier
           Process.wait(pid) rescue Errno::ECHILD # rubocop:disable Style/RescueModifier
           break
         end
