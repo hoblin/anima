@@ -256,4 +256,45 @@ RSpec.describe Tools::Registry do
       expect(registry.any?).to be true
     end
   end
+
+  describe ".tool_classes_for" do
+    it "returns all standard tools plus spawn tools for a main session" do
+      session = Session.create!
+
+      classes = described_class.tool_classes_for(session)
+
+      expect(classes).to include(Tools::Bash, Tools::Read, Tools::Write, Tools::Edit, Tools::Think)
+      expect(classes).to include(Tools::SpawnSubagent, Tools::SpawnSpecialist, Tools::OpenIssue)
+      expect(classes).not_to include(Tools::MarkGoalCompleted)
+    end
+
+    it "swaps spawn tools for mark_goal_completed on a sub-agent session" do
+      parent = Session.create!
+      child = Session.create!(parent_session: parent, prompt: "sub-agent")
+
+      classes = described_class.tool_classes_for(child)
+
+      expect(classes).to include(Tools::MarkGoalCompleted)
+      expect(classes).not_to include(Tools::SpawnSubagent, Tools::SpawnSpecialist, Tools::OpenIssue)
+    end
+
+    it "filters standard tools through granted_tools while always keeping ALWAYS_GRANTED_TOOLS" do
+      session = Session.create!(granted_tools: %w[bash])
+
+      classes = described_class.tool_classes_for(session)
+
+      expect(classes).to include(Tools::Bash, Tools::Think)
+      expect(classes).not_to include(Tools::Read, Tools::Write, Tools::Edit)
+    end
+
+    it "returns a fresh array each call so callers can safely mutate" do
+      session = Session.create!
+
+      first = described_class.tool_classes_for(session)
+      second = described_class.tool_classes_for(session)
+
+      expect(first).to eq(second)
+      expect(first).not_to equal(second)
+    end
+  end
 end

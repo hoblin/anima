@@ -50,6 +50,22 @@ module Tools
       def truncation_threshold
         Anima::Settings.max_tool_response_chars
       end
+
+      # One-line entry rendered into the system prompt's "## Available Tools"
+      # menu. Tools that return +nil+ are omitted from the menu.
+      #
+      # @return [String, nil] short capability statement, or nil to skip
+      def prompt_snippet
+        nil
+      end
+
+      # Cross-tool behavioral guidelines merged into the system prompt's
+      # "## Tool Guidelines" section. Each entry becomes a Markdown bullet.
+      #
+      # @return [Array<String>] guideline lines, or empty array to skip
+      def prompt_guidelines
+        []
+      end
     end
 
     # Subclasses whose schema depends on runtime context (e.g. session state,

@@ -21,6 +21,8 @@ module Tools
 
     def self.description = "Read file. Relative paths resolve against working directory."
 
+    def self.prompt_snippet = "Read a file."
+
     def self.input_schema
       {
         type: "object",

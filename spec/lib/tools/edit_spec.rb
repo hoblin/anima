@@ -28,6 +28,18 @@ RSpec.describe Tools::Edit do
     end
   end
 
+  describe ".prompt_snippet" do
+    it "advertises edit_file in the system prompt menu" do
+      expect(described_class.prompt_snippet).to eq("Replace exact text in a file.")
+    end
+  end
+
+  describe ".prompt_guidelines" do
+    it "owns the case for choosing edit_file over sed/awk/heredoc rewrites" do
+      expect(described_class.prompt_guidelines).to include(a_string_matching(/edit_file whenever you'd otherwise pipe.*`sed`/))
+    end
+  end
+
   describe ".input_schema" do
     it "defines path, old_text, and new_text as required string properties" do
       schema = described_class.input_schema

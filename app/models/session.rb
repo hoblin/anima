@@ -286,14 +286,21 @@ class Session < ApplicationRecord
   end
 
   # Assembles the system prompt: version preamble, soul, sisters block,
-  # and snapshots. Skills, workflows, goals, and environment awareness
-  # flow through the message stream and tool responses, keeping the
-  # system prompt stable for prompt caching.
+  # available tools menu, tool guidelines, and snapshots. Skills,
+  # workflows, goals, and environment awareness flow through the message
+  # stream and tool responses, keeping the system prompt stable for
+  # prompt caching.
   #
   # @return [String] composed system prompt
   def assemble_system_prompt
-    [assemble_version_preamble, assemble_soul_section, assemble_sisters_section, assemble_snapshots_section]
-      .compact.join("\n\n")
+    [
+      assemble_version_preamble,
+      assemble_soul_section,
+      assemble_sisters_section,
+      assemble_available_tools_section,
+      assemble_tool_guidelines_section,
+      assemble_snapshots_section
+    ].compact.join("\n\n")
   end
 
   # Serializes non-evicted goals as a lightweight summary for ActionCable
@@ -623,22 +630,7 @@ class Session < ApplicationRecord
   #
   # @return [Array<Hash>] tool schema hashes matching Anthropic tools API format
   def tool_schemas
-    tools = if granted_tools
-      granted = granted_tools.filter_map { |name| Tools::Registry::STANDARD_TOOLS_BY_NAME[name] }
-      (Tools::Registry::ALWAYS_GRANTED_TOOLS + granted).uniq
-    else
-      Tools::Registry::STANDARD_TOOLS.dup
-    end
-
-    unless sub_agent?
-      tools.push(Tools::SpawnSubagent, Tools::SpawnSpecialist, Tools::OpenIssue)
-    end
-
-    if sub_agent?
-      tools.push(Tools::MarkGoalCompleted)
-    end
-
-    tools.map(&:schema)
+    resolved_tool_classes.map(&:schema)
   end
 
   # Builds the system prompt payload for debug mode transmission.
@@ -743,6 +735,45 @@ class Session < ApplicationRecord
 
       **How delivery works:** Results from sisters and sub-agents appear automatically as tool responses in your conversation — you don't fetch them. There is no tool to call, no way to poll, and no status to check. When a sub-agent finishes, its output shows up on its own. If you're waiting on multiple agents, just wait — they'll arrive. Do other work in the meantime if you can.
     SISTERS
+  end
+
+  # Renders a one-line menu of the session's available tools, populated
+  # from each tool's {Tools::Base.prompt_snippet}. Tools without a snippet
+  # are omitted; the section disappears entirely when no tool contributes.
+  #
+  # @return [String, nil] available tools section, or nil when empty
+  def assemble_available_tools_section
+    menu = resolved_tool_classes.filter_map do |tool|
+      snippet = tool.prompt_snippet
+      "- #{tool.tool_name}: #{snippet}" if snippet
+    end
+    return if menu.empty?
+
+    "## Available Tools\n\n#{menu.join("\n")}"
+  end
+
+  # Concatenates each available tool's {Tools::Base.prompt_guidelines}
+  # into a single behavioral guidance section. Guidelines steer cross-tool
+  # selection (e.g. prefer edit_file over `sed`) and reinforce non-obvious
+  # behaviour the schema cannot convey at every reasoning token.
+  #
+  # @return [String, nil] tool guidelines section, or nil when empty
+  def assemble_tool_guidelines_section
+    bullets = resolved_tool_classes.flat_map(&:prompt_guidelines).map { |line| "- #{line}" }
+    return if bullets.empty?
+
+    "## Tool Guidelines\n\n#{bullets.join("\n")}"
+  end
+
+  # Memoizes the active tool classes for this session by delegating to
+  # {Tools::Registry.tool_classes_for} — the shared resolver used by
+  # {.build}, {#tool_schemas}, and the prompt section assemblers so all
+  # views stay in sync. Safe to memoize: +granted_tools+ and +sub_agent?+
+  # are immutable post-creation.
+  #
+  # @return [Array<Class>] tool classes (no MCP tools — those are dynamic)
+  def resolved_tool_classes
+    @resolved_tool_classes ||= Tools::Registry.tool_classes_for(self)
   end
 
   # Assembles the task section for sub-agent system prompts.
