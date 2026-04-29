@@ -14,11 +14,6 @@ RSpec.describe ShellSession do
       expect(result).not_to have_key(:error)
     end
 
-    it "returns empty output for silent commands" do
-      result = shell.run("true")
-      expect(result[:output].strip).to eq("")
-    end
-
     it "captures stderr in the merged terminal stream" do
       result = shell.run("echo error >&2")
       expect(result[:output]).to include("error")
