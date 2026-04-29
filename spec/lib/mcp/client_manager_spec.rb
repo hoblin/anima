@@ -262,10 +262,11 @@ RSpec.describe Mcp::ClientManager do
       end
     end
 
-    # Regression coverage for issue #469: every Tools::Registry.build used
-    # to construct a fresh manager, which spawned a fresh stdio process per
-    # job. The shared singleton now caches connections across registry
-    # builds — so calling register_tools twice must reuse, not respawn.
+    # Regression coverage for issue #469: every Tools::Registry.build
+    # used to construct a fresh manager, which spawned a fresh stdio
+    # process per job. Tool wrappers are now cached for the worker's
+    # lifetime — so repeated register_tools calls must reuse, not
+    # respawn.
     context "when called multiple times against the same manager" do
       let(:mcp_tool) do
         MCP::Client::Tool.new(name: "search", description: "Search", input_schema: {})
@@ -307,68 +308,16 @@ RSpec.describe Mcp::ClientManager do
         expect(registry_a.registered?("brave-search__search")).to be true
         expect(registry_b.registered?("brave-search__search")).to be true
       end
-
-      it "returns load warnings only on the first call" do
-        allow(config).to receive(:warnings).and_return(["config-level warning"])
-
-        first = manager.register_tools(Tools::Registry.new)
-        second = manager.register_tools(Tools::Registry.new)
-
-        expect(first).to include("config-level warning")
-        expect(second).to eq([])
-      end
     end
   end
 
   describe ".shared" do
-    after { described_class.reset! }
+    # Reset the class-level memo so this group doesn't leak a
+    # process-wide instance into other specs.
+    after { described_class.instance_variable_set(:@shared, nil) }
 
     it "returns the same instance across calls" do
       expect(described_class.shared).to be(described_class.shared)
-    end
-
-    it "rebuilds the instance after .reset!" do
-      original = described_class.shared
-      described_class.reset!
-
-      expect(described_class.shared).not_to be(original)
-    end
-  end
-
-  describe "#shutdown" do
-    let(:registry) { Tools::Registry.new }
-    let(:transport) { instance_double(Mcp::StdioTransport, shutdown: nil) }
-    let(:mcp_tool) do
-      MCP::Client::Tool.new(name: "search", description: "Search", input_schema: {})
-    end
-    let(:mcp_client) { instance_double(MCP::Client, tools: [mcp_tool]) }
-
-    before do
-      allow(config).to receive(:stdio_servers).and_return([
-        {name: "brave-search", command: "npx", args: [], env: {}}
-      ])
-      allow(Mcp::StdioTransport).to receive(:new).and_return(transport)
-      allow(MCP::Client).to receive(:new).and_return(mcp_client)
-      allow(Rails.logger).to receive(:info)
-    end
-
-    it "shuts down each cached transport so spawned subprocesses are reaped" do
-      manager.register_tools(registry)
-      manager.shutdown
-
-      expect(transport).to have_received(:shutdown)
-    end
-
-    it "rebuilds the cache on the next register_tools call" do
-      manager.register_tools(registry)
-      manager.shutdown
-      manager.register_tools(Tools::Registry.new)
-
-      expect(Mcp::StdioTransport).to have_received(:new).twice
-    end
-
-    it "is safe to call without prior register_tools" do
-      expect { manager.shutdown }.not_to raise_error
     end
   end
 end
