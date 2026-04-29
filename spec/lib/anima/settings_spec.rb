@@ -105,9 +105,6 @@ RSpec.describe Anima::Settings do
         [melete]
         max_tokens = 128
         message_window = 20
-        [environment]
-        project_files = ["CLAUDE.md", "README.md"]
-        project_files_max_depth = 3
       TOML
       config_file.flush
     end

@@ -4,9 +4,8 @@ require "rails_helper"
 
 RSpec.describe Tools::SpawnSubagent do
   let!(:parent_session) { Session.create! }
-  let(:shell_session) { instance_double(ShellSession, pwd: "/home/user/project") }
 
-  subject(:tool) { described_class.new(session: parent_session, shell_session: shell_session) }
+  subject(:tool) { described_class.new(session: parent_session) }
 
   before do
     # Stub Melete to simulate nickname assignment
@@ -99,20 +98,12 @@ RSpec.describe Tools::SpawnSubagent do
     it "captures the invoking tool_call's id on the child as spawn_tool_use_id" do
       tool = described_class.new(
         session: parent_session,
-        shell_session: shell_session,
         tool_use_id: "toolu_spawn_abc"
       )
 
       tool.execute(input)
 
       expect(Session.last.spawn_tool_use_id).to eq("toolu_spawn_abc")
-    end
-
-    it "inherits the parent shell's working directory" do
-      tool.execute(input)
-
-      child = Session.last
-      expect(child.initial_cwd).to eq("/home/user/project")
     end
 
     it "sets the child session's prompt with identity context" do

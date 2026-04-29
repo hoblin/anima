@@ -4,7 +4,6 @@ require "rails_helper"
 
 RSpec.describe Tools::SpawnSpecialist do
   let!(:parent_session) { Session.create! }
-  let(:shell_session) { instance_double(ShellSession, pwd: "/home/user/project") }
   let(:tmp_dir) { Dir.mktmpdir }
   let(:agent_registry) do
     registry = Agents::Registry.new
@@ -12,7 +11,7 @@ RSpec.describe Tools::SpawnSpecialist do
     registry
   end
 
-  subject(:tool) { described_class.new(session: parent_session, shell_session: shell_session, agent_registry: agent_registry) }
+  subject(:tool) { described_class.new(session: parent_session, agent_registry: agent_registry) }
 
   before do
     # Stub Melete to simulate nickname assignment
@@ -159,13 +158,6 @@ RSpec.describe Tools::SpawnSpecialist do
 
       child = Session.last
       expect(child.parent_session).to eq(parent_session)
-    end
-
-    it "inherits the parent shell's working directory" do
-      tool.execute(input)
-
-      child = Session.last
-      expect(child.initial_cwd).to eq("/home/user/project")
     end
 
     it "creates a Goal on the child session with the task as description" do
