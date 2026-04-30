@@ -105,14 +105,23 @@ RSpec.describe Aoide::PhantomCallFilter do
       expect(described_class.call(response)).to be(response)
     end
 
-    it "tolerates symbol-keyed content (provider may stringify late)" do
+    it "tolerates symbol-keyed content and rewrites the same key (no mixed string/symbol shape)" do
       response = {content: [
         {type: "tool_use", id: "p1", name: "from_phantom", input: {}}
       ]}
 
       filtered = described_class.call(response)
 
-      expect(filtered["content"]).to eq([])
+      expect(filtered).to eq(content: [])
+      expect(filtered.key?("content")).to be(false)
+    end
+
+    it "drops a tool_use whose name is exactly the bare prefix" do
+      response = {"content" => [
+        {"type" => "tool_use", "id" => "p1", "name" => "from_", "input" => {}}
+      ]}
+
+      expect(described_class.call(response)["content"]).to eq([])
     end
 
     it "ignores blocks that aren't hashes" do

@@ -33,7 +33,8 @@ module Aoide
       filtered = content.reject { |block| phantom_tool_use?(block) }
       return response if filtered.size == content.size
 
-      response.merge("content" => filtered)
+      key = response.key?("content") ? "content" : :content
+      response.merge(key => filtered)
     end
 
     def self.phantom_tool_use?(block)
