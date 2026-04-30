@@ -92,6 +92,19 @@ RSpec.describe Tools::SpawnSpecialist do
     end
   end
 
+  describe ".prompt_snippet" do
+    it "advertises bringing in a specialist in the system prompt menu" do
+      expect(described_class.prompt_snippet).to eq("Bring in a specialist by skill set. Reachable later via @.")
+    end
+  end
+
+  describe ".prompt_guidelines" do
+    it "contributes the same shared sub-agent etiquette as SpawnSubagent so the bullets dedupe to one set" do
+      expect(described_class.prompt_guidelines).to eq(Tools::SubagentPrompts::PROMPT_GUIDELINES)
+      expect(described_class.prompt_guidelines).to eq(Tools::SpawnSubagent.prompt_guidelines)
+    end
+  end
+
   describe "#execute" do
     let(:input) do
       {
