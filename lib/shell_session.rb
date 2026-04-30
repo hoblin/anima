@@ -333,6 +333,19 @@ class ShellSession
   # trailing prompt — nothing leaked from the previous pane state.
   # The +-J+ flag joins terminal-wrapped lines so a long single-line
   # output comes back whole.
+  #
+  # Trailing whitespace-only rows are collapsed to a single newline
+  # before truncation. +tmux capture-pane -S -+ pads the captured
+  # scrollback with empty rows to fill the pane height, and each row is
+  # padded with spaces to the pane width — so the trailing artifact
+  # looks like +"\n   \n   \n"+, not just +"\n\n\n"+. That is why the
+  # regex matches +\s*+, not +\n*+. The padding is purely a rendering
+  # artifact: every byte of it would otherwise count against the
+  # truncation budget and end up in the LLM's context for no reason.
+  # Trimming before {#truncate} keeps the byte cap honest: a small
+  # command followed by 50 lines of pane padding no longer registers as
+  # "output exceeded N bytes."
+  #
   # @return [String] rendered terminal text on success
   # @return [nil] when +capture-pane+ exits non-zero (e.g. the session
   #   died between {#wait_for_completion} and the capture). Caller
@@ -341,7 +354,10 @@ class ShellSession
   def capture_output
     raw, status = Open3.capture2("tmux", "capture-pane", "-pJ", "-t", @target, "-S", "-", err: File::NULL)
     return nil unless status.success?
-    output = truncate(raw.force_encoding("UTF-8").scrub)
+    # +.dup+: +force_encoding+ mutates in place; defends against frozen callers (e.g. test mocks
+    # passing string literals when +# frozen_string_literal: true+ is set).
+    cleaned = raw.dup.force_encoding("UTF-8").scrub.sub(/\n\s*\z/, "\n")
+    output = truncate(cleaned)
     output.strip.empty? ? EMPTY_OUTPUT_PLACEHOLDER : output
   end
 

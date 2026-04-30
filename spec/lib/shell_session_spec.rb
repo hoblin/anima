@@ -149,6 +149,67 @@ RSpec.describe ShellSession do
       end
     end
 
+    context "with trailing pane padding from tmux capture-pane" do
+      let(:ok_status) { instance_double(Process::Status, success?: true) }
+
+      def stub_capture(synthetic_capture)
+        allow(Open3).to receive(:capture2).and_call_original
+        expect(Open3).to receive(:capture2)
+          .with("tmux", "capture-pane", "-pJ", "-t", anything, "-S", "-", err: File::NULL)
+          .and_return([synthetic_capture, ok_status])
+      end
+
+      it "ends real command output with exactly one trailing newline" do
+        result = shell.run("echo hello")
+        expect(result[:output]).to match(/\n\z/)
+        expect(result[:output]).not_to match(/\n{2,}\z/)
+      end
+
+      it "does not flag small commands as truncated when surrounded by pane padding" do
+        result = shell.run("echo small")
+        expect(result[:output]).not_to include("[Truncated:")
+      end
+
+      it "collapses whitespace-only trailing rows (space-padded, not just newlines) to a single newline" do
+        stub_capture("first line\nsecond line\n   \n   \n   \n")
+        result = shell.run("echo whatever")
+        expect(result[:output]).to eq("first line\nsecond line\n")
+      end
+
+      it "leaves a capture without a trailing newline unchanged" do
+        stub_capture("no trailing newline")
+        result = shell.run("printf no-newline")
+        expect(result[:output]).to eq("no trailing newline")
+      end
+
+      it "returns the empty-output placeholder when the capture is only blank rows" do
+        stub_capture("   \n   \n   \n")
+        result = shell.run("true")
+        expect(result[:output]).to eq(ShellSession::EMPTY_OUTPUT_PLACEHOLDER)
+      end
+
+      it "strips padding before truncating so the [Truncated:] notice survives at the tail" do
+        max = Anima::Settings.max_output_bytes
+        stub_capture(("x" * (max + 1_000)) + "\n   \n   \n   \n")
+
+        output = shell.send(:capture_output)
+
+        expect(output).to include("[Truncated: output exceeded #{max} bytes]")
+        expect(output).not_to match(/\n\s*\n\z/)
+      end
+
+      it "duplicates a frozen capture before mutating it (relies on the file's frozen_string_literal pragma)" do
+        synthetic_capture = "frozen line\n   \n"
+        expect(synthetic_capture).to be_frozen
+        stub_capture(synthetic_capture)
+
+        result = shell.run("echo frozen")
+
+        expect(result[:output]).to eq("frozen line\n")
+        expect(result).not_to have_key(:error)
+      end
+    end
+
     context "when capture-pane fails" do
       # Simulates the tmux session dying between `wait-for -S` firing and
       # the `capture-pane` call. Without an explicit error, the empty
