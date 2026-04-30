@@ -93,6 +93,8 @@ module Anima
     desc "tui", "Launch the Anima terminal interface"
     option :host, desc: "Brain server address (default: from tui.toml or #{DEFAULT_HOST})"
     option :debug, type: :boolean, default: false, desc: "Enable performance logging"
+    option :broadcast_debug, type: :boolean, default: false,
+      desc: "Log received WebSocket broadcasts to log/tui_broadcast.log (issue #481)"
     def tui
       require "ratatui_ruby"
       require_relative "../tui/settings"
@@ -106,7 +108,11 @@ module Anima
       cable_client = TUI::CableClient.new(host: host)
       cable_client.connect
 
-      TUI::App.new(cable_client: cable_client, debug: options[:debug]).run
+      TUI::App.new(
+        cable_client: cable_client,
+        debug: options[:debug],
+        broadcast_debug: options[:broadcast_debug]
+      ).run
     end
 
     desc "version", "Show version"

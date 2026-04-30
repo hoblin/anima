@@ -23,11 +23,22 @@ module Events
         message = event[:payload][:message]
         action = ACTION_MAP.fetch(event[:payload][:type])
         session = message.session
+
+        BroadcastDiagnostics.logger.info(
+          "Message##{message.id} broadcast — type=#{message.message_type} action=#{action} " \
+          "tool_use_id=#{message.tool_use_id.inspect} session=#{message.session_id} view_mode=#{session.view_mode}"
+        )
+
         broadcast_payload = message.payload.merge("id" => message.id, "action" => action)
         broadcast_payload["api_metrics"] = message.api_metrics if message.api_metrics.present?
         broadcast_payload["rendered"] = {session.view_mode => message.decorate.render(session.view_mode)}
 
         ActionCable.server.broadcast("session_#{message.session_id}", broadcast_payload)
+      rescue => e
+        BroadcastDiagnostics.logger.error(
+          "Message##{message&.id} broadcast RAISED — #{e.class}: #{e.message}"
+        )
+        raise
       end
     end
   end

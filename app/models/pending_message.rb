@@ -413,18 +413,42 @@ class PendingMessage < ApplicationRecord
   # type-specific dimmed indicator immediately. Includes the decorated
   # payload for the session's current view mode so the TUI can dispatch
   # by message type without a second round-trip.
+  #
+  # Wrapped in diagnostic logging (issue #481): every emit and any raise
+  # from the decorate/render path is captured so server emits can be
+  # paired against TUI receipts post-hoc.
   def broadcast_created
+    diagnostics_log.info(
+      "PM##{id} broadcast_created — type=#{message_type} source=#{source_name} " \
+      "tool_use_id=#{tool_use_id.inspect} session=#{session_id} view_mode=#{session.view_mode}"
+    )
     ActionCable.server.broadcast("session_#{session_id}", broadcast_payload(session.view_mode))
+  rescue => e
+    diagnostics_log.error("PM##{id} broadcast_created RAISED — #{e.class}: #{e.message}")
+    raise
   end
 
   # Broadcasts pending message removal so TUI clients clear the entry.
   # Fires on both promotion (normal flow) and recall (user edit).
+  #
+  # Wrapped in diagnostic logging (issue #481): every emit and any raise
+  # is captured so a missed remove broadcast can be distinguished from a
+  # TUI-side failure to apply it.
   def broadcast_removed
+    diagnostics_log.info(
+      "PM##{id} broadcast_removed — type=#{message_type} source=#{source_name} " \
+      "tool_use_id=#{tool_use_id.inspect} session=#{session_id}"
+    )
     ActionCable.server.broadcast("session_#{session_id}", {
       "action" => "pending_message_removed",
       "pending_message_id" => id
     })
+  rescue => e
+    diagnostics_log.error("PM##{id} broadcast_removed RAISED — #{e.class}: #{e.message}")
+    raise
   end
+
+  def diagnostics_log = BroadcastDiagnostics.logger
 
   # Populates +kind+ from {MESSAGE_TYPE_KINDS} so callers only need to
   # supply +message_type+. The mapping is the single source of truth for

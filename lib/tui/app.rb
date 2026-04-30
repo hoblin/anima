@@ -6,6 +6,7 @@ require_relative "cable_client"
 require_relative "input_buffer"
 require_relative "message_store"
 require_relative "performance_logger"
+require_relative "broadcast_logger"
 require_relative "screens/chat"
 
 module TUI
@@ -77,12 +78,16 @@ module TUI
     attr_reader :shutdown_requested
     # @return [TUI::PerformanceLogger] frame timing logger (no-op when debug is off)
     attr_reader :perf_logger
+    # @return [TUI::BroadcastLogger] WebSocket broadcast logger (no-op when broadcast_debug is off)
+    attr_reader :broadcast_logger
 
     # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
     # @param debug [Boolean] enable performance logging to log/tui_performance.log
-    def initialize(cable_client:, debug: false)
+    # @param broadcast_debug [Boolean] enable broadcast logging to log/tui_broadcast.log (issue #481)
+    def initialize(cable_client:, debug: false, broadcast_debug: false)
       @cable_client = cable_client
       @perf_logger = PerformanceLogger.new(enabled: debug)
+      @broadcast_logger = BroadcastLogger.new(enabled: broadcast_debug)
       @current_screen = :chat
       @command_mode = false
       @session_picker_active = false
@@ -108,7 +113,11 @@ module TUI
       @previous_signal_handlers = {}
       @watchdog_thread = nil
       @screens = {
-        chat: Screens::Chat.new(cable_client: cable_client, perf_logger: @perf_logger)
+        chat: Screens::Chat.new(
+          cable_client: cable_client,
+          perf_logger: @perf_logger,
+          broadcast_logger: @broadcast_logger
+        )
       }
     end
 

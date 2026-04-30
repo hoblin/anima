@@ -207,3 +207,12 @@ border_input_disconnected = "dark_gray"
 
 # File path for TUI performance debug logs (relative to working directory).
 log_path = "log/tui_performance.log"
+
+# ─── Broadcast diagnostics (issue #481) ──────────────────────────
+
+[broadcast]
+
+# File path for TUI broadcast diagnostic logs (relative to working
+# directory). Pair with the brain's log/broadcast.log to identify
+# per-PendingMessage broadcast leaks. Enable with `--broadcast-debug`.
+log_path = "log/tui_broadcast.log"

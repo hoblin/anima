@@ -3,6 +3,7 @@
 require_relative "../input_buffer"
 require_relative "../flash"
 require_relative "../performance_logger"
+require_relative "../broadcast_logger"
 require_relative "../height_map"
 require_relative "../decorators/base_decorator"
 require_relative "../decorators/bash_decorator"
@@ -55,10 +56,12 @@ module TUI
       # @param cable_client [TUI::CableClient] WebSocket client connected to the brain
       # @param message_store [TUI::MessageStore, nil] injectable for testing
       # @param perf_logger [TUI::PerformanceLogger, nil] optional performance logger
-      def initialize(cable_client:, message_store: nil, perf_logger: nil)
+      # @param broadcast_logger [TUI::BroadcastLogger, nil] optional broadcast diagnostic logger (issue #481)
+      def initialize(cable_client:, message_store: nil, perf_logger: nil, broadcast_logger: nil)
         @cable_client = cable_client
         @message_store = message_store || MessageStore.new
         @perf_logger = perf_logger || PerformanceLogger.new(enabled: false)
+        @broadcast_logger = broadcast_logger || BroadcastLogger.new(enabled: false)
         @input_buffer = InputBuffer.new
         @flash = Flash.new
         @session_state = "idle"
@@ -294,6 +297,14 @@ module TUI
           action = msg["action"]
           type = msg["type"]
 
+          if @broadcast_logger.enabled? && (action || type)
+            @broadcast_logger.info(
+              "recv action=#{action.inspect} type=#{type.inspect} " \
+              "id=#{msg["id"].inspect} pm_id=#{msg["pending_message_id"].inspect} " \
+              "tool_use_id=#{msg.dig("tool_use_id").inspect}"
+            )
+          end
+
           case action
           when "session_state"
             handle_session_state(msg)
@@ -320,9 +331,18 @@ module TUI
           when "sessions_list"
             @sessions_list = msg["sessions"]
           when "pending_message_created"
-            @message_store.add_pending(msg["pending_message_id"], msg) if msg["pending_message_id"]
+            pm_id = msg["pending_message_id"]
+            @broadcast_logger.info(
+              "recv pending_message_created PM=#{pm_id.inspect} type=#{msg["message_type"]} " \
+              "rendered_present=#{!msg.dig("rendered")&.values&.compact.to_a.empty?}"
+            )
+            @message_store.add_pending(pm_id, msg) if pm_id
           when "pending_message_removed"
-            @message_store.remove_pending(msg["pending_message_id"]) if msg["pending_message_id"]
+            pm_id = msg["pending_message_id"]
+            removed = pm_id ? @message_store.remove_pending(pm_id) : false
+            @broadcast_logger.info(
+              "recv pending_message_removed PM=#{pm_id.inspect} matched=#{removed}"
+            )
           when "authentication_required"
             @authentication_required = true
           when "token_saved"

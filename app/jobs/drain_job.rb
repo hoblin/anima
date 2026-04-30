@@ -48,7 +48,15 @@ class DrainJob < ApplicationJob
   # @param session_id [Integer]
   def perform(session_id)
     @session = Session.find(session_id)
-    return unless @session.start_processing!
+    unless @session.start_processing!
+      diagnostics_log.info(
+        "session=#{session_id} DrainJob — start_processing! refused: " \
+        "state=#{@session.aasm_state} round_complete?=#{@session.tool_round_complete?} " \
+        "mailbox_active=#{@session.pending_messages.active.count} " \
+        "mailbox_background=#{@session.pending_messages.background.count}"
+      )
+      return
+    end
 
     drained = drain_mailbox
     return @session.response_complete! if drained.zero?
@@ -83,6 +91,19 @@ class DrainJob < ApplicationJob
     @active_pm = @session.pending_messages.active.where.not(message_type: "tool_response").order(:created_at).first
 
     promoted = tool_responses.size + (@active_pm ? 1 : 0)
+
+    diagnostics_log.info(
+      "session=#{@session.id} drain_mailbox — tool_responses=#{tool_responses.size} " \
+      "active_pm=#{@active_pm&.id || "nil"}#{"(#{@active_pm.message_type})" if @active_pm} " \
+      "background=#{@session.pending_messages.background.count} promoted=#{promoted}"
+    )
+    if tool_responses.any?
+      diagnostics_log.debug(
+        "  tool_response PMs: " +
+          tool_responses.map { |pm| "PM##{pm.id}(uid=#{pm.tool_use_id} src=#{pm.source_name})" }.join(", ")
+      )
+    end
+
     return 0 if promoted.zero?
 
     tool_responses.each(&:promote!)
@@ -166,4 +187,6 @@ class DrainJob < ApplicationJob
   def shell_session
     @shell_session ||= ShellSession.for_session(@session)
   end
+
+  def diagnostics_log = BroadcastDiagnostics.logger
 end
