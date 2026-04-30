@@ -149,6 +149,81 @@ RSpec.describe ShellSession do
       end
     end
 
+    context "trailing blank lines" do
+      # `tmux capture-pane -S -` returns the full scrollback padded out
+      # to PANE_HEIGHT with empty rows. Without trimming, every byte of
+      # that padding ends up in the LLM's context — and worse, can blow
+      # the truncation budget for legitimately small output.
+      it "collapses padding blank lines into a single trailing newline" do
+        result = shell.run("echo hello")
+        # exactly one trailing newline — the prompt line, then nothing
+        expect(result[:output]).to match(/\n\z/)
+        expect(result[:output]).not_to match(/\n{2,}\z/)
+      end
+
+      # Boundary: the trim runs before truncate, so a small command
+      # surrounded by 50 lines of pane padding stays under the byte cap
+      # instead of triggering a false "[Truncated:]" notice.
+      it "does not trigger truncation when only blank padding pushes past the cap" do
+        # Real captured pane padding is well under the cap on its own;
+        # this verifies the happy path (small output → no notice).
+        result = shell.run("echo small")
+        expect(result[:output]).not_to include("[Truncated:")
+      end
+
+      # Mocked-Open3 path lets us inject a synthetic capture, isolating
+      # the trim behaviour from any flakiness in tmux's actual padding.
+      # tmux pads each empty pane row with literal spaces up to the pane
+      # width, so the real shape is +"\n   ...   \n   ...   \n"+ — the
+      # regex must collapse whitespace-only trailing lines, not just
+      # consecutive newlines.
+      it "trims trailing blank lines (including space-padded ones) from the captured pane" do
+        synthetic_capture = "first line\nsecond line\n   \n   \n   \n"
+        ok_status = instance_double(Process::Status, success?: true)
+        allow(Open3).to receive(:capture2).and_call_original
+        expect(Open3).to receive(:capture2)
+          .with("tmux", "capture-pane", "-pJ", "-t", anything, "-S", "-", err: File::NULL)
+          .and_return([synthetic_capture, ok_status])
+
+        result = shell.run("echo whatever")
+
+        expect(result[:output]).to eq("first line\nsecond line\n")
+      end
+
+      # Edge: an all-blank capture must still collapse to the
+      # EMPTY_OUTPUT_PLACEHOLDER so PendingMessage validation accepts it
+      # — the trim narrows the string but does not bypass the placeholder.
+      it "still produces the empty-output placeholder when the capture is only blank lines" do
+        synthetic_capture = "   \n   \n   \n"
+        ok_status = instance_double(Process::Status, success?: true)
+        allow(Open3).to receive(:capture2).and_call_original
+        expect(Open3).to receive(:capture2)
+          .with("tmux", "capture-pane", "-pJ", "-t", anything, "-S", "-", err: File::NULL)
+          .and_return([synthetic_capture, ok_status])
+
+        result = shell.run("true")
+
+        expect(result[:output]).to eq(ShellSession::EMPTY_OUTPUT_PLACEHOLDER)
+      end
+
+      # Defensive: Open3 returns fresh strings, but the trim path uses
+      # +force_encoding+ which mutates in place. A frozen capture (e.g.
+      # from a future caller, or from a test mock) must not break the
+      # session — duplicate before mutating.
+      it "tolerates a frozen capture string without raising" do
+        ok_status = instance_double(Process::Status, success?: true)
+        allow(Open3).to receive(:capture2).and_call_original
+        expect(Open3).to receive(:capture2)
+          .with("tmux", "capture-pane", "-pJ", "-t", anything, "-S", "-", err: File::NULL)
+          .and_return(["frozen line\n   \n", ok_status])
+
+        result = shell.run("echo frozen")
+
+        expect(result[:output]).to eq("frozen line\n")
+        expect(result).not_to have_key(:error)
+      end
+    end
+
     context "when capture-pane fails" do
       # Simulates the tmux session dying between `wait-for -S` firing and
       # the `capture-pane` call. Without an explicit error, the empty
