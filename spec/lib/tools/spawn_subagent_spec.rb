@@ -81,6 +81,18 @@ RSpec.describe Tools::SpawnSubagent do
     end
   end
 
+  describe ".prompt_snippet" do
+    it "advertises the sub-agent hand-off in the system prompt menu" do
+      expect(described_class.prompt_snippet).to eq("Hand off a sidequest to a sub-agent. Reachable later via @.")
+    end
+  end
+
+  describe ".prompt_guidelines" do
+    it "contributes the shared sub-agent etiquette so it lands in Tool Guidelines once per session" do
+      expect(described_class.prompt_guidelines).to eq(Tools::SubagentPrompts::PROMPT_GUIDELINES)
+    end
+  end
+
   describe "#execute" do
     let(:input) do
       {

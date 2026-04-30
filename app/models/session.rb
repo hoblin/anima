@@ -757,9 +757,15 @@ class Session < ApplicationRecord
   # selection (e.g. prefer edit_file over `sed`) and reinforce non-obvious
   # behaviour the schema cannot convey at every reasoning token.
   #
+  # Identical lines from multiple tools are collapsed: tools that share an
+  # etiquette (e.g. {Tools::SpawnSubagent} and {Tools::SpawnSpecialist}
+  # both contributing the @-mention rules) ship the same string from a
+  # shared constant, and the assembler emits each unique bullet once so
+  # the cached prompt doesn't grow with every duplicate.
+  #
   # @return [String, nil] tool guidelines section, or nil when empty
   def assemble_tool_guidelines_section
-    bullets = resolved_tool_classes.flat_map(&:prompt_guidelines).map { |line| "- #{line}" }
+    bullets = resolved_tool_classes.flat_map(&:prompt_guidelines).uniq.map { |line| "- #{line}" }
     return if bullets.empty?
 
     "## Tool Guidelines\n\n#{bullets.join("\n")}"

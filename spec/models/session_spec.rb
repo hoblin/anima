@@ -1012,8 +1012,18 @@ RSpec.describe Session do
       expect(prompt).to include("- edit_file: Replace exact text in a file.")
     end
 
-    it "omits the tool guidelines section while no tool contributes guideline text" do
-      expect(session.assemble_system_prompt).not_to include("## Tool Guidelines")
+    it "surfaces the sub-agent etiquette in Tool Guidelines when a spawn tool is granted" do
+      expect(session.assemble_system_prompt).to include("## Tool Guidelines")
+      expect(session.assemble_system_prompt).to include("Sub-agents stay alive after their first reply")
+    end
+
+    it "omits the tool guidelines section when no granted tool contributes guideline text" do
+      # Sub-agent sessions don't get the spawn tools, so with an empty
+      # granted_tools list none of their resolved tools contribute
+      # guidelines.
+      parent = Session.create!
+      bare_session = Session.create!(parent_session_id: parent.id, granted_tools: [])
+      expect(bare_session.assemble_system_prompt).not_to include("## Tool Guidelines")
     end
 
     context "with multiple skills" do
@@ -1100,8 +1110,9 @@ RSpec.describe Session do
   end
 
   describe "#assemble_tool_guidelines_section" do
-    it "returns nil while no tool contributes guideline text" do
-      session = Session.create!
+    it "returns nil when no resolved tool contributes guideline text" do
+      parent = Session.create!
+      session = Session.create!(parent_session_id: parent.id, granted_tools: [])
 
       expect(session.send(:assemble_tool_guidelines_section)).to be_nil
     end
@@ -1116,6 +1127,16 @@ RSpec.describe Session do
       expect(section).to start_with("## Tool Guidelines\n\n")
       expect(section).to include("- First bullet.")
       expect(section).to include("- Second bullet.")
+    end
+
+    it "emits each unique guideline once when multiple tools ship the same string" do
+      session = Session.create!
+      allow(Tools::Bash).to receive(:prompt_guidelines).and_return(["Shared bullet."])
+      allow(Tools::Edit).to receive(:prompt_guidelines).and_return(["Shared bullet."])
+
+      section = session.send(:assemble_tool_guidelines_section)
+
+      expect(section.scan("- Shared bullet.").size).to eq(1)
     end
   end
 

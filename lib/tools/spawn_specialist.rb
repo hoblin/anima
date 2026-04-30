@@ -32,6 +32,10 @@ module Tools
       "#{base}\n\nAvailable specialists:\n#{specialist_list}"
     end
 
+    def self.prompt_snippet = "Bring in a specialist by skill set. Reachable later via @."
+
+    def self.prompt_guidelines = SubagentPrompts::PROMPT_GUIDELINES
+
     # Builds input schema dynamically to include named agent enum.
     def self.input_schema
       {

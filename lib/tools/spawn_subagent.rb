@@ -26,6 +26,10 @@ module Tools
         "Prefix its nickname with @ to send instructions."
     end
 
+    def self.prompt_snippet = "Hand off a sidequest to a sub-agent. Reachable later via @."
+
+    def self.prompt_guidelines = SubagentPrompts::PROMPT_GUIDELINES
+
     def self.input_schema
       {
         type: "object",
