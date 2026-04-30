@@ -144,15 +144,53 @@ RSpec.describe Events::Subscribers::LLMResponseHandler do
         .with(/dispatching tool=read id=toolu_2/)
     end
 
-    it "traces a spurious from_* tool call from the raw blocks log to dispatch" do
+    it "still logs spurious from_* blocks in the raw payload (filter runs after logging)" do
       dispatch({"content" => [
         {"type" => "tool_use", "id" => "toolu_phantom", "name" => "from_zero-width-sleuth", "input" => {}}
       ]})
 
       raw_blocks = debug_messages.find { |m| m.start_with?("session=#{session.id} raw tool_use blocks:") }
       expect(raw_blocks).to include("from_zero-width-sleuth")
-      expect(Aoide.logger).to have_received(:info)
-        .with(/dispatching tool=from_zero-width-sleuth id=toolu_phantom/)
+    end
+  end
+
+  describe "phantom (from_*) tool call filtering" do
+    it "drops from_*-only responses to a clean end of turn (no dispatch, no failed tool_result)" do
+      expect {
+        dispatch({"content" => [
+          {"type" => "tool_use", "id" => "toolu_phantom", "name" => "from_shell-runner", "input" => {"from" => "shell-runner"}}
+        ]})
+      }.not_to have_enqueued_job(ToolExecutionJob)
+
+      expect(session.messages.where(message_type: "tool_call")).to be_empty
+      expect(session.reload.aasm_state).to eq("idle")
+    end
+
+    it "dispatches only the legitimate tool calls when a from_* block sits alongside them" do
+      expect {
+        dispatch({"content" => [
+          {"type" => "tool_use", "id" => "toolu_real", "name" => "bash", "input" => {"command" => "ls"}},
+          {"type" => "tool_use", "id" => "toolu_phantom", "name" => "from_zero-width-sleuth", "input" => {}}
+        ]})
+      }.to have_enqueued_job(ToolExecutionJob).with(session.id, hash_including(tool_name: "bash"))
+        .and(have_enqueued_job(ToolExecutionJob).exactly(1).times)
+
+      tool_calls = session.messages.where(message_type: "tool_call")
+      expect(tool_calls.size).to eq(1)
+      expect(tool_calls.first.payload["tool_name"]).to eq("bash")
+      expect(session.reload.aasm_state).to eq("executing")
+    end
+
+    it "keeps the agent's text reply when a from_* block is the only tool call" do
+      dispatch({"content" => [
+        {"type" => "text", "text" => "Spawning, then waiting for push delivery."},
+        {"type" => "tool_use", "id" => "toolu_phantom", "name" => "from_melete_goal", "input" => {}}
+      ]})
+
+      agent_message = session.messages.find_by(message_type: "agent_message")
+      expect(agent_message.payload["content"]).to eq("Spawning, then waiting for push delivery.")
+      expect(session.messages.where(message_type: "tool_call")).to be_empty
+      expect(session.reload.aasm_state).to eq("idle")
     end
   end
 end
