@@ -161,14 +161,60 @@ RSpec.describe ShellSession do
         expect(result[:output]).not_to match(/\n{2,}\z/)
       end
 
-      # Boundary: the trim runs before truncate, so a small command
-      # surrounded by 50 lines of pane padding stays under the byte cap
-      # instead of triggering a false "[Truncated:]" notice.
-      it "does not trigger truncation when only blank padding pushes past the cap" do
-        # Real captured pane padding is well under the cap on its own;
-        # this verifies the happy path (small output → no notice).
+      # Boundary: when *real* content fills the byte cap and tmux pads
+      # blank rows after it, the trim must (a) strip the padding and
+      # (b) leave the legitimate truncation notice intact. A regression
+      # where the trim regex consumed the trailing notice would silently
+      # drop the "[Truncated:]" suffix and mislead the LLM about why the
+      # output ended.
+      it "trims pane padding while preserving the truncation notice when real content exceeds the cap" do
+        max = Anima::Settings.max_output_bytes
+        # Real content larger than the cap, then trailing pane padding.
+        # truncate() will cut the content + append the notice; the trim
+        # runs *before* truncate, so it removes the padding first.
+        big_content = "x" * (max + 1_000)
+        synthetic_capture = "#{big_content}\n   \n   \n   \n"
+        ok_status = instance_double(Process::Status, success?: true)
+        allow(Open3).to receive(:capture2).and_call_original
+        expect(Open3).to receive(:capture2)
+          .with("tmux", "capture-pane", "-pJ", "-t", anything, "-S", "-", err: File::NULL)
+          .and_return([synthetic_capture, ok_status])
+
+        # Drive +capture_output+ directly — it's the unit under test and
+        # going through +run+ would require a live command to complete
+        # before the mock fires.
+        output = shell.send(:capture_output)
+
+        expect(output).to include("[Truncated: output exceeded #{max} bytes]")
+        # Padding was trimmed before truncation, so the tail of the
+        # output is the notice — not a run of blank rows after it.
+        expect(output).not_to match(/\n\s*\n\z/)
+      end
+
+      # Counterpart: when the real content is small, trim+truncate must
+      # leave it untouched. Pane padding alone should never push a small
+      # command's output past the cap and trigger a false notice.
+      it "does not trigger truncation for small commands surrounded by pane padding" do
         result = shell.run("echo small")
         expect(result[:output]).not_to include("[Truncated:")
+      end
+
+      # Edge: the regex requires a literal +\n+ to anchor its match. A
+      # capture that ends in a non-blank line with no trailing newline
+      # must therefore pass through unchanged — no synthesised newline,
+      # no swallowed character. (In practice tmux always terminates with
+      # +\n+, but this guards the regex contract.)
+      it "leaves a capture without a trailing newline unchanged" do
+        synthetic_capture = "no trailing newline"
+        ok_status = instance_double(Process::Status, success?: true)
+        allow(Open3).to receive(:capture2).and_call_original
+        expect(Open3).to receive(:capture2)
+          .with("tmux", "capture-pane", "-pJ", "-t", anything, "-S", "-", err: File::NULL)
+          .and_return([synthetic_capture, ok_status])
+
+        result = shell.run("printf no-newline")
+
+        expect(result[:output]).to eq("no trailing newline")
       end
 
       # Mocked-Open3 path lets us inject a synthetic capture, isolating
@@ -206,16 +252,21 @@ RSpec.describe ShellSession do
         expect(result[:output]).to eq(ShellSession::EMPTY_OUTPUT_PLACEHOLDER)
       end
 
-      # Defensive: Open3 returns fresh strings, but the trim path uses
-      # +force_encoding+ which mutates in place. A frozen capture (e.g.
-      # from a future caller, or from a test mock) must not break the
-      # session — duplicate before mutating.
+      # Defensive: Open3 returns fresh strings in production, but the
+      # trim path uses +force_encoding+ which mutates in place. A frozen
+      # capture must not break the session — duplicate before mutating.
+      # This file's +# frozen_string_literal: true+ pragma is what makes
+      # the synthetic capture frozen; the +expect(...).to be_frozen+
+      # below pins that contract so the test loses its teeth loudly
+      # (rather than silently) if the pragma is ever removed.
       it "tolerates a frozen capture string without raising" do
+        synthetic_capture = "frozen line\n   \n"
+        expect(synthetic_capture).to be_frozen
         ok_status = instance_double(Process::Status, success?: true)
         allow(Open3).to receive(:capture2).and_call_original
         expect(Open3).to receive(:capture2)
           .with("tmux", "capture-pane", "-pJ", "-t", anything, "-S", "-", err: File::NULL)
-          .and_return(["frozen line\n   \n", ok_status])
+          .and_return([synthetic_capture, ok_status])
 
         result = shell.run("echo frozen")
 
