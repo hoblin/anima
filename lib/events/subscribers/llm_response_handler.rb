@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "toon"
+
 module Events
   module Subscribers
     # Handles the aftermath of a single LLM round-trip emitted via
@@ -25,6 +27,8 @@ module Events
         response = payload[:response] || {}
         api_metrics = payload[:api_metrics]
 
+        log_raw_response(session, response)
+
         tool_uses = normalize_tool_uses(response)
         text = extract_text(response)
 
@@ -40,6 +44,9 @@ module Events
       end
 
       private
+
+      # @return [Logger] dev-only Aoide logger
+      def log = Aoide.logger
 
       def content_blocks(response)
         response["content"] || response[:content] || []
@@ -82,28 +89,54 @@ module Events
       end
 
       def persist_tool_call(session, tool_use)
+        tool_use_id = tool_use["id"]
+        tool_name = tool_use["name"]
         session.messages.create!(
           message_type: "tool_call",
-          tool_use_id: tool_use["id"],
+          tool_use_id: tool_use_id,
           payload: {
             "type" => "tool_call",
-            "tool_name" => tool_use["name"],
-            "tool_use_id" => tool_use["id"],
+            "tool_name" => tool_name,
+            "tool_use_id" => tool_use_id,
             "tool_input" => tool_use["input"],
-            "content" => "Calling #{tool_use["name"]}"
+            "content" => "Calling #{tool_name}"
           },
           timestamp: Time.current.to_ns
         )
       end
 
       def dispatch_tool_executions(session, tool_uses)
+        sid = session.id
         tool_uses.each do |tool_use|
+          tool_use_id = tool_use["id"]
+          tool_name = tool_use["name"]
+          log.info("session=#{sid} dispatching tool=#{tool_name} id=#{tool_use_id}")
           ToolExecutionJob.perform_later(
-            session.id,
-            tool_use_id: tool_use["id"],
-            tool_name: tool_use["name"],
+            sid,
+            tool_use_id: tool_use_id,
+            tool_name: tool_name,
             tool_input: tool_use["input"]
           )
+        end
+      end
+
+      # Diagnostic trace of every Anthropic response that reaches the
+      # main loop: a one-line summary at info, the full payload and
+      # raw +tool_use+ blocks (pre-normalization) at debug — paired so
+      # the inbound API response can be correlated against what got
+      # dispatched. Block form on +log.debug+ so +Toon.encode+ never
+      # runs unless the level allows it.
+      def log_raw_response(session, response)
+        sid = session.id
+        blocks = content_blocks(response)
+        raw_tool_uses = blocks.select { |block| block_type(block) == "tool_use" }
+
+        log.info(
+          "session=#{sid} — response received " \
+          "(#{blocks.size} block(s), #{raw_tool_uses.size} tool_use)"
+        )
+        {"raw response" => response, "raw tool_use blocks" => raw_tool_uses}.each do |label, payload|
+          log.debug { "session=#{sid} #{label}:\n#{Toon.encode(payload)}" }
         end
       end
     end

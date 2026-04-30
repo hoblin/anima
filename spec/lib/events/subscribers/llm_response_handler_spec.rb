@@ -92,4 +92,67 @@ RSpec.describe Events::Subscribers::LLMResponseHandler do
       expect(session.reload.aasm_state).to eq("idle")
     end
   end
+
+  describe "diagnostic logging" do
+    let(:debug_messages) { [] }
+
+    before do
+      allow(Aoide.logger).to receive(:info)
+      messages = debug_messages
+      allow(Aoide.logger).to receive(:debug) do |*args, &block|
+        messages << (block ? block.call : args.first)
+      end
+    end
+
+    it "logs a one-line summary including block and tool_use counts" do
+      dispatch({"content" => [
+        {"type" => "text", "text" => "thinking"},
+        {"type" => "tool_use", "id" => "toolu_1", "name" => "bash", "input" => {}}
+      ]})
+
+      expect(Aoide.logger).to have_received(:info)
+        .with(/session=#{session.id} — response received \(2 block\(s\), 1 tool_use\)/)
+    end
+
+    it "logs the raw response payload as TOON at debug level" do
+      response = {"content" => [{"type" => "text", "text" => "hello"}], "stop_reason" => "end_turn"}
+      dispatch(response)
+
+      expect(debug_messages).to include(a_string_including("raw response:", Toon.encode(response)))
+    end
+
+    it "logs raw tool_use blocks before normalization, preserving missing ids" do
+      dispatch({"content" => [
+        {"type" => "text", "text" => "thinking"},
+        {"type" => "tool_use", "name" => "from_melete_goal", "input" => {"goal" => "x"}}
+      ]})
+
+      raw_blocks = debug_messages.find { |m| m.start_with?("session=#{session.id} raw tool_use blocks:") }
+      expect(raw_blocks).to include("from_melete_goal")
+      expect(raw_blocks).not_to match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)
+    end
+
+    it "logs each dispatched tool name and id at info level" do
+      dispatch({"content" => [
+        {"type" => "tool_use", "id" => "toolu_1", "name" => "bash", "input" => {"command" => "ls"}},
+        {"type" => "tool_use", "id" => "toolu_2", "name" => "read", "input" => {"path" => "/tmp"}}
+      ]})
+
+      expect(Aoide.logger).to have_received(:info)
+        .with(/dispatching tool=bash id=toolu_1/)
+      expect(Aoide.logger).to have_received(:info)
+        .with(/dispatching tool=read id=toolu_2/)
+    end
+
+    it "traces a spurious from_* tool call from the raw blocks log to dispatch" do
+      dispatch({"content" => [
+        {"type" => "tool_use", "id" => "toolu_phantom", "name" => "from_zero-width-sleuth", "input" => {}}
+      ]})
+
+      raw_blocks = debug_messages.find { |m| m.start_with?("session=#{session.id} raw tool_use blocks:") }
+      expect(raw_blocks).to include("from_zero-width-sleuth")
+      expect(Aoide.logger).to have_received(:info)
+        .with(/dispatching tool=from_zero-width-sleuth id=toolu_phantom/)
+    end
+  end
 end

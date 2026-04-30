@@ -94,6 +94,7 @@ Always clean up tmux sessions when done. Use `anima-test` as the session name fo
 **Important:** Use `./exe/anima` (not `bundle exec anima`) to test local code changes. The exe uses `require_relative` so it loads local `lib/` directly. `bundle exec` may load the installed gem version instead.
 
 Melete debug log (dev only): `tail -f log/melete.log`
+Aoide debug log (dev only): `tail -f log/aoide.log` — raw API response, raw tool_use blocks (pre-normalization), and dispatched tool name/id. Use to correlate "what came in from the API" against "what got dispatched".
 
 ## Triggering API 400 for smoke testing
 
