@@ -109,12 +109,12 @@ RSpec.describe Events::Subscribers::LLMResponseHandler do
         .with(/session=#{session.id} — response received \(2 block\(s\), 1 tool_use\)/)
     end
 
-    it "logs the raw response payload as pretty JSON at debug level" do
+    it "logs the raw response payload as TOON at debug level" do
       response = {"content" => [{"type" => "text", "text" => "hello"}], "stop_reason" => "end_turn"}
       dispatch(response)
 
       expect(Aoide.logger).to have_received(:debug)
-        .with(a_string_including("raw response:", JSON.pretty_generate(response)))
+        .with(a_string_including("raw response:", Toon.encode(response)))
     end
 
     it "logs raw tool_use blocks before normalization, preserving missing ids" do

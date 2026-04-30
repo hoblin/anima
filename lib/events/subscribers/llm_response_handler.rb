@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "toon"
+
 module Events
   module Subscribers
     # Handles the aftermath of a single LLM round-trip emitted via
@@ -130,8 +132,8 @@ module Events
           "session=#{sid} — response received " \
           "(#{blocks.size} block(s), #{raw_tool_uses.size} tool_use)"
         )
-        log.debug("session=#{sid} raw response:\n#{JSON.pretty_generate(response)}")
-        log.debug("session=#{sid} raw tool_use blocks:\n#{JSON.pretty_generate(raw_tool_uses)}")
+        log.debug("session=#{sid} raw response:\n#{Toon.encode(response)}")
+        log.debug("session=#{sid} raw tool_use blocks:\n#{Toon.encode(raw_tool_uses)}")
       end
     end
   end
