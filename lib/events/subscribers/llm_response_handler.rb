@@ -28,6 +28,7 @@ module Events
         api_metrics = payload[:api_metrics]
 
         log_raw_response(session, response)
+        response = Aoide::PhantomCallFilter.call(response)
 
         tool_uses = normalize_tool_uses(response)
         text = extract_text(response)
