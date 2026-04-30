@@ -92,4 +92,65 @@ RSpec.describe Events::Subscribers::LLMResponseHandler do
       expect(session.reload.aasm_state).to eq("idle")
     end
   end
+
+  describe "diagnostic logging" do
+    before do
+      allow(Aoide.logger).to receive(:info)
+      allow(Aoide.logger).to receive(:debug)
+    end
+
+    it "logs a one-line summary including block and tool_use counts" do
+      dispatch({"content" => [
+        {"type" => "text", "text" => "thinking"},
+        {"type" => "tool_use", "id" => "toolu_1", "name" => "bash", "input" => {}}
+      ]})
+
+      expect(Aoide.logger).to have_received(:info)
+        .with(/session=#{session.id} — response received \(2 block\(s\), 1 tool_use\)/)
+    end
+
+    it "logs the raw response payload as pretty JSON at debug level" do
+      response = {"content" => [{"type" => "text", "text" => "hello"}], "stop_reason" => "end_turn"}
+      dispatch(response)
+
+      expect(Aoide.logger).to have_received(:debug)
+        .with(a_string_including("raw response:", JSON.pretty_generate(response)))
+    end
+
+    it "logs raw tool_use blocks before normalization, preserving missing ids" do
+      raw_blocks_message = nil
+      allow(Aoide.logger).to receive(:debug) do |msg|
+        raw_blocks_message = msg if msg.start_with?("session=#{session.id} raw tool_use blocks:")
+      end
+
+      dispatch({"content" => [
+        {"type" => "text", "text" => "thinking"},
+        {"type" => "tool_use", "name" => "from_melete_goal", "input" => {"goal" => "x"}}
+      ]})
+
+      expect(raw_blocks_message).to include("from_melete_goal")
+      expect(raw_blocks_message).not_to match(/"id":\s*"[0-9a-f-]{36}"/i)
+    end
+
+    it "logs each dispatched tool name and id at info level" do
+      dispatch({"content" => [
+        {"type" => "tool_use", "id" => "toolu_1", "name" => "bash", "input" => {"command" => "ls"}},
+        {"type" => "tool_use", "id" => "toolu_2", "name" => "read", "input" => {"path" => "/tmp"}}
+      ]})
+
+      expect(Aoide.logger).to have_received(:info)
+        .with(/dispatching tool=bash id=toolu_1/)
+      expect(Aoide.logger).to have_received(:info)
+        .with(/dispatching tool=read id=toolu_2/)
+    end
+
+    it "traces spurious from_* tool calls all the way to dispatch" do
+      dispatch({"content" => [
+        {"type" => "tool_use", "id" => "toolu_phantom", "name" => "from_zero-width-sleuth", "input" => {}}
+      ]})
+
+      expect(Aoide.logger).to have_received(:info)
+        .with(/dispatching tool=from_zero-width-sleuth id=toolu_phantom/)
+    end
+  end
 end
