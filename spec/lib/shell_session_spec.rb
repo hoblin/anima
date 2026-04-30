@@ -149,124 +149,59 @@ RSpec.describe ShellSession do
       end
     end
 
-    context "trailing blank lines" do
-      # `tmux capture-pane -S -` returns the full scrollback padded out
-      # to PANE_HEIGHT with empty rows. Without trimming, every byte of
-      # that padding ends up in the LLM's context — and worse, can blow
-      # the truncation budget for legitimately small output.
-      it "collapses padding blank lines into a single trailing newline" do
+    context "with trailing pane padding from tmux capture-pane" do
+      let(:ok_status) { instance_double(Process::Status, success?: true) }
+
+      def stub_capture(synthetic_capture)
+        allow(Open3).to receive(:capture2).and_call_original
+        expect(Open3).to receive(:capture2)
+          .with("tmux", "capture-pane", "-pJ", "-t", anything, "-S", "-", err: File::NULL)
+          .and_return([synthetic_capture, ok_status])
+      end
+
+      it "ends real command output with exactly one trailing newline" do
         result = shell.run("echo hello")
-        # exactly one trailing newline — the prompt line, then nothing
         expect(result[:output]).to match(/\n\z/)
         expect(result[:output]).not_to match(/\n{2,}\z/)
       end
 
-      # Boundary: when *real* content fills the byte cap and tmux pads
-      # blank rows after it, the trim must (a) strip the padding and
-      # (b) leave the legitimate truncation notice intact. A regression
-      # where the trim regex consumed the trailing notice would silently
-      # drop the "[Truncated:]" suffix and mislead the LLM about why the
-      # output ended.
-      it "trims pane padding while preserving the truncation notice when real content exceeds the cap" do
-        max = Anima::Settings.max_output_bytes
-        # Real content larger than the cap, then trailing pane padding.
-        # truncate() will cut the content + append the notice; the trim
-        # runs *before* truncate, so it removes the padding first.
-        big_content = "x" * (max + 1_000)
-        synthetic_capture = "#{big_content}\n   \n   \n   \n"
-        ok_status = instance_double(Process::Status, success?: true)
-        allow(Open3).to receive(:capture2).and_call_original
-        expect(Open3).to receive(:capture2)
-          .with("tmux", "capture-pane", "-pJ", "-t", anything, "-S", "-", err: File::NULL)
-          .and_return([synthetic_capture, ok_status])
-
-        # Drive +capture_output+ directly — it's the unit under test and
-        # going through +run+ would require a live command to complete
-        # before the mock fires.
-        output = shell.send(:capture_output)
-
-        expect(output).to include("[Truncated: output exceeded #{max} bytes]")
-        # Padding was trimmed before truncation, so the tail of the
-        # output is the notice — not a run of blank rows after it.
-        expect(output).not_to match(/\n\s*\n\z/)
-      end
-
-      # Counterpart: when the real content is small, trim+truncate must
-      # leave it untouched. Pane padding alone should never push a small
-      # command's output past the cap and trigger a false notice.
-      it "does not trigger truncation for small commands surrounded by pane padding" do
+      it "does not flag small commands as truncated when surrounded by pane padding" do
         result = shell.run("echo small")
         expect(result[:output]).not_to include("[Truncated:")
       end
 
-      # Edge: the regex requires a literal +\n+ to anchor its match. A
-      # capture that ends in a non-blank line with no trailing newline
-      # must therefore pass through unchanged — no synthesised newline,
-      # no swallowed character. (In practice tmux always terminates with
-      # +\n+, but this guards the regex contract.)
-      it "leaves a capture without a trailing newline unchanged" do
-        synthetic_capture = "no trailing newline"
-        ok_status = instance_double(Process::Status, success?: true)
-        allow(Open3).to receive(:capture2).and_call_original
-        expect(Open3).to receive(:capture2)
-          .with("tmux", "capture-pane", "-pJ", "-t", anything, "-S", "-", err: File::NULL)
-          .and_return([synthetic_capture, ok_status])
-
-        result = shell.run("printf no-newline")
-
-        expect(result[:output]).to eq("no trailing newline")
-      end
-
-      # Mocked-Open3 path lets us inject a synthetic capture, isolating
-      # the trim behaviour from any flakiness in tmux's actual padding.
-      # tmux pads each empty pane row with literal spaces up to the pane
-      # width, so the real shape is +"\n   ...   \n   ...   \n"+ — the
-      # regex must collapse whitespace-only trailing lines, not just
-      # consecutive newlines.
-      it "trims trailing blank lines (including space-padded ones) from the captured pane" do
-        synthetic_capture = "first line\nsecond line\n   \n   \n   \n"
-        ok_status = instance_double(Process::Status, success?: true)
-        allow(Open3).to receive(:capture2).and_call_original
-        expect(Open3).to receive(:capture2)
-          .with("tmux", "capture-pane", "-pJ", "-t", anything, "-S", "-", err: File::NULL)
-          .and_return([synthetic_capture, ok_status])
-
+      it "collapses whitespace-only trailing rows (space-padded, not just newlines) to a single newline" do
+        stub_capture("first line\nsecond line\n   \n   \n   \n")
         result = shell.run("echo whatever")
-
         expect(result[:output]).to eq("first line\nsecond line\n")
       end
 
-      # Edge: an all-blank capture must still collapse to the
-      # EMPTY_OUTPUT_PLACEHOLDER so PendingMessage validation accepts it
-      # — the trim narrows the string but does not bypass the placeholder.
-      it "still produces the empty-output placeholder when the capture is only blank lines" do
-        synthetic_capture = "   \n   \n   \n"
-        ok_status = instance_double(Process::Status, success?: true)
-        allow(Open3).to receive(:capture2).and_call_original
-        expect(Open3).to receive(:capture2)
-          .with("tmux", "capture-pane", "-pJ", "-t", anything, "-S", "-", err: File::NULL)
-          .and_return([synthetic_capture, ok_status])
+      it "leaves a capture without a trailing newline unchanged" do
+        stub_capture("no trailing newline")
+        result = shell.run("printf no-newline")
+        expect(result[:output]).to eq("no trailing newline")
+      end
 
+      it "returns the empty-output placeholder when the capture is only blank rows" do
+        stub_capture("   \n   \n   \n")
         result = shell.run("true")
-
         expect(result[:output]).to eq(ShellSession::EMPTY_OUTPUT_PLACEHOLDER)
       end
 
-      # Defensive: Open3 returns fresh strings in production, but the
-      # trim path uses +force_encoding+ which mutates in place. A frozen
-      # capture must not break the session — duplicate before mutating.
-      # This file's +# frozen_string_literal: true+ pragma is what makes
-      # the synthetic capture frozen; the +expect(...).to be_frozen+
-      # below pins that contract so the test loses its teeth loudly
-      # (rather than silently) if the pragma is ever removed.
-      it "tolerates a frozen capture string without raising" do
+      it "strips padding before truncating so the [Truncated:] notice survives at the tail" do
+        max = Anima::Settings.max_output_bytes
+        stub_capture(("x" * (max + 1_000)) + "\n   \n   \n   \n")
+
+        output = shell.send(:capture_output)
+
+        expect(output).to include("[Truncated: output exceeded #{max} bytes]")
+        expect(output).not_to match(/\n\s*\n\z/)
+      end
+
+      it "duplicates a frozen capture before mutating it (relies on the file's frozen_string_literal pragma)" do
         synthetic_capture = "frozen line\n   \n"
         expect(synthetic_capture).to be_frozen
-        ok_status = instance_double(Process::Status, success?: true)
-        allow(Open3).to receive(:capture2).and_call_original
-        expect(Open3).to receive(:capture2)
-          .with("tmux", "capture-pane", "-pJ", "-t", anything, "-S", "-", err: File::NULL)
-          .and_return([synthetic_capture, ok_status])
+        stub_capture(synthetic_capture)
 
         result = shell.run("echo frozen")
 
