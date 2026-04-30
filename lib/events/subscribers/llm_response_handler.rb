@@ -45,6 +45,7 @@ module Events
 
       private
 
+      # @return [Logger] dev-only Aoide logger
       def log = Aoide.logger
 
       def content_blocks(response)
@@ -120,20 +121,23 @@ module Events
       end
 
       # Diagnostic trace of every Anthropic response that reaches the
-      # main loop: full payload at debug, raw +tool_use+ blocks at
-      # debug, one-line summary at info. Lets a reader correlate
-      # "what came in from the API" against "what got dispatched"
-      # when investigating spurious tool calls.
+      # main loop: a one-line summary at info, the full payload and
+      # raw +tool_use+ blocks (pre-normalization) at debug — paired so
+      # the inbound API response can be correlated against what got
+      # dispatched. Block form on +log.debug+ so +Toon.encode+ never
+      # runs unless the level allows it.
       def log_raw_response(session, response)
         sid = session.id
         blocks = content_blocks(response)
         raw_tool_uses = blocks.select { |block| block_type(block) == "tool_use" }
+
         log.info(
           "session=#{sid} — response received " \
           "(#{blocks.size} block(s), #{raw_tool_uses.size} tool_use)"
         )
-        log.debug("session=#{sid} raw response:\n#{Toon.encode(response)}")
-        log.debug("session=#{sid} raw tool_use blocks:\n#{Toon.encode(raw_tool_uses)}")
+        {"raw response" => response, "raw tool_use blocks" => raw_tool_uses}.each do |label, payload|
+          log.debug { "session=#{sid} #{label}:\n#{Toon.encode(payload)}" }
+        end
       end
     end
   end

@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
-# Aoide — the muse of voice. The agent's main conversational loop:
-# she takes the system prompt, recent messages, and tool registry, and
-# turns each LLM response into dispatched tool executions. One of the
-# Three Muses: Melete prepares, Aoide performs, Mneme remembers.
+# Aoide — the muse of voice. Turns each LLM response into dispatched
+# tool executions and persisted messages. One of the Three Muses: she
+# performs while Melete prepares the stage and Mneme remembers.
 module Aoide
   # Dev-only logger that writes to log/aoide.log.
   # In non-development environments returns a null logger so
